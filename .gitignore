@@ -1,0 +1,22 @@
+~*
+*~
+
+*.log
+*.out
+*.pid
+
+bower_components
+node_modules
+npm-debug.log
+.node_history
+
+.c9
+# .vscode
+.idea
+.DS_STORE
+.netbeans
+nbproject
+
+build/__secrets
+
+.~lock.*
