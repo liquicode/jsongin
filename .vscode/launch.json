@@ -5,6 +5,39 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
+			"name": "--- CI/CD ---------------------",
+		},
+		{
+			"name": "CI/CD clear",
+			"type": "node",
+			"request": "launch",
+			"skipFiles": [
+				"<node_internals>/**"
+			],
+			"cwd": "${workspaceFolder}",
+			"program": "${workspaceFolder}/build/ci-cd.js",
+			"args": [
+				"clear"
+			],
+			"outputCapture": "std",
+			"internalConsoleOptions": "openOnSessionStart",
+		},
+		{
+			"name": "CI/CD test",
+			"type": "node",
+			"request": "launch",
+			"skipFiles": [
+				"<node_internals>/**"
+			],
+			"cwd": "${workspaceFolder}",
+			"program": "${workspaceFolder}/build/ci-cd.js",
+			"args": [
+				"test"
+			],
+			"outputCapture": "std",
+			"internalConsoleOptions": "openOnSessionStart",
+		},
+		{
 			"name": "--- Tests ---------------------",
 		},
 		{
