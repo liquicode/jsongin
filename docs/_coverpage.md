@@ -2,7 +2,7 @@
 
 ![logo](media/jsongin-banner-large.png)
 
-# jsongin <small>(v0.0.1)</small>
+# jsongin <small>(v0.0.2)</small>
 
 <hr>
 
