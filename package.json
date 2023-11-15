@@ -1,1 +1,46 @@
-{"name":"@liquicode/jsongin","version":"0.0.2","description":"A JSON Engine for MongoDB-Style Queries and Data Structure Manipulation","license":"MIT","homepage":"http://jsongin.liquicode.com","repository":{"type":"git","url":"https://github.com/liquicode/jsongin"},"authors":[{"name":"Andre' G. Bowlin","email":"agbowlin@gmail.com","homepage":"http://liquicode.com"}],"main":"src/jsongin.js","scripts":{"test":"mocha -u bdd tests/*.js --timeout 0 --slow 10 --colors","webpack":"npx webpack-cli --config build/webpack.config.js","publish docs":"set \"AWS_PROFILE=admin\" & aws s3 sync docs s3://jsongin.liquicode.com"},"keywords":["mongo","mongodb","query","qbe","$eq","$and","object","compare"],"devDependencies":{"@liquicode/lib-json":"^0.1.5","@seald-io/nedb":"^4.0.2","babel-polyfill":"6.x","json-criteria":"2.x","mocha":"^10.2.0","mongodb":"4.x","nedb":"^1.8.0","webpack":"^5.89.0","webpack-cli":"^5.1.4","webpack-node-externals":"^3.0.0"},"dependencies":{}}
+{
+	"name": "@liquicode/jsongin",
+	"version": "0.0.2",
+	"description": "A JSON Engine for MongoDB-Style Queries and Data Structure Manipulation",
+	"license": "MIT",
+	"homepage": "http://jsongin.liquicode.com",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/liquicode/jsongin"
+	},
+	"authors": [
+		{
+			"name": "Andre' G. Bowlin",
+			"email": "agbowlin@gmail.com",
+			"homepage": "http://liquicode.com"
+		}
+	],
+	"main": "src/jsongin.js",
+	"scripts": {
+		"test": "mocha -u bdd tests/*.js --timeout 0 --slow 10 --colors",
+		"publish version": "npx @liquicode/devops --tasks .\\build\\prod\\devops.config.js publish_version"
+	},
+	"keywords": [
+		"mongo",
+		"mongodb",
+		"query",
+		"qbe",
+		"$eq",
+		"$and",
+		"object",
+		"compare"
+	],
+	"devDependencies": {
+		"@liquicode/lib-json": "^0.1.5",
+		"@seald-io/nedb": "^4.0.2",
+		"babel-polyfill": "6.x",
+		"json-criteria": "2.x",
+		"mocha": "^10.2.0",
+		"mongodb": "4.x",
+		"nedb": "^1.8.0",
+		"webpack": "^5.89.0",
+		"webpack-cli": "^5.1.4",
+		"webpack-node-externals": "^3.0.0"
+	},
+	"dependencies": {}
+}

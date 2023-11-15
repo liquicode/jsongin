@@ -606,10 +606,17 @@ module.exports = function ( EngineSettings = {} )
 		for ( let key in Query )
 		{
 			if ( typeof Engine.Operators[ key ] !== 'undefined' ) { return true; }
-			if ( Engine.ShortType( Query[ key ] ) === 'o' )
-			{
-				if ( Engine.IsQuery( ( Query[ key ] ) ) ) { return true; }
-			}
+			//TODO: This needs more thought/work:
+			// if ( Engine.ShortType( Query[ key ] ) === 'o' )
+			// {
+			// 	if ( Engine.Settings.PathExtensions )
+			// 	{
+			// 		if ( Object.keys( Query ).length === 1 )
+			// 		{
+			// 			if ( Engine.IsQuery( ( Query[ key ] ) ) ) { return true; }
+			// 		}
+			// 	}
+			// }
 		}
 		return false;
 	};
@@ -634,6 +641,45 @@ module.exports = function ( EngineSettings = {} )
 	{
 		return Engine.Equals( ObjectA, ObjectB, true );
 	};
+
+
+	//---------------------------------------------------------------------
+	Engine.Clone = function ( Value )
+	{
+		return JSON.parse( JSON.stringify( Value ) );
+	};
+
+
+	// //---------------------------------------------------------------------
+	// Engine.MongoQuery = function ( Query, Options )
+	// {
+	// 	// Converts a jsongin extended Query to a Mongo Query.
+	// 	throw new Error( `Not implemented.` );
+	// };
+
+
+	// //---------------------------------------------------------------------
+	// Engine.SqlQuery = function ( Query, Options )
+	// {
+	// 	// Converts a jsongin extended Query to a SQL Query.
+	// 	throw new Error( `Not implemented.` );
+	// };
+
+
+	// //---------------------------------------------------------------------
+	// Engine.Format = function ( Value, Options )
+	// {
+	// 	// Converts an object to a string, with formatting options.
+	// 	throw new Error( `Not implemented.` );
+	// };
+
+
+	// //---------------------------------------------------------------------
+	// Engine.Parse = function ( JsonString, Options )
+	// {
+	// 	// Parses a string into a value.
+	// 	throw new Error( `Not implemented.` );
+	// };
 
 
 	// Return the engine.

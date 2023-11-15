@@ -106,7 +106,7 @@ module.exports = {
 
 	],
 
-	new_version: [
+	publish_version: [
 
 		// Read the package file.
 		{ $ReadJsonFile: { filename: 'package.json', context: 'Package' } },
@@ -120,9 +120,16 @@ module.exports = {
 		{ $RunTask: { name: 'git_publish_version' } },
 		{ $RunTask: { name: 'npm_publish_version' } },
 
+	],
+
+	start_new_version: [
+
+		// Read the package file.
+		{ $ReadJsonFile: { filename: 'package.json', context: 'Package' } },
+
 		// Increment and update the official package version.
 		{ $SemverInc: { context: 'Package.version' } },
-		{ $WriteJsonFile: { filename: 'package.json', context: 'Package' } },
+		{ $WriteJsonFile: { filename: 'package.json', context: 'Package', friendly: true } },
 
 		// Sync the version again.
 		{ $RunTask: { name: 'sync_version' } },

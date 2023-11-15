@@ -297,7 +297,15 @@
       ✔ should be false when one of its conditions is true
 
   jsongin Tests
+    Ad-Hoc Tests
+      ✔ should not match explicit nested fields
     Rainbow Tests
+      Nested Fields (explicit)
+        ✔ should not perform matching on nested fields using implicit $eq
+        ✔ should not perform matching on nested fields using explicit $eq
+      Nested Fields (dot notation)
+        ✔ should perform matching on nested fields using implicit $eq and dot notation
+        ✔ should perform matching on nested fields using explicit $eq and dot notation
       Operator $eq (===)
         ✔ should perform strict equality (===) on 'bns'
         ✔ should perform strict equality (===) on 'o'
@@ -441,5 +449,5 @@
           ✔ Match Fields that are Missing
 
 
-  342 passing (68ms)
+  347 passing (68ms)
 

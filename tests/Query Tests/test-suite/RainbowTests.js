@@ -80,8 +80,47 @@ module.exports = function ( Driver )
 				let result = await Driver.SetData( [ RainbowData ] );
 				assert.ok( result );
 				return;
-			}
-		);
+			} );
+
+
+		//=====================================================================
+		//=====================================================================
+		//
+		//		Nested Fields
+		//
+		//=====================================================================
+		//=====================================================================
+
+		describe( `Nested Fields (explicit)`, () =>
+		{
+
+			it( `should not perform matching on nested fields using implicit $eq`, async () => 
+			{
+				assert.ok( ( await Driver.Find( { o: { n: 3.14 } } ) ).length === 0 );
+			} );
+
+			it( `should not perform matching on nested fields using explicit $eq`, async () => 
+			{
+				assert.ok( ( await Driver.Find( { o: { n: { $eq: 3.14 } } } ) ).length === 0 );
+			} );
+
+		} );
+
+
+		describe( `Nested Fields (dot notation)`, () =>
+		{
+
+			it( `should perform matching on nested fields using implicit $eq and dot notation`, async () => 
+			{
+				assert.ok( ( await Driver.Find( { 'o.n': 3.14 } ) ).length === 1 );
+			} );
+
+			it( `should perform matching on nested fields using explicit $eq and dot notation`, async () => 
+			{
+				assert.ok( ( await Driver.Find( { 'o.n': { $eq: 3.14 } } ) ).length === 1 );
+			} );
+
+		} );
 
 
 		//=====================================================================

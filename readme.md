@@ -26,13 +26,13 @@ Things that went smoothly in development might fail terribly while running in pr
 Furthermore, many of the other implementation I tried did not support many more MongoDB query features
 	beyond basic comparisons.
 
-I needed it. I couldn't find it. So I built it. And here it is.
+I needed it. I couldn't find it. So I built it. Here it is.
 
 
 Goals
 ---------------------------------------------------------------------
 
-- Full compatibility with MongoDB queries.
+- Full compatibility and accuracy with MongoDB Query syntax.
 - Generate SQL queries for relational/hybrid databases.
 - Fast, easy to use, low overhead, and minimal (no) dependencies.
 
@@ -54,7 +54,7 @@ const jsongin = require('@liquicode/jsongin')()
 const jsongin = require('@liquicode/jsongin')( settings )
 ```
 
-***Use jsongin to perform Mongo-style Querying:***
+***Use jsongin to perform MongoDB Queries on JSON objects:***
 ```js
 let document =
 {
@@ -84,14 +84,16 @@ jsongin.Query( document, { 'user.name': 'alice' } ) === false
 // Use query operators to perform more complex matches.
 jsongin.Query( document, { 'user.name': { $ne: 'Joe' } ) === true
 jsongin.Query( document, { 'profile.role': { $in: ['admin', 'super'] } ) === true
-jsongin.Query( document, { $or: [
-								{'user.location': 'East'},
-								{'user.location': 'West'}
-							] } ) === true
-jsongin.Query( document, { $and: [
-								{'user.location': 'East'},
-								{'user.role': {$ne: 'user'}}
-							] } ) === true
+jsongin.Query( document, { $or:
+	[
+		{'user.location': 'East'},
+		{'user.location': 'West'}
+	] } ) === true
+jsongin.Query( document, { $and:
+	[
+		{'user.location': 'East'},
+		{'user.role': {$ne: 'user'}}
+	] } ) === true
 ```
 
 
@@ -190,4 +192,11 @@ Related Information
 
 - [@seald-io/nedb](https://www.npmjs.com/package/@seald-io/nedb) : 
 	A currently maintained fork of `nedb`.
+
+- [Mongo-Local-DB](https://www.npmjs.com/package/mongo-local-db) :
+
+- [RxDB](https://www.npmjs.com/package/rxdb) :
+
+- [realm](https://www.npmjs.com/package/realm) :
+
 
