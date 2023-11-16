@@ -36,7 +36,7 @@ module.exports = function ( jsongin )
 			if ( 'bnslu'.includes( actual_type ) && 'bnslu'.includes( match_type ) )
 			{
 				// Primtive === Primitive
-				result = this.Engine.Operators.$eq.Query( Document, match_value, Path );
+				result = this.Engine.QueryOperators.$eq.Query( Document, match_value, Path );
 				return result;
 			}
 			else if ( 'bnslu'.includes( actual_type ) && 'a'.includes( match_type ) )
@@ -62,13 +62,13 @@ module.exports = function ( jsongin )
 			else if ( 'a'.includes( actual_type ) && 'bnslu'.includes( match_type ) )
 			{
 				// Array === Primitive
-				// result = this.Engine.Operators.$in.Query( Document, match_value, Path );
+				// result = this.Engine.QueryOperators.$in.Query( Document, match_value, Path );
 				result = actual_value.includes( match_value );
 				return result;
 				// for ( let index = 0; index < actual_value.length; index++ )
 				// {
 				// 	let sub_path = this.Engine.JoinPaths( Path, index );
-				// 	result = this.Engine.Operators.$eq.Query( Document, match_value, sub_path );
+				// 	result = this.Engine.QueryOperators.$eq.Query( Document, match_value, sub_path );
 				// 	if ( result === false ) { return false; }
 				// }
 			}
@@ -84,7 +84,7 @@ module.exports = function ( jsongin )
 					}
 					else
 					{
-						result = this.Engine.Operators.$eq.Query( Document, match_value, sub_path );
+						result = this.Engine.QueryOperators.$eq.Query( Document, match_value, sub_path );
 					}
 					if ( result === true ) { return true; }
 				}
@@ -93,7 +93,7 @@ module.exports = function ( jsongin )
 			else if ( 'a'.includes( actual_type ) && 'a'.includes( match_type ) )
 			{
 				// Array === Array
-				result = this.Engine.Operators.$eq.Query( Document, match_value, Path );
+				result = this.Engine.QueryOperators.$eq.Query( Document, match_value, Path );
 				return result;
 			}
 			else if ( 'a'.includes( actual_type ) && 'r'.includes( match_type ) )
@@ -102,7 +102,7 @@ module.exports = function ( jsongin )
 				for ( let index = 0; index < actual_value.length; index++ )
 				{
 					let sub_path = this.Engine.JoinPaths( Path, index );
-					result = this.Engine.Operators.$regex.Query( Document, match_value, sub_path );
+					result = this.Engine.QueryOperators.$regex.Query( Document, match_value, sub_path );
 					if ( result === false ) { return false; }
 				}
 				return true;
@@ -117,14 +117,14 @@ module.exports = function ( jsongin )
 				}
 				else
 				{
-					result = this.Engine.Operators.$eq.Query( Document, match_value, Path );
+					result = this.Engine.QueryOperators.$eq.Query( Document, match_value, Path );
 					return result;
 				}
 			}
 			else if ( 's'.includes( actual_type ) && 'r'.includes( match_type ) )
 			{
 				// String === Regexp
-				result = this.Engine.Operators.$regex.Query( Document, match_value, Path );
+				result = this.Engine.QueryOperators.$regex.Query( Document, match_value, Path );
 				return result;
 			}
 			else

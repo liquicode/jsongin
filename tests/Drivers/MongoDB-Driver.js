@@ -103,7 +103,7 @@ module.exports = function ()
 
 		//---------------------------------------------------------------------
 		Find:
-			async function ( Query )
+			async function ( Query, Projection )
 			{
 				try
 				{
@@ -111,7 +111,28 @@ module.exports = function ()
 						mongodb_settings,
 						async function ( Collection )
 						{
-							let cursor = await Collection.find( Query );
+							let cursor = await Collection.find( Query, Projection );
+							return await cursor.toArray();
+						} );
+					return result;
+				}
+				catch ( error )
+				{
+					console.error( error );
+				}
+			},
+
+		//---------------------------------------------------------------------
+		Update:
+			async function ( Query, Update )
+			{
+				try
+				{
+					let result = await WithCollection(
+						mongodb_settings,
+						async function ( Collection )
+						{
+							let cursor = await Collection.updateMany( Query, Update );
 							return await cursor.toArray();
 						} );
 					return result;

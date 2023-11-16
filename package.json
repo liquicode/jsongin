@@ -18,7 +18,8 @@
 	"main": "src/jsongin.js",
 	"scripts": {
 		"test": "mocha -u bdd tests/*.js --timeout 0 --slow 10 --colors",
-		"publish version": "npx @liquicode/devops --tasks .\\build\\prod\\devops.config.js publish_version"
+		"publish version": "npx @liquicode/devops --tasks .\\build\\prod\\devops.config.js publish_version",
+		"start new version": "npx @liquicode/devops --tasks .\\build\\prod\\devops.config.js start_new_version"
 	},
 	"keywords": [
 		"mongo",

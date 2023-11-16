@@ -1,9 +1,9 @@
 'use strict';
 /*md
 
-## Operators > Logical > $nor
+## Operators > Logical > $not
 
-Usage: `$nor: [ value1, value2, ... ]`
+Usage: `$not: { query }`
 
 */
 
@@ -17,28 +17,30 @@ module.exports = function ( jsongin )
 		Engine: jsongin,
 		OperatorType: 'Logical',
 		TopLevel: true,
-		ValueTypes: 'a',
+		ValueTypes: 'or',
 
 		//---------------------------------------------------------------------
 		Query: function ( Document, MatchValue, Path = '' )
 		{
-			// return !this.Engine.Operators.$and.Query( Document, MatchValue, Path );
-
 			// Validate Expression
-			let match_type = this.Engine.ShortType( MatchValue );
-			if ( match_type !== 'a' )
-			{
-				if ( this.Engine.Settings.Explain ) { this.Engine.Explain.push( `$nor: requires an array but found type [${match_type}] instead at [${Path}].` ); }
-				return false;
-			}
+			let match_value = MatchValue;
+			let match_type = this.Engine.ShortType( match_value );
 
 			// Compare
-			for ( let index = 0; index < MatchValue.length; index++ )
+			let result = false;
+			if ( match_type === 'o' )
 			{
-				let result = this.Engine.Query( Document, MatchValue[ index ], Path );
-				if ( result === true ) { return false; }
+				result = this.Engine.Query( Document, match_value, Path );
 			}
-			return true;
+			else if ( match_type === 'r' )
+			{
+				result = this.Engine.QueryOperators.$regex.Query( Document, match_value, Path );
+			}
+			else
+			{
+				if ( this.Engine.Settings.Explain ) { this.Engine.Explain.push( `$not: requires an object or regexp but found type [${match_type}] instead at [${Path}].` ); }
+			}
+			return !result;
 		},
 
 		//---------------------------------------------------------------------

@@ -7,10 +7,10 @@ module.exports = function ( Driver )
 
 
 	//---------------------------------------------------------------------
-	describe( 'Ad-Hoc Query Tests', () =>
+	describe( 'Ad-Hoc Update Tests', () =>
 	{
 
-		it( 'should not match explicit nested fields', async () => 
+		it( 'should do simple updates', async () => 
 		{
 			let result = await Driver.SetData( [
 				{
@@ -30,8 +30,18 @@ module.exports = function ( Driver )
 			] );
 			assert.ok( result );
 
-			assert.ok( ( await Driver.Find( { __: { id: "bf71bf6e-4603-464e-96d1-3cb75c209f08" } } ) ).length === 0 );
-			assert.ok( ( await Driver.Find( { __: { id: { $eq: "bf71bf6e-4603-464e-96d1-3cb75c209f08" } } } ) ).length === 0 );
+			let query = { '__.id': "bf71bf6e-4603-464e-96d1-3cb75c209f08" };
+			let update = {
+				$set: { '__.public': true },
+				$inc: { order_number: 4 },
+				$push: { '__.readers': 'cheesecake' },
+			};
+			result = await Driver.Update( query, update );
+			assert.ok( result );
+			assert.ok( result.length );
+			assert.ok( result[ 0 ].__.public === true );
+			assert.ok( result[ 0 ].order_number === 5 );
+			assert.ok( result[ 0 ].__.readers[ 0 ] === 'cheesecake' );
 
 		} );
 

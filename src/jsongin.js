@@ -32,63 +32,131 @@ module.exports = function ( EngineSettings = {} )
 	//---------------------------------------------------------------------
 	Engine.Settings = EngineSettings;
 	Engine.Explain = [];
-	Engine.Operators = {
+	Engine.QueryOperators = {
 
-		// Logical Operators
-		$and: require( './Operators/Logical/and' )( Engine ),
-		$or: require( './Operators/Logical/or' )( Engine ),
-		$nor: require( './Operators/Logical/nor' )( Engine ),
-		$not: require( './Operators/Logical/not' )( Engine ),
+		// Comparison Query Operators
+		$eq: require( './Operators/Query/Comparison/eq' )( Engine ),
+		$ne: require( './Operators/Query/Comparison/ne' )( Engine ),
+		$gt: require( './Operators/Query/Comparison/gt' )( Engine ),
+		$gte: require( './Operators/Query/Comparison/gte' )( Engine ),
+		$lt: require( './Operators/Query/Comparison/lt' )( Engine ),
+		$lte: require( './Operators/Query/Comparison/lte' )( Engine ),
+		$in: require( './Operators/Query/Comparison/in' )( Engine ),
+		$nin: require( './Operators/Query/Comparison/nin' )( Engine ),
 
-		// Comparison Operators
-		$ImplicitEq: require( './Operators/Comparison/ImplicitEq' )( Engine ),
-		$eq: require( './Operators/Comparison/eq' )( Engine ),
-		$eqx: require( './Operators/Comparison/eqx' )( Engine ),
-		$ne: require( './Operators/Comparison/ne' )( Engine ),
-		$nex: require( './Operators/Comparison/nex' )( Engine ),
-		$gt: require( './Operators/Comparison/gt' )( Engine ),
-		$gte: require( './Operators/Comparison/gte' )( Engine ),
-		$lt: require( './Operators/Comparison/lt' )( Engine ),
-		$lte: require( './Operators/Comparison/lte' )( Engine ),
-		$in: require( './Operators/Comparison/in' )( Engine ),
-		$nin: require( './Operators/Comparison/nin' )( Engine ),
-		$regex: require( './Operators/Comparison/regex' )( Engine ),
+		// Logical Query Operators
+		$and: require( './Operators/Query/Logical/and' )( Engine ),
+		$or: require( './Operators/Query/Logical/or' )( Engine ),
+		$nor: require( './Operators/Query/Logical/nor' )( Engine ),
+		$not: require( './Operators/Query/Logical/not' )( Engine ),
 
-		// Array Operators
-		$elemMatch: require( './Operators/Array/elemMatch' )( Engine ),
-		$size: require( './Operators/Array/size' )( Engine ),
-		$all: require( './Operators/Array/all' )( Engine ),
+		// Evaluation Query Operators
+		$regex: require( './Operators/Query/Evaluation/regex' )( Engine ),
 
-		// Meta Operators
-		$exists: require( './Operators/Meta/exists' )( Engine ),
-		$type: require( './Operators/Meta/type' )( Engine ),
-		$query: require( './Operators/Meta/query' )( Engine ),
-		$noop: require( './Operators/Meta/noop' )( Engine ),
+		// Array Query Operators
+		$elemMatch: require( './Operators/Query/Array/elemMatch' )( Engine ),
+		$size: require( './Operators/Query/Array/size' )( Engine ),
+		$all: require( './Operators/Query/Array/all' )( Engine ),
 
+		// Element Query Operators
+		$exists: require( './Operators/Query/Element/exists' )( Engine ),
+		$type: require( './Operators/Query/Element/type' )( Engine ),
+		$query: require( './Operators/Query/Element/query' )( Engine ),
+		$noop: require( './Operators/Query/Element/noop' )( Engine ),
+
+		// Extension Query Operators
+		$ImplicitEq: require( './Operators/Query/Extension/ImplicitEq' )( Engine ),
+		$eqx: require( './Operators/Query/Extension/eqx' )( Engine ),
+		$nex: require( './Operators/Query/Extension/nex' )( Engine ),
+
+	};
+	Engine.UpdateOperators = {
+
+		// Field Update Operators
+		$set: require( './Operators/Update/Field/set' )( Engine ),
+		$unset: require( './Operators/Update/Field/unset' )( Engine ),
+		$rename: require( './Operators/Update/Field/rename' )( Engine ),
+		$inc: require( './Operators/Update/Field/inc' )( Engine ),
+		$min: require( './Operators/Update/Field/min' )( Engine ),
+		$max: require( './Operators/Update/Field/max' )( Engine ),
+		$mul: require( './Operators/Update/Field/mul' )( Engine ),
+		$currentDate: require( './Operators/Update/Field/currentDate' )( Engine ),
+		// $setOnInsert: require( './Operators/Update/setOnInsert' )( Engine ),
+
+		// Array Update Operators
+		$addToSet: require( './Operators/Update/Array/addToSet' )( Engine ),
+		$pop: require( './Operators/Update/Array/pop' )( Engine ),
+		$push: require( './Operators/Update/Array/push' )( Engine ),
+		$pullAll: require( './Operators/Update/Array/pullAll' )( Engine ),
+		// $pull: require( './Operators/Update/Array/pull' )( Engine ),
+		// $: require( './Operators/Update/Array/positional_$' )( Engine ),
+		// $identifier: require( './Operators/Update/Array/identifier' )( Engine ),
+
+	};
+
+	//---------------------------------------------------------------------
+	Engine.AsNumber = function ( Data )
+	{
+		try
+		{
+			if ( !Data ) { return null; }
+			let value = Number( Data );
+			if ( isNaN( value ) ) { return null; }
+			return value;
+		}
+		catch ( error )
+		{
+			return null;
+		}
 	};
 
 
 	//---------------------------------------------------------------------
-	Engine.ShortType = function ( Data ) // bnsloarfyu
+	Engine.AsDate = function ( Data )
 	{
-		// proposed type: (d)ate
-		// proposed type: (r)egexp
-		// proposed type: (e}mpty object
+		try
+		{
+			if ( !Data ) { return null; }
+			let date = new Date( Data );
+			if ( isNaN( date ) ) { return null; }
+			return date;
+		}
+		catch ( error )
+		{
+			return null;
+		}
+	};
+
+
+	//---------------------------------------------------------------------
+	Engine.ShortType = function ( Data ) // bnsloadrefyu
+	{
+		// proposed type: (z} empty object
 		let data_type = ( typeof Data );
 		if ( data_type === 'boolean' ) { return 'b'; }
-		if ( data_type === 'number' ) { return 'n'; }
-		if ( data_type === 'string' ) { return 's'; }
+		if ( data_type === 'number' ) 
+		{
+			// if ( Engine.GetDate( Data ) !== null ) { return 'd'; }
+			return 'n';
+		}
+		if ( data_type === 'string' ) 
+		{
+			// if ( Engine.GetDate( Data ) !== null ) { return 'd'; }
+			return 's';
+		}
 		if ( data_type === 'object' ) 
 		{
 			if ( Data === null ) { return 'l'; }
 			if ( Array.isArray( Data ) ) { return 'a'; }
-			if ( ( Data instanceof RegExp ) ) { return 'r'; }
+			// if ( Engine.GetDate( Data ) !== null ) { return 'd'; }
+			if ( Data instanceof RegExp ) { return 'r'; }
+			if ( Data instanceof Error ) { return 'e'; }
 			return 'o';
 		}
 		if ( data_type === 'function' ) { return 'f'; }
 		if ( data_type === 'symbol' ) { return 'y'; }
 		if ( data_type === 'undefined' ) { return 'u'; }
-		throw new Error( `Unsupported field type [${data_type}].` );
+		throw new Error( `Unsupported data type [${data_type}].` );
 	};
 
 
@@ -164,6 +232,13 @@ module.exports = function ( EngineSettings = {} )
 			return ReturnAlias ? 'undefined' : 6;
 		}
 		return null;
+	};
+
+
+	//---------------------------------------------------------------------
+	Engine.Clone = function ( Value )
+	{
+		return JSON.parse( JSON.stringify( Value ) );
 	};
 
 
@@ -521,7 +596,7 @@ module.exports = function ( EngineSettings = {} )
 		// Reset the explain stack.
 		if ( ( QueryPath === '' ) && Engine.Settings.ClearExplainOnTopLevelQuery )
 		{
-			Engine.Explain = [ `Query: Cleared explain on top level match.` ];
+			Engine.Explain = [];
 		}
 
 		// Validate the parameters.
@@ -558,19 +633,19 @@ module.exports = function ( EngineSettings = {} )
 		for ( let key in Query )
 		{
 			// Check for operator.
-			if ( typeof Engine.Operators[ key ] !== 'undefined' )
+			if ( typeof Engine.QueryOperators[ key ] !== 'undefined' )
 			{
 				// Check for top level operator.
 				if ( QueryPath === '' )
 				{
-					if ( !Engine.Operators[ key ].TopLevel )
+					if ( !Engine.QueryOperators[ key ].TopLevel )
 					{
 						if ( Engine.Settings.Explain ) { Engine.Explain.push( `Query: Operator [${key}] cannot appear at the top level of a query. Only logical operators can appear at the top level of a query.` ); }
 						return false;
 					}
 				}
 				// Evaluate operator.
-				let result = Engine.Operators[ key ].Query( Document, Query[ key ], QueryPath );
+				let result = Engine.QueryOperators[ key ].Query( Document, Query[ key ], QueryPath );
 				if ( result === false ) 
 				{
 					if ( Engine.Settings.Explain ) { Engine.Explain.push( `Query: Operator [${key}] returned false at [${QueryPath}].` ); }
@@ -590,7 +665,7 @@ module.exports = function ( EngineSettings = {} )
 				else
 				{
 					// Implicit $eq
-					result = Engine.Operators.$ImplicitEq.Query( Document, sub_query, sub_query_path );
+					result = Engine.QueryOperators.$ImplicitEq.Query( Document, sub_query, sub_query_path );
 				}
 				if ( result === false ) { return false; }
 			}
@@ -600,12 +675,132 @@ module.exports = function ( EngineSettings = {} )
 
 
 	//---------------------------------------------------------------------
+	Engine.Projection = function ( Document, Projection )
+	{
+		// Reset the explain stack.
+		if ( Engine.Settings.ClearExplainOnTopLevelQuery )
+		{
+			Engine.Explain = [];
+		}
+
+		// Validate the parameters.
+		if ( Engine.ShortType( Document ) !== 'o' )
+		{
+			if ( Engine.Settings.Explain ) { Engine.Explain.push( `Projection: The Document parameter must be an object.` ); }
+			return null;
+		}
+		if ( Engine.ShortType( Projection ) !== 'o' )
+		{
+			if ( Engine.Settings.Explain ) { Engine.Explain.push( `Projection: The Projection parameter must be an object.` ); }
+			return null;
+		}
+		Document = Engine.Clone( Document );
+
+		// Process the projection.
+		let projected = null;
+		let projection_type = '';
+		for ( let field in Projection )
+		{
+			let value = Engine.GetValue( Document, field );
+			let inclusion = Projection[ field ];
+			if ( Engine.ShortType( Projection ) !== 'inclusion' )
+			{
+				if ( Engine.Settings.Explain ) { Engine.Explain.push( `Projection: The inclusion parameter must be a number.` ); }
+				return null;
+			}
+			if ( inclusion === 1 )
+			{
+				if ( projection_type === '' ) { projection_type = 'i'; }
+				else if ( projection_type === 'e' ) 
+				{
+					if ( Engine.Settings.Explain ) { Engine.Explain.push( `Update: Cannot combine inclusion and exclusion operators in the same update.` ); }
+					continue;
+				}
+				if ( projected === null ) { projected = {}; }
+				let result = Engine.SetValue( projected, field, value );
+				if ( result === false )
+				{
+					if ( Engine.Settings.Explain ) { Engine.Explain.push( `Update: Failed to set the field [${field}].` ); }
+					continue;
+				}
+			}
+			else if ( inclusion === 0 )
+			{
+				if ( projection_type === '' ) { projection_type = 'e'; }
+				else if ( projection_type === 'i' ) 
+				{
+					if ( Engine.Settings.Explain ) { Engine.Explain.push( `Update: Cannot combine inclusion and exclusion operators in the same update.` ); }
+					continue;
+				}
+				if ( projected === null ) { projected = Engine.Clone( Document ); }
+				let result = Engine.SetValue( projected, field, undefined );
+				if ( result === false )
+				{
+					if ( Engine.Settings.Explain ) { Engine.Explain.push( `Update: Failed to unset the field [${field}].` ); }
+					continue;
+				}
+			}
+		}
+
+		// Return the updated document.
+		return projected;
+	};
+
+
+	//---------------------------------------------------------------------
+	Engine.Update = function ( Document, Update )
+	{
+		// Reset the explain stack.
+		if ( Engine.Settings.ClearExplainOnTopLevelQuery )
+		{
+			Engine.Explain = [];
+		}
+
+		// Validate the parameters.
+		if ( Engine.ShortType( Document ) !== 'o' )
+		{
+			if ( Engine.Settings.Explain ) { Engine.Explain.push( `Update: The Document parameter must be an object.` ); }
+			return null;
+		}
+		if ( Engine.ShortType( Update ) !== 'o' )
+		{
+			if ( Engine.Settings.Explain ) { Engine.Explain.push( `Update: The Update parameter must be an object.` ); }
+			return null;
+		}
+		Document = Engine.Clone( Document );
+
+		// Process the updates.
+		for ( let key in Update )
+		{
+			// Check for operator.
+			if ( typeof Engine.UpdateOperators[ key ] !== 'undefined' )
+			{
+				// Perform the update.
+				let result = Engine.UpdateOperators[ key ].Update( Document, Update[ key ] );
+				if ( result === false )
+				{
+					if ( Engine.Settings.Explain ) { Engine.Explain.push( `Update: The update operator [${key}] failed.` ); }
+					// return false;
+				}
+			}
+			else
+			{
+				if ( Engine.Settings.Explain ) { Engine.Explain.push( `Update: Unknown update operator [${key}] encountered.` ); }
+			}
+		}
+
+		// Return the updated document.
+		return Document;
+	};
+
+
+	//---------------------------------------------------------------------
 	Engine.IsQuery = function ( Query )
 	{
 		if ( Engine.ShortType( Query ) !== 'o' ) { return false; }
 		for ( let key in Query )
 		{
-			if ( typeof Engine.Operators[ key ] !== 'undefined' ) { return true; }
+			if ( typeof Engine.QueryOperators[ key ] !== 'undefined' ) { return true; }
 			//TODO: This needs more thought/work:
 			// if ( Engine.ShortType( Query[ key ] ) === 'o' )
 			// {
@@ -627,11 +822,11 @@ module.exports = function ( EngineSettings = {} )
 	{
 		if ( Strict )
 		{
-			return Engine.Operators.$eq.Query( ObjectA, ObjectB );
+			return Engine.QueryOperators.$eq.Query( ObjectA, ObjectB );
 		}
 		else
 		{
-			return Engine.Operators.$eqx.Query( ObjectA, ObjectB );
+			return Engine.QueryOperators.$eqx.Query( ObjectA, ObjectB );
 		}
 	};
 
@@ -640,13 +835,6 @@ module.exports = function ( EngineSettings = {} )
 	Engine.StrictEquals = function ( ObjectA, ObjectB )
 	{
 		return Engine.Equals( ObjectA, ObjectB, true );
-	};
-
-
-	//---------------------------------------------------------------------
-	Engine.Clone = function ( Value )
-	{
-		return JSON.parse( JSON.stringify( Value ) );
 	};
 
 

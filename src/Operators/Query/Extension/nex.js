@@ -1,9 +1,9 @@
 'use strict';
 /*md
 
-## Operators > Comparison > $nin
+## Operators > Comparison > $nex
 
-Usage: `field: { $nin: [ value1, value2, ... ] }`
+Usage: `field: { $nex: value }`
 
 */
 
@@ -17,18 +17,18 @@ module.exports = function ( jsongin )
 		Engine: jsongin,
 		OperatorType: 'Comparison',
 		TopLevel: false,
-		ValueTypes: 'a',
+		ValueTypes: 'bnsloau',
 
 		//---------------------------------------------------------------------
 		Query: function ( Document, MatchValue, Path = '' )
 		{
-			return !this.Engine.Operators.$in.Query( Document, MatchValue, Path );
+			return !this.Engine.QueryOperators.$eqx.Query( Document, MatchValue, Path );
 		},
 
 		//---------------------------------------------------------------------
 		ToMongoQuery: function ( Expression )
 		{
-			return Expression;
+			throw new Error( `ToMongoQuery() is not implemented.` );
 		},
 
 		//---------------------------------------------------------------------

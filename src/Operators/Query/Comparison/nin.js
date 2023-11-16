@@ -1,9 +1,9 @@
 'use strict';
 /*md
 
-## Operators > Comparison > $ne
+## Operators > Comparison > $nin
 
-Usage: `field: { $ne: value }`
+Usage: `field: { $nin: [ value1, value2, ... ] }`
 
 */
 
@@ -17,12 +17,12 @@ module.exports = function ( jsongin )
 		Engine: jsongin,
 		OperatorType: 'Comparison',
 		TopLevel: false,
-		ValueTypes: 'bnsloau',
+		ValueTypes: 'a',
 
 		//---------------------------------------------------------------------
 		Query: function ( Document, MatchValue, Path = '' )
 		{
-			return !this.Engine.Operators.$eq.Query( Document, MatchValue, Path );
+			return !this.Engine.QueryOperators.$in.Query( Document, MatchValue, Path );
 		},
 
 		//---------------------------------------------------------------------

@@ -1,12 +1,12 @@
 'use strict';
 
-const Driver = require( './Drivers/NeDB-Driver.js' )( {
+const Driver = require( '../Drivers/NeDB-Driver.js' )( {
 	inMemoryOnly: true,
 } );
 
 
 //---------------------------------------------------------------------
-describe( 'NeDB Tests', () =>
+describe( 'NeDB Query Tests', () =>
 {
 	require( './test-suite/Ad-Hoc Tests.js' )( Driver );
 	require( './test-suite/RainbowTests.js' )( Driver );

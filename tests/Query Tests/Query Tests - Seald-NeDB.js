@@ -1,12 +1,12 @@
 'use strict';
 
-const Driver = require( './Drivers/Seald-NeDB-Driver.js' )( {
+const Driver = require( '../Drivers/Seald-NeDB-Driver.js' )( {
 	inMemoryOnly: true,
 } );
 
 
 //---------------------------------------------------------------------
-describe( 'Seald-NeDB Tests', () =>
+describe( 'Seald-NeDB Query Tests', () =>
 {
 	require( './test-suite/Ad-Hoc Tests.js' )( Driver );
 	require( './test-suite/RainbowTests.js' )( Driver );

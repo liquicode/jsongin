@@ -1,9 +1,9 @@
 'use strict';
 /*md
 
-## Operators > Comparison > $nex
+## Operators > Comparison > $ne
 
-Usage: `field: { $nex: value }`
+Usage: `field: { $ne: value }`
 
 */
 
@@ -22,13 +22,13 @@ module.exports = function ( jsongin )
 		//---------------------------------------------------------------------
 		Query: function ( Document, MatchValue, Path = '' )
 		{
-			return !this.Engine.Operators.$eqx.Query( Document, MatchValue, Path );
+			return !this.Engine.QueryOperators.$eq.Query( Document, MatchValue, Path );
 		},
 
 		//---------------------------------------------------------------------
 		ToMongoQuery: function ( Expression )
 		{
-			throw new Error( `ToMongoQuery() is not implemented.` );
+			return Expression;
 		},
 
 		//---------------------------------------------------------------------

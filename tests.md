@@ -296,8 +296,48 @@
       ✔ should be true when none of its conditions are true
       ✔ should be false when one of its conditions is true
 
-  jsongin Tests
-    Ad-Hoc Tests
+  250) Update Operator Tests
+    Field Update Operator Tests
+      $set Tests
+        ✔ should set values
+        ✔ should set nested values
+      $unset Tests
+        ✔ should unset values
+        ✔ should set nested values
+      $rename Tests
+        ✔ should rename values
+        ✔ should rename nested values
+        ✔ should move values and create topography
+      $inc Tests
+        ✔ should increment values
+        ✔ should increment nested values
+        ✔ should decrement values
+      $min Tests
+        ✔ should set min values
+        ✔ should set min nested values
+      $max Tests
+        ✔ should set min values
+        ✔ should set min nested values
+      $mul Tests
+        ✔ should multiply values
+        ✔ should multiply nested values
+      $currentDate Tests
+        ✔ should set the current date
+        ✔ should set the current date for nested values
+    Array Update Operator Tests
+      $addToSet Tests
+        ✔ should add to a set of values
+        ✔ should not add to a set of values if the value already exists
+      $pop Tests
+        ✔ should remove from the end of an array
+        ✔ should remove from the beginning of an array
+      $push Tests
+        ✔ should push values to the end of an array
+      $pullAll Tests
+        ✔ should push values to the end of an array
+
+  jsongin Query Tests
+    Ad-Hoc Query Tests
       ✔ should not match explicit nested fields
     Rainbow Tests
       Nested Fields (explicit)
@@ -448,6 +488,10 @@
         Existence Check
           ✔ Match Fields that are Missing
 
+  jsongin Update Tests
+    Ad-Hoc Update Tests
+      ✔ should do simple updates
 
-  347 passing (68ms)
+
+  372 passing (76ms)
 

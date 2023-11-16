@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require( 'assert' );
-const JSON_ENGINE = require( '../src/jsongin' )( {
+const jsongin = require( '../src/jsongin' )( {
 	PathExtensions: false,
 	Explain: false,
 } );
@@ -34,45 +34,45 @@ describe( '100) Core Tests', () =>
 
 		it( 'should support (b)oolean short type', () => 
 		{
-			assert.ok( JSON_ENGINE.ShortType( true ) === 'b' );
-			assert.ok( JSON_ENGINE.ShortType( false ) === 'b' );
+			assert.ok( jsongin.ShortType( true ) === 'b' );
+			assert.ok( jsongin.ShortType( false ) === 'b' );
 		} );
 		it( 'should support (n)umeric short type', () => 
 		{
-			assert.ok( JSON_ENGINE.ShortType( 42 ) === 'n' );
-			assert.ok( JSON_ENGINE.ShortType( 42.0 ) === 'n' );
-			assert.ok( JSON_ENGINE.ShortType( 3.14 ) === 'n' );
+			assert.ok( jsongin.ShortType( 42 ) === 'n' );
+			assert.ok( jsongin.ShortType( 42.0 ) === 'n' );
+			assert.ok( jsongin.ShortType( 3.14 ) === 'n' );
 		} );
 		it( 'should support (s)tring short type', () => 
 		{
-			assert.ok( JSON_ENGINE.ShortType( '' ) === 's' );
-			assert.ok( JSON_ENGINE.ShortType( 'abc' ) === 's' );
+			assert.ok( jsongin.ShortType( '' ) === 's' );
+			assert.ok( jsongin.ShortType( 'abc' ) === 's' );
 		} );
 		it( 'should support nul(l) short type', () => 
 		{
-			assert.ok( JSON_ENGINE.ShortType( null ) === 'l' );
+			assert.ok( jsongin.ShortType( null ) === 'l' );
 		} );
 		it( 'should support (o)bject short type', () => 
 		{
-			assert.ok( JSON_ENGINE.ShortType( {} ) === 'o' );
-			assert.ok( JSON_ENGINE.ShortType( { value: 1 } ) === 'o' );
+			assert.ok( jsongin.ShortType( {} ) === 'o' );
+			assert.ok( jsongin.ShortType( { value: 1 } ) === 'o' );
 		} );
 		it( 'should support (a)rray short type', () => 
 		{
-			assert.ok( JSON_ENGINE.ShortType( [] ) === 'a' );
-			assert.ok( JSON_ENGINE.ShortType( [ 1, 2, 3 ] ) === 'a' );
+			assert.ok( jsongin.ShortType( [] ) === 'a' );
+			assert.ok( jsongin.ShortType( [ 1, 2, 3 ] ) === 'a' );
 		} );
 		it( 'should support (f)unction short type', () => 
 		{
-			assert.ok( JSON_ENGINE.ShortType( function () { } ) === 'f' );
+			assert.ok( jsongin.ShortType( function () { } ) === 'f' );
 		} );
 		it( 'should support (r)egex short type', () => 
 		{
-			assert.ok( JSON_ENGINE.ShortType( /test/ ) === 'r' );
+			assert.ok( jsongin.ShortType( /test/ ) === 'r' );
 		} );
 		it( 'should support (u)ndefined short type', () => 
 		{
-			assert.ok( JSON_ENGINE.ShortType() === 'u' );
+			assert.ok( jsongin.ShortType() === 'u' );
 		} );
 
 	} );
@@ -84,34 +84,34 @@ describe( '100) Core Tests', () =>
 
 		it( 'should not allow non-string paths', () => 
 		{
-			assert.ok( JSON_ENGINE.SplitPath() === null );
-			assert.ok( JSON_ENGINE.SplitPath( null ) === null );
+			assert.ok( jsongin.SplitPath() === null );
+			assert.ok( jsongin.SplitPath( null ) === null );
 		} );
 
 		it( 'should return an empty array for an empty path', () => 
 		{
 			let elements = null;
-			elements = JSON_ENGINE.SplitPath( '' );
+			elements = jsongin.SplitPath( '' );
 			assert.ok( elements.length === 0 );
 		} );
 
 		it( 'should not allow the $ element within a path', () => 
 		{
-			assert.ok( JSON_ENGINE.SplitPath( 'a.$' ) === null );
-			assert.ok( JSON_ENGINE.SplitPath( 'a.$.b' ) === null );
+			assert.ok( jsongin.SplitPath( 'a.$' ) === null );
+			assert.ok( jsongin.SplitPath( 'a.$.b' ) === null );
 		} );
 
 		it( 'should not allow the $ element at the root when path extensions are disabled', () => 
 		{
-			assert.ok( JSON_ENGINE.SplitPath( '$' ) === null );
-			assert.ok( JSON_ENGINE.SplitPath( '$.a' ) === null );
+			assert.ok( jsongin.SplitPath( '$' ) === null );
+			assert.ok( jsongin.SplitPath( '$.a' ) === null );
 		} );
 
 		it( 'should ignore bracketed [] array indeces when path extensions are disabled', () => 
 		{
 			let elements = null;
 
-			elements = JSON_ENGINE.SplitPath( 'a[1]' );
+			elements = jsongin.SplitPath( 'a[1]' );
 			assert.ok( elements.length === 1 );
 			assert.ok( elements[ 0 ] === 'a[1]' );
 		} );
@@ -120,11 +120,11 @@ describe( '100) Core Tests', () =>
 		{
 			let elements = null;
 
-			elements = JSON_ENGINE.SplitPath( 'a' );
+			elements = jsongin.SplitPath( 'a' );
 			assert.ok( elements.length === 1 );
 			assert.ok( elements[ 0 ] === 'a' );
 
-			elements = JSON_ENGINE.SplitPath( 'a.b.c' );
+			elements = jsongin.SplitPath( 'a.b.c' );
 			assert.ok( elements.length === 3 );
 			assert.ok( elements[ 0 ] === 'a' );
 			assert.ok( elements[ 1 ] === 'b' );
@@ -136,12 +136,12 @@ describe( '100) Core Tests', () =>
 		{
 			let elements = null;
 
-			elements = JSON_ENGINE.SplitPath( '1' );
+			elements = jsongin.SplitPath( '1' );
 			assert.ok( elements.length === 1 );
 			assert.ok( elements[ 0 ] !== '1' );
 			assert.ok( elements[ 0 ] === 1 );
 
-			elements = JSON_ENGINE.SplitPath( 'a.2.c' );
+			elements = jsongin.SplitPath( 'a.2.c' );
 			assert.ok( elements.length === 3 );
 			assert.ok( elements[ 0 ] === 'a' );
 			assert.ok( elements[ 1 ] !== '2' );
@@ -159,25 +159,25 @@ describe( '100) Core Tests', () =>
 
 		it( 'should return an empty string when empty paths are provided', () => 
 		{
-			assert.ok( JSON_ENGINE.JoinPaths() === '' );
-			// assert.ok( JSON_ENGINE.JoinPaths( null ) === '' );
-			assert.ok( JSON_ENGINE.JoinPaths( '' ) === '' );
-			assert.ok( JSON_ENGINE.JoinPaths( '', '' ) === '' );
+			assert.ok( jsongin.JoinPaths() === '' );
+			// assert.ok( jsongin.JoinPaths( null ) === '' );
+			assert.ok( jsongin.JoinPaths( '' ) === '' );
+			assert.ok( jsongin.JoinPaths( '', '' ) === '' );
 		} );
 
 		it( 'should return an empty string when null is provided', () => 
 		{
-			assert.ok( JSON_ENGINE.JoinPaths( null ) === '' );
+			assert.ok( jsongin.JoinPaths( null ) === '' );
 		} );
 
 		it( 'should join paths', () => 
 		{
-			assert.ok( JSON_ENGINE.JoinPaths( 'a' ) === 'a' );
-			assert.ok( JSON_ENGINE.JoinPaths( 'a', 'b' ) === 'a.b' );
-			assert.ok( JSON_ENGINE.JoinPaths( 'a', 'b.c' ) === 'a.b.c' );
-			assert.ok( JSON_ENGINE.JoinPaths( 'a', '2' ) === 'a.2' );
-			assert.ok( JSON_ENGINE.JoinPaths( 'a', '2.c' ) === 'a.2.c' );
-			assert.ok( JSON_ENGINE.JoinPaths( 'a', '2', 'c' ) === 'a.2.c' );
+			assert.ok( jsongin.JoinPaths( 'a' ) === 'a' );
+			assert.ok( jsongin.JoinPaths( 'a', 'b' ) === 'a.b' );
+			assert.ok( jsongin.JoinPaths( 'a', 'b.c' ) === 'a.b.c' );
+			assert.ok( jsongin.JoinPaths( 'a', '2' ) === 'a.2' );
+			assert.ok( jsongin.JoinPaths( 'a', '2.c' ) === 'a.2.c' );
+			assert.ok( jsongin.JoinPaths( 'a', '2', 'c' ) === 'a.2.c' );
 		} );
 
 	} );
@@ -189,45 +189,45 @@ describe( '100) Core Tests', () =>
 
 		it( 'should return the given document if path is an empty string "", null, or undefined', () => 
 		{
-			assert.ok( JSON_ENGINE.GetValue( 'abc', '' ) === 'abc' );
-			assert.ok( JSON_ENGINE.GetValue( 'abc', null ) === 'abc' );
-			assert.ok( JSON_ENGINE.GetValue( 'abc' ) === 'abc' );
+			assert.ok( jsongin.GetValue( 'abc', '' ) === 'abc' );
+			assert.ok( jsongin.GetValue( 'abc', null ) === 'abc' );
+			assert.ok( jsongin.GetValue( 'abc' ) === 'abc' );
 		} );
 
 		it( 'should get document values', () => 
 		{
-			assert.ok( JSON_ENGINE.ShortType( JSON_ENGINE.GetValue( document, '' ) ) === 'o' );
-			assert.ok( JSON_ENGINE.GetValue( document, 'id' ) === 1001 );
-			assert.ok( JSON_ENGINE.GetValue( document, 'user.name' ) === 'Alice' );
+			assert.ok( jsongin.ShortType( jsongin.GetValue( document, '' ) ) === 'o' );
+			assert.ok( jsongin.GetValue( document, 'id' ) === 1001 );
+			assert.ok( jsongin.GetValue( document, 'user.name' ) === 'Alice' );
 		} );
 
 		it( 'should return an indexed array element, using dot notation', () => 
 		{
-			assert.ok( JSON_ENGINE.GetValue( [ 1, 2, 3 ], '1' ) === 2 );
-			assert.ok( JSON_ENGINE.GetValue( { value: [ 1, 2, 3 ] }, 'value.1' ) === 2 );
+			assert.ok( jsongin.GetValue( [ 1, 2, 3 ], '1' ) === 2 );
+			assert.ok( jsongin.GetValue( { value: [ 1, 2, 3 ] }, 'value.1' ) === 2 );
 		} );
 
 		it( 'should not allow the "$" root symbol when path extensions are disabled', () => 
 		{
-			assert.ok( typeof JSON_ENGINE.GetValue( document, '$.id' ) === 'undefined' );
-			assert.ok( typeof JSON_ENGINE.GetValue( document, '$.user.name' ) === 'undefined' );
-			assert.ok( typeof JSON_ENGINE.GetValue( document, '$.foo' ) === 'undefined' );
-			assert.ok( typeof JSON_ENGINE.GetValue( document, '$.tags' ) === 'undefined' );
-			assert.ok( typeof JSON_ENGINE.GetValue( [ 1, 2, 3 ], '$.1' ) === 'undefined' );
-			assert.ok( typeof JSON_ENGINE.GetValue( { value: [ 1, 2, 3 ] }, '$.value.1' ) === 'undefined' );
+			assert.ok( typeof jsongin.GetValue( document, '$.id' ) === 'undefined' );
+			assert.ok( typeof jsongin.GetValue( document, '$.user.name' ) === 'undefined' );
+			assert.ok( typeof jsongin.GetValue( document, '$.foo' ) === 'undefined' );
+			assert.ok( typeof jsongin.GetValue( document, '$.tags' ) === 'undefined' );
+			assert.ok( typeof jsongin.GetValue( [ 1, 2, 3 ], '$.1' ) === 'undefined' );
+			assert.ok( typeof jsongin.GetValue( { value: [ 1, 2, 3 ] }, '$.value.1' ) === 'undefined' );
 		} );
 
 		it( 'should not allow the [] array indexing when path extensions are disabled', () => 
 		{
-			assert.ok( typeof JSON_ENGINE.GetValue( [ 1, 2, 3 ], '$[1]' ) === 'undefined' );
-			assert.ok( typeof JSON_ENGINE.GetValue( [ 1, 2, 3 ], '[1]' ) === 'undefined' );
-			assert.ok( typeof JSON_ENGINE.GetValue( { value: [ 1, 2, 3 ] }, 'value[1]' ) === 'undefined' );
+			assert.ok( typeof jsongin.GetValue( [ 1, 2, 3 ], '$[1]' ) === 'undefined' );
+			assert.ok( typeof jsongin.GetValue( [ 1, 2, 3 ], '[1]' ) === 'undefined' );
+			assert.ok( typeof jsongin.GetValue( { value: [ 1, 2, 3 ] }, 'value[1]' ) === 'undefined' );
 		} );
 
 		it( 'should return undefined if array index is out of bounds', () => 
 		{
-			assert.ok( typeof JSON_ENGINE.GetValue( [ 1, 2, 3 ], '3' ) === 'undefined' );
-			assert.ok( typeof JSON_ENGINE.GetValue( { value: [ 1, 2, 3 ] }, 'value.3' ) === 'undefined' );
+			assert.ok( typeof jsongin.GetValue( [ 1, 2, 3 ], '3' ) === 'undefined' );
+			assert.ok( typeof jsongin.GetValue( { value: [ 1, 2, 3 ] }, 'value.3' ) === 'undefined' );
 		} );
 
 	} );
@@ -240,72 +240,72 @@ describe( '100) Core Tests', () =>
 
 		it( 'requires a non-empty document', () => 
 		{
-			assert.ok( JSON_ENGINE.SetValue( undefined, 'value', 42 ) === false );
-			assert.ok( JSON_ENGINE.SetValue( null, 'value', 42 ) === false );
+			assert.ok( jsongin.SetValue( undefined, 'value', 42 ) === false );
+			assert.ok( jsongin.SetValue( null, 'value', 42 ) === false );
 		} );
 
 		it( 'requires a non-empty path', () => 
 		{
 			data = {};
-			assert.ok( JSON_ENGINE.SetValue( data, null, 42 ) === false );
-			assert.ok( JSON_ENGINE.SetValue( data, '', 42 ) === false );
-			assert.ok( JSON_ENGINE.SetValue( data, '', { name: 'Alice' } ) === false );
+			assert.ok( jsongin.SetValue( data, null, 42 ) === false );
+			assert.ok( jsongin.SetValue( data, '', 42 ) === false );
+			assert.ok( jsongin.SetValue( data, '', { name: 'Alice' } ) === false );
 		} );
 
 		it( 'should create a top level value', () => 
 		{
 			data = {};
-			assert.ok( JSON_ENGINE.SetValue( data, 'id', 1001 ) );
+			assert.ok( jsongin.SetValue( data, 'id', 1001 ) );
 			assert.ok( data.id === 1001 );
-			assert.ok( JSON_ENGINE.SetValue( data, 'name', 'Alice' ) );
+			assert.ok( jsongin.SetValue( data, 'name', 'Alice' ) );
 			assert.ok( data.name === 'Alice' );
 		} );
 
 		it( 'should set a top level value', () => 
 		{
 			data = { id: null, name: null };
-			assert.ok( JSON_ENGINE.SetValue( data, 'id', 1001 ) );
+			assert.ok( jsongin.SetValue( data, 'id', 1001 ) );
 			assert.ok( data.id === 1001 );
-			assert.ok( JSON_ENGINE.SetValue( data, 'name', 'Alice' ) );
+			assert.ok( jsongin.SetValue( data, 'name', 'Alice' ) );
 			assert.ok( data.name === 'Alice' );
 		} );
 
 		it( 'should remove a top level value', () => 
 		{
 			data = { id: null, name: null };
-			assert.ok( JSON_ENGINE.SetValue( data, 'id', undefined ) );
+			assert.ok( jsongin.SetValue( data, 'id', undefined ) );
 			assert.ok( typeof data.id === 'undefined' );
-			assert.ok( JSON_ENGINE.SetValue( data, 'name', undefined ) );
+			assert.ok( jsongin.SetValue( data, 'name', undefined ) );
 			assert.ok( typeof data.name === 'undefined' );
 		} );
 
 		it( 'should create a nested value', () => 
 		{
 			data = { user: {} };
-			assert.ok( JSON_ENGINE.SetValue( data, 'user.name', 'Alice' ) );
+			assert.ok( jsongin.SetValue( data, 'user.name', 'Alice' ) );
 			assert.ok( data.user.name === 'Alice' );
-			assert.ok( JSON_ENGINE.SetValue( data, 'profile.id', 1001 ) );
+			assert.ok( jsongin.SetValue( data, 'profile.id', 1001 ) );
 			assert.ok( data.profile.id === 1001 );
 		} );
 
 		it( 'should set a nested value', () => 
 		{
 			data = { user: { name: null } };
-			assert.ok( JSON_ENGINE.SetValue( data, 'user.name', 'Alice' ) );
+			assert.ok( jsongin.SetValue( data, 'user.name', 'Alice' ) );
 			assert.ok( data.user.name === 'Alice' );
 		} );
 
 		it( 'should remove a nested value', () => 
 		{
 			data = { user: { name: 'Alice' } };
-			assert.ok( JSON_ENGINE.SetValue( data, 'user.name', undefined ) );
+			assert.ok( jsongin.SetValue( data, 'user.name', undefined ) );
 			assert.ok( typeof data.user.name === 'undefined' );
 		} );
 
 		it( 'should set an array value', () => 
 		{
 			data = [ 1, 2, 3 ];
-			assert.ok( JSON_ENGINE.SetValue( data, '0', 'admin' ) );
+			assert.ok( jsongin.SetValue( data, '0', 'admin' ) );
 			assert.ok( data.length === 3 );
 			assert.ok( data[ 0 ] === 'admin' );
 		} );
@@ -313,10 +313,10 @@ describe( '100) Core Tests', () =>
 		it( 'should insert nulls into new array elements', () => 
 		{
 			data = [ 1, 2, 3 ];
-			assert.ok( JSON_ENGINE.SetValue( data, '3', 'admin' ) );
+			assert.ok( jsongin.SetValue( data, '3', 'admin' ) );
 			assert.ok( data.length === 4 );
 			assert.ok( data[ 3 ] === 'admin' );
-			assert.ok( JSON_ENGINE.SetValue( data, '6', 42 ) );
+			assert.ok( jsongin.SetValue( data, '6', 42 ) );
 			assert.ok( data.length === 7 );
 			assert.ok( data[ 4 ] === null );
 			assert.ok( data[ 5 ] === null );
@@ -326,7 +326,7 @@ describe( '100) Core Tests', () =>
 		it( 'should remove an array value', () => 
 		{
 			data = [ 1, 2, 3 ];
-			assert.ok( JSON_ENGINE.SetValue( data, '3', 'admin' ) );
+			assert.ok( jsongin.SetValue( data, '3', 'admin' ) );
 			assert.ok( data.length === 4 );
 			assert.ok( data[ 3 ] === 'admin' );
 		} );
@@ -353,7 +353,7 @@ describe( '100) Core Tests', () =>
 
 		it( 'should not resolve when path is null', () => 
 		{
-			JSON_ENGINE.PathTerminals( doc, null,
+			jsongin.PathTerminals( doc, null,
 				function ( Value, ValueType, Path )
 				{
 					assert.fail();
@@ -362,14 +362,14 @@ describe( '100) Core Tests', () =>
 
 		it( 'should resolve primitive types', () => 
 		{
-			JSON_ENGINE.PathTerminals( doc, 'b',
+			jsongin.PathTerminals( doc, 'b',
 				function ( Value, ValueType, Path )
 				{
 					assert.ok( Value === true );
 					assert.ok( ValueType === 'b' );
 					assert.ok( Path === 'b' );
 				} );
-			JSON_ENGINE.PathTerminals( doc, 'n',
+			jsongin.PathTerminals( doc, 'n',
 				function ( Value, ValueType, Path )
 				{
 					assert.ok( Value === 3.14 );
@@ -380,7 +380,7 @@ describe( '100) Core Tests', () =>
 
 		it( 'should resolve entire object', () => 
 		{
-			JSON_ENGINE.PathTerminals( doc, 'o',
+			jsongin.PathTerminals( doc, 'o',
 				function ( Value, ValueType, Path )
 				{
 					assert.ok( JSON.stringify( Value ) === JSON.stringify( doc.o ) );
@@ -391,21 +391,21 @@ describe( '100) Core Tests', () =>
 
 		it( 'should resolve object fields', () => 
 		{
-			JSON_ENGINE.PathTerminals( doc, 'o.a',
+			jsongin.PathTerminals( doc, 'o.a',
 				function ( Value, ValueType, Path )
 				{
 					assert.ok( Value === 1 );
 					assert.ok( ValueType === 'n' );
 					assert.ok( Path === 'o.a' );
 				} );
-			JSON_ENGINE.PathTerminals( doc, 'o.b',
+			jsongin.PathTerminals( doc, 'o.b',
 				function ( Value, ValueType, Path )
 				{
 					assert.ok( Value === 2 );
 					assert.ok( ValueType === 'n' );
 					assert.ok( Path === 'o.b' );
 				} );
-			JSON_ENGINE.PathTerminals( doc, 'o.c',
+			jsongin.PathTerminals( doc, 'o.c',
 				function ( Value, ValueType, Path )
 				{
 					assert.ok( Value === 3 );
@@ -416,7 +416,7 @@ describe( '100) Core Tests', () =>
 
 		// it( 'should resolve entire array', () => 
 		// {
-		// 	JSON_ENGINE.ResolvePathTerminals( doc, 'a',
+		// 	jsongin.ResolvePathTerminals( doc, 'a',
 		// 		function ( Value, ValueType, Path )
 		// 		{
 		// 			assert.ok( JSON.stringify( Value ) === JSON.stringify( doc.a ) );
@@ -427,21 +427,21 @@ describe( '100) Core Tests', () =>
 
 		it( 'should resolve indexed array elements', () => 
 		{
-			JSON_ENGINE.PathTerminals( doc, 'a.0',
+			jsongin.PathTerminals( doc, 'a.0',
 				function ( Value, ValueType, Path )
 				{
 					assert.ok( Value === 1 );
 					assert.ok( ValueType === 'n' );
 					assert.ok( Path === 'a.0' );
 				} );
-			JSON_ENGINE.PathTerminals( doc, 'a.1',
+			jsongin.PathTerminals( doc, 'a.1',
 				function ( Value, ValueType, Path )
 				{
 					assert.ok( Value === 2 );
 					assert.ok( ValueType === 'n' );
 					assert.ok( Path === 'a.1' );
 				} );
-			JSON_ENGINE.PathTerminals( doc, 'a.2',
+			jsongin.PathTerminals( doc, 'a.2',
 				function ( Value, ValueType, Path )
 				{
 					assert.ok( Value === 3 );
@@ -452,14 +452,14 @@ describe( '100) Core Tests', () =>
 
 		it( 'should resolve complex structures', () => 
 		{
-			JSON_ENGINE.PathTerminals( doc, 'oa.a2.1',
+			jsongin.PathTerminals( doc, 'oa.a2.1',
 				function ( Value, ValueType, Path )
 				{
 					assert.ok( Value === 5 );
 					assert.ok( ValueType === 'n' );
 					assert.ok( Path === 'oa.a2.1' );
 				} );
-			JSON_ENGINE.PathTerminals( doc, 'ao.1.b',
+			jsongin.PathTerminals( doc, 'ao.1.b',
 				function ( Value, ValueType, Path )
 				{
 					assert.ok( Value === 4 );
@@ -471,7 +471,7 @@ describe( '100) Core Tests', () =>
 		it( 'should iterate over arrays', () => 
 		{
 			let call_count = 0;
-			JSON_ENGINE.PathTerminals( doc, 'ao.b',
+			jsongin.PathTerminals( doc, 'ao.b',
 				function ( Value, ValueType, Path )
 				{
 					if ( Path === 'ao.0.b' )
@@ -496,7 +496,7 @@ describe( '100) Core Tests', () =>
 		it( 'should iterate over nested arrays', () => 
 		{
 			let call_count = 0;
-			JSON_ENGINE.PathTerminals( doc, 'aoa.a',
+			jsongin.PathTerminals( doc, 'aoa.a',
 				function ( Value, ValueType, Path )
 				{
 					if ( Path === 'aoa.0.a.0' )
