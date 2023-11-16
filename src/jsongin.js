@@ -689,12 +689,14 @@ module.exports = function ( EngineSettings = {} )
 			if ( Engine.Settings.Explain ) { Engine.Explain.push( `Projection: The Document parameter must be an object.` ); }
 			return null;
 		}
-		if ( Engine.ShortType( Projection ) !== 'o' )
+		Document = Engine.Clone( Document );
+		let st_Projection = Engine.ShortType( Projection );
+		if ( 'lu'.includes( st_Projection ) === true ) { return Document; }
+		if ( st_Projection !== 'o' )
 		{
 			if ( Engine.Settings.Explain ) { Engine.Explain.push( `Projection: The Projection parameter must be an object.` ); }
 			return null;
 		}
-		Document = Engine.Clone( Document );
 
 		// Process the projection.
 		let projected = null;
@@ -745,6 +747,7 @@ module.exports = function ( EngineSettings = {} )
 		// Return the updated document.
 		return projected;
 	};
+	Engine.Project = Engine.Projection;
 
 
 	//---------------------------------------------------------------------
@@ -762,12 +765,14 @@ module.exports = function ( EngineSettings = {} )
 			if ( Engine.Settings.Explain ) { Engine.Explain.push( `Update: The Document parameter must be an object.` ); }
 			return null;
 		}
-		if ( Engine.ShortType( Update ) !== 'o' )
+		Document = Engine.Clone( Document );
+		let st_Update = Engine.ShortType( Update );
+		if ( 'lu'.includes( st_Update ) === true ) { return Document; }
+		if ( st_Update !== 'o' )
 		{
 			if ( Engine.Settings.Explain ) { Engine.Explain.push( `Update: The Update parameter must be an object.` ); }
 			return null;
 		}
-		Document = Engine.Clone( Document );
 
 		// Process the updates.
 		for ( let key in Update )

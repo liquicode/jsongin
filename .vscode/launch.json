@@ -19,7 +19,7 @@
 			"args": [
 				"-u",
 				"bdd",
-				"tests/010*.js",
+				"test/010*.js",
 				"--timeout",
 				"0",
 				"--slow",
@@ -44,7 +44,7 @@
 			"args": [
 				"-u",
 				"bdd",
-				"tests/100*.js",
+				"test/100*.js",
 				"--timeout",
 				"0",
 				"--slow",
@@ -66,7 +66,7 @@
 			"args": [
 				"-u",
 				"bdd",
-				"tests/150*.js",
+				"test/150*.js",
 				"--timeout",
 				"0",
 				"--slow",
@@ -88,7 +88,7 @@
 			"args": [
 				"-u",
 				"bdd",
-				"tests/200*.js",
+				"test/200*.js",
 				"--timeout",
 				"0",
 				"--slow",
@@ -110,7 +110,7 @@
 			"args": [
 				"-u",
 				"bdd",
-				"tests/210*.js",
+				"test/210*.js",
 				"--timeout",
 				"0",
 				"--slow",
@@ -132,7 +132,7 @@
 			"args": [
 				"-u",
 				"bdd",
-				"tests/250*.js",
+				"test/250*.js",
 				"--timeout",
 				"0",
 				"--slow",
@@ -154,7 +154,7 @@
 			"args": [
 				"-u",
 				"bdd",
-				"tests/300*.js",
+				"test/300*.js",
 				"--timeout",
 				"0",
 				"--slow",
@@ -176,7 +176,7 @@
 			"args": [
 				"-u",
 				"bdd",
-				"tests/400*.js",
+				"test/400*.js",
 				"--timeout",
 				"0",
 				"--slow",
@@ -201,7 +201,7 @@
 			"args": [
 				"-u",
 				"bdd",
-				"tests/*.js",
+				"test/*.js",
 				"--timeout",
 				"0",
 				"--slow",
@@ -226,7 +226,7 @@
 			"args": [
 				"-u",
 				"bdd",
-				"tests/Query Tests/Query Tests - MongoDB.js",
+				"test/Query Tests/Query Tests - MongoDB.js",
 				"--timeout",
 				"0",
 				"--slow",
@@ -248,7 +248,7 @@
 			"args": [
 				"-u",
 				"bdd",
-				"tests/Query Tests/Query Tests - Json-Criteria.js",
+				"test/Query Tests/Query Tests - Json-Criteria.js",
 				"--timeout",
 				"0",
 				"--slow",
@@ -270,7 +270,7 @@
 			"args": [
 				"-u",
 				"bdd",
-				"tests/Query Tests/Query Tests - NeDB.js",
+				"test/Query Tests/Query Tests - NeDB.js",
 				"--timeout",
 				"0",
 				"--slow",
@@ -292,7 +292,7 @@
 			"args": [
 				"-u",
 				"bdd",
-				"tests/Query Tests/Query Tests - Seald-NeDB.js",
+				"test/Query Tests/Query Tests - Seald-NeDB.js",
 				"--timeout",
 				"0",
 				"--slow",

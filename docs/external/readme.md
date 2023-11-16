@@ -1,5 +1,5 @@
 # JSONgin
-[`@liquiode/jsongin`](https://github.com/liquicode/jsongin)
+[`@liquiode/jsongin`](https://github.com/liquicode/jsongin) (v0.0.4)
 
 ### A JSON Engine for MongoDB-Style Queries and Data Structure Manipulation
 
@@ -103,7 +103,7 @@ Features
 - Developer Quality of Life:
 	- No external dependencies.
 	- 100% pure javascript.
-	- Single minified file (<25k) deployment for web.
+	- Single minified file (33k) deployment for web.
 
 - Object Based Queries:
 	- Compose queries in a structured and logical manner.
