@@ -103,7 +103,7 @@ Features
 - Developer Quality of Life:
 	- No external dependencies.
 	- 100% pure javascript.
-	- Single minified file (<25k) deployment for web.
+	- Single minified file (33k) deployment for web.
 
 - Object Based Queries:
 	- Compose queries in a structured and logical manner.
