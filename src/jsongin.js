@@ -129,7 +129,7 @@ module.exports = function ( EngineSettings = {} )
 
 
 	//---------------------------------------------------------------------
-	Engine.ShortType = function ( Data ) // bnsloadrefyu
+	Engine.ShortType = function ( Data ) // bnsloarefyu
 	{
 		// proposed type: (z} empty object
 		let data_type = ( typeof Data );
@@ -240,6 +240,84 @@ module.exports = function ( EngineSettings = {} )
 	{
 		return JSON.parse( JSON.stringify( Value ) );
 	};
+
+
+	//---------------------------------------------------------------------
+	Engine.SafeClone = function ( Value )
+	{
+		function clone_node( Node )
+		{
+			let short_type = Engine.ShortType( Node );
+			switch ( short_type )
+			{
+				case 'b': return Node;
+				case 'n': return Node;
+				case 's': return Node;
+				case 'l': return Node;
+				case 'o':
+					{
+						let value = {};
+						for ( let key in Node )
+						{
+							value[ key ] = clone_node( Node[ key ] );
+						}
+						return value;
+					}
+				case 'a':
+					{
+						let value = [];
+						for ( let index = 0; index < Node.length; index++ )
+						{
+							value.push( clone_node( Node[ index ] ) );
+						}
+						return value;
+					}
+				case 'r': return Node;
+				case 'e': return Node;
+				case 'f': return Node;
+				case 'y': return Node;
+				case 'u': return Node;
+				default: throw new Error( `Unrecognized short type [${short_type}].` );
+			}
+		}
+		let clone = clone_node( Value );
+		return clone;
+	};
+	Engine.MemberwiseClone = Engine.SafeClone;
+
+
+	// //---------------------------------------------------------------------
+	// Engine.MergeObjects = function ( ObjectA, ObjectB )
+	// {
+	// 	let C = JSON.parse( JSON.stringify( ObjectA ) );
+	// 	function update_children( ParentA, ParentB )
+	// 	{
+	// 		Object.keys( ParentB ).forEach(
+	// 			key =>
+	// 			{
+	// 				let value = ParentB[ key ];
+	// 				if ( typeof ParentA[ key ] === 'undefined' )
+	// 				{
+	// 					ParentA[ key ] = JSON.parse( JSON.stringify( value ) );
+	// 				}
+	// 				else
+	// 				{
+	// 					if ( typeof value === 'object' )
+	// 					{
+	// 						// Merge objects.
+	// 						update_children( ParentA[ key ], value );
+	// 					}
+	// 					else
+	// 					{
+	// 						// Overwrite values.
+	// 						ParentA[ key ] = JSON.parse( JSON.stringify( value ) );
+	// 					}
+	// 				}
+	// 			} );
+	// 	}
+	// 	update_children( C, ObjectB );
+	// 	return C;
+	// };
 
 
 	//---------------------------------------------------------------------
@@ -645,7 +723,13 @@ module.exports = function ( EngineSettings = {} )
 					}
 				}
 				// Evaluate operator.
-				let result = Engine.QueryOperators[ key ].Query( Document, Query[ key ], QueryPath );
+				let sub_query = Query[ key ];
+				if ( typeof sub_query === 'undefined' )
+				{
+					if ( Engine.Settings.Explain ) { Engine.Explain.push( `Query: Operator [${key}] cannot be set to undefined. Use $exists to chrck for a field in the document.` ); }
+					return false;
+				}
+				let result = Engine.QueryOperators[ key ].Query( Document, sub_query, QueryPath );
 				if ( result === false ) 
 				{
 					if ( Engine.Settings.Explain ) { Engine.Explain.push( `Query: Operator [${key}] returned false at [${QueryPath}].` ); }
@@ -664,6 +748,11 @@ module.exports = function ( EngineSettings = {} )
 				}
 				else
 				{
+					if ( typeof sub_query === 'undefined' )
+					{
+						if ( Engine.Settings.Explain ) { Engine.Explain.push( `Query: The implicit $eq operator cannot be set to undefined. Use $exists to chrck for a field in the document.` ); }
+						return false;
+					}
 					// Implicit $eq
 					result = Engine.QueryOperators.$ImplicitEq.Query( Document, sub_query, sub_query_path );
 				}

@@ -511,7 +511,45 @@ describe( '010) Javascript Compatibility Tests', () =>
 			assert.ok( ( false <= null ) === true );
 
 			assert.ok( ( false <= undefined ) === false );
-			
+
+		} );
+
+
+	} );
+
+
+	describe( 'Json stringify/parse', () =>
+	{
+
+
+		it( 'should stringify special fields', () => 
+		{
+			let json = JSON.stringify( { l: { $eq: 3.14 } } );
+			let doc = JSON.parse( json );
+			assert.ok( doc );
+			assert.ok( doc.l );
+			assert.ok( doc.l.$eq );
+			assert.ok( doc.l.$eq === 3.14 );
+		} );
+
+
+		it( 'should not stringify regular expressions', () => 
+		{
+			let json = JSON.stringify( { l: /abc/ } );
+			let doc = JSON.parse( json );
+			assert.ok( doc );
+			assert.ok( doc.l );
+			assert.deepStrictEqual( doc.l, {} );
+		} );
+
+
+		it( 'should not stringify functions', () => 
+		{
+			let json = JSON.stringify( { l: { f: function () { } } } );
+			let doc = JSON.parse( json );
+			assert.ok( doc );
+			assert.ok( doc.l );
+			assert.deepStrictEqual( doc.l, {} );
 		} );
 
 

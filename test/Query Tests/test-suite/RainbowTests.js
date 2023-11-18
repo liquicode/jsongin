@@ -293,10 +293,11 @@ module.exports = function ( Driver )
 			} );
 
 			//---------------------------------------------------------------------
-			it( `should equate null with undefined`, async () => 
+			it( `should equate null with an undefined field`, async () => 
 			{
 				// Explicit
-				assert.ok( ( await Driver.Find( { l: { $eq: undefined } } ) ).length === 1 );
+				//NOTE: Comparing to undefined will result in unexpected behaviors.
+				// assert.ok( ( await Driver.Find( { l: { $eq: undefined } } ) ).length === 1 );
 				assert.ok( ( await Driver.Find( { u: { $eq: null } } ) ).length === 1 );
 			} );
 
@@ -453,10 +454,11 @@ module.exports = function ( Driver )
 			} );
 
 			//---------------------------------------------------------------------
-			it( `should equate null with undefined`, async () => 
+			it( `should equate null with an undefined field`, async () => 
 			{
 				// Explicit
-				assert.ok( ( await Driver.Find( { l: { $gte: undefined } } ) ).length === 1 );
+				//NOTE: Comparing to undefined will result in unexpected behaviors.
+				// assert.ok( ( await Driver.Find( { l: { $gte: undefined } } ) ).length === 1 );
 				assert.ok( ( await Driver.Find( { u: { $gte: null } } ) ).length === 1 );
 			} );
 
@@ -518,10 +520,11 @@ module.exports = function ( Driver )
 			} );
 
 			//---------------------------------------------------------------------
-			it( `should equate null with undefined`, async () => 
+			it( `should equate null with an undefined field`, async () => 
 			{
 				// Explicit
-				assert.ok( ( await Driver.Find( { l: { $lte: undefined } } ) ).length === 1 );
+				//NOTE: Comparing to undefined will result in unexpected behaviors.
+				// assert.ok( ( await Driver.Find( { l: { $lte: undefined } } ) ).length === 1 );
 				assert.ok( ( await Driver.Find( { u: { $lte: null } } ) ).length === 1 );
 			} );
 

@@ -531,4 +531,67 @@ describe( '100) Core Tests', () =>
 	} );
 
 
+	//---------------------------------------------------------------------
+	describe( 'SafeClone Tests', () =>
+	{
+
+		it( 'should clone a simple object', () => 
+		{
+			let doc = { b: true, n: 3.14, s: 'abc' };
+			let clone = jsongin.SafeClone( doc );
+			assert.ok( clone );
+			assert.ok( clone.b === true );
+			assert.ok( clone.n === 3.14 );
+			assert.ok( clone.s === 'abc' );
+		} );
+
+		it( 'should clone a nested objects', () => 
+		{
+			let doc = { o: { b: true, n: 3.14, s: 'abc' } };
+			let clone = jsongin.SafeClone( doc );
+			assert.ok( clone );
+			assert.ok( clone.o );
+			assert.ok( clone.o.b === true );
+			assert.ok( clone.o.n === 3.14 );
+			assert.ok( clone.o.s === 'abc' );
+		} );
+
+		it( 'should clone an array', () => 
+		{
+			let doc = { a: [ 1, 2, 3 ] };
+			let clone = jsongin.SafeClone( doc );
+			assert.ok( clone );
+			assert.ok( clone.a );
+			assert.ok( clone.a.length = 3 );
+			assert.ok( clone.a[ 0 ] === 1 );
+			assert.ok( clone.a[ 1 ] === 2 );
+			assert.ok( clone.a[ 2 ] === 3 );
+		} );
+
+		it( 'should clone an array of objects', () => 
+		{
+			let doc = { a: [ { one: 1 }, { two: 2 } ] };
+			let clone = jsongin.SafeClone( doc );
+			assert.ok( clone );
+			assert.ok( clone.a );
+			assert.ok( clone.a.length = 2 );
+			assert.ok( clone.a[ 0 ].one === 1 );
+			assert.ok( clone.a[ 1 ].two === 2 );
+		} );
+
+		it( 'should clone non-value fields', () => 
+		{
+			let doc = { l: null, r: /test/, e: new Error( 'hello' ), f: function () { }, u: undefined };
+			let clone = jsongin.SafeClone( doc );
+			assert.ok( clone );
+			assert.ok( clone.l === null );
+			assert.ok( clone.r instanceof RegExp );
+			assert.ok( clone.e instanceof Error );
+			assert.ok( typeof clone.f === 'function' );
+			assert.ok( typeof clone.u === 'undefined' );
+		} );
+
+	} );
+
+
 } );

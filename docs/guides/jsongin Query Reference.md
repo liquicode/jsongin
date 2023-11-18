@@ -25,6 +25,7 @@ Query Syntax Rules
 - Comparison operators compare values of the same type and must be of type `bnsl`.
 	- Note that when `null` is compared using `$gt` or `$lt`, the result will always be `false`.
 	- When both values are `null`, the `$gt` and `$lt` comparisons will return `false` but the `$gte` and `$lte` comparisons will return `true`.
+- Comparing to undefined will result in unexpected behaviors. Example: `$eq: undefined` is valid Javascript but will make a mess in your code.
 
 
 Special Operators
