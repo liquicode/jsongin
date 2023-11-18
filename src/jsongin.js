@@ -729,7 +729,17 @@ module.exports = function ( EngineSettings = {} )
 				projection_type = 'exclude';
 			}
 		}
-		if ( projection_type === '' ) { projection_type = 'exclude'; }
+		if ( projection_type === '' )
+		{
+			if ( include_id )
+			{
+				projection_type = 'include';
+			}
+			else
+			{
+				projection_type = 'exclude';
+			}
+		}
 
 		// Process the projection.
 		let projected = null;

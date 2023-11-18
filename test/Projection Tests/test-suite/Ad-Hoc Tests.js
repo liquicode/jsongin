@@ -93,7 +93,7 @@ module.exports = function ( Driver )
 		} );
 
 
-		it( 'should supress the _id field', async () => 
+		it( 'should supress only the _id field', async () => 
 		{
 			let query = { _id: "631b7ab6-a728-42ce-b4f8-f8db70cfebdf" };
 			let projection = {
@@ -113,6 +113,57 @@ module.exports = function ( Driver )
 			assert.ok( result[ 0 ].__.writers.length === 0 );
 			assert.ok( result[ 0 ].__.public === false );
 			assert.ok( typeof result[ 0 ]._id === 'undefined' );
+		} );
+
+
+		it( 'should supress the _id field and other fields', async () => 
+		{
+			let query = { _id: "631b7ab6-a728-42ce-b4f8-f8db70cfebdf" };
+			let projection = {
+				_id: 0,
+				__: 0,
+			};
+			let result = await Driver.Find( query, projection );
+			assert.ok( result );
+			assert.ok( result.length );
+			assert.ok( result[ 0 ].session_id === '39141da7-5b24-47d5-b666-9f0a493d1084' );
+			assert.ok( result[ 0 ].order_number === 1 );
+			assert.ok( typeof result[ 0 ].__ === 'undefined' );
+			assert.ok( typeof result[ 0 ]._id === 'undefined' );
+		} );
+
+
+		it( 'should supress the _id field but include other fields', async () => 
+		{
+			let query = { _id: "631b7ab6-a728-42ce-b4f8-f8db70cfebdf" };
+			let projection = {
+				_id: 0,
+				session_id: 1,
+				order_number: 1,
+			};
+			let result = await Driver.Find( query, projection );
+			assert.ok( result );
+			assert.ok( result.length );
+			assert.ok( result[ 0 ].session_id === '39141da7-5b24-47d5-b666-9f0a493d1084' );
+			assert.ok( result[ 0 ].order_number === 1 );
+			assert.ok( typeof result[ 0 ].__ === 'undefined' );
+			assert.ok( typeof result[ 0 ]._id === 'undefined' );
+		} );
+
+
+		it( 'should return only the _id field', async () => 
+		{
+			let query = { _id: "631b7ab6-a728-42ce-b4f8-f8db70cfebdf" };
+			let projection = {
+				_id: 1,
+			};
+			let result = await Driver.Find( query, projection );
+			assert.ok( result );
+			assert.ok( result.length );
+			assert.ok( typeof result[ 0 ].session_id === 'undefined' );
+			assert.ok( typeof result[ 0 ].order_number === 'undefined' );
+			assert.ok( typeof result[ 0 ].__ === 'undefined' );
+			assert.ok( result[ 0 ]._id === '631b7ab6-a728-42ce-b4f8-f8db70cfebdf' );
 		} );
 
 
