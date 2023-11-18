@@ -111,7 +111,7 @@ module.exports = function ()
 						mongodb_settings,
 						async function ( Collection )
 						{
-							let cursor = await Collection.find( Query, Projection );
+							let cursor = await Collection.find( Query ).project( Projection );
 							return await cursor.toArray();
 						} );
 					return result;

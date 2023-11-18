@@ -17,6 +17,4 @@ npm-debug.log
 .netbeans
 nbproject
 
-build/__secrets
-
 .~lock.*

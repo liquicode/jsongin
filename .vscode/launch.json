@@ -187,6 +187,28 @@
 			"internalConsoleOptions": "openOnSessionStart",
 		},
 		{
+			"name": "500) Projection Tests - jsongin",
+			"type": "node",
+			"request": "launch",
+			"skipFiles": [
+				"<node_internals>/**"
+			],
+			"cwd": "${workspaceFolder}",
+			"program": "${workspaceFolder}/node_modules/mocha/bin/mocha",
+			"args": [
+				"-u",
+				"bdd",
+				"test/500*.js",
+				"--timeout",
+				"0",
+				"--slow",
+				"10",
+				"--colors",
+			],
+			"outputCapture": "std",
+			"internalConsoleOptions": "openOnSessionStart",
+		},
+		{
 			"name": "---",
 		},
 		{
@@ -293,6 +315,31 @@
 				"-u",
 				"bdd",
 				"test/Query Tests/Query Tests - Seald-NeDB.js",
+				"--timeout",
+				"0",
+				"--slow",
+				"10",
+				"--colors",
+			],
+			"outputCapture": "std",
+			"internalConsoleOptions": "openOnSessionStart",
+		},
+		{
+			"name": "--- Projection Compatibility Tests ---------------------",
+		},
+		{
+			"name": "Projection Tests - MongoDB",
+			"type": "node",
+			"request": "launch",
+			"skipFiles": [
+				"<node_internals>/**"
+			],
+			"cwd": "${workspaceFolder}",
+			"program": "${workspaceFolder}/node_modules/mocha/bin/mocha",
+			"args": [
+				"-u",
+				"bdd",
+				"test/Projection Tests/Projection Tests - MongoDB.js",
 				"--timeout",
 				"0",
 				"--slow",

@@ -698,50 +698,71 @@ module.exports = function ( EngineSettings = {} )
 			return null;
 		}
 
-		// Process the projection.
-		let projected = null;
+		// Scan the projection.
+		Projection = Engine.Clone( Projection );
 		let projection_type = '';
-		for ( let field in Projection )
+		let include_id = true;
+		for ( let key in Projection )
 		{
-			let value = Engine.GetValue( Document, field );
-			let inclusion = Projection[ field ];
-			if ( Engine.ShortType( Projection ) !== 'inclusion' )
+			let inclusion = Projection[ key ];
+			if ( key === '_id' )
 			{
-				if ( Engine.Settings.Explain ) { Engine.Explain.push( `Projection: The inclusion parameter must be a number.` ); }
-				return null;
+				if ( inclusion === 0 ) { include_id = false; }
+				delete Projection[ key ];
 			}
-			if ( inclusion === 1 )
+			else if ( inclusion === 1 )
 			{
-				if ( projection_type === '' ) { projection_type = 'i'; }
-				else if ( projection_type === 'e' ) 
+				if ( projection_type === 'exclude' ) 
 				{
 					if ( Engine.Settings.Explain ) { Engine.Explain.push( `Update: Cannot combine inclusion and exclusion operators in the same update.` ); }
-					continue;
+					return null;
 				}
-				if ( projected === null ) { projected = {}; }
-				let result = Engine.SetValue( projected, field, value );
-				if ( result === false )
-				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `Update: Failed to set the field [${field}].` ); }
-					continue;
-				}
+				projection_type = 'include';
 			}
 			else if ( inclusion === 0 )
 			{
-				if ( projection_type === '' ) { projection_type = 'e'; }
-				else if ( projection_type === 'i' ) 
+				if ( projection_type === 'include' ) 
 				{
 					if ( Engine.Settings.Explain ) { Engine.Explain.push( `Update: Cannot combine inclusion and exclusion operators in the same update.` ); }
-					continue;
+					return null;
 				}
-				if ( projected === null ) { projected = Engine.Clone( Document ); }
-				let result = Engine.SetValue( projected, field, undefined );
+				projection_type = 'exclude';
+			}
+		}
+		if ( projection_type === '' ) { projection_type = 'exclude'; }
+
+		// Process the projection.
+		let projected = null;
+		if ( projection_type === 'exclude' ) 
+		{
+			projected = Engine.Clone( Document );
+			for ( let key in Projection )
+			{
+				let result = Engine.SetValue( projected, key, undefined );
 				if ( result === false )
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `Update: Failed to unset the field [${field}].` ); }
+					if ( Engine.Settings.Explain ) { Engine.Explain.push( `Projection: Failed to unset the field [${field}] in the projection.` ); }
 					continue;
 				}
 			}
+		}
+		else if ( projection_type === 'include' ) 
+		{
+			projected = { _id: Document._id };
+			for ( let key in Projection )
+			{
+				let value = Engine.GetValue( Document, key );
+				let result = Engine.SetValue( projected, key, value );
+				if ( result === false )
+				{
+					if ( Engine.Settings.Explain ) { Engine.Explain.push( `Projection: Failed to set the field [${field}] in the projection.` ); }
+					continue;
+				}
+			}
+		}
+		if ( include_id === false )
+		{
+			delete projected._id;
 		}
 
 		// Return the updated document.
