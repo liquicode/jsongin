@@ -148,12 +148,12 @@ The function `jsongin.Query( Document, Query )` will return `true` if `Document`
 	- `$type` : Selects documents if a field is of the specified type.
 
 - Evaluation Operators
-	- `$expr` : Allows use of aggregation expressions within the query language.
-	- `$jsonSchema` : Validate documents against the given JSON Schema.
-	- `$mod` : Performs a modulo operation on the value of a field and selects documents with a specified result.
+	- `$expr` : ***(not implemented)*** Allows use of aggregation expressions within the query language.
+	- `$jsonSchema` : ***(not implemented)*** Validate documents against the given JSON Schema.
+	- `$mod` : ***(not implemented)*** Performs a modulo operation on the value of a field and selects documents with a specified result.
 	- `$regex` : Selects documents where values match a specified regular expression.
-	- `$text` : Performs text search.
-	- `$where` : Matches documents that satisfy a JavaScript expression.
+	- `$text` : ***(not implemented)*** Performs text search.
+	- `$where` : ***(not implemented)*** Matches documents that satisfy a JavaScript expression.
 
 - Geospatial Operators *(not implemented)*
 	- `$geoIntersects` : Selects geometries that intersect with a GeoJSON geometry. The 2dsphere index supports $geoIntersects.
@@ -167,15 +167,15 @@ The function `jsongin.Query( Document, Query )` will return `true` if `Document`
 	- `$all` : Matches arrays that contain all elements specified in the query.
 
 - Bitwise Operators *(not implemented)*
-	- `$bitsAllClear` : *(not implemented)* Matches numeric or binary values in which a set of bit positions all have a value of 0.
-	- `$bitsAllSet` : *(not implemented)* Matches numeric or binary values in which a set of bit positions all have a value of 1.
-	- `$bitsAnyClear` : *(not implemented)* Matches numeric or binary values in which any bit from a set of bit positions has a value of 0.
-	- `$bitsAnySet` : *(not implemented)* Matches numeric or binary values in which any bit from a set of bit positions has a value of 1.
+	- `$bitsAllClear` : ***(not implemented)*** Matches numeric or binary values in which a set of bit positions all have a value of 0.
+	- `$bitsAllSet` : ***(not implemented)*** Matches numeric or binary values in which a set of bit positions all have a value of 1.
+	- `$bitsAnyClear` : ***(not implemented)*** Matches numeric or binary values in which any bit from a set of bit positions has a value of 0.
+	- `$bitsAnySet` : ***(not implemented)*** Matches numeric or binary values in which any bit from a set of bit positions has a value of 1.
 
 - Miscellaneous Query Operators *(not implemented)*
-	- `$comment` : *(not implemented)* Adds a comment to a query predicate.
-	- `$rand` : *(not implemented)* Generates a random float between 0 and 1.
-	- `$natural` : *(not implemented)* A special hint that can be provided via the sort() or hint() methods that can be used to force either a forward or reverse collection scan.
+	- `$comment` : ***(not implemented)*** Adds a comment to a query predicate.
+	- `$rand` : ***(not implemented)*** Generates a random float between 0 and 1.
+	- `$natural` : ***(not implemented)*** A special hint that can be provided via the sort() or hint() methods that can be used to force either a forward or reverse collection scan.
 
 All comparisons done by MongoDB are strict comparisons (===).
 This means that the any values being compared must be of the same type and,
@@ -200,10 +200,10 @@ The function `jsongin.Projection( Document, Projection )` will return a document
 fields from `Document` that are specified in `Projection`.
 
 - Projection Operators *(not implemented)*
-	- `$` : *(not implemented)* Projects the first element in an array that matches the query condition.
-	- `$elemMatch` : *(not implemented)* Projects the first element in an array that matches the specified $elemMatch condition.
-	- `$meta` : *(not implemented)* Projects the available per-document metadata.
-	- `$slice` : *(not implemented)* Limits the number of elements projected from an array. Supports skip and limit slices.
+	- `$` : ***(not implemented)*** Projects the first element in an array that matches the query condition.
+	- `$elemMatch` : ***(not implemented)*** Projects the first element in an array that matches the specified $elemMatch condition.
+	- `$meta` : ***(not implemented)*** Projects the available per-document metadata.
+	- `$slice` : ***(not implemented)*** Limits the number of elements projected from an array. Supports skip and limit slices.
 
 
 MongoDB Update API
@@ -224,20 +224,20 @@ The function `jsongin.Update( Document, Update )` will return a copy of `Documen
 	- `$max` : Only updates the field if the specified value is greater than the existing field value.
 	- `$mul` : Multiplies the value of the field by the specified amount.
 	- `$currentDate` : Sets the value of a field to current date, either as a Date or a Timestamp.
-	- `$setOnInsert` : *(not implemented)* Sets the value of a field if an update results in an insert of a document. Has no effect on update operations that modify existing documents.
+	- `$setOnInsert` : ***(not implemented)*** Sets the value of a field if an update results in an insert of a document. Has no effect on update operations that modify existing documents.
 
 - Array Update Operators
 	- `$addToSet` : *(partially implemented)* Adds elements to an array only if they do not already exist in the set.
 	- `$pop` : Removes the first or last item of an array.
 	- `$push` : *(partially implemented)* Adds an item to an array.
 	- `$pullAll` : Removes all matching values from an array.
-	- `$pull` : *(not implemented)* Removes all array elements that match a specified query.
-	- `$` : *(not implemented)* Acts as a placeholder to update the first element that matches the query condition.
-	- `$[]` : *(not implemented)* Acts as a placeholder to update all elements in an array for the documents that match the query condition.
-	- `$[<identifier>]` : *(not implemented)* Acts as a placeholder to update all elements that match the arrayFilters condition for the documents that match the query condition.
+	- `$pull` : ***(not implemented)*** Removes all array elements that match a specified query.
+	- `$` : ***(not implemented)*** Acts as a placeholder to update the first element that matches the query condition.
+	- `$[]` : ***(not implemented)*** Acts as a placeholder to update all elements in an array for the documents that match the query condition.
+	- `$[<identifier>]` : ***(not implemented)*** Acts as a placeholder to update all elements that match the arrayFilters condition for the documents that match the query condition.
 
 - Bitwise Update Operator
-	- `bit` : *(not implemented)* Performs bitwise AND, OR, and XOR updates of integer values.
+	- `bit` : ***(not implemented)*** Performs bitwise AND, OR, and XOR updates of integer values.
 
 
 Additional References

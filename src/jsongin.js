@@ -243,9 +243,9 @@ module.exports = function ( EngineSettings = {} )
 
 
 	//---------------------------------------------------------------------
-	Engine.SafeClone = function ( Value )
+	Engine.SafeClone = function ( Value, AssignNotClone )
 	{
-		function clone_node( Node )
+		function clone_node( Node, Path )
 		{
 			let short_type = Engine.ShortType( Node );
 			switch ( short_type )
@@ -259,7 +259,17 @@ module.exports = function ( EngineSettings = {} )
 						let value = {};
 						for ( let key in Node )
 						{
-							value[ key ] = clone_node( Node[ key ] );
+							let path = Path;
+							if ( !path ) { path = key; }
+							else { path += '.' + key; }
+							if ( AssignNotClone.includes( path ) )
+							{
+								value[ key ] = Node[ key ];
+							}
+							else
+							{
+								value[ key ] = clone_node( Node[ key ], path );
+							}
 						}
 						return value;
 					}
@@ -268,7 +278,17 @@ module.exports = function ( EngineSettings = {} )
 						let value = [];
 						for ( let index = 0; index < Node.length; index++ )
 						{
-							value.push( clone_node( Node[ index ] ) );
+							let path = Path;
+							if ( !path ) { path = '' + index; }
+							else { path += '.' + index; }
+							if ( AssignNotClone.includes( path ) )
+							{
+								value.push( Node[ index ] );
+							}
+							else
+							{
+								value.push( clone_node( Node[ index ], path ) );
+							}
 						}
 						return value;
 					}
@@ -280,7 +300,9 @@ module.exports = function ( EngineSettings = {} )
 				default: throw new Error( `Unrecognized short type [${short_type}].` );
 			}
 		}
-		let clone = clone_node( Value );
+		if ( 'lu'.includes( Engine.ShortType( AssignNotClone ) ) ) { AssignNotClone = []; }
+		if ( !Array.isArray( AssignNotClone ) ) { throw new Error( `The AssignValues parameter must be an array of field names in dot notation.` ); }
+		let clone = clone_node( Value, '' );
 		return clone;
 	};
 	Engine.MemberwiseClone = Engine.SafeClone;

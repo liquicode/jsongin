@@ -591,6 +591,16 @@ describe( '100) Core Tests', () =>
 			assert.ok( typeof clone.u === 'undefined' );
 		} );
 
+		it( 'should selectively clone with the AssignNotClone parameter', () => 
+		{
+			function ObjectId( value ) { return value; }
+			let doc = { good: 'value', bad: new ObjectId( '1' ) };
+			let clone = jsongin.SafeClone( doc, [ 'bad' ] );
+			assert.ok( clone );
+			assert.ok( typeof clone.bad !== 'undefined' );
+			// assert.ok( clone._id === null );
+		} );
+
 	} );
 
 
