@@ -1,40 +1,64 @@
-# JSONgin
+# jsongin
 [`@liquiode/jsongin`](https://github.com/liquicode/jsongin) (v0.0.9)
 
 ### A JSON Engine for MongoDB-Style Queries and Data Structure Manipulation
 
-#### NOTE: ***This package is under active development and may include dramatic changes in the near future.***
+
+Quick Reference
+---------------------------------------------------------------------
+
+- [Library Guide](docs/guides/Library%20Guide.md)
+
+***MongoDB Mechanics***
+- [Query Reference](docs/guides/Query%20Reference.md)
+- [Projection Reference](docs/guides/Projection%20Reference.md)
+- [Update Reference](docs/guides/Update%20Reference.md)
+- [Operator Reference](docs/guides/Operators%20Reference.md)
+
+***Document Inspection and Manipulation***
+- [Short Types](docs/guides/Short%20Types.md)
+- [Document Manipulation](docs/guides/Document%20Manipulation.md)
 
 
 Overview
 ---------------------------------------------------------------------
 
-`jsongin` provides a complete implementation of the [MongoDB](https://www.mongodb.com/)
-	query mechanism, allowing you to use it in your own applications and libraries.
+`jsongin` provides a robust implementation of the MongoDB query, projection, and update mechanics.
+It strives to be consistent and easy to use.
+You can use MongoDB style operations in your own projects by using these `jsongin` functions:
 
-I developed `jsongin` to provide a single query interface for different types
-	of data storages (e.g. memory, file, server).
-I now have a single query structure to access data
-	from my data storage in local memory for development,
-	in data files for testing, and on a MongoDB server for release.
+- `Query( Document, Criteria )`
+- `Project( Document, Projection )`
+- `Update( Document, Updates )`
 
-I tried some packages out there that provide similar functionality but, after some testing,
-	I found that most of these implementations perform only	loose old school javascript (==)
-	comparisons while MongoDB always uses strict (===) comparisons.
-This could be a real problem if you want to eventually run your code against a MongoDB server.
-Things that went smoothly in development might fail terribly while running in production, and probably with no warnings.
-Furthermore, many of the other implementation I tried did not support many more MongoDB query features
-	beyond basic comparisons.
+With these functions you can query and manipulate your own data structures with MongoDB-style interface.
+Each MongoDB feature that is implemented here, operates accurately and in accordance with MongoDB.
 
-I needed it. I couldn't find it. So I built it. Here it is.
+I developed `jsongin` to provide a single query interface that could be used against data stored
+  in different types of storage mediums (e.g. memory, file, server).
+Now when I develop an application or server, I can work with my data in memory for development
+  and then quickly switch to a full MongoDB server for deployment.
+To look at my project which implements a number of storage adapters for many common platforms and mediums,
+see the [@liquicode/jsonstor]() project.
 
+There are a number of other functions implemented here which serve to not only support the above
+  functions, but also provide functionality common to general work with Javascript objects:
 
-Goals
----------------------------------------------------------------------
+- `AsNumber( Value )`
+- `AsDate( Value )`
+- `ShortType( Value )`
+- `BsonType( Value, ReturnAlias )`
+- `Clone( Document )`
+- `SafeClone( Document )`
+- `SplitPath( Path )`
+- `JoinPaths( Path1, Path2, ... )`
+- `GetValue( Document, Path )`
+- `SetValue( Document, Path, Value )`
+- `IsQuery( Document )`
+- `LooseEquals( DocumentA, DocumentB )`
+- `StrictEquals( DocumentA, DocumentB )`
 
-- Full compatibility and accuracy with MongoDB Query syntax.
-- Generate SQL queries for relational/hybrid databases.
-- Fast, easy to use, low overhead, and minimal (no) dependencies.
+See the reference [Library Guide](docs/guides/Library%20Guide.md) for more information.
 
 
 Getting Started
@@ -48,14 +72,17 @@ npm install --save @liquicode/jsongin
 ***Include in your NodeJS Project***
 ```js
 // Create an instance of jsongin:
-const jsongin = require('@liquicode/jsongin')()
+const jsongin = require('@liquicode/jsongin')(); // jsongin exports a function to call.
 
 // Or, create with custom settings:
-const jsongin = require('@liquicode/jsongin')( settings )
+const jsongin = require('@liquicode/jsongin')( Settings ); // You can pass a Settings parameter.
 ```
 
-***Use jsongin to perform MongoDB Queries on JSON objects:***
+
+### Examples
+
 ```js
+// This is our example object.
 let document =
 {
 	id: 1001,
@@ -71,7 +98,12 @@ let document =
 	},
 	tags: [ 'Staff', 'Dept. A' ],
 };
+```
 
+
+#### Perform Queries on Documents
+
+```js
 // Use Query to match values against a document.
 jsongin.Query( document, { id: 1001 } ) === true
 jsongin.Query( document, { 'user.name': 'Alice' } ) === true
@@ -97,183 +129,103 @@ jsongin.Query( document, { $and:
 ```
 
 
+#### Project Fields From One Document To Another
+
+```js
+// Use Project to supress some fields from the output.
+let p = jsongin.Project( document, { id: 0, user: 0 } );
+p === {
+	profile:
+	{
+		login: 'alice',
+		role: 'admin',
+	},
+	tags: [ 'Staff', 'Dept. A' ],
+}
+
+// Use Project to include certain fields and supress the rest.
+let p = jsongin.Project( document, { id: 1, tags: 1 } );
+p === {
+	id: 1001,
+	tags: [ 'Staff', 'Dept. A' ],
+}
+
+// Use Project to select nested fields.
+let p = jsongin.Project( document, { id: 1, "user.name": 1 } );
+p === {
+	user: { name: 'Alice' },
+	tags: [ 'Staff', 'Dept. A' ],
+}
+```
+
+
+#### Modify Fields in a Document
+
+```js
+// Use Update to modify values in a document.
+let p = jsongin.Update( document, { $set: { "user.location": 'West' } } );
+p === {
+	id: 1001,
+	user:
+	{
+		name: 'Alice',
+		location: 'West',
+	},
+	profile:
+	{
+		login: 'alice',
+		role: 'admin',
+	},
+	tags: [ 'Staff', 'Dept. A' ],
+}
+
+// Use Update to add fields to a document.
+let p = jsongin.Update( document, { $set: { is_logged_in: true } } );
+p === {
+	id: 1001,
+	user:
+	{
+		name: 'Alice',
+		location: 'West',
+	},
+	profile:
+	{
+		login: 'alice',
+		role: 'admin',
+	},
+	tags: [ 'Staff', 'Dept. A' ],
+	is_logged_in: true,
+}
+
+// Use Update to remove fields in a document.
+let p = jsongin.Update( document, { $unset: { user: 0 } } );
+p === {
+	id: 1001,
+	profile:
+	{
+		login: 'alice',
+		role: 'admin',
+	},
+	tags: [ 'Staff', 'Dept. A' ],
+}
+
+```
+
+
 Features
 ---------------------------------------------------------------------
 
-- Developer Quality of Life:
+- Developer Features:
 	- No external dependencies.
 	- 100% pure javascript.
 	- Single minified file (33k) deployment for web.
+	- Use the `Explain` feature to help understand and debug queries.
+	- Extend `jsongin` by developing your own query, projection, and update operators.
 
 - Object Based Queries:
 	- Compose queries in a structured and logical manner.
 	- Easier to read, understand, and debug.
-	- Include comments and documentation in your queries.
+	- Maintain comments and documentation in your query source.
 	- Programatically create and structure data queries.
-
-- Tentative Features
-	- Use path extensions to nest queries and use bracketed [] array notation.
-	- Use extended query operators to perform more flexible object and value matching.
-	- Use the `Explain` feature to help understand and debug queries.
-	- Extend `jsongin` by developing your own query operators.
-
-
-MongoDB Query API
----------------------------------------------------------------------
-
-`jsongin` is fully compatible with the core MongoDB query operators.
-
-See [Query Reference](docs/jsongin%20Query%20Reference.md) for more detail.
-
-The function `jsongin.Query( Document, Query )` will return `true` if `Document` matches the criteria specified in `Query`.
-
-- Comparison Operators
-	- `$eq` : Matches values that are equal to a specified value.
-	- `$ne` : Matches all values that are not equal to a specified value.
-	- `$gt` : Matches values that are greater than a specified value.
-	- `$gte` : Matches values that are greater than or equal to a specified value.
-	- `$lt` : Matches values that are less than a specified value.
-	- `$lte` : Matches values that are less than or equal to a specified value.
-	- `$in` : Matches any of the values specified in an array.
-	- `$nin` : Matches none of the values specified in an array.
-
-- Logical Operators
-	- `$and` : Joins query clauses with a logical AND returns all documents that match the conditions of both clauses.
-	- `$or` : Joins query clauses with a logical OR returns all documents that match the conditions of either clause.
-	- `$nor` : Joins query clauses with a logical NOR returns all documents that fail to match both clauses.
-	- `$not` : Inverts the effect of a query expression and returns documents that do not match the query expression.
-
-- Element Operators
-	- `$exists` : Matches documents that have the specified field.
-	- `$type` : Selects documents if a field is of the specified type.
-
-- Evaluation Operators
-	- `$expr` : ***(not implemented)*** Allows use of aggregation expressions within the query language.
-	- `$jsonSchema` : ***(not implemented)*** Validate documents against the given JSON Schema.
-	- `$mod` : ***(not implemented)*** Performs a modulo operation on the value of a field and selects documents with a specified result.
-	- `$regex` : Selects documents where values match a specified regular expression.
-	- `$text` : ***(not implemented)*** Performs text search.
-	- `$where` : ***(not implemented)*** Matches documents that satisfy a JavaScript expression.
-
-- Geospatial Operators *(not implemented)*
-	- `$geoIntersects` : Selects geometries that intersect with a GeoJSON geometry. The 2dsphere index supports $geoIntersects.
-	- `$geoWithin` : Selects geometries within a bounding GeoJSON geometry. The 2dsphere and 2d indexes support $geoWithin.
-	- `$near` : Returns geospatial objects in proximity to a point. Requires a geospatial index. The 2dsphere and 2d indexes support $near.
-	- `$nearSphere` : Returns geospatial objects in proximity to a point on a sphere. Requires a geospatial index. The 2dsphere and 2d indexes support $nearSphere.
-
-- Array Operators
-	- `$elemMatch` : Selects documents if element in the array field matches all the specified $elemMatch conditions.
-	- `$size` : Selects documents if the array field is a specified size.
-	- `$all` : Matches arrays that contain all elements specified in the query.
-
-- Bitwise Operators *(not implemented)*
-	- `$bitsAllClear` : ***(not implemented)*** Matches numeric or binary values in which a set of bit positions all have a value of 0.
-	- `$bitsAllSet` : ***(not implemented)*** Matches numeric or binary values in which a set of bit positions all have a value of 1.
-	- `$bitsAnyClear` : ***(not implemented)*** Matches numeric or binary values in which any bit from a set of bit positions has a value of 0.
-	- `$bitsAnySet` : ***(not implemented)*** Matches numeric or binary values in which any bit from a set of bit positions has a value of 1.
-
-- Miscellaneous Query Operators *(not implemented)*
-	- `$comment` : ***(not implemented)*** Adds a comment to a query predicate.
-	- `$rand` : ***(not implemented)*** Generates a random float between 0 and 1.
-	- `$natural` : ***(not implemented)*** A special hint that can be provided via the sort() or hint() methods that can be used to force either a forward or reverse collection scan.
-
-All comparisons done by MongoDB are strict comparisons (===).
-This means that the any values being compared must be of the same type and,
-in the case objects and arrays, must be in the same order.
-
-`jsongin` offers additional operators, some of which support loose comparisons (==):
-
-- Extended Operators
-	- `$eqx` : Matches values that are equal to a specified value. Loose comparison (==).
-	- `$nex` : Matches all values that are not equal to a specified value. Loose comparison (==).
-	- `$noop` : Can be anything. No operation is performed on this data.
-
-
-MongoDB Projection API
----------------------------------------------------------------------
-
-`jsongin` supports the MongoDB projection mechanism when returning documents from a query.
-
-See [Project Fields to Return from Query](https://www.mongodb.com/docs/manual/tutorial/project-fields-from-query-results/)
-
-The function `jsongin.Projection( Document, Projection )` will return a document that includes (or excludes)
-fields from `Document` that are specified in `Projection`.
-
-- Projection Operators *(not implemented)*
-	- `$` : ***(not implemented)*** Projects the first element in an array that matches the query condition.
-	- `$elemMatch` : ***(not implemented)*** Projects the first element in an array that matches the specified $elemMatch condition.
-	- `$meta` : ***(not implemented)*** Projects the available per-document metadata.
-	- `$slice` : ***(not implemented)*** Limits the number of elements projected from an array. Supports skip and limit slices.
-
-
-MongoDB Update API
----------------------------------------------------------------------
-
-`jsongin` is compatible with the core MongoDB update operators.
-
-See [Update Reference](docs/jsongin%Update%20Reference.md) for more detail.
-
-The function `jsongin.Update( Document, Update )` will return a copy of `Document` includes the updates specified in `Update`.
-
-- Field Update Operators
-	- `$set` : Sets the value of a field in a document.
-	- `$unset` : Removes the specified field from a document.
-	- `$rename` : Renames a field.
-	- `$inc` : Increments the value of the field by the specified amount.
-	- `$min` : Only updates the field if the specified value is less than the existing field value.
-	- `$max` : Only updates the field if the specified value is greater than the existing field value.
-	- `$mul` : Multiplies the value of the field by the specified amount.
-	- `$currentDate` : Sets the value of a field to current date, either as a Date or a Timestamp.
-	- `$setOnInsert` : ***(not implemented)*** Sets the value of a field if an update results in an insert of a document. Has no effect on update operations that modify existing documents.
-
-- Array Update Operators
-	- `$addToSet` : *(partially implemented)* Adds elements to an array only if they do not already exist in the set.
-	- `$pop` : Removes the first or last item of an array.
-	- `$push` : *(partially implemented)* Adds an item to an array.
-	- `$pullAll` : Removes all matching values from an array.
-	- `$pull` : ***(not implemented)*** Removes all array elements that match a specified query.
-	- `$` : ***(not implemented)*** Acts as a placeholder to update the first element that matches the query condition.
-	- `$[]` : ***(not implemented)*** Acts as a placeholder to update all elements in an array for the documents that match the query condition.
-	- `$[<identifier>]` : ***(not implemented)*** Acts as a placeholder to update all elements that match the arrayFilters condition for the documents that match the query condition.
-
-- Bitwise Update Operator
-	- `bit` : ***(not implemented)*** Performs bitwise AND, OR, and XOR updates of integer values.
-
-
-Additional References
----------------------------------------------------------------------
-
-- [Library Guide](docs/jsongin%20Library%20Guide.md)
-- [Query Reference](docs/jsongin%20Query%20Reference.md)
-- [Data Types](docs/jsongin%20Data%20Types.md)
-
-
-Related Information
----------------------------------------------------------------------
-
-### MongoDB References
-
-- [MongoDB: Query Documents](https://www.mongodb.com/docs/manual/tutorial/query-documents/)
-- [MongoDB: Query Operator Reference](https://www.mongodb.com/docs/manual/reference/operator/query/)
-- [MongoDB: Dot Notation](https://www.mongodb.com/docs/manual/core/document/#std-label-document-dot-notation)
-
-### Similar Projects
-
-- [json-criteria](https://www.npmjs.com/package/json-criteria) :
-	A MongoDB-style querying mechanism.
-
-- [nedb](https://www.npmjs.com/package/nedb) : 
-	A MongoDB-style querying mechanism.
-	Create and manage memory-based and file-based data collections.
-	No longer maintained by the author(s).
-
-- [@seald-io/nedb](https://www.npmjs.com/package/@seald-io/nedb) : 
-	A currently maintained fork of `nedb`.
-
-- [Mongo-Local-DB](https://www.npmjs.com/package/mongo-local-db) :
-
-- [RxDB](https://www.npmjs.com/package/rxdb) :
-
-- [realm](https://www.npmjs.com/package/realm) :
 
 

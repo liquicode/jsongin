@@ -25,19 +25,19 @@ module.exports = function ( Settings )
 
 		//---------------------------------------------------------------------
 		Find:
-			async function ( Query, Projection )
+			async function ( Criteria, Projection )
 			{
 				try
 				{
 					let result = [];
 					for ( let index = 0; index < this.Storage.length; index++ )
 					{
-						if ( await jsongin.Query( this.Storage[ index ], Query ) )
+						if ( await jsongin.Query( this.Storage[ index ], Criteria ) )
 						{
 							let document = this.Storage[ index ];
 							if ( Projection )
 							{
-								document = await jsongin.Projection( document, Projection );
+								document = await jsongin.Project( document, Projection );
 							}
 							result.push( document );
 						}
@@ -52,14 +52,14 @@ module.exports = function ( Settings )
 
 		//---------------------------------------------------------------------
 		Update:
-			async function ( Query, Update )
+			async function ( Criteria, Update )
 			{
 				try
 				{
 					let result = [];
 					for ( let index = 0; index < this.Storage.length; index++ )
 					{
-						if ( await jsongin.Query( this.Storage[ index ], Query ) )
+						if ( await jsongin.Query( this.Storage[ index ], Criteria ) )
 						{
 							let document = this.Storage[ index ];
 							document = await jsongin.Update( document, Update );
@@ -78,10 +78,10 @@ module.exports = function ( Settings )
 
 		//---------------------------------------------------------------------
 		Evaluate:
-			async function ( Query, Data )
+			async function ( Criteria, Data )
 			{
 				await this.SetData( [ Data ] );
-				let result = await this.Find( Query );
+				let result = await this.Find( Criteria );
 				return result.length === 1;
 			},
 

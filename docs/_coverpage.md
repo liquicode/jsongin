@@ -10,13 +10,14 @@
 
 <hr>
 
-- Full compatibility with MongoDB queries.
+- Accurate compatibility with MongoDB mechanics.
 - No external dependencies.
 - 100% pure javascript.
 - Single minified file (<25k) deployment for web.
 
 [GitHub](https://github.com/liquicode/jsongin)
-[Get Started](external/readme.md)
+[NPM](https://www.npmjs.com/package/@liquicode/jsongin)
+[Get Started](guides/Library%20Guide.md)
 
 
 <!-- background image -->

@@ -1,5 +1,9 @@
+# jsongin
+[`@liquiode/jsongin`](https://github.com/liquicode/jsongin)
 
-# Jsonx Evaluate Operators
+
+# Query Reference
+
 
  $eq Operator
 ---------------------------------------------------------------------

@@ -2,17 +2,25 @@
 
 <hr>
 
-- jsongin Docs
+- jsongin Documentation
 
-	- [readme.md](external/readme.md)
+	- [Library Guide](guides/Library%20Guide.md)
 
 <hr>
 
-- References
+- MongoDB Mechanics
 
-	- [Library Guide](docs/guides/jsongin%20Library%20Guide.md)
-	- [Data Types](docs/guides/jsongin%20Data%20Types.md)
-	- [Query Reference](docs/guides/jsongin%20Query%20Reference.md)
+	- [Query Reference](guides/Query%20Reference.md)
+	- [Projection Reference](guides/Projection%20Reference.md)
+	- [Update Reference](guides/Update%20Reference.md)
+	- [Operator Reference](guides/Operators%20Reference.md)
+
+<hr>
+
+- Document Inspection and Manipulation
+
+	- [Short Types](guides/Short%20Types.md)
+	- [Document Manipulation](guides/Document%20Manipulation.md)
 
 <hr>
 
@@ -24,6 +32,6 @@
 
 - More Information
 
-	- [Testing Output](external/testing-output.md)
+	- [Testing Output](external/tests.md)
 	- [Software License](external/license.md)
 	- [Software Version](external/version.md)
