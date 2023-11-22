@@ -25,7 +25,7 @@ module.exports = function ( jsongin )
 		{
 			if ( Engine.ShortType( UpdateFields ) !== 'o' )
 			{
-				if ( Engine.Settings.Explain ) { Engine.Explain.push( `$pop: The UpdateFields parameter must be an object.` ); }
+				if ( Engine.OpLog ) { Engine.OpLog( `$pop: The UpdateFields parameter must be an object.` ); }
 				return false;
 			}
 
@@ -34,7 +34,7 @@ module.exports = function ( jsongin )
 				let array = Engine.GetValue( Document, field );
 				if ( Engine.ShortType( array ) !== 'a' )
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `$pop: The field [${field}] must be an array.` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `$pop: The field [${field}] must be an array.` ); }
 					continue;
 				}
 				let direction = UpdateFields[ field ];
@@ -54,13 +54,13 @@ module.exports = function ( jsongin )
 				}
 				else
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `$pop: Invalid direction value [${array}] for field [${field}], should be -1 or 1.` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `$pop: Invalid direction value [${array}] for field [${field}], should be -1 or 1.` ); }
 					continue;
 				}
 				let result = Engine.SetValue( Document, field, array );
 				if ( result === false )
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `$pop: Setting the field [${field}] failed.` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `$pop: Setting the field [${field}] failed.` ); }
 					continue;
 				}
 			}

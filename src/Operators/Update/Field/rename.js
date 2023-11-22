@@ -25,7 +25,7 @@ module.exports = function ( jsongin )
 		{
 			if ( Engine.ShortType( UpdateFields ) !== 'o' )
 			{
-				if ( Engine.Settings.Explain ) { Engine.Explain.push( `$rename: The UpdateFields parameter must be an object.` ); }
+				if ( Engine.OpLog ) { Engine.OpLog( `$rename: The UpdateFields parameter must be an object.` ); }
 				return false;
 			}
 
@@ -37,13 +37,13 @@ module.exports = function ( jsongin )
 				result = Engine.SetValue( Document, field, undefined );
 				if ( result === false )
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `$rename: Unsetting the value of [${field}] failed.` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `$rename: Unsetting the value of [${field}] failed.` ); }
 					continue;
 				}
 				result = Engine.SetValue( Document, new_name, value );
 				if ( result === false )
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `$rename: Setting the value of [${new_name}] to [${value}] failed.` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `$rename: Setting the value of [${new_name}] to [${value}] failed.` ); }
 					continue;
 				}
 			}

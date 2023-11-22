@@ -13,7 +13,7 @@ module.exports = function ( Engine )
 		// Validate the parameters.
 		if ( Engine.ShortType( Document ) !== 'o' )
 		{
-			if ( Engine.Settings.Explain ) { Engine.Explain.push( `Projection: The Document parameter must be an object.` ); }
+			if ( Engine.OpLog ) { Engine.OpLog( `Projection: The Document parameter must be an object.` ); }
 			return null;
 		}
 		Document = Engine.Clone( Document );
@@ -21,7 +21,7 @@ module.exports = function ( Engine )
 		if ( 'lu'.includes( st_Projection ) === true ) { return Document; }
 		if ( st_Projection !== 'o' )
 		{
-			if ( Engine.Settings.Explain ) { Engine.Explain.push( `Projection: The Projection parameter must be an object.` ); }
+			if ( Engine.OpLog ) { Engine.OpLog( `Projection: The Projection parameter must be an object.` ); }
 			return null;
 		}
 
@@ -41,7 +41,7 @@ module.exports = function ( Engine )
 			{
 				if ( projection_type === 'exclude' ) 
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `Update: Cannot combine inclusion and exclusion operators in the same update.` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `Update: Cannot combine inclusion and exclusion operators in the same update.` ); }
 					return null;
 				}
 				projection_type = 'include';
@@ -50,7 +50,7 @@ module.exports = function ( Engine )
 			{
 				if ( projection_type === 'include' ) 
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `Update: Cannot combine inclusion and exclusion operators in the same update.` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `Update: Cannot combine inclusion and exclusion operators in the same update.` ); }
 					return null;
 				}
 				projection_type = 'exclude';
@@ -78,7 +78,7 @@ module.exports = function ( Engine )
 				let result = Engine.SetValue( projected, key, undefined );
 				if ( result === false )
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `Projection: Failed to unset the field [${field}] in the projection.` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `Projection: Failed to unset the field [${field}] in the projection.` ); }
 					continue;
 				}
 			}
@@ -92,7 +92,7 @@ module.exports = function ( Engine )
 				let result = Engine.SetValue( projected, key, value );
 				if ( result === false )
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `Projection: Failed to set the field [${field}] in the projection.` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `Projection: Failed to set the field [${field}] in the projection.` ); }
 					continue;
 				}
 			}

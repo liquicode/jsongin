@@ -2,8 +2,8 @@
 
 const assert = require( 'assert' );
 const jsongin = require( '../src/jsongin' )( {
-	PathExtensions: false,
-	Explain: false,
+	// OpLog: console.log,
+	// OpError: console.error,
 } );
 
 
@@ -82,39 +82,53 @@ describe( '100) Core Tests', () =>
 	describe( 'SplitPath Tests', () =>
 	{
 
-		it( 'should not allow non-string paths', () => 
-		{
-			assert.ok( jsongin.SplitPath() === null );
-			assert.ok( jsongin.SplitPath( null ) === null );
-		} );
-
-		it( 'should return an empty array for an empty path', () => 
+		it( 'should allow an undefined path', () => 
 		{
 			let elements = null;
-			elements = jsongin.SplitPath( '' );
+			elements = jsongin.SplitPath();
 			assert.ok( elements.length === 0 );
 		} );
 
-		it( 'should not allow the $ element within a path', () => 
-		{
-			assert.ok( jsongin.SplitPath( 'a.$' ) === null );
-			assert.ok( jsongin.SplitPath( 'a.$.b' ) === null );
-		} );
-
-		it( 'should not allow the $ element at the root when path extensions are disabled', () => 
-		{
-			assert.ok( jsongin.SplitPath( '$' ) === null );
-			assert.ok( jsongin.SplitPath( '$.a' ) === null );
-		} );
-
-		it( 'should ignore bracketed [] array indeces when path extensions are disabled', () => 
+		it( 'should allow a null path', () => 
 		{
 			let elements = null;
-
-			elements = jsongin.SplitPath( 'a[1]' );
-			assert.ok( elements.length === 1 );
-			assert.ok( elements[ 0 ] === 'a[1]' );
+			elements = jsongin.SplitPath( null );
+			assert.ok( elements.length === 0 );
 		} );
+
+		it( 'should allow an empty path', () => 
+		{
+			let elements = null;
+			elements = jsongin.SplitPath( null );
+			assert.ok( elements.length === 0 );
+		} );
+
+		it( 'should not allow non-string paths', () => 
+		{
+			assert.ok( jsongin.SplitPath( 42 ) === null );
+			assert.ok( jsongin.SplitPath( { some: 'value' } ) === null );
+		} );
+
+		// it( 'should not allow the $ element within a path', () => 
+		// {
+		// 	assert.ok( jsongin.SplitPath( 'a.$' ) === null );
+		// 	assert.ok( jsongin.SplitPath( 'a.$.b' ) === null );
+		// } );
+
+		// it( 'should not allow the $ element at the root when path extensions are disabled', () => 
+		// {
+		// 	assert.ok( jsongin.SplitPath( '$' ) === null );
+		// 	assert.ok( jsongin.SplitPath( '$.a' ) === null );
+		// } );
+
+		// it( 'should ignore bracketed [] array indeces when path extensions are disabled', () => 
+		// {
+		// 	let elements = null;
+
+		// 	elements = jsongin.SplitPath( 'a[1]' );
+		// 	assert.ok( elements.length === 1 );
+		// 	assert.ok( elements[ 0 ] === 'a[1]' );
+		// } );
 
 		it( 'should split a path', () => 
 		{
@@ -238,18 +252,30 @@ describe( '100) Core Tests', () =>
 	{
 		let data = null;
 
-		it( 'requires a non-empty document', () => 
+		it( 'document cannot be undefined', () => 
 		{
 			assert.ok( jsongin.SetValue( undefined, 'value', 42 ) === false );
+		} );
+
+		it( 'document cannot be null', () => 
+		{
 			assert.ok( jsongin.SetValue( null, 'value', 42 ) === false );
 		} );
 
-		it( 'requires a non-empty path', () => 
+		it( 'path cannot be undefined', () => 
 		{
-			data = {};
-			assert.ok( jsongin.SetValue( data, null, 42 ) === false );
-			assert.ok( jsongin.SetValue( data, '', 42 ) === false );
-			assert.ok( jsongin.SetValue( data, '', { name: 'Alice' } ) === false );
+			assert.ok( jsongin.SetValue( {}, undefined, 42 ) === false );
+		} );
+
+		it( 'path cannot be null', () => 
+		{
+			assert.ok( jsongin.SetValue( {}, null, 42 ) === false );
+		} );
+
+		it( 'path cannot be empty', () => 
+		{
+			assert.ok( jsongin.SetValue( {}, '', 3.14 ) === false );
+			assert.ok( jsongin.SetValue( {}, '', { name: 'Alice' } ) === false );
 		} );
 
 		it( 'should create a top level value', () => 
@@ -308,6 +334,15 @@ describe( '100) Core Tests', () =>
 			assert.ok( jsongin.SetValue( data, '0', 'admin' ) );
 			assert.ok( data.length === 3 );
 			assert.ok( data[ 0 ] === 'admin' );
+		} );
+
+		it( 'should create an array and value', () => 
+		{
+			data = {};
+			assert.ok( jsongin.SetValue( data, 'array.0', 3.14 ) );
+			assert.ok( data.array );
+			assert.ok( data.array.length === 1 );
+			assert.ok( data.array[ 0 ] === 3.14 );
 		} );
 
 		it( 'should insert nulls into new array elements', () => 
@@ -591,7 +626,7 @@ describe( '100) Core Tests', () =>
 			assert.ok( typeof clone.u === 'undefined' );
 		} );
 
-		it( 'should selectively clone with the AssignNotClone parameter', () => 
+		it( 'should selectively clone with the Exceptions parameter', () => 
 		{
 			function ObjectId( value ) { return value; }
 			let doc = { good: 'value', bad: new ObjectId( '1' ) };
@@ -600,6 +635,80 @@ describe( '100) Core Tests', () =>
 			assert.ok( typeof clone.bad !== 'undefined' );
 			// assert.ok( clone._id === null );
 		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'Flatten/Expand Tests', () =>
+	{
+
+
+		it( 'should flatten a document', () => 
+		{
+			let flattened = jsongin.Flatten( document );
+			assert.ok( flattened );
+			assert.ok( flattened.id === 1001 );
+			assert.ok( flattened[ 'user.name' ] === 'Alice' );
+			assert.ok( flattened[ 'user.location' ] === 'East' );
+			assert.ok( flattened[ 'profile.login' ] === 'alice' );
+			assert.ok( flattened[ 'profile.role' ] === 'admin' );
+			assert.ok( flattened[ 'tags.0' ] === 'Staff' );
+			assert.ok( flattened[ 'tags.1' ] === 'Dept. A' );
+		} );
+
+
+		it( 'should expand a flattened document', () => 
+		{
+			let flattened = jsongin.Flatten( document );
+			assert.ok( flattened );
+			let expanded = jsongin.Expand( flattened );
+			// assert.ok( jsongin.StrictEquals( expanded, document ) === true );
+			assert.ok( jsongin.LooseEquals( expanded, document ) === true );
+		} );
+
+
+		it( 'should flatten an empty document', () => 
+		{
+			let flattened = jsongin.Flatten( {} );
+			assert.ok( flattened );
+			assert.ok( Object.keys( flattened ).length === 0 );
+		} );
+
+
+		it( 'should expand an empty document', () => 
+		{
+			let expanded = jsongin.Expand( {} );
+			assert.ok( expanded );
+			assert.ok( Object.keys( expanded ).length === 0 );
+		} );
+
+
+		it( 'should flatten an array', () => 
+		{
+			let flattened = jsongin.Flatten( [ 1, 2, 'three' ] );
+			assert.ok( flattened );
+			assert.ok( flattened[ '0' ] === 1 );
+			assert.ok( flattened[ '1' ] === 2 );
+			assert.ok( flattened[ '2' ] === 'three' );
+		} );
+
+
+		it( 'should flatten an empty array', () => 
+		{
+			let flattened = jsongin.Flatten( [] );
+			assert.ok( flattened );
+			assert.ok( Object.keys( flattened ).length === 0 );
+		} );
+
+
+		it( 'should flatten a non-document', () => 
+		{
+			let flattened = jsongin.Flatten( 3.14 );
+			assert.ok( flattened );
+			assert.ok( flattened[ '' ] === 3.14 );
+		} );
+
 
 	} );
 

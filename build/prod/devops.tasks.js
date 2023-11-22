@@ -9,17 +9,6 @@ module.exports = {
 
 	],
 
-	build_docs: [
-
-		// Copy files to the docs external area.
-		{ $EnsureFolder: { folder: 'docs/external' } },
-		{ $CopyFile: { from: 'readme.md', to: 'docs/external/readme.md' } },
-		{ $CopyFile: { from: 'license.md', to: 'docs/external/license.md' } },
-		{ $CopyFile: { from: 'version.md', to: 'docs/external/version.md' } },
-		{ $CopyFile: { from: 'tests.md', to: 'docs/external/tests.md' } },
-
-	],
-
 	sync_version: [
 
 		// Read the package file.
@@ -27,10 +16,32 @@ module.exports = {
 
 		// Update files with the current version.
 		{ $ReplaceFileText: { filename: 'version.md', value: '${Package.version}' } },
-		{ $ReplaceFileText: { filename: 'docs/external/version.md', value: '${Package.version}' } },
 		{ $ReplaceFileText: { filename: 'readme.md', start_text: '(v', end_text: ')', value: '${Package.version}' } },
-		{ $ReplaceFileText: { filename: 'docs/external/readme.md', start_text: '(v', end_text: ')', value: '${Package.version}' } },
 		{ $ReplaceFileText: { filename: 'docs/_coverpage.md', start_text: '(v', end_text: ')', value: '${Package.version}' } },
+
+	],
+
+	build_docs: [
+
+		// Copy files to the docs external area.
+		{ $EnsureFolder: { folder: 'docs/external' } },
+		{ $CopyFile: { from: 'readme.md', to: 'docs/external/readme.md' } },
+		{ $CopyFile: { from: 'license.md', to: 'docs/external/license.md' } },
+		{ $CopyFile: { from: 'version.md', to: 'docs/external/version.md' } },
+		{ $CopyFile: { from: 'history.md', to: 'docs/external/history.md' } },
+		{ $CopyFile: { from: 'tests.md', to: 'docs/external/tests.md' } },
+
+	],
+
+	run_webpack: [
+
+		// Run webpack.
+		{
+			$Shell: {
+				command: 'npx webpack-cli --config build/webpack.config.js',
+				output: 'console', errors: 'console', halt_on_error: false
+			}
+		},
 
 	],
 
@@ -49,18 +60,6 @@ module.exports = {
 				command: 'npm publish . --access public',
 				// output: 'console', errors: 'console', halt_on_error: false
 				halt_on_error: false
-			}
-		},
-
-	],
-
-	run_webpack: [
-
-		// Run webpack.
-		{
-			$Shell: {
-				command: 'npx webpack-cli --config build/webpack.config.js',
-				output: 'console', errors: 'console', halt_on_error: false
 			}
 		},
 
@@ -112,10 +111,10 @@ module.exports = {
 		{ $ReadJsonFile: { filename: 'package.json', context: 'Package' } },
 
 		// Finalize and publish the existing version.
-		{ $RunTask: { name: 'run_webpack' } },
 		{ $RunTask: { name: 'run_tests' } },
-		{ $RunTask: { name: 'build_docs' } },
 		{ $RunTask: { name: 'sync_version' } },
+		{ $RunTask: { name: 'build_docs' } },
+		{ $RunTask: { name: 'run_webpack' } },
 		{ $RunTask: { name: 'update_aws_docs' } },
 		{ $RunTask: { name: 'git_publish_version' } },
 		{ $RunTask: { name: 'npm_publish_version' } },

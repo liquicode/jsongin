@@ -25,7 +25,7 @@ module.exports = function ( jsongin )
 		{
 			if ( Engine.ShortType( UpdateFields ) !== 'o' )
 			{
-				if ( Engine.Settings.Explain ) { Engine.Explain.push( `$min: The UpdateFields parameter must be an object.` ); }
+				if ( Engine.OpLog ) { Engine.OpLog( `$min: The UpdateFields parameter must be an object.` ); }
 				return false;
 			}
 
@@ -35,7 +35,7 @@ module.exports = function ( jsongin )
 				let min = Engine.AsNumber( UpdateFields[ field ] );
 				if ( min === null )
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `$min: This operator requires a numeric value but found [${UpdateFields[ field ]}] instead at [${field}].` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `$min: This operator requires a numeric value but found [${UpdateFields[ field ]}] instead at [${field}].` ); }
 					continue;
 				}
 				if ( min < value )
@@ -43,7 +43,7 @@ module.exports = function ( jsongin )
 					let result = Engine.SetValue( Document, field, min );
 					if ( result === false )
 					{
-						if ( Engine.Settings.Explain ) { Engine.Explain.push( `$min: Setting the value of [${field}] to [${value}] failed.` ); }
+						if ( Engine.OpLog ) { Engine.OpLog( `$min: Setting the value of [${field}] to [${value}] failed.` ); }
 					}
 				}
 			}

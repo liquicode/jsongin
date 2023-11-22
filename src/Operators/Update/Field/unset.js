@@ -25,7 +25,7 @@ module.exports = function ( jsongin )
 		{
 			if ( Engine.ShortType( UpdateFields ) !== 'o' )
 			{
-				if ( Engine.Settings.Explain ) { Engine.Explain.push( `$unset: The UpdateFields parameter must be an object.` ); }
+				if ( Engine.OpLog ) { Engine.OpLog( `$unset: The UpdateFields parameter must be an object.` ); }
 				return false;
 			}
 
@@ -34,7 +34,7 @@ module.exports = function ( jsongin )
 				let result = Engine.SetValue( Document, field, undefined );
 				if ( result === false )
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `$unset: Unsetting the value of [${field}] failed.` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `$unset: Unsetting the value of [${field}] failed.` ); }
 				}
 			}
 

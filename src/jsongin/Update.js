@@ -13,7 +13,7 @@ module.exports = function ( Engine )
 		// Validate the parameters.
 		if ( Engine.ShortType( Document ) !== 'o' )
 		{
-			if ( Engine.Settings.Explain ) { Engine.Explain.push( `Update: The Document parameter must be an object.` ); }
+			if ( Engine.OpLog ) { Engine.OpLog( `Update: The Document parameter must be an object.` ); }
 			return null;
 		}
 		Document = Engine.Clone( Document );
@@ -21,7 +21,7 @@ module.exports = function ( Engine )
 		if ( 'lu'.includes( st_Update ) === true ) { return Document; }
 		if ( st_Update !== 'o' )
 		{
-			if ( Engine.Settings.Explain ) { Engine.Explain.push( `Update: The Update parameter must be an object.` ); }
+			if ( Engine.OpLog ) { Engine.OpLog( `Update: The Update parameter must be an object.` ); }
 			return null;
 		}
 
@@ -35,13 +35,13 @@ module.exports = function ( Engine )
 				let result = Engine.UpdateOperators[ key ].Update( Document, Updates[ key ] );
 				if ( result === false )
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `Update: The update operator [${key}] failed.` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `Update: The update operator [${key}] failed.` ); }
 					// return false;
 				}
 			}
 			else
 			{
-				if ( Engine.Settings.Explain ) { Engine.Explain.push( `Update: Unknown update operator [${key}] encountered.` ); }
+				if ( Engine.OpLog ) { Engine.OpLog( `Update: Unknown update operator [${key}] encountered.` ); }
 			}
 		}
 

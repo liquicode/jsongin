@@ -68,6 +68,8 @@ jsongin Functions
 - `Flatten( Document )` : Flattens a hierarchical document into a document with top-level entries in dot notation.
 - `Expand( Document )` : Expands fields found in dot notation into hierarchical elements within the document.
 
+> See the [Document Manipulation](./Document%20Manipulation.md) document for more information on how to use these functions.
+
 
 ### Object Cloning
 
@@ -76,6 +78,7 @@ jsongin Functions
   stringify/parse approach to cloning.
   The `Exceptions` paramter is an array of field names (in dot notation) that are treated differently and are
   copied by reference rather than by cloning its value.
+  This avoids problems when document fields contain functions or regular expressions.
 
 
 ### Data Types and Conversions

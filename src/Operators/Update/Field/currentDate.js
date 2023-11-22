@@ -27,7 +27,7 @@ module.exports = function ( jsongin )
 
 			if ( Engine.ShortType( UpdateFields ) !== 'o' )
 			{
-				if ( Engine.Settings.Explain ) { Engine.Explain.push( `$currentDate: The UpdateFields parameter must be an object.` ); }
+				if ( Engine.OpLog ) { Engine.OpLog( `$currentDate: The UpdateFields parameter must be an object.` ); }
 				return false;
 			}
 
@@ -58,14 +58,14 @@ module.exports = function ( jsongin )
 						}
 						else
 						{
-							if ( Engine.Settings.Explain ) { Engine.Explain.push( `$currentDate: Unknown date dpecification [${date_spec}] for [${field}] is invalid.` ); }
+							if ( Engine.OpLog ) { Engine.OpLog( `$currentDate: Unknown date dpecification [${date_spec}] for [${field}] is invalid.` ); }
 							continue;
 						}
 					}
 				}
 				else
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `$currentDate: The date dpecification of [${JSON.stringify( date_spec )}] for [${field}] is invalid.` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `$currentDate: The date dpecification of [${JSON.stringify( date_spec )}] for [${field}] is invalid.` ); }
 					continue;
 				}
 
@@ -74,7 +74,7 @@ module.exports = function ( jsongin )
 					let result = Engine.SetValue( Document, field, value );
 					if ( result === false )
 					{
-						if ( Engine.Settings.Explain ) { Engine.Explain.push( `$currentDate: Setting the value of [${field}] to [${value}] failed.` ); }
+						if ( Engine.OpLog ) { Engine.OpLog( `$currentDate: Setting the value of [${field}] to [${value}] failed.` ); }
 						continue;
 					}
 				}

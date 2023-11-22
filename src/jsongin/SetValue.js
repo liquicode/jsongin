@@ -8,7 +8,7 @@ module.exports = function ( Engine )
 		let document_type = Engine.ShortType( Document );
 		if ( !'oa'.includes( document_type ) )
 		{
-			if ( Engine.Settings.Explain ) { Engine.Explain.push( `SetValue: Document must be an object or array.` ); }
+			if ( Engine.OpLog ) { Engine.OpLog( `SetValue: Document must be an object or array.` ); }
 			return false;
 		}
 
@@ -16,12 +16,12 @@ module.exports = function ( Engine )
 		let path_elements = Engine.SplitPath( Path );
 		if ( path_elements === null ) 
 		{
-			if ( Engine.Settings.Explain ) { Engine.Explain.push( `SetValue: SplitPath returned null.` ); }
+			if ( Engine.OpLog ) { Engine.OpLog( `SetValue: Invalid Path.` ); }
 			return false;
 		}
 		if ( path_elements.length === 0 ) 
 		{
-			if ( Engine.Settings.Explain ) { Engine.Explain.push( `SetValue: Cannot set a value using an empty path.` ); }
+			if ( Engine.OpLog ) { Engine.OpLog( `SetValue: Cannot set a value using an empty path.` ); }
 			return false;
 		}
 
@@ -38,12 +38,31 @@ module.exports = function ( Engine )
 			{
 				if ( typeof name === 'number' )
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `SetValue: Type mismatch at [${current_path}]. Expected a field name but found an array index instead.` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `SetValue: Type mismatch at [${current_path}]. Expected a field name but found an array index instead.` ); }
 					return false;
 				}
 				if ( typeof node[ name ] === 'undefined' ) 
 				{
 					node[ name ] = {};
+					// Inspect next path element.
+					if ( index < ( path_elements.length - 1 ) )
+					{
+						let next_name = path_elements[ index + 1 ];
+						let st_next_name = Engine.ShortType( next_name );
+						if ( st_next_name === 's' )
+						{
+							node[ name ] = {};
+						}
+						else if ( st_next_name === 'n' )
+						{
+							node[ name ] = [];
+						}
+						else
+						{
+							if ( Engine.OpLog ) { Engine.OpLog( `SetValue: Unsupported element type [${st_next_name}] in path at [${current_path}]. Expected a field name or an array index.` ); }
+							return false;
+						}
+					}
 				}
 				if ( index === ( path_elements.length - 1 ) )
 				{
@@ -62,7 +81,7 @@ module.exports = function ( Engine )
 			{
 				if ( typeof name === 'string' )
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `SetValue: Type mismatch at [${current_path}]. Expected a array index but found a field name instead.` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `SetValue: Type mismatch at [${current_path}]. Expected a array index but found a field name instead.` ); }
 					return false;
 				}
 				//TODO: Does it make sense to add nulls for empty elements?

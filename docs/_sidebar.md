@@ -33,5 +33,6 @@
 - More Information
 
 	- [Testing Output](external/tests.md)
+	- [Project History](external/history.md)
 	- [Software License](external/license.md)
 	- [Software Version](external/version.md)

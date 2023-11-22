@@ -2,16 +2,15 @@
 
 module.exports = function ( EngineSettings = {} )
 {
-	if ( typeof EngineSettings.PathExtensions === 'undefined' ) { EngineSettings.PathExtensions = false; }
-	if ( typeof EngineSettings.Explain === 'undefined' ) { EngineSettings.Explain = false; }
-	if ( typeof EngineSettings.ClearExplainOnTopLevelQuery === 'undefined' ) { EngineSettings.ClearExplainOnTopLevelQuery = true; }
+	// if ( typeof EngineSettings.PathExtensions === 'undefined' ) { EngineSettings.PathExtensions = false; }
+	if ( typeof EngineSettings.OpLog === 'undefined' ) { EngineSettings.OpLog = null; }
+	if ( typeof EngineSettings.OpError === 'undefined' ) { EngineSettings.OpError = null; }
 
 	let Engine = {};
 
 
 	//---------------------------------------------------------------------
 	Engine.Settings = EngineSettings;
-	Engine.Explain = [];
 	Engine.QueryOperators = {
 
 		// Comparison Query Operators
@@ -74,7 +73,6 @@ module.exports = function ( EngineSettings = {} )
 
 	};
 
-
 	//---------------------------------------------------------------------
 	Engine.Query = require( './jsongin/Query' )( Engine );
 	Engine.Project = require( './jsongin/Project' )( Engine );
@@ -85,10 +83,16 @@ module.exports = function ( EngineSettings = {} )
 	Engine.JoinPaths = require( './jsongin/JoinPaths' )( Engine );
 	Engine.GetValue = require( './jsongin/GetValue' )( Engine );
 	Engine.SetValue = require( './jsongin/SetValue' )( Engine );
+	Engine.Flatten = require( './jsongin/Flatten' )( Engine );
+	Engine.Expand = require( './jsongin/Expand' )( Engine );
 
 	//---------------------------------------------------------------------
 	Engine.ShortType = require( './jsongin/ShortType' )( Engine );
 	Engine.BsonType = require( './jsongin/BsonType' )( Engine );
+
+	//---------------------------------------------------------------------
+	Engine.OpLog = EngineSettings.OpLog;
+	Engine.OpError = EngineSettings.OpError;
 
 
 	//---------------------------------------------------------------------
@@ -191,7 +195,7 @@ module.exports = function ( EngineSettings = {} )
 			}
 		}
 		if ( 'lu'.includes( Engine.ShortType( Exceptions ) ) ) { Exceptions = []; }
-		if ( !Array.isArray( Exceptions ) ) { throw new Error( `The AssignNotClone parameter must be an array of field names in dot notation.` ); }
+		if ( !Array.isArray( Exceptions ) ) { throw new Error( `The Exceptions parameter must be an array of field names in dot notation.` ); }
 		let clone = clone_node( Document, '' );
 		return clone;
 	};
@@ -299,7 +303,7 @@ module.exports = function ( EngineSettings = {} )
 				}
 				else
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `PathTerminals: Unresolved path elements exist: [${elements.join( '.' )}].` ); }
+					if ( Engine.OpLog ){ Engine.OpLog( `PathTerminals: Unresolved path elements exist: [${elements.join( '.' )}].` ); }
 					// throw new Error( 'PathTerminals: Unresolved path elements exist.' );
 					return false;
 				}
@@ -307,8 +311,18 @@ module.exports = function ( EngineSettings = {} )
 			return true;
 		}
 
-		let elements = Engine.SplitPath( Path );
-		let result = r_PathTerminals( Value, '', elements );
+		let path_elements = Engine.SplitPath( Path );
+		if ( path_elements === null ) 
+		{
+			if ( Engine.OpLog ){ Engine.OpLog( `PathTerminals: Invalid Path.` ); }
+			return false;
+		}
+		if ( path_elements.length === 0 ) 
+		{
+			if ( Engine.OpLog ){ Engine.OpLog( `PathTerminals: Path must be non-empty.` ); }
+			return false;
+		}
+		let result = r_PathTerminals( Value, '', path_elements );
 		return result;
 	};
 

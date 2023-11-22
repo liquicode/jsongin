@@ -9,16 +9,16 @@ module.exports = function ( Engine )
 		if ( Path === null ) { return Document; }
 		if ( typeof Path !== 'string' )
 		{
-			if ( Engine.Settings.Explain ) { Engine.Explain.push( `GetValue: Path is invalid [${Path}].` ); }
+			if ( Engine.OpLog ) { Engine.OpLog( `GetValue: Path is invalid [${Path}].` ); }
 			return;
 		}
 		if ( Path.length === 0 ) { return Document; }
 
-		// Pre-process the path.
+		// Split the path.
 		let path_elements = Engine.SplitPath( Path );
 		if ( path_elements === null ) 
 		{
-			if ( Engine.Settings.Explain ) { Engine.Explain.push( `GetValue: SplitPath returned null.` ); }
+			if ( Engine.OpLog ) { Engine.OpLog( `GetValue: SplitPath returned null.` ); }
 			return;
 		}
 
@@ -32,7 +32,7 @@ module.exports = function ( Engine )
 				// Check for out of bounds index.
 				if ( typeof name === 'number' )
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `GetValue: Array index [${name}] is out of bounds at [${Path}].` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `GetValue: Array index [${name}] is out of bounds at [${Path}].` ); }
 					return;
 				}
 				// Check for Implicit Iterator.

@@ -13,12 +13,12 @@ module.exports = function ( Engine )
 		// Validate the parameters.
 		if ( Engine.ShortType( Document ) !== 'o' )
 		{
-			if ( Engine.Settings.Explain ) { Engine.Explain.push( `Query: The Document parameter must be an object.` ); }
+			if ( Engine.OpLog ) { Engine.OpLog( `Query: The Document parameter must be an object.` ); }
 			return false;
 		}
 		if ( Engine.ShortType( Criteria ) !== 'o' )
 		{
-			if ( Engine.Settings.Explain ) { Engine.Explain.push( `Query: The Query parameter must be an object.` ); }
+			if ( Engine.OpLog ) { Engine.OpLog( `Query: The Query parameter must be an object.` ); }
 			return false;
 		}
 
@@ -36,7 +36,7 @@ module.exports = function ( Engine )
 		}
 		if ( ( QueryPath === '' ) && ( Object.keys( Criteria ).length === 0 ) )
 		{
-			if ( Engine.Settings.Explain ) { Engine.Explain.push( `Query: An empty query object {} matches everything.` ); }
+			if ( Engine.OpLog ) { Engine.OpLog( `Query: An empty query object {} matches everything.` ); }
 			return true;
 		}
 
@@ -51,7 +51,7 @@ module.exports = function ( Engine )
 				{
 					if ( !Engine.QueryOperators[ key ].TopLevel )
 					{
-						if ( Engine.Settings.Explain ) { Engine.Explain.push( `Query: Operator [${key}] cannot appear at the top level of a query. Only logical operators can appear at the top level of a query.` ); }
+						if ( Engine.OpLog ) { Engine.OpLog( `Query: Operator [${key}] cannot appear at the top level of a query. Only logical operators can appear at the top level of a query.` ); }
 						return false;
 					}
 				}
@@ -59,13 +59,13 @@ module.exports = function ( Engine )
 				let sub_query = Criteria[ key ];
 				if ( typeof sub_query === 'undefined' )
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `Query: Operator [${key}] cannot be set to undefined. Use $exists to chrck for a field in the document.` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `Query: Operator [${key}] cannot be set to undefined. Use $exists to chrck for a field in the document.` ); }
 					return false;
 				}
 				let result = Engine.QueryOperators[ key ].Query( Document, sub_query, QueryPath );
 				if ( result === false ) 
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `Query: Operator [${key}] returned false at [${QueryPath}].` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `Query: Operator [${key}] returned false at [${QueryPath}].` ); }
 					return false;
 				}
 			}
@@ -83,7 +83,7 @@ module.exports = function ( Engine )
 				{
 					if ( typeof sub_query === 'undefined' )
 					{
-						if ( Engine.Settings.Explain ) { Engine.Explain.push( `Query: The implicit $eq operator cannot be set to undefined. Use $exists to chrck for a field in the document.` ); }
+						if ( Engine.OpLog ) { Engine.OpLog( `Query: The implicit $eq operator cannot be set to undefined. Use $exists to chrck for a field in the document.` ); }
 						return false;
 					}
 					// Implicit $eq

@@ -25,7 +25,7 @@ module.exports = function ( jsongin )
 		{
 			if ( Engine.ShortType( UpdateFields ) !== 'o' )
 			{
-				if ( Engine.Settings.Explain ) { Engine.Explain.push( `$set: The UpdateFields parameter must be an object.` ); }
+				if ( Engine.OpLog ) { Engine.OpLog( `$set: The UpdateFields parameter must be an object.` ); }
 				return false;
 			}
 
@@ -35,7 +35,7 @@ module.exports = function ( jsongin )
 				let result = Engine.SetValue( Document, field, value );
 				if ( result === false )
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `$set: Setting the value of [${field}] to [${value}] failed.` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `$set: Setting the value of [${field}] to [${value}] failed.` ); }
 				}
 			}
 

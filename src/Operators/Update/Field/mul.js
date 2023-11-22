@@ -25,7 +25,7 @@ module.exports = function ( jsongin )
 		{
 			if ( Engine.ShortType( UpdateFields ) !== 'o' )
 			{
-				if ( Engine.Settings.Explain ) { Engine.Explain.push( `$mul: The UpdateFields parameter must be an object.` ); }
+				if ( Engine.OpLog ) { Engine.OpLog( `$mul: The UpdateFields parameter must be an object.` ); }
 				return false;
 			}
 
@@ -35,14 +35,14 @@ module.exports = function ( jsongin )
 				let mul = Engine.AsNumber( UpdateFields[ field ] );
 				if ( mul === null )
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `$mul: This operator requires a numeric value but found [${UpdateFields[ field ]}] instead at [${field}].` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `$mul: This operator requires a numeric value but found [${UpdateFields[ field ]}] instead at [${field}].` ); }
 					continue;
 				}
 				value *= mul;
 				let result = Engine.SetValue( Document, field, value );
 				if ( result === false )
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `$mul: Setting the value of [${field}] to [${value}] failed.` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `$mul: Setting the value of [${field}] to [${value}] failed.` ); }
 				}
 			}
 

@@ -25,7 +25,7 @@ module.exports = function ( jsongin )
 		{
 			if ( Engine.ShortType( UpdateFields ) !== 'o' )
 			{
-				if ( Engine.Settings.Explain ) { Engine.Explain.push( `$max: The UpdateFields parameter must be an object.` ); }
+				if ( Engine.OpLog ) { Engine.OpLog( `$max: The UpdateFields parameter must be an object.` ); }
 				return false;
 			}
 
@@ -35,7 +35,7 @@ module.exports = function ( jsongin )
 				let max = Engine.AsNumber( UpdateFields[ field ] );
 				if ( max === null )
 				{
-					if ( Engine.Settings.Explain ) { Engine.Explain.push( `$max: This operator requires a numeric value but found [${UpdateFields[ field ]}] instead at [${field}].` ); }
+					if ( Engine.OpLog ) { Engine.OpLog( `$max: This operator requires a numeric value but found [${UpdateFields[ field ]}] instead at [${field}].` ); }
 					continue;
 				}
 				if ( max > value )
@@ -43,7 +43,7 @@ module.exports = function ( jsongin )
 					let result = Engine.SetValue( Document, field, max );
 					if ( result === false )
 					{
-						if ( Engine.Settings.Explain ) { Engine.Explain.push( `$max: Setting the value of [${field}] to [${value}] failed.` ); }
+						if ( Engine.OpLog ) { Engine.OpLog( `$max: Setting the value of [${field}] to [${value}] failed.` ); }
 					}
 				}
 			}
