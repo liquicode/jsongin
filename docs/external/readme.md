@@ -1,5 +1,5 @@
 # jsongin
-[`@liquiode/jsongin`](https://github.com/liquicode/jsongin) (v0.0.9)
+[`@liquiode/jsongin`](https://github.com/liquicode/jsongin) (v0.0.10)
 
 ### A JSON Engine for MongoDB-Style Queries and Data Structure Manipulation
 

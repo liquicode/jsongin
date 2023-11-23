@@ -1,41 +1,50 @@
 'use strict';
 
-module.exports = function ( Engine )
+module.exports = function ( jsongin )
 {
 	function Flatten( Document ) 
 	{
-		let flattened = {};
-		function r_flatten( Node, Path )
+		try
 		{
-			let short_type = Engine.ShortType( Node );
-			if ( short_type === 'o' )
+			let flattened = {};
+			function r_flatten( Node, Path )
 			{
-				for ( let key in Node )
+				let short_type = jsongin.ShortType( Node );
+				if ( short_type === 'o' )
 				{
-					let path = Path;
-					if ( !path ) { path = key; }
-					else { path += '.' + key; }
-					r_flatten( Node[ key ], path );
+					for ( let key in Node )
+					{
+						let path = Path;
+						if ( !path ) { path = key; }
+						else { path += '.' + key; }
+						r_flatten( Node[ key ], path );
+					}
 				}
-			}
-			else if ( short_type === 'a' )
-			{
-				for ( let index = 0; index < Node.length; index++ )
+				else if ( short_type === 'a' )
 				{
-					let path = Path;
-					if ( !path ) { path = '' + index; }
-					else { path += '.' + index; }
-					r_flatten( Node[ index ], path );
+					for ( let index = 0; index < Node.length; index++ )
+					{
+						let path = Path;
+						if ( !path ) { path = '' + index; }
+						else { path += '.' + index; }
+						r_flatten( Node[ index ], path );
+					}
 				}
+				else
+				{
+					flattened[ Path ] = Node;
+				}
+				return;
 			}
-			else
-			{
-				flattened[ Path ] = Node;
-			}
-			return;
+			if ( !'oa'.includes( jsongin.ShortType( Document ) ) ) { throw new Error( `Document must be an object or array.` ); }
+			r_flatten( Document, '' );
+			return flattened;
 		}
-		r_flatten( Document, '' );
-		return flattened;
+		catch ( error )
+		{
+			if ( jsongin.OpError ) { jsongin.OpError( 'Flatten: ' + error.message ); }
+			throw error;
+		}
 	};
 	return Flatten;
 };

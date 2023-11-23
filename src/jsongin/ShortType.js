@@ -1,6 +1,6 @@
 'use strict';
 
-module.exports = function ( Engine )
+module.exports = function ( jsongin )
 {
 	function ShortType( Value ) // bnsloarefyu
 	{

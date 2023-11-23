@@ -42,7 +42,7 @@ module.exports = function ( jsongin )
 			else if ( 'bnslu'.includes( actual_type ) && 'a'.includes( match_type ) )
 			{
 				// Primtive === Array
-				if ( this.Engine.Settings.Explain ) { this.Engine.Explain.push( `ImplicitEq: cannot compare [${match_type}] type with [${actual_type}] type at [${Path}].` ); }
+				if ( jsongin.OpLog ) { jsongin.OpLog( `ImplicitEq: cannot compare [${match_type}] type with [${actual_type}] type at [${Path}].` ); }
 				return false;
 			}
 			else if ( 'bnslu'.includes( actual_type ) && 'o'.includes( match_type ) )
@@ -55,7 +55,7 @@ module.exports = function ( jsongin )
 				}
 				else
 				{
-					if ( this.Engine.Settings.Explain ) { this.Engine.Explain.push( `ImplicitEq: requires query when comparing against [${actual_type}] type with [${actual_type}] type at [${Path}].` ); }
+					if ( jsongin.OpLog ) { jsongin.OpLog( `ImplicitEq: requires query when comparing against [${actual_type}] type with [${actual_type}] type at [${Path}].` ); }
 					return false;
 				}
 			}
@@ -129,7 +129,7 @@ module.exports = function ( jsongin )
 			}
 			else
 			{
-				if ( this.Engine.Settings.Explain ) { this.Engine.Explain.push( `ImplicitEq: cannot compare [${match_type}] type with [${actual_type}] type at [${Path}].` ); }
+				if ( jsongin.OpLog ) { jsongin.OpLog( `ImplicitEq: cannot compare [${match_type}] type with [${actual_type}] type at [${Path}].` ); }
 				return false;
 			}
 

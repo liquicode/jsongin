@@ -1,68 +1,85 @@
 'use strict';
 
-module.exports = function ( Engine )
+const jsongin = require( '../jsongin' );
+
+module.exports = function ( jsongin )
 {
 	function GetValue( Document, Path )
 	{
-		// Validate Path.
-		if ( typeof Path === 'undefined' ) { return Document; }
-		if ( Path === null ) { return Document; }
-		if ( typeof Path !== 'string' )
+		try
 		{
-			if ( Engine.OpLog ) { Engine.OpLog( `GetValue: Path is invalid [${Path}].` ); }
-			return;
-		}
-		if ( Path.length === 0 ) { return Document; }
-
-		// Split the path.
-		let path_elements = Engine.SplitPath( Path );
-		if ( path_elements === null ) 
-		{
-			if ( Engine.OpLog ) { Engine.OpLog( `GetValue: SplitPath returned null.` ); }
-			return;
-		}
-
-		// Locate the path.
-		let node = Document;
-		for ( let index = 0; index < path_elements.length; index++ )
-		{
-			let name = path_elements[ index ];
-			if ( typeof node[ name ] === 'undefined' )
+			// Validate Path.
+			// If the Path is empty (undefined, null, or empty string ""), then the Document is returned.
+			switch ( jsongin.ShortType( Path ) )
 			{
-				// Check for out of bounds index.
-				if ( typeof name === 'number' )
+				case 'u': return Document;
+				case 'l': return Document;
+				case 'n': break;
+				case 's': break;
+				default: throw new Error( `Path is invalid [${JSON.stringify( Path )}].` );
+			}
+			if ( Path.length === 0 ) { return Document; }
+
+			// Locate the path.
+			let path_elements = jsongin.SplitPath( Path );
+			let node = Document;
+			for ( let path_index = 0; path_index < path_elements.length; path_index++ )
+			{
+				// Get the key.
+				let key = path_elements[ path_index ];
+
+				// Get the type of node and key.
+				let st_key = jsongin.ShortType( key );
+				let st_node = jsongin.ShortType( node );
+
+				// Process the current node.
+				if ( st_node === 'a' )
 				{
-					if ( Engine.OpLog ) { Engine.OpLog( `GetValue: Array index [${name}] is out of bounds at [${Path}].` ); }
-					return;
-				}
-				// Check for Implicit Iterator.
-				let node_type = Engine.ShortType( node );
-				if ( node_type !== 'a' ) { return; }
-				if ( node.length === 0 ) { return; }
-				// Collect array elements.
-				let values = [];
-				let sub_path = path_elements.slice( index ).join( '.' );
-				let terminals_result = Engine.PathTerminals( node, sub_path,
-					function ( Value, ValueType, Path )
+					if ( st_key === 'n' )
 					{
-						values.push( Value );
-					} );
-				if ( terminals_result === false )
-				{
-					return;
+						// Check for reverse indexing and invalid index.
+						if ( key < 0 ) { key = node.length + key; }
+						if ( key < 0 ) { return undefined; }
+						if ( key >= node.length ) { return undefined; }
+						// Get the array element and continue down the path.
+						node = node[ key ];
+						continue;
+					}
+					else
+					{
+						// Execute the Implicit Iterator.
+						let values = [];
+						let sub_path = path_elements.slice( path_index ).join( '.' );
+						for ( let index = 0; index < node.length; index++ )
+						{
+							let value = GetValue( node[ index ], sub_path );
+							values.push( value );
+						}
+						return values;
+					}
 				}
-				// Return the array.
-				return values;
+				else if ( st_node === 'o' )
+				{
+					// Get the field value and continue down the path.
+					node = node[ key ];
+					continue;
+				}
+				else
+				{
+					// Field does not exist.
+					return undefined;
+				}
 			}
-			else
-			{
-				// Walk down the path.
-				node = node[ name ];
-			}
-		}
 
-		// Return the node.
-		return node;
+			// Return the node value.
+			return node;
+
+		}
+		catch ( error )
+		{
+			if ( jsongin.OpError ) { jsongin.OpError( 'GetValue: ' + error.message ); }
+			throw error;
+		}
 	};
 	return GetValue;
 };

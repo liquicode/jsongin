@@ -1,16 +1,24 @@
 'use strict';
 
-module.exports = function ( Engine )
+module.exports = function ( jsongin )
 {
 	function Expand( Document )
 	{
-		if ( Engine.ShortType( Document ) !== 'o' ) { throw new Error( `Document must be an object.` ); }
-		let expanded = {};
-		for ( let key in Document )
+		try
 		{
-			Engine.SetValue( expanded, key, Document[ key ] );
+			if ( jsongin.ShortType( Document ) !== 'o' ) { throw new Error( `Document must be an object.` ); }
+			let expanded = {};
+			for ( let key in Document )
+			{
+				jsongin.SetValue( expanded, key, Document[ key ] );
+			}
+			return expanded;
 		}
-		return expanded;
+		catch ( error )
+		{
+			if ( jsongin.OpError ) { jsongin.OpError( 'Expand: ' + error.message ); }
+			throw error;
+		}
 	};
 	return Expand;
 };

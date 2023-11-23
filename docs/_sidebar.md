@@ -10,23 +10,48 @@
 
 - MongoDB Mechanics
 
-	- [Query Reference](guides/Query%20Reference.md)
-	- [Projection Reference](guides/Projection%20Reference.md)
-	- [Update Reference](guides/Update%20Reference.md)
+	- [`Query()`](guides/Query%20Reference.md)
+	- [`Project()`](guides/Projection%20Reference.md)
+	- [`Update()`](guides/Update%20Reference.md)
+	
 	- [Operator Reference](guides/Operators%20Reference.md)
 
 <hr>
 
-- Document Inspection and Manipulation
+- Document Mechanics
 
-	- [Short Types](guides/Short%20Types.md)
 	- [Document Manipulation](guides/Document%20Manipulation.md)
+
+	- [`GetValue()`](guides/jsongin/GetValue.md)
+	- [`SetValue()`](guides/jsongin/SetValue.md)
+	- [`Flatten()`](guides/jsongin/Flatten.md)
+	- [`Expand()`](guides/jsongin/Expand.md)
+	- [`SplitPath()`](guides/jsongin/SplitPath.md)
+	- [`JoinPaths()`](guides/jsongin/JoinPaths.md)
+
+<hr>
+
+- Object Matching and Cloning
+
+	- `LooseEquals()`
+	- `StrictEquals()`
+	- `Clone( Document )`
+	- [`SafeClone( Document, Exceptions )`](guides/jsongin/SafeClone.md)
+
+<hr>
+
+- Data Types and Conversions
+
+	- [`ShortType()`](guides/Short%20Types.md)
+	- `BsonType()`
+	- `AsNumber()`
+	- `AsDate()`
 
 <hr>
 
 - Examples
 
-
+	- ***(coming soon)***
 
 <hr>
 

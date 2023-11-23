@@ -55,28 +55,6 @@
 			"internalConsoleOptions": "openOnSessionStart",
 		},
 		{
-			"name": "150) Core with Path Extensions Tests",
-			"type": "node",
-			"request": "launch",
-			"skipFiles": [
-				"<node_internals>/**"
-			],
-			"cwd": "${workspaceFolder}",
-			"program": "${workspaceFolder}/node_modules/mocha/bin/mocha",
-			"args": [
-				"-u",
-				"bdd",
-				"test/150*.js",
-				"--timeout",
-				"0",
-				"--slow",
-				"10",
-				"--colors",
-			],
-			"outputCapture": "std",
-			"internalConsoleOptions": "openOnSessionStart",
-		},
-		{
 			"name": "200) Comparison Operator Tests",
 			"type": "node",
 			"request": "launch",

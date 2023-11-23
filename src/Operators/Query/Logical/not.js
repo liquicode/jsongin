@@ -38,7 +38,7 @@ module.exports = function ( jsongin )
 			}
 			else
 			{
-				if ( this.Engine.Settings.Explain ) { this.Engine.Explain.push( `$not: requires an object or regexp but found type [${match_type}] instead at [${Path}].` ); }
+				if ( jsongin.OpLog ) { jsongin.OpLog( `$not: requires an object or regexp but found type [${match_type}] instead at [${Path}].` ); }
 			}
 			return !result;
 		},

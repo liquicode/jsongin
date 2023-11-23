@@ -74,23 +74,34 @@ module.exports = function ( EngineSettings = {} )
 	};
 
 	//---------------------------------------------------------------------
+	// MongoDB Mechanics
 	Engine.Query = require( './jsongin/Query' )( Engine );
 	Engine.Project = require( './jsongin/Project' )( Engine );
 	Engine.Update = require( './jsongin/Update' )( Engine );
 
 	//---------------------------------------------------------------------
-	Engine.SplitPath = require( './jsongin/SplitPath' )( Engine );
-	Engine.JoinPaths = require( './jsongin/JoinPaths' )( Engine );
+	// Document Mechanics
 	Engine.GetValue = require( './jsongin/GetValue' )( Engine );
 	Engine.SetValue = require( './jsongin/SetValue' )( Engine );
 	Engine.Flatten = require( './jsongin/Flatten' )( Engine );
 	Engine.Expand = require( './jsongin/Expand' )( Engine );
+	Engine.SplitPath = require( './jsongin/SplitPath' )( Engine );
+	Engine.JoinPaths = require( './jsongin/JoinPaths' )( Engine );
 
 	//---------------------------------------------------------------------
+	// Object Matching and Cloning
+	Engine.LooseEquals = function ( DocumentA, DocumentB )	{		return Engine.QueryOperators.$eqx.Query( DocumentA, DocumentB );	};
+	Engine.StrictEquals = function ( DocumentA, DocumentB )	{		return Engine.QueryOperators.$eq.Query( DocumentA, DocumentB );	};
+	Engine.Clone = function ( Document ) { return JSON.parse( JSON.stringify( Document ) ); };
+	Engine.SafeClone = require( './jsongin/SafeClone' )( Engine );
+
+	//---------------------------------------------------------------------
+	// Data Types and Conversions
 	Engine.ShortType = require( './jsongin/ShortType' )( Engine );
 	Engine.BsonType = require( './jsongin/BsonType' )( Engine );
 
 	//---------------------------------------------------------------------
+	// OpLog
 	Engine.OpLog = EngineSettings.OpLog;
 	Engine.OpError = EngineSettings.OpError;
 
@@ -129,202 +140,6 @@ module.exports = function ( EngineSettings = {} )
 	};
 
 
-	//---------------------------------------------------------------------
-	Engine.Clone = function ( Document )
-	{
-		return JSON.parse( JSON.stringify( Document ) );
-	};
-
-
-	//---------------------------------------------------------------------
-	Engine.SafeClone = function ( Document, Exceptions )
-	{
-		function clone_node( Node, Path )
-		{
-			let short_type = Engine.ShortType( Node );
-			switch ( short_type )
-			{
-				case 'b': return Node;
-				case 'n': return Node;
-				case 's': return Node;
-				case 'l': return Node;
-				case 'o':
-					{
-						let value = {};
-						for ( let key in Node )
-						{
-							let path = Path;
-							if ( !path ) { path = key; }
-							else { path += '.' + key; }
-							if ( Exceptions.includes( path ) )
-							{
-								value[ key ] = Node[ key ];
-							}
-							else
-							{
-								value[ key ] = clone_node( Node[ key ], path );
-							}
-						}
-						return value;
-					}
-				case 'a':
-					{
-						let value = [];
-						for ( let index = 0; index < Node.length; index++ )
-						{
-							let path = Path;
-							if ( !path ) { path = '' + index; }
-							else { path += '.' + index; }
-							if ( Exceptions.includes( path ) )
-							{
-								value.push( Node[ index ] );
-							}
-							else
-							{
-								value.push( clone_node( Node[ index ], path ) );
-							}
-						}
-						return value;
-					}
-				case 'r': return Node;
-				case 'e': return Node;
-				case 'f': return Node;
-				case 'y': return Node;
-				case 'u': return Node;
-				default: throw new Error( `Unrecognized short type [${short_type}] at [${Path}].` );
-			}
-		}
-		if ( 'lu'.includes( Engine.ShortType( Exceptions ) ) ) { Exceptions = []; }
-		if ( !Array.isArray( Exceptions ) ) { throw new Error( `The Exceptions parameter must be an array of field names in dot notation.` ); }
-		let clone = clone_node( Document, '' );
-		return clone;
-	};
-
-
-	// //---------------------------------------------------------------------
-	// Engine.MergeObjects = function ( ObjectA, ObjectB )
-	// {
-	// 	let C = JSON.parse( JSON.stringify( ObjectA ) );
-	// 	function update_children( ParentA, ParentB )
-	// 	{
-	// 		Object.keys( ParentB ).forEach(
-	// 			key =>
-	// 			{
-	// 				let value = ParentB[ key ];
-	// 				if ( typeof ParentA[ key ] === 'undefined' )
-	// 				{
-	// 					ParentA[ key ] = JSON.parse( JSON.stringify( value ) );
-	// 				}
-	// 				else
-	// 				{
-	// 					if ( typeof value === 'object' )
-	// 					{
-	// 						// Merge objects.
-	// 						update_children( ParentA[ key ], value );
-	// 					}
-	// 					else
-	// 					{
-	// 						// Overwrite values.
-	// 						ParentA[ key ] = JSON.parse( JSON.stringify( value ) );
-	// 					}
-	// 				}
-	// 			} );
-	// 	}
-	// 	update_children( C, ObjectB );
-	// 	return C;
-	// };
-
-
-	//---------------------------------------------------------------------
-	Engine.PathTerminals = function ( Value, Path, Callback /*( Value, ValueType, Path )*/ )
-	{
-		function r_PathTerminals( Value, ValuePath, PathElements )
-		{
-			if ( typeof Value === 'undefined' ) { return false; }
-			if ( PathElements === null ) { return false; }
-
-			let node = Value;
-			let node_type = Engine.ShortType( node );
-			let elements = [ ...PathElements ];
-
-			// console.log( `Resolving type [${node_type}] at [${Path}], remaining path = [${elements.join( ( '.' ) )}].` );
-
-			if ( node_type === 'a' )
-			{
-				if ( elements.length && ( typeof elements[ 0 ] === 'number' ) )
-				{
-					let index = elements[ 0 ];
-					elements.splice( 0, 1 );
-					let value_path = Engine.JoinPaths( ValuePath, index );
-					let sub_node = node[ index ];
-					if ( !r_PathTerminals( sub_node, value_path, elements, Callback ) ) { return false; }
-				}
-				else
-				{
-					// elements.splice( 0, 1 );
-					for ( let index = 0; index < node.length; index++ )
-					{
-						let sub_node = node[ index ];
-						let value_path = Engine.JoinPaths( ValuePath, index );
-						if ( !r_PathTerminals( sub_node, value_path, elements, Callback ) ) { return false; }
-					}
-				}
-			}
-			else if ( node_type === 'o' )
-			{
-				let key = elements[ 0 ];
-				elements.splice( 0, 1 );
-				let sub_node = node[ key ];
-				let sub_node_type = Engine.ShortType( sub_node );
-				let value_path = Engine.JoinPaths( ValuePath, key );
-				if ( elements.length === 0 )
-				{
-					if ( sub_node_type === 'a' )
-					{
-						if ( !r_PathTerminals( sub_node, value_path, elements, Callback ) ) { return false; }
-					}
-					else
-					{
-						Callback( sub_node, sub_node_type, value_path );
-					}
-				}
-				else
-				{
-					if ( !r_PathTerminals( sub_node, value_path, elements, Callback ) ) { return false; }
-				}
-
-			}
-			else
-			{
-				// elements.splice( 0, 1 );
-				if ( elements.length === 0 )
-				{
-					Callback( node, node_type, ValuePath );
-				}
-				else
-				{
-					if ( Engine.OpLog ){ Engine.OpLog( `PathTerminals: Unresolved path elements exist: [${elements.join( '.' )}].` ); }
-					// throw new Error( 'PathTerminals: Unresolved path elements exist.' );
-					return false;
-				}
-			}
-			return true;
-		}
-
-		let path_elements = Engine.SplitPath( Path );
-		if ( path_elements === null ) 
-		{
-			if ( Engine.OpLog ){ Engine.OpLog( `PathTerminals: Invalid Path.` ); }
-			return false;
-		}
-		if ( path_elements.length === 0 ) 
-		{
-			if ( Engine.OpLog ){ Engine.OpLog( `PathTerminals: Path must be non-empty.` ); }
-			return false;
-		}
-		let result = r_PathTerminals( Value, '', path_elements );
-		return result;
-	};
 
 
 	//---------------------------------------------------------------------
@@ -347,20 +162,6 @@ module.exports = function ( EngineSettings = {} )
 			// }
 		}
 		return false;
-	};
-
-
-	//---------------------------------------------------------------------
-	Engine.LooseEquals = function ( DocumentA, DocumentB )
-	{
-		return Engine.QueryOperators.$eqx.Query( DocumentA, DocumentB );
-	};
-
-
-	//---------------------------------------------------------------------
-	Engine.StrictEquals = function ( DocumentA, DocumentB )
-	{
-		return Engine.QueryOperators.$eq.Query( DocumentA, DocumentB );
 	};
 
 

@@ -28,7 +28,7 @@ module.exports = function ( jsongin )
 			// if ( actual_type !== 'a' ) { actual_value = [ actual_value ]; }
 			if ( actual_type !== 'a' ) 
 			{
-				if ( this.Engine.Settings.Explain ) { this.Engine.Explain.push( `$size: requires an array but found type [${actual_type}] instead at [${Path}].` ); }
+				if ( jsongin.OpLog ) { jsongin.OpLog( `$size: requires an array but found type [${actual_type}] instead at [${Path}].` ); }
 				return false;
 			}
 
@@ -36,7 +36,7 @@ module.exports = function ( jsongin )
 			let match_type = this.Engine.ShortType( MatchValue );
 			if ( match_type !== 'n' ) 
 			{
-				if ( this.Engine.Settings.Explain ) { this.Engine.Explain.push( `$size: requires a number but found type [${match_type}] instead at [${Path}].` ); }
+				if ( jsongin.OpLog ) { jsongin.OpLog( `$size: requires a number but found type [${match_type}] instead at [${Path}].` ); }
 				return false;
 			}
 

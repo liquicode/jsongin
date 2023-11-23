@@ -39,7 +39,7 @@ module.exports = function ( jsongin )
 			}
 			else
 			{
-				if ( this.Engine.Settings.Explain ) { this.Engine.Explain.push( `$regex: requires regexp or string but found [${match_type}] instead at [${Path}].` ); }
+				if ( jsongin.OpLog ) { jsongin.OpLog( `$regex: requires regexp or string but found [${match_type}] instead at [${Path}].` ); }
 				return false;
 			}
 		},

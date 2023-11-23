@@ -31,7 +31,7 @@ module.exports = function ( jsongin )
 			let match_type = this.Engine.ShortType( match_value );
 			if ( match_type !== 'a' )
 			{
-				if ( this.Engine.Settings.Explain ) { this.Engine.Explain.push( `$in: expected an array but found a type [${match_type}] instead at [${Path}].` ); }
+				if ( jsongin.OpLog ) { jsongin.OpLog( `$in: expected an array but found a type [${match_type}] instead at [${Path}].` ); }
 				return false;
 			}
 
@@ -67,7 +67,7 @@ module.exports = function ( jsongin )
 				if ( array_includes_value( this.Engine, match_value, actual_value ) ) { return true; }
 				// return match_value.includes( actual_value );
 			}
-			if ( this.Engine.Settings.Explain ) { this.Engine.Explain.push( `$in: cannot compare [${match_type}] type with [${actual_type}] type at [${Path}].` ); }
+			if ( jsongin.OpLog ) { jsongin.OpLog( `$in: cannot compare [${match_type}] type with [${actual_type}] type at [${Path}].` ); }
 			return false; // Unsupported type or equivalence.
 		},
 

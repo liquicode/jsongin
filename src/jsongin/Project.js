@@ -4,12 +4,6 @@ module.exports = function ( Engine )
 {
 	function Project( Document, Projection )
 	{
-		// Reset the explain stack.
-		if ( Engine.Settings.ClearExplainOnTopLevelQuery )
-		{
-			Engine.Explain = [];
-		}
-
 		// Validate the parameters.
 		if ( Engine.ShortType( Document ) !== 'o' )
 		{

@@ -11,23 +11,6 @@ describe( '100) Core Tests', () =>
 {
 
 
-	let document =
-	{
-		id: 1001,
-		user:
-		{
-			name: 'Alice',
-			location: 'East',
-		},
-		profile:
-		{
-			login: 'alice',
-			role: 'admin',
-		},
-		tags: [ 'Staff', 'Dept. A' ],
-	};
-
-
 	//---------------------------------------------------------------------
 	describe( 'ShortType Tests', () =>
 	{
@@ -82,87 +65,106 @@ describe( '100) Core Tests', () =>
 	describe( 'SplitPath Tests', () =>
 	{
 
-		it( 'should allow an undefined path', () => 
-		{
-			let elements = null;
-			elements = jsongin.SplitPath();
-			assert.ok( elements.length === 0 );
-		} );
 
-		it( 'should allow a null path', () => 
-		{
-			let elements = null;
-			elements = jsongin.SplitPath( null );
-			assert.ok( elements.length === 0 );
-		} );
-
-		it( 'should allow an empty path', () => 
-		{
-			let elements = null;
-			elements = jsongin.SplitPath( null );
-			assert.ok( elements.length === 0 );
-		} );
-
-		it( 'should not allow non-string paths', () => 
-		{
-			assert.ok( jsongin.SplitPath( 42 ) === null );
-			assert.ok( jsongin.SplitPath( { some: 'value' } ) === null );
-		} );
-
-		// it( 'should not allow the $ element within a path', () => 
-		// {
-		// 	assert.ok( jsongin.SplitPath( 'a.$' ) === null );
-		// 	assert.ok( jsongin.SplitPath( 'a.$.b' ) === null );
-		// } );
-
-		// it( 'should not allow the $ element at the root when path extensions are disabled', () => 
-		// {
-		// 	assert.ok( jsongin.SplitPath( '$' ) === null );
-		// 	assert.ok( jsongin.SplitPath( '$.a' ) === null );
-		// } );
-
-		// it( 'should ignore bracketed [] array indeces when path extensions are disabled', () => 
-		// {
-		// 	let elements = null;
-
-		// 	elements = jsongin.SplitPath( 'a[1]' );
-		// 	assert.ok( elements.length === 1 );
-		// 	assert.ok( elements[ 0 ] === 'a[1]' );
-		// } );
-
-		it( 'should split a path', () => 
+		it( 'It returns an array of path components', () => 
 		{
 			let elements = null;
 
-			elements = jsongin.SplitPath( 'a' );
+			elements = jsongin.SplitPath( 'user' );
 			assert.ok( elements.length === 1 );
-			assert.ok( elements[ 0 ] === 'a' );
+			assert.ok( elements[ 0 ] === 'user' );
 
-			elements = jsongin.SplitPath( 'a.b.c' );
-			assert.ok( elements.length === 3 );
-			assert.ok( elements[ 0 ] === 'a' );
-			assert.ok( elements[ 1 ] === 'b' );
-			assert.ok( elements[ 2 ] === 'c' );
-
+			elements = jsongin.SplitPath( 'user.name' );
+			assert.ok( elements.length === 2 );
+			assert.ok( elements[ 0 ] === 'user' );
+			assert.ok( elements[ 1 ] === 'name' );
 		} );
 
-		it( 'should split a path containing array indeces', () => 
+		it( 'It returns array indexes as numerics in the output array', () => 
 		{
 			let elements = null;
 
 			elements = jsongin.SplitPath( '1' );
 			assert.ok( elements.length === 1 );
-			assert.ok( elements[ 0 ] !== '1' );
 			assert.ok( elements[ 0 ] === 1 );
 
-			elements = jsongin.SplitPath( 'a.2.c' );
-			assert.ok( elements.length === 3 );
-			assert.ok( elements[ 0 ] === 'a' );
-			assert.ok( elements[ 1 ] !== '2' );
-			assert.ok( elements[ 1 ] === 2 );
-			assert.ok( elements[ 2 ] === 'c' );
+			elements = jsongin.SplitPath( 'users.1' );
+			assert.ok( elements.length === 2 );
+			assert.ok( elements[ 0 ] === 'users' );
+			assert.ok( elements[ 1 ] === 1 );
 
+			elements = jsongin.SplitPath( 'users.1.name' );
+			assert.ok( elements.length === 3 );
+			assert.ok( elements[ 0 ] === 'users' );
+			assert.ok( elements[ 1 ] === 1 );
+			assert.ok( elements[ 2 ] === 'name' );
 		} );
+
+		it( 'Array indexes within a path can be positive or negative', () => 
+		{
+			let elements = null;
+
+			elements = jsongin.SplitPath( '-1' );
+			assert.ok( elements.length === 1 );
+			assert.ok( elements[ 0 ] === -1 );
+
+			elements = jsongin.SplitPath( 'users.-1' );
+			assert.ok( elements.length === 2 );
+			assert.ok( elements[ 0 ] === 'users' );
+			assert.ok( elements[ 1 ] === -1 );
+
+			elements = jsongin.SplitPath( 'users.-1.name' );
+			assert.ok( elements.length === 3 );
+			assert.ok( elements[ 0 ] === 'users' );
+			assert.ok( elements[ 1 ] === -1 );
+			assert.ok( elements[ 2 ] === 'name' );
+		} );
+
+		it( 'If the path is undefined, null, or empty "", then it returns an empty array []', () => 
+		{
+			let elements = null;
+
+			elements = jsongin.SplitPath();
+			assert.ok( elements.length === 0 );
+
+			elements = jsongin.SplitPath( null );
+			assert.ok( elements.length === 0 );
+
+			elements = jsongin.SplitPath( '' );
+			assert.ok( elements.length === 0 );
+		} );
+
+		it( 'It throws an error when an invalid path is given', () => 
+		{
+			try
+			{
+				jsongin.SplitPath( true );
+				assert.fail( 'Should have thrown an error.' );
+			}
+			catch ( error )
+			{
+				assert.ok( error.message.startsWith( 'Path is invalid' ) );
+			}
+			try
+			{
+				jsongin.SplitPath( {} );
+				assert.fail( 'Should have thrown an error.' );
+			}
+			catch ( error )
+			{
+				assert.ok( error.message.startsWith( 'Path is invalid' ) );
+			}
+			try
+			{
+				jsongin.SplitPath( [] );
+				assert.fail( 'Should have thrown an error.' );
+			}
+			catch ( error )
+			{
+				assert.ok( error.message.startsWith( 'Path is invalid' ) );
+			}
+		} );
+
 
 	} );
 
@@ -171,28 +173,49 @@ describe( '100) Core Tests', () =>
 	describe( 'JoinPaths Tests', () =>
 	{
 
-		it( 'should return an empty string when empty paths are provided', () => 
+
+		it( 'It returns a combined path in dot-notation', () => 
 		{
-			assert.ok( jsongin.JoinPaths() === '' );
-			// assert.ok( jsongin.JoinPaths( null ) === '' );
-			assert.ok( jsongin.JoinPaths( '' ) === '' );
-			assert.ok( jsongin.JoinPaths( '', '' ) === '' );
+			assert.strictEqual( jsongin.JoinPaths( 'user' ), 'user' );
+			assert.strictEqual( jsongin.JoinPaths( 'user', 'name' ), 'user.name' );
 		} );
 
-		it( 'should return an empty string when null is provided', () => 
+		it( 'It allows numeric array indexes', () => 
 		{
-			assert.ok( jsongin.JoinPaths( null ) === '' );
+			assert.strictEqual( jsongin.JoinPaths( 'users', 1, 'name' ), 'users.1.name' );
 		} );
 
-		it( 'should join paths', () => 
+		it( 'It allows document paths', () => 
 		{
-			assert.ok( jsongin.JoinPaths( 'a' ) === 'a' );
-			assert.ok( jsongin.JoinPaths( 'a', 'b' ) === 'a.b' );
-			assert.ok( jsongin.JoinPaths( 'a', 'b.c' ) === 'a.b.c' );
-			assert.ok( jsongin.JoinPaths( 'a', '2' ) === 'a.2' );
-			assert.ok( jsongin.JoinPaths( 'a', '2.c' ) === 'a.2.c' );
-			assert.ok( jsongin.JoinPaths( 'a', '2', 'c' ) === 'a.2.c' );
+			assert.strictEqual( jsongin.JoinPaths( 'users.1', 'name' ), 'users.1.name' );
 		} );
+
+		it( 'It allows an array of document paths', () => 
+		{
+			assert.strictEqual( jsongin.JoinPaths( [ 'users', 1, 'name' ] ), 'users.1.name' );
+			assert.strictEqual( jsongin.JoinPaths( [ 'users.1', 'name' ] ), 'users.1.name' );
+			assert.strictEqual( jsongin.JoinPaths( 'users', [ 1, 'name' ] ), 'users.1.name' );
+		} );
+
+		it( 'Undefined and nulls are ignored', () => 
+		{
+			assert.strictEqual( jsongin.JoinPaths( 'users', undefined, 'name' ), 'users.name' );
+			assert.strictEqual( jsongin.JoinPaths( 'users', null, 'name' ), 'users.name' );
+		} );
+
+		it( 'It throws an error when an invalid path segment is given', () => 
+		{
+			try
+			{
+				jsongin.JoinPaths( 'users', { a: 1 }, 'name' );
+				assert.fail( 'Should have thrown an error.' );
+			}
+			catch ( error )
+			{
+				assert.ok( error.message.startsWith( 'Path segment is invalid' ) );
+			}
+		} );
+
 
 	} );
 
@@ -201,48 +224,82 @@ describe( '100) Core Tests', () =>
 	describe( 'GetValue Tests', () =>
 	{
 
-		it( 'should return the given document if path is an empty string "", null, or undefined', () => 
+
+		it( 'It returns fields from a document', () => 
 		{
-			assert.ok( jsongin.GetValue( 'abc', '' ) === 'abc' );
-			assert.ok( jsongin.GetValue( 'abc', null ) === 'abc' );
-			assert.ok( jsongin.GetValue( 'abc' ) === 'abc' );
+			let document = {
+				id: 101,
+				user: {
+					name: 'Alice'
+				},
+			};
+			assert.strictEqual( jsongin.GetValue( document, 'id' ), 101 );
+			assert.strictEqual( jsongin.GetValue( document, 'user.name' ), 'Alice' );
 		} );
 
-		it( 'should get document values', () => 
+		it( 'It returns elements of an array', () => 
 		{
-			assert.ok( jsongin.ShortType( jsongin.GetValue( document, '' ) ) === 'o' );
-			assert.ok( jsongin.GetValue( document, 'id' ) === 1001 );
-			assert.ok( jsongin.GetValue( document, 'user.name' ) === 'Alice' );
+			let document = [ 'one', 'two', 'three' ];
+			assert.strictEqual( jsongin.GetValue( document, '0' ), 'one' );
+			assert.strictEqual( jsongin.GetValue( document, '1' ), 'two' );
+			assert.strictEqual( jsongin.GetValue( document, '-1' ), 'three' );
 		} );
 
-		it( 'should return an indexed array element, using dot notation', () => 
+		it( 'It returns fields from inside an array of objects', () => 
 		{
-			assert.ok( jsongin.GetValue( [ 1, 2, 3 ], '1' ) === 2 );
-			assert.ok( jsongin.GetValue( { value: [ 1, 2, 3 ] }, 'value.1' ) === 2 );
+			let document = {
+				users: [
+					{ id: 101, name: 'Alice' },
+					{ id: 102, name: 'Bob' },
+					{ id: 103, name: 'Eve' },
+				]
+			};
+			assert.deepStrictEqual( jsongin.GetValue( document, 'users.1' ), { id: 102, name: 'Bob' } );
+			assert.strictEqual( jsongin.GetValue( document, 'users.1.name' ), 'Bob' );
+			assert.deepStrictEqual( jsongin.GetValue( document, 'users.name' ), [ 'Alice', 'Bob', 'Eve' ] );
 		} );
 
-		it( 'should not allow the "$" root symbol when path extensions are disabled', () => 
+		it( 'It might return undefined array elements when missing data is encountered', () => 
 		{
-			assert.ok( typeof jsongin.GetValue( document, '$.id' ) === 'undefined' );
-			assert.ok( typeof jsongin.GetValue( document, '$.user.name' ) === 'undefined' );
-			assert.ok( typeof jsongin.GetValue( document, '$.foo' ) === 'undefined' );
-			assert.ok( typeof jsongin.GetValue( document, '$.tags' ) === 'undefined' );
-			assert.ok( typeof jsongin.GetValue( [ 1, 2, 3 ], '$.1' ) === 'undefined' );
-			assert.ok( typeof jsongin.GetValue( { value: [ 1, 2, 3 ] }, '$.value.1' ) === 'undefined' );
+			let document = {
+				users: [
+					{ id: 101, name: 'Alice' },
+					{ xyz: 102, name: 'Bob' },
+					{ id: 103, name: 'Eve' },
+				]
+			};
+			assert.strictEqual( jsongin.GetValue( document, 'users.1.id' ), undefined );
+			assert.deepStrictEqual( jsongin.GetValue( document, 'users.id' ), [ 101, undefined, 103 ] );
+			assert.deepStrictEqual( jsongin.GetValue( document, 'users.name' ), [ 'Alice', 'Bob', 'Eve' ] );
 		} );
 
-		it( 'should not allow the [] array indexing when path extensions are disabled', () => 
+		it( 'If the path is undefined, null, or empty "", then it returns the entire document', () => 
 		{
-			assert.ok( typeof jsongin.GetValue( [ 1, 2, 3 ], '$[1]' ) === 'undefined' );
-			assert.ok( typeof jsongin.GetValue( [ 1, 2, 3 ], '[1]' ) === 'undefined' );
-			assert.ok( typeof jsongin.GetValue( { value: [ 1, 2, 3 ] }, 'value[1]' ) === 'undefined' );
+			assert.strictEqual( jsongin.GetValue( 'abc' ), 'abc' );
+			assert.deepStrictEqual( jsongin.GetValue( [ 'one', 'two', 'three' ], null ), [ 'one', 'two', 'three' ] );
+			assert.deepStrictEqual( jsongin.GetValue( { id: 101, name: 'Alice' }, '' ), { id: 101, name: 'Alice' } );
 		} );
 
-		it( 'should return undefined if array index is out of bounds', () => 
+		it( 'If the path is specified but not found, it returns undefined', () => 
 		{
-			assert.ok( typeof jsongin.GetValue( [ 1, 2, 3 ], '3' ) === 'undefined' );
-			assert.ok( typeof jsongin.GetValue( { value: [ 1, 2, 3 ] }, 'value.3' ) === 'undefined' );
+			assert.strictEqual( jsongin.GetValue( 'abc', 'score' ), undefined );
+			assert.strictEqual( jsongin.GetValue( { id: 101, name: 'Alice' }, 'score' ), undefined );
+			assert.strictEqual( jsongin.GetValue( [ 'one', 'two', 'three' ], 3 ), undefined );
 		} );
+
+		it( 'It throws an error when an invalid path is given', () => 
+		{
+			try
+			{
+				jsongin.GetValue( 'abc', { a: 1 } );
+				assert.fail( 'Should have thrown an error.' );
+			}
+			catch ( error )
+			{
+				assert.ok( error.message.startsWith( 'Path is invalid' ) );
+			}
+		} );
+
 
 	} );
 
@@ -252,316 +309,153 @@ describe( '100) Core Tests', () =>
 	{
 		let data = null;
 
-		it( 'document cannot be undefined', () => 
+		it( 'It sets fields in a document', () => 
 		{
-			assert.ok( jsongin.SetValue( undefined, 'value', 42 ) === false );
+			let document = {
+				id: 101,
+				user: {
+					name: 'Alice'
+				},
+			};
+
+			assert.ok( jsongin.SetValue( document, 'id', 'abc' ) );
+			assert.strictEqual( document.id, 'abc' );
+
+			assert.ok( jsongin.SetValue( document, 'user.name', 'Bob' ) );
+			assert.strictEqual( document.user.name, 'Bob' );
 		} );
 
-		it( 'document cannot be null', () => 
+		it( 'It creates document fields if they don\'t exist', () => 
 		{
-			assert.ok( jsongin.SetValue( null, 'value', 42 ) === false );
+			let document = { user: { name: 'Alice' } };
+
+			assert.ok( jsongin.SetValue( document, 'user.status', true ) );
+			assert.strictEqual( document.user.status, true );
+
+			assert.ok( jsongin.SetValue( document, 'extra', { more: 'data' } ) );
+			assert.strictEqual( document.extra.more, 'data' );
 		} );
 
-		it( 'path cannot be undefined', () => 
+		it( 'It removes document fields when set to undefined', () => 
 		{
-			assert.ok( jsongin.SetValue( {}, undefined, 42 ) === false );
+			let document = { id: 101, user: { name: 'Alice', status: 42 } };
+
+			assert.ok( jsongin.SetValue( document, 'user.status', undefined ) );
+			assert.strictEqual( document.user.status, undefined );
+
+			assert.ok( jsongin.SetValue( document, 'id', undefined ) );
+			assert.strictEqual( document.id, undefined );
 		} );
 
-		it( 'path cannot be null', () => 
+		it( 'It sets elements of an array', () => 
 		{
-			assert.ok( jsongin.SetValue( {}, null, 42 ) === false );
+			let document = [ 'one', 'two', 'three' ];
+
+			assert.ok( jsongin.SetValue( document, 1, 'abc' ) );
+			assert.strictEqual( document[ 1 ], 'abc' );
+
+			assert.ok( jsongin.SetValue( document, '1', 'def' ) );
+			assert.strictEqual( document[ 1 ], 'def' );
 		} );
 
-		it( 'path cannot be empty', () => 
+		it( 'It creates array elements and grows the array if the elements don\'t exist', () => 
 		{
-			assert.ok( jsongin.SetValue( {}, '', 3.14 ) === false );
-			assert.ok( jsongin.SetValue( {}, '', { name: 'Alice' } ) === false );
+			let document = [ 'one', 'two', 'three' ];
+
+			assert.ok( jsongin.SetValue( document, 4, 'xyz' ) );
+			assert.strictEqual( document.length, 5 );
+			assert.strictEqual( document[ 0 ], 'one' );
+			assert.strictEqual( document[ 1 ], 'two' );
+			assert.strictEqual( document[ 2 ], 'three' );
+			assert.strictEqual( document[ 3 ], undefined );
+			assert.strictEqual( document[ 4 ], 'xyz' );
 		} );
 
-		it( 'should create a top level value', () => 
+		it( 'It performs reverse indexing when an array index is negative', () => 
 		{
-			data = {};
-			assert.ok( jsongin.SetValue( data, 'id', 1001 ) );
-			assert.ok( data.id === 1001 );
-			assert.ok( jsongin.SetValue( data, 'name', 'Alice' ) );
-			assert.ok( data.name === 'Alice' );
+			let document = [ 'one', 'two', 'three' ];
+			assert.ok( jsongin.SetValue( document, -1, 'xyz' ) === true );
+			assert.strictEqual( document.length, 3 );
+			assert.strictEqual( document[ 0 ], 'one' );
+			assert.strictEqual( document[ 1 ], 'two' );
+			assert.strictEqual( document[ 2 ], 'xyz' );
 		} );
 
-		it( 'should set a top level value', () => 
+		it( 'Array elements can be set to undefined, but they are not removed', () => 
 		{
-			data = { id: null, name: null };
-			assert.ok( jsongin.SetValue( data, 'id', 1001 ) );
-			assert.ok( data.id === 1001 );
-			assert.ok( jsongin.SetValue( data, 'name', 'Alice' ) );
-			assert.ok( data.name === 'Alice' );
+			let document = [ 'one', 'two', 'three' ];
+
+			assert.ok( jsongin.SetValue( document, 1, undefined ) );
+			assert.strictEqual( document.length, 3 );
+			assert.strictEqual( document[ 0 ], 'one' );
+			assert.strictEqual( document[ 1 ], undefined );
+			assert.strictEqual( document[ 2 ], 'three' );
 		} );
 
-		it( 'should remove a top level value', () => 
+		it( 'It sets fields inside an array of objects', () => 
 		{
-			data = { id: null, name: null };
-			assert.ok( jsongin.SetValue( data, 'id', undefined ) );
-			assert.ok( typeof data.id === 'undefined' );
-			assert.ok( jsongin.SetValue( data, 'name', undefined ) );
-			assert.ok( typeof data.name === 'undefined' );
+			let document = {
+				users: [
+					{ id: 101, name: 'Alice' },
+					{ id: 102, name: 'Bob' },
+					{ id: 103, name: 'Eve' },
+				]
+			};
+
+			assert.ok( jsongin.SetValue( document, 'users.1.id', 'abc' ) );
+			assert.strictEqual( document.users[ 1 ].id, 'abc' );
 		} );
 
-		it( 'should create a nested value', () => 
+		it( 'It sets fields inside all elements of an array of objects', () => 
 		{
-			data = { user: {} };
-			assert.ok( jsongin.SetValue( data, 'user.name', 'Alice' ) );
-			assert.ok( data.user.name === 'Alice' );
-			assert.ok( jsongin.SetValue( data, 'profile.id', 1001 ) );
-			assert.ok( data.profile.id === 1001 );
+			let document = {
+				users: [
+					{ id: 101, name: 'Alice' },
+					{ id: 102, name: 'Bob' },
+					{ id: 103, name: 'Eve' },
+				]
+			};
+
+			// Omit the array index to set into each array element.
+			assert.ok( jsongin.SetValue( document, 'users.status', 42 ) );
+			assert.strictEqual( document.users[ 0 ].status, 42 );
+			assert.strictEqual( document.users[ 1 ].status, 42 );
+			assert.strictEqual( document.users[ 2 ].status, 42 );
 		} );
 
-		it( 'should set a nested value', () => 
+		it( 'It returns false when an empty path is given', () => 
 		{
-			data = { user: { name: null } };
-			assert.ok( jsongin.SetValue( data, 'user.name', 'Alice' ) );
-			assert.ok( data.user.name === 'Alice' );
+			let document = { user: { name: 'Alice' } };
+			assert.ok( jsongin.SetValue( document, '', 42 ) === false );
 		} );
 
-		it( 'should remove a nested value', () => 
+		it( 'It throws an error when an invalid document is given', () => 
 		{
-			data = { user: { name: 'Alice' } };
-			assert.ok( jsongin.SetValue( data, 'user.name', undefined ) );
-			assert.ok( typeof data.user.name === 'undefined' );
+			try
+			{
+				jsongin.SetValue( null, 'user.name', 'Bob' );
+				assert.fail( 'Should have thrown an error.' );
+			}
+			catch ( error )
+			{
+				assert.ok( error.message.startsWith( 'Document must be an object or array' ) );
+			}
 		} );
 
-		it( 'should set an array value', () => 
+		it( 'It throws an error when an invalid path is given', () => 
 		{
-			data = [ 1, 2, 3 ];
-			assert.ok( jsongin.SetValue( data, '0', 'admin' ) );
-			assert.ok( data.length === 3 );
-			assert.ok( data[ 0 ] === 'admin' );
+			try
+			{
+				let document = { user: { name: 'Alice' } };
+				jsongin.SetValue( document, true, 42 );
+				assert.fail( 'Should have thrown an error.' );
+			}
+			catch ( error )
+			{
+				assert.ok( error.message.startsWith( 'Path is invalid' ) );
+			}
 		} );
 
-		it( 'should create an array and value', () => 
-		{
-			data = {};
-			assert.ok( jsongin.SetValue( data, 'array.0', 3.14 ) );
-			assert.ok( data.array );
-			assert.ok( data.array.length === 1 );
-			assert.ok( data.array[ 0 ] === 3.14 );
-		} );
-
-		it( 'should insert nulls into new array elements', () => 
-		{
-			data = [ 1, 2, 3 ];
-			assert.ok( jsongin.SetValue( data, '3', 'admin' ) );
-			assert.ok( data.length === 4 );
-			assert.ok( data[ 3 ] === 'admin' );
-			assert.ok( jsongin.SetValue( data, '6', 42 ) );
-			assert.ok( data.length === 7 );
-			assert.ok( data[ 4 ] === null );
-			assert.ok( data[ 5 ] === null );
-			assert.ok( data[ 6 ] === 42 );
-		} );
-
-		it( 'should remove an array value', () => 
-		{
-			data = [ 1, 2, 3 ];
-			assert.ok( jsongin.SetValue( data, '3', 'admin' ) );
-			assert.ok( data.length === 4 );
-			assert.ok( data[ 3 ] === 'admin' );
-		} );
-
-	} );
-
-
-	//---------------------------------------------------------------------
-	describe( 'ResolvePathTerminals Tests', () =>
-	{
-
-		let doc =
-		{
-			b: true,
-			n: 3.14,
-			s: 'abc',
-			l: null,
-			o: { a: 1, b: 2, c: 3 },
-			a: [ 1, 2, 3 ],
-			oa: { a1: [ 1, 2, 3 ], a2: [ 4, 5, 6 ] },
-			ao: [ { a: 1, b: 2 }, { a: 3, b: 4 } ],
-			aoa: [ { a: [ 11, 12 ] }, { a: [ 13, 14 ] } ],
-		};
-
-		it( 'should not resolve when path is null', () => 
-		{
-			jsongin.PathTerminals( doc, null,
-				function ( Value, ValueType, Path )
-				{
-					assert.fail();
-				} );
-		} );
-
-		it( 'should resolve primitive types', () => 
-		{
-			jsongin.PathTerminals( doc, 'b',
-				function ( Value, ValueType, Path )
-				{
-					assert.ok( Value === true );
-					assert.ok( ValueType === 'b' );
-					assert.ok( Path === 'b' );
-				} );
-			jsongin.PathTerminals( doc, 'n',
-				function ( Value, ValueType, Path )
-				{
-					assert.ok( Value === 3.14 );
-					assert.ok( ValueType === 'n' );
-					assert.ok( Path === 'n' );
-				} );
-		} );
-
-		it( 'should resolve entire object', () => 
-		{
-			jsongin.PathTerminals( doc, 'o',
-				function ( Value, ValueType, Path )
-				{
-					assert.ok( JSON.stringify( Value ) === JSON.stringify( doc.o ) );
-					assert.ok( ValueType === 'o' );
-					assert.ok( Path === 'o' );
-				} );
-		} );
-
-		it( 'should resolve object fields', () => 
-		{
-			jsongin.PathTerminals( doc, 'o.a',
-				function ( Value, ValueType, Path )
-				{
-					assert.ok( Value === 1 );
-					assert.ok( ValueType === 'n' );
-					assert.ok( Path === 'o.a' );
-				} );
-			jsongin.PathTerminals( doc, 'o.b',
-				function ( Value, ValueType, Path )
-				{
-					assert.ok( Value === 2 );
-					assert.ok( ValueType === 'n' );
-					assert.ok( Path === 'o.b' );
-				} );
-			jsongin.PathTerminals( doc, 'o.c',
-				function ( Value, ValueType, Path )
-				{
-					assert.ok( Value === 3 );
-					assert.ok( ValueType === 'n' );
-					assert.ok( Path === 'o.c' );
-				} );
-		} );
-
-		// it( 'should resolve entire array', () => 
-		// {
-		// 	jsongin.ResolvePathTerminals( doc, 'a',
-		// 		function ( Value, ValueType, Path )
-		// 		{
-		// 			assert.ok( JSON.stringify( Value ) === JSON.stringify( doc.a ) );
-		// 			assert.ok( ValueType === 'a' );
-		// 			assert.ok( Path === 'a' );
-		// 		} );
-		// } );
-
-		it( 'should resolve indexed array elements', () => 
-		{
-			jsongin.PathTerminals( doc, 'a.0',
-				function ( Value, ValueType, Path )
-				{
-					assert.ok( Value === 1 );
-					assert.ok( ValueType === 'n' );
-					assert.ok( Path === 'a.0' );
-				} );
-			jsongin.PathTerminals( doc, 'a.1',
-				function ( Value, ValueType, Path )
-				{
-					assert.ok( Value === 2 );
-					assert.ok( ValueType === 'n' );
-					assert.ok( Path === 'a.1' );
-				} );
-			jsongin.PathTerminals( doc, 'a.2',
-				function ( Value, ValueType, Path )
-				{
-					assert.ok( Value === 3 );
-					assert.ok( ValueType === 'n' );
-					assert.ok( Path === 'a.2' );
-				} );
-		} );
-
-		it( 'should resolve complex structures', () => 
-		{
-			jsongin.PathTerminals( doc, 'oa.a2.1',
-				function ( Value, ValueType, Path )
-				{
-					assert.ok( Value === 5 );
-					assert.ok( ValueType === 'n' );
-					assert.ok( Path === 'oa.a2.1' );
-				} );
-			jsongin.PathTerminals( doc, 'ao.1.b',
-				function ( Value, ValueType, Path )
-				{
-					assert.ok( Value === 4 );
-					assert.ok( ValueType === 'n' );
-					assert.ok( Path === 'ao.1.b' );
-				} );
-		} );
-
-		it( 'should iterate over arrays', () => 
-		{
-			let call_count = 0;
-			jsongin.PathTerminals( doc, 'ao.b',
-				function ( Value, ValueType, Path )
-				{
-					if ( Path === 'ao.0.b' )
-					{
-						assert.ok( Value === 2 );
-						assert.ok( ValueType === 'n' );
-					}
-					else if ( Path === 'ao.1.b' )
-					{
-						assert.ok( Value === 4 );
-						assert.ok( ValueType === 'n' );
-					}
-					else
-					{
-						assert.fail();
-					}
-					call_count++;
-				} );
-			assert.ok( call_count === 2 );
-		} );
-
-		it( 'should iterate over nested arrays', () => 
-		{
-			let call_count = 0;
-			jsongin.PathTerminals( doc, 'aoa.a',
-				function ( Value, ValueType, Path )
-				{
-					if ( Path === 'aoa.0.a.0' )
-					{
-						assert.ok( Value === 11 );
-						assert.ok( ValueType === 'n' );
-					}
-					else if ( Path === 'aoa.0.a.1' )
-					{
-						assert.ok( Value === 12 );
-						assert.ok( ValueType === 'n' );
-					}
-					else if ( Path === 'aoa.1.a.0' )
-					{
-						assert.ok( Value === 13 );
-						assert.ok( ValueType === 'n' );
-					}
-					else if ( Path === 'aoa.1.a.1' )
-					{
-						assert.ok( Value === 14 );
-						assert.ok( ValueType === 'n' );
-					}
-					else
-					{
-						assert.fail();
-					}
-					call_count++;
-				} );
-			assert.ok( call_count === 4 );
-		} );
 
 	} );
 
@@ -570,9 +464,10 @@ describe( '100) Core Tests', () =>
 	describe( 'SafeClone Tests', () =>
 	{
 
-		it( 'should clone a simple object', () => 
+		it( 'It can clone a simple object', () => 
 		{
 			let doc = { b: true, n: 3.14, s: 'abc' };
+
 			let clone = jsongin.SafeClone( doc );
 			assert.ok( clone );
 			assert.ok( clone.b === true );
@@ -580,9 +475,10 @@ describe( '100) Core Tests', () =>
 			assert.ok( clone.s === 'abc' );
 		} );
 
-		it( 'should clone a nested objects', () => 
+		it( 'It can clone nested objects', () => 
 		{
 			let doc = { o: { b: true, n: 3.14, s: 'abc' } };
+
 			let clone = jsongin.SafeClone( doc );
 			assert.ok( clone );
 			assert.ok( clone.o );
@@ -591,21 +487,23 @@ describe( '100) Core Tests', () =>
 			assert.ok( clone.o.s === 'abc' );
 		} );
 
-		it( 'should clone an array', () => 
+		it( 'It can clone an array', () => 
 		{
 			let doc = { a: [ 1, 2, 3 ] };
+
 			let clone = jsongin.SafeClone( doc );
 			assert.ok( clone );
 			assert.ok( clone.a );
-			assert.ok( clone.a.length = 3 );
+			assert.ok( clone.a.length === 3 );
 			assert.ok( clone.a[ 0 ] === 1 );
 			assert.ok( clone.a[ 1 ] === 2 );
 			assert.ok( clone.a[ 2 ] === 3 );
 		} );
 
-		it( 'should clone an array of objects', () => 
+		it( 'It can clone an array of objects', () => 
 		{
 			let doc = { a: [ { one: 1 }, { two: 2 } ] };
+
 			let clone = jsongin.SafeClone( doc );
 			assert.ok( clone );
 			assert.ok( clone.a );
@@ -614,9 +512,10 @@ describe( '100) Core Tests', () =>
 			assert.ok( clone.a[ 1 ].two === 2 );
 		} );
 
-		it( 'should clone non-value fields', () => 
+		it( 'It can clone non-value fields', () => 
 		{
 			let doc = { l: null, r: /test/, e: new Error( 'hello' ), f: function () { }, u: undefined };
+
 			let clone = jsongin.SafeClone( doc );
 			assert.ok( clone );
 			assert.ok( clone.l === null );
@@ -626,14 +525,27 @@ describe( '100) Core Tests', () =>
 			assert.ok( typeof clone.u === 'undefined' );
 		} );
 
-		it( 'should selectively clone with the Exceptions parameter', () => 
+		it( 'It can selectively clone with the Exceptions parameter', () => 
 		{
-			function ObjectId( value ) { return value; }
-			let doc = { good: 'value', bad: new ObjectId( '1' ) };
-			let clone = jsongin.SafeClone( doc, [ 'bad' ] );
+			let doc = { id: 42, ref: { name: 'Alice' } };
+
+			let clone = jsongin.SafeClone( doc, [ 'ref' ] );
 			assert.ok( clone );
-			assert.ok( typeof clone.bad !== 'undefined' );
-			// assert.ok( clone._id === null );
+			clone.ref.name = 'Bob'; // Changed in both doc and clone
+			assert.strictEqual( doc.ref.name, 'Bob' );
+		} );
+
+		it( 'It should throw an error if an invalid Exceptions paramter is provided', () => 
+		{
+			try
+			{
+				jsongin.SafeClone( { a: 1 }, 42 );
+				assert.fail( 'Should have thrown an error.' );
+			}
+			catch ( error )
+			{
+				assert.ok( error.message.startsWith( 'The Exceptions parameter must be a document path' ) );
+			}
 		} );
 
 	} );
@@ -644,69 +556,98 @@ describe( '100) Core Tests', () =>
 	{
 
 
-		it( 'should flatten a document', () => 
+		it( 'It flattens a hierarchical document', () => 
 		{
+			let document = {
+				id: 1001,
+				user:
+				{
+					name: 'Alice',
+					location: 'East',
+				},
+				tags: [ 'Staff', 'Dept. A' ],
+			};
+
 			let flattened = jsongin.Flatten( document );
 			assert.ok( flattened );
-			assert.ok( flattened.id === 1001 );
-			assert.ok( flattened[ 'user.name' ] === 'Alice' );
-			assert.ok( flattened[ 'user.location' ] === 'East' );
-			assert.ok( flattened[ 'profile.login' ] === 'alice' );
-			assert.ok( flattened[ 'profile.role' ] === 'admin' );
-			assert.ok( flattened[ 'tags.0' ] === 'Staff' );
-			assert.ok( flattened[ 'tags.1' ] === 'Dept. A' );
+			assert.deepStrictEqual( flattened, {
+				id: 1001,
+				'user.name': 'Alice',
+				'user.location': 'East',
+				'tags.0': 'Staff',
+				'tags.1': 'Dept. A',
+			} );
 		} );
 
 
-		it( 'should expand a flattened document', () => 
+		it( 'Use Expand() to turn a flattened document back into ahierarchical document', () => 
 		{
+			let document = {
+				id: 1001,
+				user:
+				{
+					name: 'Alice',
+					location: 'East',
+				},
+				tags: [ 'Staff', 'Dept. A' ],
+			};
+
 			let flattened = jsongin.Flatten( document );
 			assert.ok( flattened );
+
 			let expanded = jsongin.Expand( flattened );
+			//NOTE: The $eq and $eqx need to be fixed to handle nested objects and arrays.
 			// assert.ok( jsongin.StrictEquals( expanded, document ) === true );
-			assert.ok( jsongin.LooseEquals( expanded, document ) === true );
+			// assert.ok( jsongin.LooseEquals( expanded, document ) === true );
+			assert.deepStrictEqual( expanded, document );
 		} );
 
 
-		it( 'should flatten an empty document', () => 
+		it( 'It should flatten an empty document', () => 
 		{
 			let flattened = jsongin.Flatten( {} );
 			assert.ok( flattened );
-			assert.ok( Object.keys( flattened ).length === 0 );
+			assert.strictEqual( Object.keys( flattened ).length, 0 );
 		} );
 
 
-		it( 'should expand an empty document', () => 
+		it( 'It should expand an empty document', () => 
 		{
 			let expanded = jsongin.Expand( {} );
 			assert.ok( expanded );
-			assert.ok( Object.keys( expanded ).length === 0 );
+			assert.strictEqual( Object.keys( expanded ).length, 0 );
 		} );
 
 
-		it( 'should flatten an array', () => 
+		it( 'It should flatten an array', () => 
 		{
 			let flattened = jsongin.Flatten( [ 1, 2, 'three' ] );
 			assert.ok( flattened );
-			assert.ok( flattened[ '0' ] === 1 );
-			assert.ok( flattened[ '1' ] === 2 );
-			assert.ok( flattened[ '2' ] === 'three' );
+			assert.strictEqual( flattened[ '0' ], 1 );
+			assert.strictEqual( flattened[ '1' ], 2 );
+			assert.strictEqual( flattened[ '2' ], 'three' );
 		} );
 
 
-		it( 'should flatten an empty array', () => 
+		it( 'It should flatten an empty array', () => 
 		{
 			let flattened = jsongin.Flatten( [] );
 			assert.ok( flattened );
-			assert.ok( Object.keys( flattened ).length === 0 );
+			assert.strictEqual( Object.keys( flattened ).length, 0 );
 		} );
 
 
-		it( 'should flatten a non-document', () => 
+		it( 'It should not flatten a non-document', () => 
 		{
-			let flattened = jsongin.Flatten( 3.14 );
-			assert.ok( flattened );
-			assert.ok( flattened[ '' ] === 3.14 );
+			try
+			{
+				let flattened = jsongin.Flatten( 3.14 );
+				assert.fail( 'Should have thrown an error.' );
+			}
+			catch ( error )
+			{
+				assert.ok( error.message === 'Document must be an object or array.' );
+			}
 		} );
 
 

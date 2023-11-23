@@ -32,62 +32,62 @@ module.exports = function ( jsongin )
 		//---------------------------------------------------------------------
 		Query: function ( Document, MatchValue, Path = '' )
 		{
-			let flat_document = jsongin.Flatten( Document );
-			let keys_document = Object.keys( flat_document );
-			let flat_match = jsongin.Flatten( MatchValue );
-			let keys_match = Object.keys( flat_match );
-			if ( keys_match.length !== keys_document.length ) { return false; }
-			for ( let index = 0; index < keys_match.length; index++ )
+			// let flat_document = jsongin.Flatten( Document );
+			// let keys_document = Object.keys( flat_document );
+			// let flat_match = jsongin.Flatten( MatchValue );
+			// let keys_match = Object.keys( flat_match );
+			// if ( keys_match.length !== keys_document.length ) { return false; }
+			// for ( let index = 0; index < keys_match.length; index++ )
+			// {
+			// 	let key = keys_match[ index ];
+			// 	if ( keys_document[ index ] !== key ) { return false; }
+			// 	let result = ( flat_match[ key ] === flat_document[ key ] );
+			// 	if ( result === false ) { return false; }
+			// }
+			// return true;
+
+			// Get Document Value
+			let actual_value = this.Engine.GetValue( Document, Path );
+			let actual_type = this.Engine.ShortType( actual_value );
+
+			// Validate Expression
+			let match_value = MatchValue;
+			let match_type = this.Engine.ShortType( match_value );
+
+			// Compare
+			if ( 'bnslru'.includes( match_type ) && ( match_type === actual_type ) ) 
 			{
-				let key = keys_match[ index ];
-				if ( keys_document[ index ] !== key ) { return false; }
-				let result = ( flat_match[ key ] === flat_document[ key ] );
-				if ( result === false ) { return false; }
+				// Primitive types must match exactly.
+				return ( actual_value === match_value ); // Equivalence of primitive types.
 			}
-			return true;
-
-			// // Get Document Value
-			// let actual_value = this.Engine.GetValue( Document, Path );
-			// let actual_type = this.Engine.ShortType( actual_value );
-
-			// // Validate Expression
-			// let match_value = MatchValue;
-			// let match_type = this.Engine.ShortType( match_value );
-
-			// // Compare
-			// if ( 'bnslru'.includes( match_type ) && ( match_type === actual_type ) ) 
-			// {
-			// 	// Primitive types must match exactly.
-			// 	return ( actual_value === match_value ); // Equivalence of primitive types.
-			// }
-			// else if ( 'lu'.includes( match_type ) && 'lu'.includes( actual_type ) ) 
-			// {
-			// 	return true; // null and undefined are always equivalent.
-			// }
-			// else if ( ( match_type === 'o' ) && ( actual_type === 'o' ) ) 
-			// {
-			// 	// Objects must match exactly, including the key order.
-			// 	let result = ( JSON.stringify( match_value ) === JSON.stringify( actual_value ) );
-			// 	if ( result === true ) { return true; }
-			// 	return false;
-			// }
-			// else if ( ( match_type === 'a' ) && ( actual_type === 'a' ) ) 
-			// {
-			// 	// Arrays must match exactly, including the value order.
-			// 	// Or, the match array must exactly match an element of the document array.
-			// 	let match_json = JSON.stringify( match_value );
-			// 	let result = ( match_json === JSON.stringify( actual_value ) );
-			// 	if ( result === true ) { return true; }
-			// 	for ( let index = 0; index < actual_value.length; index++ )
-			// 	{
-			// 		result = ( match_json === JSON.stringify( actual_value[ index ] ) );
-			// 		if ( result === true ) { break; }
-			// 	}
-			// 	if ( result === true ) { return true; }
-			// 	return false;
-			// }
-			// if ( this.Engine.Settings.Explain ) { this.Engine.Explain.push( `$eq: cannot compare [${match_type}] type with [${actual_type}] type at [${Path}].` ); }
-			// return false; // Unsupported type or equivalence.
+			else if ( 'lu'.includes( match_type ) && 'lu'.includes( actual_type ) ) 
+			{
+				return true; // null and undefined are always equivalent.
+			}
+			else if ( ( match_type === 'o' ) && ( actual_type === 'o' ) ) 
+			{
+				// Objects must match exactly, including the key order.
+				let result = ( JSON.stringify( match_value ) === JSON.stringify( actual_value ) );
+				if ( result === true ) { return true; }
+				return false;
+			}
+			else if ( ( match_type === 'a' ) && ( actual_type === 'a' ) ) 
+			{
+				// Arrays must match exactly, including the value order.
+				// Or, the match array must exactly match an element of the document array.
+				let match_json = JSON.stringify( match_value );
+				let result = ( match_json === JSON.stringify( actual_value ) );
+				if ( result === true ) { return true; }
+				for ( let index = 0; index < actual_value.length; index++ )
+				{
+					result = ( match_json === JSON.stringify( actual_value[ index ] ) );
+					if ( result === true ) { break; }
+				}
+				if ( result === true ) { return true; }
+				return false;
+			}
+			if ( jsongin.OpLog ) { jsongin.OpLog( `$eq: cannot compare [${match_type}] type with [${actual_type}] type at [${Path}].` ); }
+			return false; // Unsupported type or equivalence.
 		},
 
 		//---------------------------------------------------------------------

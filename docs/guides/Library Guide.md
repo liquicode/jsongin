@@ -37,7 +37,7 @@ Settings = {
 	OpError: null, // A function to call (such as console.error) to output OpError messages.
 }
 ```
-> See the [OpLog](./OpLog.md) document for more information about how OpLog works.
+> See the [OpLog](OpLog.md) document for more information about how OpLog works.
 
 
 jsongin Functions
@@ -46,55 +46,72 @@ jsongin Functions
 
 ### MongoDB Mechanics
 
-- `Query( Document, Criteria )` : Returns `true` when `Document` satisfies `Criteria`.
-  See [Query Reference](./Query%20Reference.md) for details.
-- `Project( Document, Projection )` : Returns a document containing fields found in `Document`.
-  See [Projection Reference](./Projection%20Reference.md) for details.
-- `Update( Document, Updates )` : Returns a copy of `Document` containing the changes specified in `Updates`.
-  See [Update Reference](./Update%20Reference.md) for details.
+`jsongin` implements functions that mirror MongoDB query and update functionality.
 
-> See the [Operator Reference](./Operator%20Reference.md) document for more information on which
+- `Query( Document, Criteria )`
+  : Returns `true` when `Document` satisfies `Criteria`.
+  See [Query Reference](guides/Query%20Reference.md) for details.
+
+- `Project( Document, Projection )`
+  : Returns a document containing fields found in `Document`.
+  See [Projection Reference](guides/Projection%20Reference.md) for details.
+
+- `Update( Document, Updates )`
+  : Returns a copy of `Document` containing the changes specified in `Updates`.
+  See [Update Reference](guides/Update%20Reference.md) for details.
+
+> See the [Operator Reference](guides/Operator%20Reference.md) document for more information on which
   operators `jsongin` supports and how to use them.
 
 
-### Document Paths and Values
+### Document Mechanics
 
-- `SplitPath( Path )` : Returns an array of the path elements found in `Path`.
+These functions allow you to manipulate Javascript objects and arrays.
+They all share the concept of a document path that is expressed in dot-notation.
+
+- [`GetValue( Document, Path )`](guides/jsongin/GetValue.md)
+  : Gets a value from a document at the specified `Path`.
+
+- [`SetValue( Document, Path, Value )`](guides/jsongin/SetValue.md)
+  : Sets a value in a document at the specified `Path`.
+  This function will create fields specified in `Path` if they don't already exist.
+
+- [`Flatten( Document )`](guides/jsongin/Flatten.md)
+  : Flattens a hierarchical document into a document with top-level entries in dot notation.
+
+- [`Expand( Document )`](guides/jsongin/Expand.md)
+  : Expands fields found in dot notation into hierarchical elements within the document.
+
+- [`SplitPath( Path )`](guides/jsongin/SplitPath.md)
+  : Returns an array of the path elements found in `Path`.
   The `Path` parameter is a string path to a document field expressed in dot notation.
-- `JoinPaths( Path1, Path2, ... )` : Returns a string from a series a paths joined together in dot notation.
-- `GetValue( Document, Path )` : Gets a value from a document at the specified `Path`.
-- `SetValue( Document, Path, Value )` : Sets a value in a document at the specified `Path`.
-  This function will create the field specified `Path` if it does not already exist.
-- `Flatten( Document )` : Flattens a hierarchical document into a document with top-level entries in dot notation.
-- `Expand( Document )` : Expands fields found in dot notation into hierarchical elements within the document.
 
-> See the [Document Manipulation](./Document%20Manipulation.md) document for more information on how to use these functions.
+- [`JoinPaths( PathSegment1, PathSegment2, ... )`](guides/jsongin/JoinPaths.md)
+  : Returns a string from a series a paths joined together in dot notation.
+
+> See the [Document Manipulation](guides/Document%20Manipulation.md) document for more information on how to use these functions.
 
 
-### Object Cloning
+### Object Matching and Cloning
 
-- `Clone( Document )` : Clones a document by doing `JSON.parse( JSON.stringify( Document ) )`.
-- `SafeClone( Document, Exceptions )` : Performs a memberwise clone of `Document` to avoid pitfalls of the
-  stringify/parse approach to cloning.
-  The `Exceptions` paramter is an array of field names (in dot notation) that are treated differently and are
-  copied by reference rather than by cloning its value.
-  This avoids problems when document fields contain functions or regular expressions.
+- `LooseEquals( DocumentA, DocumentB )`
+
+- `StrictEquals( DocumentA, DocumentB )`
+
+- `Clone( Document )`
+  : Clones a document using `JSON.parse( JSON.stringify( Document ) )`.
+
+- [`SafeClone( Document, Exceptions )`](guides/jsongin/SafeClone.md)
+  : Performs a member-wise clone of `Document`.
+  Fields listed in `Exceptions` are copied by reference rather than by value.
 
 
 ### Data Types and Conversions
 
-- `AsNumber( Value )`
-- `AsDate( Value )`
 - `ShortType( Value )`
 - `BsonType( Value, ReturnAlias )`
-
-
-### Miscellaneous
-
-- `IsQuery( Document )`
-- `LooseEquals( DocumentA, DocumentB )`
-- `StrictEquals( DocumentA, DocumentB )`
-
+- `AsNumber( Value )`
+- `AsDate( Value )`
 
 
 Related Information

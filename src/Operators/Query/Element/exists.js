@@ -30,7 +30,7 @@ module.exports = function ( jsongin )
 			let match_type = this.Engine.ShortType( MatchValue );
 			if ( match_type !== 'b' )
 			{
-				if ( this.Engine.Settings.Explain ) { this.Engine.Explain.push( `$exists: requires a boolean but found type [${match_type}] instead at [${Path}].` ); }
+				if ( jsongin.OpLog ) { jsongin.OpLog( `$exists: requires a boolean but found type [${match_type}] instead at [${Path}].` ); }
 				return false;
 			}
 

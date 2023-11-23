@@ -47,7 +47,7 @@ module.exports = function ( jsongin )
 			}
 			else
 			{
-				if ( this.Engine.Settings.Explain ) { this.Engine.Explain.push( `$lt: cannot compare [${match_type}] type with [${actual_type}] type at [${Path}].` ); }
+				if ( jsongin.OpLog ) { jsongin.OpLog( `$lt: cannot compare [${match_type}] type with [${actual_type}] type at [${Path}].` ); }
 				return false; // Unsupported type or equivalence.
 			}
 

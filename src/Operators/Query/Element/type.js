@@ -65,7 +65,7 @@ module.exports = function ( jsongin )
 				}
 				else
 				{
-					if ( this.Engine.Settings.Explain ) { this.Engine.Explain.push( `$type: requires a number or string but found type [${match_type}] instead at [${Path}].` ); }
+					if ( jsongin.OpLog ) { jsongin.OpLog( `$type: requires a number or string but found type [${match_type}] instead at [${Path}].` ); }
 					return false;
 				}
 			}

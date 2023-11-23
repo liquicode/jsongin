@@ -1,115 +1,140 @@
 'use strict';
 
-module.exports = function ( Engine )
+module.exports = function ( jsongin )
 {
 	function SetValue( Document, Path, Value )
 	{
-		// Validate the document.
-		let document_type = Engine.ShortType( Document );
-		if ( !'oa'.includes( document_type ) )
+		try
 		{
-			if ( Engine.OpLog ) { Engine.OpLog( `SetValue: Document must be an object or array.` ); }
-			return false;
-		}
-
-		// Pre-process the path.
-		let path_elements = Engine.SplitPath( Path );
-		if ( path_elements === null ) 
-		{
-			if ( Engine.OpLog ) { Engine.OpLog( `SetValue: Invalid Path.` ); }
-			return false;
-		}
-		if ( path_elements.length === 0 ) 
-		{
-			if ( Engine.OpLog ) { Engine.OpLog( `SetValue: Cannot set a value using an empty path.` ); }
-			return false;
-		}
-
-		// Locate the path.
-		let node = Document;
-		let current_path = '';
-		for ( let index = 0; index < path_elements.length; index++ )
-		{
-			let name = path_elements[ index ];
-			if ( current_path.length > 0 ) { current_path += '.'; }
-			current_path += name;
-			let parent_type = Engine.ShortType( node );
-			if ( parent_type === 'o' )
+			// Validate the document.
+			switch ( jsongin.ShortType( Document ) )
 			{
-				if ( typeof name === 'number' )
+				case 'o': break;
+				case 'a': break;
+				default: throw new Error( `Document must be an object or array.` );
+			}
+
+			// Validate Path.
+			// If the Path is empty (undefined, null, or empty string ""), then false is returned.
+			switch ( jsongin.ShortType( Path ) )
+			{
+				case 'u':
+				case 'l':
+					Path = '';
+					break;
+				case 'n': break;
+				case 's': break;
+				default: throw new Error( `Path is invalid [${JSON.stringify( Path )}].` );
+			}
+			if ( Path.length === 0 ) 
+			{
+				if ( jsongin.OpLog ) { jsongin.OpLog( `SetValue: Path is empty.` ); }
+				return false;
+			}
+
+			// Locate the path.
+			let path_elements = jsongin.SplitPath( Path );
+			let node = Document;
+			for ( let path_index = 0; path_index < path_elements.length; path_index++ )
+			{
+				// Get the key.
+				let key = path_elements[ path_index ];
+
+				// Get the type of node and key.
+				let st_key = jsongin.ShortType( key );
+				let st_node = jsongin.ShortType( node );
+
+				// Process the current node.
+				if ( st_node === 'a' )
 				{
-					if ( Engine.OpLog ) { Engine.OpLog( `SetValue: Type mismatch at [${current_path}]. Expected a field name but found an array index instead.` ); }
-					return false;
-				}
-				if ( typeof node[ name ] === 'undefined' ) 
-				{
-					node[ name ] = {};
-					// Inspect next path element.
-					if ( index < ( path_elements.length - 1 ) )
+					if ( st_key === 'n' )
 					{
-						let next_name = path_elements[ index + 1 ];
-						let st_next_name = Engine.ShortType( next_name );
-						if ( st_next_name === 's' )
+						// Check for reverse indexing.
+						if ( key < 0 ) { key = node.length + key; }
+						if ( key < 0 )
 						{
-							node[ name ] = {};
+							if ( jsongin.OpLog ) { jsongin.OpLog( `SetValue: Disallowed negative array index [${key}] in path [${Path}].` ); }
+							return false;
 						}
-						else if ( st_next_name === 'n' )
+						// Get the array element and continue down the path.
+						if ( path_index === ( path_elements.length - 1 ) )
 						{
-							node[ name ] = [];
+							node[ key ] = Value;
+							return true;
 						}
 						else
 						{
-							if ( Engine.OpLog ) { Engine.OpLog( `SetValue: Unsupported element type [${st_next_name}] in path at [${current_path}]. Expected a field name or an array index.` ); }
-							return false;
+							if ( typeof node[ key ] === 'undefined' )
+							{
+								let st_next_key = jsongin.ShortType( path_elements[ path_index + 1 ] );
+								if ( st_next_key === 'n' )
+								{
+									node[ key ] = [];
+								}
+								else
+								{
+									node[ key ] = {};
+								}
+							}
+							node = node[ key ];
+							continue;
 						}
 					}
-				}
-				if ( index === ( path_elements.length - 1 ) )
-				{
-					if ( typeof Value === 'undefined' )
+					else
 					{
-						delete node[ name ];
+						// Execute the Implicit Iterator.
+						let values = [];
+						let sub_path = path_elements.slice( path_index ).join( '.' );
+						for ( let index = 0; index < node.length; index++ )
+						{
+							let result = SetValue( node[ index ], sub_path, Value );
+							if ( result === false ) { return false; }
+						}
+						return true;
+					}
+				}
+				else if ( st_node === 'o' )
+				{
+					if ( path_index === ( path_elements.length - 1 ) )
+					{
+						node[ key ] = Value;
+						return true;
+					}
+					else if ( typeof node[ key ] === 'undefined' )
+					{
+						let st_next_key = jsongin.ShortType( path_elements[ path_index + 1 ] );
+						if ( st_next_key === 'n' )
+						{
+							node[ key ] = [];
+						}
+						else
+						{
+							node[ key ] = {};
+						}
+						node = node[ key ];
+						continue;
 					}
 					else
 					{
-						node[ name ] = JSON.parse( JSON.stringify( Value ) );
+						node = node[ key ];
+						continue;
 					}
-					return true;
 				}
+				else
+				{
+					throw new Error( `The element [${key}] of the path [${Path}] must reference an object or array.` );
+				}
+				return false; // Code should be inaccessible.
 			}
-			else if ( parent_type === 'a' )
-			{
-				if ( typeof name === 'string' )
-				{
-					if ( Engine.OpLog ) { Engine.OpLog( `SetValue: Type mismatch at [${current_path}]. Expected a array index but found a field name instead.` ); }
-					return false;
-				}
-				//TODO: Does it make sense to add nulls for empty elements?
-				//		Is it legal, or even desirable, to have undefined elements in an array?
-				//TODO: Can we support a syntax that allows us to specify pushing and popping elements in an arra?
-				//TODO: Can we support we support negative array indeces to allow reverse indexing?
-				while ( node.length < name )
-				{
-					node.push( null );
-				}
-				if ( index === ( path_elements.length - 1 ) )
-				{
-					if ( typeof Value === 'undefined' )
-					{
-						node.splice( name, 1 );
-					}
-					else
-					{
-						node[ name ] = JSON.parse( JSON.stringify( Value ) );
-					}
-					return true;
-				}
-			}
-			node = node[ name ];
-		}
 
-		// Return, OK.
-		return true;
+			// Return, OK.
+			return true;
+		}
+		catch ( error )
+		{
+			if ( jsongin.OpError ) { jsongin.OpError( 'SetValue: ' + error.message ); }
+			throw error;
+		}
 	};
 	return SetValue;
 };

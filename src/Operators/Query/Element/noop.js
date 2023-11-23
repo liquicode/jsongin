@@ -22,7 +22,7 @@ module.exports = function ( jsongin )
 		//---------------------------------------------------------------------
 		Query: function ( Document, MatchValue, Path = '' )
 		{
-			if ( this.Engine.Settings.Explain ) { this.Engine.Explain.push( `$noop: always returns true at [${Path}].` ); }
+			if ( jsongin.OpLog ) { jsongin.OpLog( `$noop: always returns true at [${Path}].` ); }
 			return true;
 		},
 

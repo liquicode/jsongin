@@ -1,42 +1,36 @@
 'use strict';
 
-module.exports = function ( Engine )
+module.exports = function ( jsongin )
 {
-	function Query( Document, Criteria, QueryPath = '' )
+	function Query( Document, Criteria, Path = '' )
 	{
-		// Reset the explain stack.
-		if ( ( QueryPath === '' ) && Engine.Settings.ClearExplainOnTopLevelQuery )
-		{
-			Engine.Explain = [];
-		}
-
 		// Validate the parameters.
-		if ( Engine.ShortType( Document ) !== 'o' )
+		if ( jsongin.ShortType( Document ) !== 'o' )
 		{
-			if ( Engine.OpLog ) { Engine.OpLog( `Query: The Document parameter must be an object.` ); }
+			if ( jsongin.OpLog ) { jsongin.OpLog( `Query: The Document parameter must be an object.` ); }
 			return false;
 		}
-		if ( Engine.ShortType( Criteria ) !== 'o' )
+		if ( jsongin.ShortType( Criteria ) !== 'o' )
 		{
-			if ( Engine.OpLog ) { Engine.OpLog( `Query: The Query parameter must be an object.` ); }
+			if ( jsongin.OpLog ) { jsongin.OpLog( `Query: The Criteria parameter must be an object.` ); }
 			return false;
 		}
 
 		// Validate the path.
 		{
-			let path_elements = Engine.SplitPath( QueryPath );
+			let path_elements = jsongin.SplitPath( Path );
 			if ( path_elements === null ) 
 			{
-				QueryPath = '';
+				Path = '';
 			}
 			else
 			{
-				QueryPath = path_elements.join( '.' );
+				Path = path_elements.join( '.' );
 			}
 		}
-		if ( ( QueryPath === '' ) && ( Object.keys( Criteria ).length === 0 ) )
+		if ( ( Path === '' ) && ( Object.keys( Criteria ).length === 0 ) )
 		{
-			if ( Engine.OpLog ) { Engine.OpLog( `Query: An empty query object {} matches everything.` ); }
+			if ( jsongin.OpLog ) { jsongin.OpLog( `Query: An empty query object {} matches everything.` ); }
 			return true;
 		}
 
@@ -44,14 +38,14 @@ module.exports = function ( Engine )
 		for ( let key in Criteria )
 		{
 			// Check for operator.
-			if ( typeof Engine.QueryOperators[ key ] !== 'undefined' )
+			if ( typeof jsongin.QueryOperators[ key ] !== 'undefined' )
 			{
 				// Check for top level operator.
-				if ( QueryPath === '' )
+				if ( Path === '' )
 				{
-					if ( !Engine.QueryOperators[ key ].TopLevel )
+					if ( !jsongin.QueryOperators[ key ].TopLevel )
 					{
-						if ( Engine.OpLog ) { Engine.OpLog( `Query: Operator [${key}] cannot appear at the top level of a query. Only logical operators can appear at the top level of a query.` ); }
+						if ( jsongin.OpLog ) { jsongin.OpLog( `Query: Operator [${key}] cannot appear at the top level of a query. Only logical operators can appear at the top level of a query.` ); }
 						return false;
 					}
 				}
@@ -59,13 +53,13 @@ module.exports = function ( Engine )
 				let sub_query = Criteria[ key ];
 				if ( typeof sub_query === 'undefined' )
 				{
-					if ( Engine.OpLog ) { Engine.OpLog( `Query: Operator [${key}] cannot be set to undefined. Use $exists to chrck for a field in the document.` ); }
+					if ( jsongin.OpLog ) { jsongin.OpLog( `Query: Operator [${key}] cannot be set to undefined. Use $exists to test if a field exists in the document.` ); }
 					return false;
 				}
-				let result = Engine.QueryOperators[ key ].Query( Document, sub_query, QueryPath );
+				let result = jsongin.QueryOperators[ key ].Query( Document, sub_query, Path );
 				if ( result === false ) 
 				{
-					if ( Engine.OpLog ) { Engine.OpLog( `Query: Operator [${key}] returned false at [${QueryPath}].` ); }
+					if ( jsongin.OpLog ) { jsongin.OpLog( `Query: Operator [${key}] returned false at [${Path}].` ); }
 					return false;
 				}
 			}
@@ -73,21 +67,21 @@ module.exports = function ( Engine )
 			{
 				// Get the sub-query.
 				let sub_query = Criteria[ key ];
-				let sub_query_path = Engine.JoinPaths( QueryPath, key );
+				let sub_query_path = jsongin.JoinPaths( Path, key );
 				let result = false;
-				if ( Engine.IsQuery( sub_query ) )
+				if ( jsongin.IsQuery( sub_query ) )
 				{
-					result = Engine.Query( Document, sub_query, sub_query_path );
+					result = jsongin.Query( Document, sub_query, sub_query_path );
 				}
 				else
 				{
 					if ( typeof sub_query === 'undefined' )
 					{
-						if ( Engine.OpLog ) { Engine.OpLog( `Query: The implicit $eq operator cannot be set to undefined. Use $exists to chrck for a field in the document.` ); }
+						if ( jsongin.OpLog ) { jsongin.OpLog( `Query: The implicit $eq operator cannot be set to undefined. Use $exists to test if a field exists in the document.` ); }
 						return false;
 					}
 					// Implicit $eq
-					result = Engine.QueryOperators.$ImplicitEq.Query( Document, sub_query, sub_query_path );
+					result = jsongin.QueryOperators.$ImplicitEq.Query( Document, sub_query, sub_query_path );
 				}
 				if ( result === false ) { return false; }
 			}
