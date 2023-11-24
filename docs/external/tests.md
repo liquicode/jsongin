@@ -1,3 +1,4 @@
+```
 
 
   010) Javascript Compatibility Tests
@@ -495,3 +496,4 @@
 
   372 passing (76ms)
 
+```

@@ -5,6 +5,12 @@
 # Project History
 
 
+2023-11-24: v0.0.11
+---------------------------------------------------------------------
+
+- Refactoring and validation. Especially with regards to handling arrays.
+- Added ocs
+
 2023-11-23: v0.0.10
 ---------------------------------------------------------------------
 

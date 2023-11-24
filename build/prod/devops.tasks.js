@@ -6,6 +6,8 @@ module.exports = {
 
 		// Run tests and capture the output.
 		{ $Shell: { command: 'npx mocha -u bdd tests/*.js --timeout 0 --slow 10', output: 'tests.md' } },
+		{ $PrependTextFile: { filename: 'tests.md', value: '```\n' } },
+		{ $AppendTextFile: { filename: 'tests.md', value: '```\n' } },
 
 	],
 
