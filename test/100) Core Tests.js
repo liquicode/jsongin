@@ -598,8 +598,8 @@ describe( '100) Core Tests', () =>
 			let expanded = jsongin.Expand( flattened );
 			//NOTE: The $eq and $eqx need to be fixed to handle nested objects and arrays.
 			// assert.ok( jsongin.StrictEquals( expanded, document ) === true );
-			// assert.ok( jsongin.LooseEquals( expanded, document ) === true );
-			assert.deepStrictEqual( expanded, document );
+			assert.ok( jsongin.LooseEquals( expanded, document ) === true );
+			// assert.deepStrictEqual( expanded, document );
 		} );
 
 

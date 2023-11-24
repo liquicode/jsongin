@@ -70,6 +70,40 @@ describe( '200) Comparison Operator Tests', () =>
 			assert.ok( jsongin.QueryOperators.$eq.Query( { a: 1, b: 2 }, { a: 1, b: '2.0' } ) === false );
 		} );
 
+		it( 'should equate complex object', () => 
+		{
+			let document = {
+				id: 101,
+				user: {
+					name: 'Alice',
+					location: 'East',
+					history: [
+						{ seq: 1, action: 'login' },
+						{ seq: 2, action: 'read document' },
+						{ seq: 3, action: 'write document' },
+					],
+				},
+				profile: {
+					login: 'alice',
+					role: 'admin',
+				},
+				tags: [ 'Staff', 'Dept. A' ],
+			};
+			assert.ok( jsongin.QueryOperators.$eq.Query( document, document ) === true );
+		} );
+
+		it( 'should equate complex arrays', () => 
+		{
+			let document = {
+				users: [
+					{ id: 101, user: { name: 'Alice' } },
+					{ id: 102, user: { name: 'Bob' } },
+					{ id: 103, user: { name: 'Eve' } },
+				]
+			};
+			assert.ok( jsongin.QueryOperators.$eq.Query( document, document ) === true );
+		} );
+
 		it( 'should not equate object values with keys in different order', () => 
 		{
 			assert.ok( jsongin.QueryOperators.$eq.Query( { a: 1, b: 2 }, { b: 2, a: 1 } ) === false );
@@ -172,6 +206,50 @@ describe( '200) Comparison Operator Tests', () =>
 		it( 'should equate object values with keys in different order', () => 
 		{
 			assert.ok( jsongin.QueryOperators.$eqx.Query( { a: 1, b: 2 }, { b: 2, a: 1 } ) === true );
+			assert.ok( jsongin.QueryOperators.$eqx.Query(
+				{ id: 101, user: { name: 'Alice' } },
+				{ user: { name: 'Alice' }, id: 101 } ) === true );
+		} );
+
+		it( 'should equate complex object', () => 
+		{
+			let document = {
+				id: 101,
+				user: {
+					name: 'Alice',
+					location: 'East',
+					history: [
+						{ seq: 1, action: 'login' },
+						{ seq: 2, action: 'read document' },
+						{ seq: 3, action: 'write document' },
+					],
+				},
+				profile: {
+					login: 'alice',
+					role: 'admin',
+				},
+				tags: [ 'Staff', 'Dept. A' ],
+			};
+			assert.ok( jsongin.QueryOperators.$eqx.Query( document, document ) === true );
+		} );
+
+		it( 'should equate complex arrays', () => 
+		{
+			let document1 = {
+				users: [
+					{ id: 101, user: { name: 'Alice' } },
+					{ id: 102, user: { name: 'Bob' } },
+					{ id: 103, user: { name: 'Eve' } },
+				]
+			};
+			let document2 = {
+				users: [
+					{ user: { name: 'Eve' }, id: 103 },
+					{ user: { name: 'Bob' }, id: 102 },
+					{ user: { name: 'Alice' }, id: 101 },
+				]
+			};
+			assert.ok( jsongin.QueryOperators.$eqx.Query( document1, document2 ) === true );
 		} );
 
 		it( 'should equate array values', () => 

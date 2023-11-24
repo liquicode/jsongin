@@ -1,16 +1,7 @@
 'use strict';
-/*md
-
-## Operators > Update > $max
-
-Usage: `$max: { field: value, ... }`
-
-*/
 
 module.exports = function ( jsongin )
 {
-	let Engine = jsongin;
-
 	let operator =
 	{
 
@@ -23,44 +14,40 @@ module.exports = function ( jsongin )
 		//---------------------------------------------------------------------
 		Update: function ( Document, UpdateFields )
 		{
-			if ( Engine.ShortType( UpdateFields ) !== 'o' )
+			try
 			{
-				if ( Engine.OpLog ) { Engine.OpLog( `$max: The UpdateFields parameter must be an object.` ); }
-				return false;
-			}
+				if ( jsongin.ShortType( UpdateFields ) !== 'o' ) { throw new Error( `The UpdateFields parameter must be an object.` ); }
 
-			for ( let field in UpdateFields )
-			{
-				let value = Engine.GetValue( Document, field );
-				let max = Engine.AsNumber( UpdateFields[ field ] );
-				if ( max === null )
+				let operation_result = true;
+				for ( let field in UpdateFields )
 				{
-					if ( Engine.OpLog ) { Engine.OpLog( `$max: This operator requires a numeric value but found [${UpdateFields[ field ]}] instead at [${field}].` ); }
-					continue;
-				}
-				if ( max > value )
-				{
-					let result = Engine.SetValue( Document, field, max );
-					if ( result === false )
+					let value = jsongin.GetValue( Document, field );
+					let max = jsongin.AsNumber( UpdateFields[ field ] );
+					if ( max === null )
 					{
-						if ( Engine.OpLog ) { Engine.OpLog( `$max: Setting the value of [${field}] to [${value}] failed.` ); }
+						if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$max: This operator requires a numeric value but found [${UpdateFields[ field ]}] instead at [${field}].` ); }
+						operation_result = false;
+						continue;
+					}
+					if ( max > value )
+					{
+						let result = jsongin.SetValue( Document, field, max );
+						if ( result === false )
+						{
+							if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$max: Setting the value of [${field}] to [${JSON.stringify( value )}] failed.` ); }
+							operation_result = false;
+							continue;
+						}
 					}
 				}
 			}
+			catch ( error )
+			{
+				if ( jsongin.OpError ) { jsongin.OpError( `Update.$max: ${error.message}` ); }
+				throw error;
+			}
 
-			return true;
-		},
-
-		//---------------------------------------------------------------------
-		ToMongoQuery: function ( Expression )
-		{
-			return Expression;
-		},
-
-		//---------------------------------------------------------------------
-		ToSql: function ( Expression )
-		{
-			throw new Error( `ToSql() is not implemented.` );
+			return operation_result;
 		},
 
 	};

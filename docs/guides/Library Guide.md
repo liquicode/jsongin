@@ -1,5 +1,5 @@
 # jsongin
-[`@liquiode/jsongin`](https://github.com/liquicode/jsongin)
+[`@liquicode/jsongin`](https://github.com/liquicode/jsongin)
 
 
 # Library Guide
@@ -48,17 +48,15 @@ jsongin Functions
 
 `jsongin` implements functions that mirror MongoDB query and update functionality.
 
-- `Query( Document, Criteria )`
-  : Returns `true` when `Document` satisfies `Criteria`.
-  See [Query Reference](guides/Query%20Reference.md) for details.
+- [`Query( Document, Criteria )`](guides/jsongin/Query.md)
+  : Returns `true` if the `Document` satisfies `Criteria`.
 
-- `Project( Document, Projection )`
-  : Returns a document containing fields found in `Document`.
-  See [Projection Reference](guides/Projection%20Reference.md) for details.
+- [`Project( Document, Projection )`](guides/jsongin/Project.md)
+  : Returns a document containing fields found in the given `Document`.
+  The `Projection` parameter identifies which fields to include/exclude in the output.
 
-- `Update( Document, Updates )`
+- [`Update( Document, Updates )`](guides/jsongin/Update.md)
   : Returns a copy of `Document` containing the changes specified in `Updates`.
-  See [Update Reference](guides/Update%20Reference.md) for details.
 
 > See the [Operator Reference](guides/Operator%20Reference.md) document for more information on which
   operators `jsongin` supports and how to use them.
@@ -94,9 +92,13 @@ They all share the concept of a document path that is expressed in dot-notation.
 
 ### Object Matching and Cloning
 
-- `LooseEquals( DocumentA, DocumentB )`
-
 - `StrictEquals( DocumentA, DocumentB )`
+  : Performs a strict equality comparison between two values.
+  Values must match excatly (===) and values must appear in the same order within objects and arrays.
+
+- `LooseEquals( DocumentA, DocumentB )`
+  : Performs a loose equality comparison between two values.
+  Values must match loosely (==) and values can appear in different orders.
 
 - `Clone( Document )`
   : Clones a document using `JSON.parse( JSON.stringify( Document ) )`.
@@ -108,20 +110,23 @@ They all share the concept of a document path that is expressed in dot-notation.
 
 ### Data Types and Conversions
 
-- `ShortType( Value )`
+- [`ShortType( Value )`](guides/jsongin/ShortType.md)
+  : Returns the single-character `ShortType` of a value.
+  This is a shorter, yet more precise, type name string than Javascript's `typeof` operator.
 - `BsonType( Value, ReturnAlias )`
 - `AsNumber( Value )`
 - `AsDate( Value )`
 
 
-Related Information
+Other References
 ---------------------------------------------------------------------
 
 ### MongoDB References
 
 - [MongoDB Main Site](https://www.mongodb.com/)
-- [MongoDB: Query Documents](https://www.mongodb.com/docs/manual/tutorial/query-documents/)
-- [MongoDB: Query Operator Reference](https://www.mongodb.com/docs/manual/reference/operator/query/)
+- [Query Documents](https://www.mongodb.com/docs/manual/tutorial/query-documents/)
+- [Query Operator Reference](https://www.mongodb.com/docs/manual/reference/operator/query/)
+- [Update Documents](https://www.mongodb.com/docs/manual/tutorial/update-documents/)
 - [MongoDB: Dot Notation](https://www.mongodb.com/docs/manual/core/document/#std-label-document-dot-notation)
 - [Project Fields to Return from Query](https://www.mongodb.com/docs/manual/tutorial/project-fields-from-query-results/)
 

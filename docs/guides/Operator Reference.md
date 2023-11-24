@@ -1,5 +1,5 @@
 # jsongin
-[`@liquiode/jsongin`](https://github.com/liquicode/jsongin)
+[`@liquicode/jsongin`](https://github.com/liquicode/jsongin)
 
 
 ## Operator Reference
@@ -47,7 +47,7 @@ Read the [Query Reference](./Query%20Reference.md) document to understand how th
 | Geospatial    | -         | $geoWithin     | Selects geometries within a bounding GeoJSON geometry. The 2dsphere and 2d indexes support $geoWithin.                                        |
 | Geospatial    | -         | $near          | Returns geospatial objects in proximity to a point. Requires a geospatial index. The 2dsphere and 2d indexes support $near.                   |
 | Geospatial    | -         | $nearSphere    | Returns geospatial objects in proximity to a point on a sphere. Requires a geospatial index. The 2dsphere and 2d indexes support $nearSphere. |
-| Array         | -         | $elemMatch     | Selects documents if element in the array field matches all the specified $elemMatch conditions.                                              |
+| Array         | Yes       | $elemMatch     | Selects documents if element in the array field matches all the specified $elemMatch conditions.                                              |
 | Array         | Yes       | $size          | Selects documents if the array field is a specified size.                                                                                     |
 | Array         | Yes       | $all           | Matches arrays that contain all elements specified in the query.                                                                              |
 | Bitwise       | -         | $bitsAllClear  | Matches numeric or binary values in which a set of bit positions all have a value of 0.                                                       |
@@ -85,6 +85,7 @@ You can use `jsongin.Project( Document, Projection )` to perform this function.
 ### Update Operators
 
 Update operators modify the contents of a document.
+Use the `jsongin.Update( Document, Updates )` function to apply updates to a document.
 
 
 | Category | Supported | Operator         | Description                                                                                                                                   |
@@ -106,5 +107,5 @@ Update operators modify the contents of a document.
 | Array    |     -     | $                | Acts as a placeholder to update the first element that matches the query condition.                                                           |
 | Array    |     -     | $[]              | Acts as a placeholder to update all elements in an array for the documents that match the query condition.                                    |
 | Array    |     -     | $[<identifier> ] | Acts as a placeholder to update all elements that match the arrayFilters condition for the documents that match the query condition.          |
-| Bitwise  |     -     | bit              | Performs bitwise AND, OR, and XOR updates of integer values.Performs bitwise AND, OR, and XOR updates of integer values.                      |
+| Bitwise  |     -     | bit              | Performs bitwise AND, OR, and XOR updates of integer values.                                                                                  |
 

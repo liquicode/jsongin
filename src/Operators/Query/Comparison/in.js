@@ -22,6 +22,15 @@ module.exports = function ( jsongin )
 		//---------------------------------------------------------------------
 		Query: function ( Document, MatchValue, Path = '' )
 		{
+			try
+			{
+			}
+			catch ( error )
+			{
+				if ( jsongin.OpError ) { jsongin.OpError( `Query.$in: ${error.message}` ); }
+				throw error;
+			}
+
 			// Get Document Value
 			let actual_value = this.Engine.GetValue( Document, Path );
 			let actual_type = this.Engine.ShortType( actual_value );

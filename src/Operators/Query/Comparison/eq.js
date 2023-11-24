@@ -32,6 +32,15 @@ module.exports = function ( jsongin )
 		//---------------------------------------------------------------------
 		Query: function ( Document, MatchValue, Path = '' )
 		{
+			try
+			{
+			}
+			catch ( error )
+			{
+				if ( jsongin.OpError ) { jsongin.OpError( `Query.$eq: ${error.message}` ); }
+				throw error;
+			}
+
 			// let flat_document = jsongin.Flatten( Document );
 			// let keys_document = Object.keys( flat_document );
 			// let flat_match = jsongin.Flatten( MatchValue );
@@ -74,10 +83,10 @@ module.exports = function ( jsongin )
 			else if ( ( match_type === 'a' ) && ( actual_type === 'a' ) ) 
 			{
 				// Arrays must match exactly, including the value order.
-				// Or, the match array must exactly match an element of the document array.
 				let match_json = JSON.stringify( match_value );
 				let result = ( match_json === JSON.stringify( actual_value ) );
 				if ( result === true ) { return true; }
+				// Or, the match array must exactly match an element of the document array.
 				for ( let index = 0; index < actual_value.length; index++ )
 				{
 					result = ( match_json === JSON.stringify( actual_value[ index ] ) );

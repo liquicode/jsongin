@@ -1,16 +1,7 @@
 'use strict';
-/*md
-
-## Operators > Update > $rename
-
-Usage: `$rename: { field: "new-name", ... }`
-
-*/
 
 module.exports = function ( jsongin )
 {
-	let Engine = jsongin;
-
 	let operator =
 	{
 
@@ -23,44 +14,40 @@ module.exports = function ( jsongin )
 		//---------------------------------------------------------------------
 		Update: function ( Document, UpdateFields )
 		{
-			if ( Engine.ShortType( UpdateFields ) !== 'o' )
+			try
 			{
-				if ( Engine.OpLog ) { Engine.OpLog( `$rename: The UpdateFields parameter must be an object.` ); }
-				return false;
-			}
+				if ( jsongin.ShortType( UpdateFields ) !== 'o' ) { throw new Error( `The UpdateFields parameter must be an object.` ); }
 
-			for ( let field in UpdateFields )
+				let operation_result = true;
+				for ( let field in UpdateFields )
+				{
+					let new_name = UpdateFields[ field ];
+					let value = jsongin.GetValue( Document, field );
+					let result = null;
+					result = jsongin.SetValue( Document, field, undefined );
+					if ( result === false )
+					{
+						if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$rename: Unsetting the value of [${field}] failed.` ); }
+						operation_result = false;
+						continue;
+					}
+					result = jsongin.SetValue( Document, new_name, value );
+					if ( result === false )
+					{
+						if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$rename: Setting the value of [${new_name}] to [${JSON.stringify( value )}] failed.` ); }
+						operation_result = false;
+						continue;
+					}
+				}
+
+				return operation_result;
+			}
+			catch ( error )
 			{
-				let new_name = UpdateFields[ field ];
-				let value = Engine.GetValue( Document, field );
-				let result = null;
-				result = Engine.SetValue( Document, field, undefined );
-				if ( result === false )
-				{
-					if ( Engine.OpLog ) { Engine.OpLog( `$rename: Unsetting the value of [${field}] failed.` ); }
-					continue;
-				}
-				result = Engine.SetValue( Document, new_name, value );
-				if ( result === false )
-				{
-					if ( Engine.OpLog ) { Engine.OpLog( `$rename: Setting the value of [${new_name}] to [${value}] failed.` ); }
-					continue;
-				}
+				if ( jsongin.OpError ) { jsongin.OpError( `Update.$rename: ${error.message}` ); }
+				throw error;
 			}
-
-			return true;
-		},
-
-		//---------------------------------------------------------------------
-		ToMongoQuery: function ( Expression )
-		{
-			return Expression;
-		},
-
-		//---------------------------------------------------------------------
-		ToSql: function ( Expression )
-		{
-			throw new Error( `ToSql() is not implemented.` );
+			return; // Code should be inaccessible.
 		},
 
 	};

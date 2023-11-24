@@ -372,7 +372,7 @@ describe( '250) Update Operator Tests', () =>
 		describe( '$pullAll Tests', () =>
 		{
 
-			it( 'should push values to the end of an array', () => 
+			it( 'should pull values from the array', () => 
 			{
 				let document = { a: [ 1, 2, 3 ] };
 				let result = jsongin.UpdateOperators.$pullAll.Update( document, { a: [ 1, 4 ] } );

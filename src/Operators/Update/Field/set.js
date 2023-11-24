@@ -1,16 +1,7 @@
 'use strict';
-/*md
-
-## Operators > Update > $set
-
-Usage: `$set: { field: value, ... }`
-
-*/
 
 module.exports = function ( jsongin )
 {
-	let Engine = jsongin;
-
 	let operator =
 	{
 
@@ -23,35 +14,31 @@ module.exports = function ( jsongin )
 		//---------------------------------------------------------------------
 		Update: function ( Document, UpdateFields )
 		{
-			if ( Engine.ShortType( UpdateFields ) !== 'o' )
+			try
 			{
-				if ( Engine.OpLog ) { Engine.OpLog( `$set: The UpdateFields parameter must be an object.` ); }
-				return false;
-			}
+				if ( jsongin.ShortType( UpdateFields ) !== 'o' ) { throw new Error( `The UpdateFields parameter must be an object.` ); }
 
-			for ( let field in UpdateFields )
-			{
-				let value = UpdateFields[ field ];
-				let result = Engine.SetValue( Document, field, value );
-				if ( result === false )
+				let operation_result = true;
+				for ( let field in UpdateFields )
 				{
-					if ( Engine.OpLog ) { Engine.OpLog( `$set: Setting the value of [${field}] to [${value}] failed.` ); }
+					let value = UpdateFields[ field ];
+					let result = jsongin.SetValue( Document, field, value );
+					if ( result === false )
+					{
+						if ( jsongin.OpLog ) { Engine.OpLog( `Update.$set: Setting the value of [${field}] to [${JSON.stringify( value )}] failed.` ); }
+						operation_result = false;
+						continue;
+					}
 				}
+
+				return operation_result;
 			}
-
-			return true;
-		},
-
-		//---------------------------------------------------------------------
-		ToMongoQuery: function ( Expression )
-		{
-			return Expression;
-		},
-
-		//---------------------------------------------------------------------
-		ToSql: function ( Expression )
-		{
-			throw new Error( `ToSql() is not implemented.` );
+			catch ( error )
+			{
+				if ( jsongin.OpError ) { jsongin.OpError( `Update.$set: ${error.message}` ); }
+				throw error;
+			}
+			return; // Code should be inaccessible.
 		},
 
 	};

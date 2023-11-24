@@ -22,6 +22,15 @@ module.exports = function ( jsongin )
 		//---------------------------------------------------------------------
 		Query: function ( Document, MatchValue, Path = '' )
 		{
+			try
+			{
+			}
+			catch ( error )
+			{
+				if ( jsongin.OpError ) { jsongin.OpError( `Query.$or: ${error.message}` ); }
+				throw error;
+			}
+
 			// Validate Expression
 			let match_type = this.Engine.ShortType( MatchValue );
 			if ( match_type !== 'a' )

@@ -23,6 +23,15 @@ module.exports = function ( jsongin )
 		Query: function ( Document, MatchValue, Path = '' )
 		{
 
+			try
+			{
+			}
+			catch ( error )
+			{
+				if ( jsongin.OpError ) { jsongin.OpError( `Query.$lte: ${error.message}` ); }
+				throw error;
+			}
+
 			// Get Document Value
 			let actual_value = jsongin.GetValue( Document, Path );
 			let actual_type = jsongin.ShortType( actual_value );

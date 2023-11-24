@@ -1,5 +1,5 @@
 # jsongin
-[`@liquiode/jsongin`](https://github.com/liquicode/jsongin)
+[`@liquicode/jsongin`](https://github.com/liquicode/jsongin)
 
 
 # GetValue( Document, Path )
@@ -33,6 +33,12 @@ To specify an element of an array, use the numeric (zero-based) index of that el
 You can use negative index numbers to select from the end of an array.
 Use `-1` to retrieve the last element of an array, `-2` to select the next to last element, and so on.
 If you have an array of objects, you can omit the array index to retrieve values inside those objects.
+
+
+## See Also
+
+- [`SetValue( Document, Path, Value )`](./SetValue.md)
+- [`Update( Document, Updates )`](./Update.md)
 
 
 ## Examples

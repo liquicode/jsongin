@@ -9,8 +9,6 @@ Usage: `$inc: { field: value, ... }`
 
 module.exports = function ( jsongin )
 {
-	let Engine = jsongin;
-
 	let operator =
 	{
 
@@ -23,42 +21,39 @@ module.exports = function ( jsongin )
 		//---------------------------------------------------------------------
 		Update: function ( Document, UpdateFields )
 		{
-			if ( Engine.ShortType( UpdateFields ) !== 'o' )
+			try
 			{
-				if ( Engine.OpLog ) { Engine.OpLog( `$inc: The UpdateFields parameter must be an object.` ); }
-				return false;
-			}
+				if ( jsongin.ShortType( UpdateFields ) !== 'o' ) { throw new Error( `The UpdateFields parameter must be an object.` ); }
 
-			for ( let field in UpdateFields )
+				let operation_result = true;
+				for ( let field in UpdateFields )
+				{
+					let value = jsongin.GetValue( Document, field );
+					let inc = jsongin.AsNumber( UpdateFields[ field ] );
+					if ( inc === null )
+					{
+						if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$inc: This operator requires a numeric value but found [${UpdateFields[ field ]}] instead at [${field}].` ); }
+						operation_result = false;
+						continue;
+					}
+					value += inc;
+					let result = jsongin.SetValue( Document, field, value );
+					if ( result === false )
+					{
+						if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$inc: Setting the value of [${field}] to [${JSON.stringify( value )}] failed.` ); }
+						operation_result = false;
+						continue;
+					}
+				}
+
+				return operation_result;
+			}
+			catch ( error )
 			{
-				let value = Engine.GetValue( Document, field );
-				let inc = Engine.AsNumber( UpdateFields[ field ] );
-				if ( inc === null )
-				{
-					if ( Engine.OpLog ) { Engine.OpLog( `$inc: This operator requires a numeric value but found [${UpdateFields[ field ]}] instead at [${field}].` ); }
-					continue;
-				}
-				value += inc;
-				let result = Engine.SetValue( Document, field, value );
-				if ( result === false )
-				{
-					if ( Engine.OpLog ) { Engine.OpLog( `$inc: Setting the value of [${field}] to [${value}] failed.` ); }
-				}
+				if ( jsongin.OpError ) { jsongin.OpError( `Update.$inc: ${error.message}` ); }
+				throw error;
 			}
-
-			return true;
-		},
-
-		//---------------------------------------------------------------------
-		ToMongoQuery: function ( Expression )
-		{
-			return Expression;
-		},
-
-		//---------------------------------------------------------------------
-		ToSql: function ( Expression )
-		{
-			throw new Error( `ToSql() is not implemented.` );
+			return; // Code should be inaccessible.
 		},
 
 	};

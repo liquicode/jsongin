@@ -22,7 +22,14 @@ module.exports = function ( jsongin )
 		//---------------------------------------------------------------------
 		Query: function ( Document, MatchValue, Path = '' )
 		{
-			// return !this.Engine.QueryOperators.$and.Query( Document, MatchValue, Path );
+			try
+			{
+			}
+			catch ( error )
+			{
+				if ( jsongin.OpError ) { jsongin.OpError( `Query.$nor: ${error.message}` ); }
+				throw error;
+			}
 
 			// Validate Expression
 			let match_type = this.Engine.ShortType( MatchValue );

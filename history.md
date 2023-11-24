@@ -1,8 +1,13 @@
 # jsongin
-[`@liquiode/jsongin`](https://github.com/liquicode/jsongin)
+[`@liquicode/jsongin`](https://github.com/liquicode/jsongin)
 
 
 # Project History
+
+
+2023-11-xx: v0.0.11
+---------------------------------------------------------------------
+
 
 
 2023-11-23: v0.0.10
