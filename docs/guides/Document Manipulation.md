@@ -5,7 +5,7 @@
 # Document Manipulation
 
 
-The functions `jsongin.GetObjectValue( Document, Path )` and `jsongin.SetObjectValue( Document, Path, Value )`
+The functions `jsongin.GetValue( Document, Path )` and `jsongin.SetValue( Document, Path, Value )`
 accept a `Path` parameter which identifies a field within the document.
 
 A `Path` can also be used inside of a `Query` to filter on a nested field when calling the
@@ -40,30 +40,30 @@ You can use the path `"id"` to refer to the `document.id` field and `"user"` to 
 the `document.user` object.
 
 ```js
-jsongin.GetObjectValue( document, 'id' ) === 1001
-jsongin.GetObjectValue( document, 'user' ) === { name: 'Alice', location: 'East' }
+jsongin.GetValue( document, 'id' ) === 1001
+jsongin.GetValue( document, 'user' ) === { name: 'Alice', location: 'East' }
 ```
 
 To specify a nested field within the document, use the dot '.' notation to specify 
 that field.
 
 ```js
-jsongin.GetObjectValue( document, 'user.name' ) === 'Alice'
-jsongin.GetObjectValue( document, 'profile.role' ) === 'admin'
+jsongin.GetValue( document, 'user.name' ) === 'Alice'
+jsongin.GetValue( document, 'profile.role' ) === 'admin'
 ```
 
 To access a specific array element, specify the numeric index of that element.
 
 ```js
-jsongin.GetObjectValue( document, 'tags.0' ) === 'Staff'
-jsongin.GetObjectValue( document, 'tags.1' ) === 'Dept. A'
+jsongin.GetValue( document, 'tags.0' ) === 'Staff'
+jsongin.GetValue( document, 'tags.1' ) === 'Dept. A'
 ```
 
 You can even access fields nested within an array of objects.
 
 ```js
-jsongin.GetObjectValue( document, 'actions.0.timestamp' ) === '2023-11-01T08:00:00.000Z'
-jsongin.GetObjectValue( document, 'actions.0.action' ) === 'login'
+jsongin.GetValue( document, 'actions.0.timestamp' ) === '2023-11-01T08:00:00.000Z'
+jsongin.GetValue( document, 'actions.0.action' ) === 'login'
 ```
 
 ## MongoDB Compatability

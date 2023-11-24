@@ -1,11 +1,4 @@
 'use strict';
-/*md
-
-## Operators > Meta > $query
-
-Usage: `$query: true`
-
-*/
 
 module.exports = function ( jsongin )
 {

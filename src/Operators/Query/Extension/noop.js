@@ -1,11 +1,4 @@
 'use strict';
-/*md
-
-## Operators > Meta > $noop
-
-Usage: `$noop: any`
-
-*/
 
 module.exports = function ( jsongin )
 {

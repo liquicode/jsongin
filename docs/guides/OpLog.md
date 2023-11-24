@@ -48,9 +48,9 @@ The following functions will emit messages to `OpLog` and `OpError`:
 - `Query( Document, Criteria )`
 - `Project( Document, Projection )`
 - `Update( Document, Updates )`
-- `SplitPath( Path )`
-- `JoinPaths( Path1, Path2, ... )`
 - `GetValue( Document, Path )`
 - `SetValue( Document, Path, Value )`
 - `Flatten( Document )`
 - `Expand( Document )`
+- `SplitPath( Path )`
+- `JoinPaths( Path1, Path2, ... )`

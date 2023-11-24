@@ -59,7 +59,7 @@ Read the [Query Reference](./Query%20Reference.md) document to understand how th
 | Miscellaneous | -         | $natural       | A special hint that can be provided via the sort() or hint() methods that can be used to force either a forward or reverse collection scan.   |
 
 
-### Extended Query Operators
+### jsongin Extended Query Operators
 
 `jsongin` offers additional query operators which support loose comparisons (==):
 

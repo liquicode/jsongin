@@ -40,13 +40,13 @@ module.exports = function ( EngineSettings = {} )
 		// Element Query Operators
 		$exists: require( './Operators/Query/Element/exists' )( Engine ),
 		$type: require( './Operators/Query/Element/type' )( Engine ),
-		$query: require( './Operators/Query/Element/query' )( Engine ),
-		$noop: require( './Operators/Query/Element/noop' )( Engine ),
 
 		// Extension Query Operators
 		$ImplicitEq: require( './Operators/Query/Extension/ImplicitEq' )( Engine ),
 		$eqx: require( './Operators/Query/Extension/eqx' )( Engine ),
 		$nex: require( './Operators/Query/Extension/nex' )( Engine ),
+		$query: require( './Operators/Query/Extension/query' )( Engine ),
+		$noop: require( './Operators/Query/Extension/noop' )( Engine ),
 
 	};
 	Engine.UpdateOperators = {
@@ -140,8 +140,6 @@ module.exports = function ( EngineSettings = {} )
 	};
 
 
-
-
 	//---------------------------------------------------------------------
 	Engine.IsQuery = function ( Query )
 	{
@@ -163,38 +161,6 @@ module.exports = function ( EngineSettings = {} )
 		}
 		return false;
 	};
-
-
-	// //---------------------------------------------------------------------
-	// Engine.MongoQuery = function ( Query, Options )
-	// {
-	// 	// Converts a jsongin extended Query to a Mongo Query.
-	// 	throw new Error( `Not implemented.` );
-	// };
-
-
-	// //---------------------------------------------------------------------
-	// Engine.SqlQuery = function ( Query, Options )
-	// {
-	// 	// Converts a jsongin extended Query to a SQL Query.
-	// 	throw new Error( `Not implemented.` );
-	// };
-
-
-	// //---------------------------------------------------------------------
-	// Engine.Format = function ( Value, Options )
-	// {
-	// 	// Converts an object to a string, with formatting options.
-	// 	throw new Error( `Not implemented.` );
-	// };
-
-
-	// //---------------------------------------------------------------------
-	// Engine.Parse = function ( JsonString, Options )
-	// {
-	// 	// Parses a string into a value.
-	// 	throw new Error( `Not implemented.` );
-	// };
 
 
 	// Return the engine.

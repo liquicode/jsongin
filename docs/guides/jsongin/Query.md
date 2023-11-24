@@ -76,10 +76,170 @@ jsongin.Query( document, {
 
 The `$eq` operator compares two values and returns true if they are strictly (===) the same.
 
+Performs a strict equals between values in the document and values in the query.
+Returns `true` if both values are strictly equal to each other.
+For primitive types, `$eq` performs the javascript `===` comparison.
+
+Notes:
+- The values `null` and `undefined` are considered equivalent (`null === undefined`)
+- Returns `false` if the document value and the query value are of different types.
+- Integers and doubles can be compared to each other (42 === 42.0).
+- When comparing two objects, their fields must be in the same order.
+- When comparing two arrays, their elements must be in the same order.
+
 ### Examples
 ```js
 jsongin.Query( { user: { name: 'Alice' } }, { $eq: { 'user.name': 'Alice' } } ) === true
 ```
+
+
+ $ne
+---------------------------------------------------------------------
+
+**Usage** : `$ne: { expression }`
+
+
+ $gt
+---------------------------------------------------------------------
+
+**Usage** : `$gt: { field: value, field: value, ... }`
+
+
+ $gte
+---------------------------------------------------------------------
+
+**Usage** : `$gte: { field: value, field: value, ... }`
+
+
+ $lt
+---------------------------------------------------------------------
+
+**Usage** : `$lt: { field: value, field: value, ... }`
+
+
+ $lte
+---------------------------------------------------------------------
+
+**Usage** : `$lte: { field: value, field: value, ... }`
+
+
+ $in
+---------------------------------------------------------------------
+
+**Usage** : `$in: [ element, ... ]`
+
+
+ $nin
+---------------------------------------------------------------------
+
+**Usage** : `$nin: [ element, ... ]`
+
+
+# Logical Operators
+
+
+ $and
+---------------------------------------------------------------------
+
+**Usage** : `$and: [ expression, ... ]`
+
+
+ $or
+---------------------------------------------------------------------
+
+**Usage** : `$or: [ expression, ... ]`
+
+
+ $nor
+---------------------------------------------------------------------
+
+**Usage** : `$nor: [ expression, ... ]`
+
+
+ $not
+---------------------------------------------------------------------
+
+**Usage** : `$not: { expression }`
+
+
+# Element Operators
+
+
+ $exists
+---------------------------------------------------------------------
+
+**Usage** : `$exists: { field: boolean, ... }`
+
+
+ $type
+---------------------------------------------------------------------
+
+**Usage** : `$type: { field: bson-type, ... }`
+
+
+# Evaluation Operators
+
+
+ $regex
+---------------------------------------------------------------------
+
+**Usage** : `$regex: { field: regexp, ... }`
+
+
+# Array Operators
+
+
+ $elemMatch
+---------------------------------------------------------------------
+
+**Usage** : `$elemMatch: { field: value, ... }`
+
+
+ $size
+---------------------------------------------------------------------
+
+**Usage** : `$size: { field: integer, ... }`
+
+
+ $all
+---------------------------------------------------------------------
+
+**Usage** : `$all: { field: [ values ], ... }`
+
+
+# jsongin Extended Query Operators
+
+
+ $eqx
+---------------------------------------------------------------------
+
+**Usage** : `$eqx: { field: value, ... }`
+
+Performs a match between values in the document and values in the query.
+Returns `true` if both values are equal to each other.
+This operator functions much in the same way as the `$eq` operator but provides a more relaxed comparison than `$eq` does.
+For primitive types, `$eqx` performs the javascript `==` comparison.
+
+Notes:
+- The semantics of `null` and `undefined` are equivalent (`null == undefined`)
+- Booleans can be expressed numerically (`false == 0` and `true == 1`),
+- Booleans can be expressed as strings (`false == "0"` and `true == "1"`),
+- Integers and doubles can be compared to each other (`42 == 42.0`).
+- Numerics and strings can be compared to each other (`42 == "42.0"`).
+- When comparing two objects, their fields can appear in any order.
+- When comparing two arrays, their elements can appear in any order.
+
+
+ $nex
+---------------------------------------------------------------------
+
+**Usage** : `$nex: { field: value, ... }`
+
+
+ $noop
+---------------------------------------------------------------------
+
+**Usage** : `$noop: <any>`
 
 
  $ImplicitEq

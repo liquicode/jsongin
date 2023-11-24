@@ -40,14 +40,14 @@ module.exports = function ( jsongin )
 						}
 					}
 				}
+
+				return operation_result;
 			}
 			catch ( error )
 			{
 				if ( jsongin.OpError ) { jsongin.OpError( `Update.$max: ${error.message}` ); }
 				throw error;
 			}
-
-			return operation_result;
 		},
 
 	};

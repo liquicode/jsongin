@@ -1,21 +1,4 @@
 'use strict';
-/*md
-
-## Operators > Comparison > $eq
-
-Usage: `field: { $eq: value }`
-
-Performs a strict equals between values in the document and values in the query.
-Returns `true` if both values are strictly equal to each other.
-For primitive types, `$eq` performs the javascript `===` comparison.
-
-Notes:
-- The semantics of `null` and `undefined` are equivalent (`null === undefined`)
-- Returns `false` if document value and query value are of different types.
-- Integers and doubles can be compared to each other (42 === 42.0).
-- When comparing two objects, their fields must be in the same order.
-- When comparing two arrays, their elements must be in the same order.
-*/
 
 module.exports = function ( jsongin )
 {
@@ -34,81 +17,54 @@ module.exports = function ( jsongin )
 		{
 			try
 			{
+				// Get Document Value
+				let actual_value = jsongin.GetValue( Document, Path );
+				let actual_type = jsongin.ShortType( actual_value );
+
+				// Validate Expression
+				let match_value = MatchValue;
+				let match_type = jsongin.ShortType( match_value );
+
+				// Compare
+				if ( 'bnslru'.includes( match_type ) && ( match_type === actual_type ) ) 
+				{
+					// Primitive types must match exactly.
+					return ( actual_value === match_value ); // Equivalence of primitive types.
+				}
+				else if ( 'lu'.includes( match_type ) && 'lu'.includes( actual_type ) ) 
+				{
+					return true; // null and undefined are always equivalent.
+				}
+				else if ( ( match_type === 'o' ) && ( actual_type === 'o' ) ) 
+				{
+					// Objects must match exactly, including the key order.
+					let result = ( JSON.stringify( match_value ) === JSON.stringify( actual_value ) );
+					if ( result === true ) { return true; }
+					return false;
+				}
+				else if ( ( match_type === 'a' ) && ( actual_type === 'a' ) ) 
+				{
+					// Arrays must match exactly, including the value order.
+					let match_json = JSON.stringify( match_value );
+					let result = ( match_json === JSON.stringify( actual_value ) );
+					if ( result === true ) { return true; }
+					// Or, the match array must exactly match an element of the document array.
+					for ( let index = 0; index < actual_value.length; index++ )
+					{
+						result = ( match_json === JSON.stringify( actual_value[ index ] ) );
+						if ( result === true ) { break; }
+					}
+					if ( result === true ) { return true; }
+					return false;
+				}
+				if ( jsongin.OpLog ) { jsongin.OpLog( `$eq: cannot compare [${match_type}] type with [${actual_type}] type at [${Path}].` ); }
+				return false; // Unsupported type or equivalence.
 			}
 			catch ( error )
 			{
 				if ( jsongin.OpError ) { jsongin.OpError( `Query.$eq: ${error.message}` ); }
 				throw error;
 			}
-
-			// let flat_document = jsongin.Flatten( Document );
-			// let keys_document = Object.keys( flat_document );
-			// let flat_match = jsongin.Flatten( MatchValue );
-			// let keys_match = Object.keys( flat_match );
-			// if ( keys_match.length !== keys_document.length ) { return false; }
-			// for ( let index = 0; index < keys_match.length; index++ )
-			// {
-			// 	let key = keys_match[ index ];
-			// 	if ( keys_document[ index ] !== key ) { return false; }
-			// 	let result = ( flat_match[ key ] === flat_document[ key ] );
-			// 	if ( result === false ) { return false; }
-			// }
-			// return true;
-
-			// Get Document Value
-			let actual_value = this.Engine.GetValue( Document, Path );
-			let actual_type = this.Engine.ShortType( actual_value );
-
-			// Validate Expression
-			let match_value = MatchValue;
-			let match_type = this.Engine.ShortType( match_value );
-
-			// Compare
-			if ( 'bnslru'.includes( match_type ) && ( match_type === actual_type ) ) 
-			{
-				// Primitive types must match exactly.
-				return ( actual_value === match_value ); // Equivalence of primitive types.
-			}
-			else if ( 'lu'.includes( match_type ) && 'lu'.includes( actual_type ) ) 
-			{
-				return true; // null and undefined are always equivalent.
-			}
-			else if ( ( match_type === 'o' ) && ( actual_type === 'o' ) ) 
-			{
-				// Objects must match exactly, including the key order.
-				let result = ( JSON.stringify( match_value ) === JSON.stringify( actual_value ) );
-				if ( result === true ) { return true; }
-				return false;
-			}
-			else if ( ( match_type === 'a' ) && ( actual_type === 'a' ) ) 
-			{
-				// Arrays must match exactly, including the value order.
-				let match_json = JSON.stringify( match_value );
-				let result = ( match_json === JSON.stringify( actual_value ) );
-				if ( result === true ) { return true; }
-				// Or, the match array must exactly match an element of the document array.
-				for ( let index = 0; index < actual_value.length; index++ )
-				{
-					result = ( match_json === JSON.stringify( actual_value[ index ] ) );
-					if ( result === true ) { break; }
-				}
-				if ( result === true ) { return true; }
-				return false;
-			}
-			if ( jsongin.OpLog ) { jsongin.OpLog( `$eq: cannot compare [${match_type}] type with [${actual_type}] type at [${Path}].` ); }
-			return false; // Unsupported type or equivalence.
-		},
-
-		//---------------------------------------------------------------------
-		ToMongoQuery: function ( Expression )
-		{
-			return Expression;
-		},
-
-		//---------------------------------------------------------------------
-		ToSql: function ( Expression )
-		{
-			throw new Error( `ToSql() is not implemented.` );
 		},
 
 	};

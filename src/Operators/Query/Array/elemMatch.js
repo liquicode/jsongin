@@ -1,11 +1,4 @@
 'use strict';
-/*md
-
-## Operators > Meta > $elemMatch
-
-Usage: `$elemMatch: Query`
-
-*/
 
 module.exports = function ( jsongin )
 {
@@ -24,51 +17,38 @@ module.exports = function ( jsongin )
 		{
 			try
 			{
+				// Get Document Value
+				let actual_value = jsongin.GetValue( Document, Path );
+				let actual_type = jsongin.ShortType( actual_value );
+				// if ( actual_type !== 'a' ) { actual_value = [ actual_value ]; }
+				if ( actual_type !== 'a' ) 
+				{
+					if ( jsongin.OpLog ) { jsongin.OpLog( `$elemMatch: document requires an array but found type [${actual_type}] instead at [${Path}].` ); }
+					return false;
+				}
+
+				// Validate Expression
+				let match_type = jsongin.ShortType( MatchValue );
+				if ( match_type !== 'o' ) 
+				{
+					if ( jsongin.OpLog ) { jsongin.OpLog( `$elemMatch: match requires an object but found type [${match_type}] instead at [${Path}].` ); }
+					return false;
+				}
+
+				// Process
+				for ( let index = 0; index < actual_value.length; index++ )
+				{
+					let sub_path = jsongin.JoinPaths( Path, index );
+					let result = jsongin.Query( Document, MatchValue, sub_path );
+					if ( result === true ) { return true; }
+				}
+				return false;
 			}
 			catch ( error )
 			{
 				if ( jsongin.OpError ) { jsongin.OpError( `Query.$elemMatch: ${error.message}` ); }
 				throw error;
 			}
-
-			// Get Document Value
-			let actual_value = this.Engine.GetValue( Document, Path );
-			let actual_type = this.Engine.ShortType( actual_value );
-			// if ( actual_type !== 'a' ) { actual_value = [ actual_value ]; }
-			if ( actual_type !== 'a' ) 
-			{
-				if ( jsongin.OpLog ) { jsongin.OpLog( `$elemMatch: document requires an array but found type [${actual_type}] instead at [${Path}].` ); }
-				return false;
-			}
-
-			// Validate Expression
-			let match_type = this.Engine.ShortType( MatchValue );
-			if ( match_type !== 'o' ) 
-			{
-				if ( jsongin.OpLog ) { jsongin.OpLog( `$elemMatch: match requires an object but found type [${match_type}] instead at [${Path}].` ); }
-				return false;
-			}
-
-			// Process
-			for ( let index = 0; index < actual_value.length; index++ )
-			{
-				let sub_path = this.Engine.JoinPaths( Path, index );
-				let result = this.Engine.Query( Document, MatchValue, sub_path );
-				if ( result === true ) { return true; }
-			}
-			return false;
-		},
-
-		//---------------------------------------------------------------------
-		ToMongoQuery: function ( Expression )
-		{
-			return Expression;
-		},
-
-		//---------------------------------------------------------------------
-		ToSql: function ( Expression )
-		{
-			throw new Error( `ToSql() is not implemented.` );
 		},
 
 	};
