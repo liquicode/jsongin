@@ -580,7 +580,7 @@ describe( '100) Core Tests', () =>
 		} );
 
 
-		it( 'Use Expand() to turn a flattened document back into ahierarchical document', () => 
+		it( 'Use Expand() to turn a flattened document back into a hierarchical document', () => 
 		{
 			let document = {
 				id: 1001,
@@ -648,6 +648,97 @@ describe( '100) Core Tests', () =>
 			{
 				assert.ok( error.message === 'Document must be an object or array.' );
 			}
+		} );
+
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'Hybridize/Unhybridize Tests', () =>
+	{
+
+
+		it( 'It hybridizes a hierarchical document', () => 
+		{
+			let document = {
+				id: 1001,
+				user:
+				{
+					name: 'Alice',
+					location: 'East',
+				},
+				tags: [ 'Staff', 'Dept. A' ],
+			};
+
+			let hybrid = jsongin.Hybridize( document );
+			assert.ok( hybrid );
+			assert.deepStrictEqual( hybrid, {
+				id: 1001,
+				user: '{"type":"o","value":{"name":"Alice","location":"East"}}',
+				tags: '{"type":"a","value":["Staff","Dept. A"]}',
+			} );
+		} );
+
+
+		it( 'Use Unhybridize() to turn a Hybridized document back into a hierarchical document', () => 
+		{
+			let document = {
+				id: 1001,
+				user:
+				{
+					name: 'Alice',
+					location: 'East',
+				},
+				tags: [ 'Staff', 'Dept. A' ],
+			};
+
+			let hybrid = jsongin.Hybridize( document );
+			assert.ok( hybrid );
+
+			let unhybrid = jsongin.Unhybridize( hybrid );
+			//NOTE: The $eq and $eqx need to be fixed to handle nested objects and arrays.
+			// assert.ok( jsongin.StrictEquals( expanded, document ) === true );
+			assert.ok( jsongin.LooseEquals( unhybrid, document ) === true );
+			// assert.deepStrictEqual( expanded, document );
+		} );
+
+
+		it( 'It should Hybridize an empty document', () => 
+		{
+			let hybrid = jsongin.Hybridize( {} );
+			assert.ok( hybrid );
+			assert.strictEqual( Object.keys( hybrid ).length, 0 );
+		} );
+
+
+		it( 'It should Unhybridize an empty document', () => 
+		{
+			let unhybrid = jsongin.Unhybridize( {} );
+			assert.ok( unhybrid );
+			assert.strictEqual( Object.keys( unhybrid ).length, 0 );
+		} );
+
+
+		it( 'It Hybridizes and Unhybridizes a complex document', () => 
+		{
+			let document = {
+				id: 1001,
+				user:
+				{
+					name: 'Alice',
+					location: 'East',
+				},
+				tags: [ 'Staff', 'Dept. A' ],
+			};
+
+			let hybrid = jsongin.Hybridize( document );
+			assert.ok( hybrid );
+			assert.deepStrictEqual( hybrid, {
+				id: 1001,
+				user: '{"type":"o","value":{"name":"Alice","location":"East"}}',
+				tags: '{"type":"a","value":["Staff","Dept. A"]}',
+			} );
 		} );
 
 

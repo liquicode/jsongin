@@ -26,6 +26,33 @@ Goals
 - Fast, easy to use, low overhead, and minimal (no) dependencies.
 
 
+Object Cloning
+---------------------------------------------------------------------
+
+- If your code performs a json stringify and parse to clone the `Criteria` parameter,
+  problems can occur when using regular expressions and when comparing fields to `undefined`.
+  In both of these cases, the cloned object will be stripped of these fields.
+  To avoid this, consider using the `jsongin.SafeClone` function from the
+	[@liquicode/jsongin](https://www.npmjs.com/package/@liquicode/jsongin) library.
+  The SafeClone function will not strip these fields.
+
+- A couple rules of thumb can be applied:
+	1) Avoid explicitly specifying `undefined` in `Criteria` (e.g. `$eq: undefined`).
+	  If you need to test for the presence of a field in a document, use the `$exists` operator instead.
+	2) Use the string representation of a regular expression rather than the Javascript notation.
+	  Use `$regex: "^hello"` rather than `$regex: /^hello/`.
+	  Note that this also precludes using implicit `$eq` with regular expressions (e.g. `name: /^joe/`).
+	  You will need to use `$regex` operator in such cases: `name: { $regex: "^joe" }`.
+
+- Strict comparison between two objects requires that all fields appear in both objects, have the same (strict)
+  value, and also appear in the same order within the objects.
+  As software systems of any sort are likely to massage and dissect the data objects they work with,
+	it is not recommended to rely upon the consistency of an object's internal order.
+  Performing any `$eq` comparisons requires that fields in both document and criteria objects match the same order.
+  If this is too strict for your needs, you can use the more loose `eqx` operator if you want to match
+	fields, values, but not the field order.
+
+
 Query Syntax Rules
 ---------------------------------------------------------------------
 

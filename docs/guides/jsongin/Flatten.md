@@ -57,7 +57,7 @@ flattened === {
 };
 ```
 
-### Use Expand() to turn a flattened document back into ahierarchical document
+### Use Expand() to turn a flattened document back into a hierarchical document
 ```js
 let document = {
 	id: 1001,

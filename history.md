@@ -5,20 +5,27 @@
 # Project History
 
 
-2023-11-24: v0.0.11
+v0.0.12 (2023-11-27)
+---------------------------------------------------------------------
+
+- Fixed docs
+- Addeed the `Hybridze` and `Unhybridize` functions.
+
+
+v0.0.11 (2023-11-24)
 ---------------------------------------------------------------------
 
 - Refactoring and validation. Especially with regards to handling arrays.
-- Added ocs
+- Added docs
 
-2023-11-23: v0.0.10
+v0.0.10 (2023-11-23)
 ---------------------------------------------------------------------
 
-- The more cogent release
+- The more cogent first release
 - Refactoring and validation. Especially with regards to handling arrays.
 
 
-2023-11-22: v0.0.9
+v0.0.9 (2023-11-22)
 ---------------------------------------------------------------------
 
 - first cogent release

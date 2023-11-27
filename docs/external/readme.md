@@ -1,7 +1,10 @@
 # jsongin
-[`@liquicode/jsongin`](https://github.com/liquicode/jsongin) (v0.0.11)
+[`@liquicode/jsongin`](https://github.com/liquicode/jsongin) (v0.0.12)
 
 ### A JSON Engine for MongoDB-Style Queries and Data Structure Manipulation
+
+
+Official Docs: [http://jsongin.liquicode.com](http://jsongin.liquicode.com)
 
 
 Quick Reference
@@ -44,21 +47,35 @@ see the [@liquicode/jsonstor]() project.
 There are a number of other functions implemented here which serve to not only support the above
   functions, but also provide functionality common to general work with Javascript objects:
 
-- `AsNumber( Value )`
-- `AsDate( Value )`
-- `ShortType( Value )`
-- `BsonType( Value, ReturnAlias )`
-- `Clone( Document )`
-- `SafeClone( Document )`
+**Document Mechanics**
+
 - `SplitPath( Path )`
 - `JoinPaths( Path1, Path2, ... )`
 - `GetValue( Document, Path )`
 - `SetValue( Document, Path, Value )`
-- `IsQuery( Document )`
+- `Flatten( Document )`
+- `Expand( Document )`
+- `Hybridize( Document )`
+- `Unhybridize( Document )`
+
+**Object Matching and Cloning**
+
 - `LooseEquals( DocumentA, DocumentB )`
 - `StrictEquals( DocumentA, DocumentB )`
+- `Clone( Document )`
+- `SafeClone( Document )`
 
-See the reference [Library Guide](docs/guides/Library%20Guide.md) for more information.
+**Data Types and Conversions**
+
+- `ShortType( Value )`
+- `BsonType( Value, ReturnAlias )`
+- `AsNumber( Value )`
+- `AsDate( Value )`
+
+See the [Library Guide](docs/guides/Library%20Guide.md) for more information.
+
+See the [Operator Reference](docs/guides/Operator%20Reference.md) for list of all
+  supported MongoDB query and update operators.
 
 
 Getting Started

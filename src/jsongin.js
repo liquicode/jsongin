@@ -81,17 +81,19 @@ module.exports = function ( EngineSettings = {} )
 
 	//---------------------------------------------------------------------
 	// Document Mechanics
+	Engine.SplitPath = require( './jsongin/SplitPath' )( Engine );
+	Engine.JoinPaths = require( './jsongin/JoinPaths' )( Engine );
 	Engine.GetValue = require( './jsongin/GetValue' )( Engine );
 	Engine.SetValue = require( './jsongin/SetValue' )( Engine );
 	Engine.Flatten = require( './jsongin/Flatten' )( Engine );
 	Engine.Expand = require( './jsongin/Expand' )( Engine );
-	Engine.SplitPath = require( './jsongin/SplitPath' )( Engine );
-	Engine.JoinPaths = require( './jsongin/JoinPaths' )( Engine );
+	Engine.Hybridize = require( './jsongin/Hybridize' )( Engine );
+	Engine.Unhybridize = require( './jsongin/Unhybridize' )( Engine );
 
 	//---------------------------------------------------------------------
 	// Object Matching and Cloning
-	Engine.LooseEquals = function ( DocumentA, DocumentB )	{		return Engine.QueryOperators.$eqx.Query( DocumentA, DocumentB );	};
-	Engine.StrictEquals = function ( DocumentA, DocumentB )	{		return Engine.QueryOperators.$eq.Query( DocumentA, DocumentB );	};
+	Engine.LooseEquals = function ( DocumentA, DocumentB ) { return Engine.QueryOperators.$eqx.Query( DocumentA, DocumentB ); };
+	Engine.StrictEquals = function ( DocumentA, DocumentB ) { return Engine.QueryOperators.$eq.Query( DocumentA, DocumentB ); };
 	Engine.Clone = function ( Document ) { return JSON.parse( JSON.stringify( Document ) ); };
 	Engine.SafeClone = require( './jsongin/SafeClone' )( Engine );
 

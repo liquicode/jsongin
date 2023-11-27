@@ -21,43 +21,43 @@ If not all of the criteria are satisfied, then a `false` will be returned instea
 
 Read the [Query Reference](./Query%20Reference.md) document to understand how these operators are used.
 
-| Category      | Supported | Operator       | Description                                                                                                                                   |
-|---------------|:---------:|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| Comparison    | Yes       | $eq            | Matches values that are equal to a specified value.                                                                                           |
-| Comparison    | Yes       | $ne            | Matches all values that are not equal to a specified value.                                                                                   |
-| Comparison    | Yes       | $gt            | Matches values that are greater than a specified value.                                                                                       |
-| Comparison    | Yes       | $gte           | Matches values that are greater than or equal to a specified value.                                                                           |
-| Comparison    | Yes       | $lt            | Matches values that are less than a specified value.                                                                                          |
-| Comparison    | Yes       | $lte           | Matches values that are less than or equal to a specified value.                                                                              |
-| Comparison    | Yes       | $in            | Matches any of the values specified in an array.                                                                                              |
-| Comparison    | Yes       | $nin           | Matches none of the values specified in an array.                                                                                             |
-| Logical       | Yes       | $and           | Joins query clauses with a logical AND returns all documents that match the conditions of both clauses.                                       |
-| Logical       | Yes       | $or            | Joins query clauses with a logical OR returns all documents that match the conditions of either clause.                                       |
-| Logical       | Yes       | $nor           | Joins query clauses with a logical NOR returns all documents that fail to match both clauses.                                                 |
-| Logical       | Yes       | $not           | Inverts the effect of a query expression and returns documents that do not match the query expression.                                        |
-| Element       | Yes       | $exists        | Matches documents that have the specified field.                                                                                              |
-| Element       | Yes       | $type          | Selects documents if a field is of the specified type.                                                                                        |
-| Evaluation    | -         | $expr          | Allows use of aggregation expressions within the query language.                                                                              |
-| Evaluation    | -         | $jsonSchema    | Validate documents against the given JSON Schema.                                                                                             |
-| Evaluation    | -         | $mod           | Performs a modulo operation on the value of a field and selects documents with a specified result.                                            |
-| Evaluation    | Yes       | $regex         | Selects documents where values match a specified regular expression.                                                                          |
-| Evaluation    | -         | $text          | Performs text search.                                                                                                                         |
-| Evaluation    | -         | $where         | Matches documents that satisfy a JavaScript expression.                                                                                       |
-| Geospatial    | -         | $geoIntersects | Selects geometries that intersect with a GeoJSON geometry. The 2dsphere index supports $geoIntersects.                                        |
-| Geospatial    | -         | $geoWithin     | Selects geometries within a bounding GeoJSON geometry. The 2dsphere and 2d indexes support $geoWithin.                                        |
-| Geospatial    | -         | $near          | Returns geospatial objects in proximity to a point. Requires a geospatial index. The 2dsphere and 2d indexes support $near.                   |
-| Geospatial    | -         | $nearSphere    | Returns geospatial objects in proximity to a point on a sphere. Requires a geospatial index. The 2dsphere and 2d indexes support $nearSphere. |
-| Array         | Yes       | $elemMatch     | Selects documents if element in the array field matches all the specified $elemMatch conditions.                                              |
-| Array         | Yes       | $size          | Selects documents if the array field is a specified size.                                                                                     |
-| Array         | Yes       | $all           | Matches arrays that contain all elements specified in the query.                                                                              |
-| Bitwise       | -         | $bitsAllClear  | Matches numeric or binary values in which a set of bit positions all have a value of 0.                                                       |
-| Bitwise       | -         | $bitsAllSet    | Matches numeric or binary values in which a set of bit positions all have a value of 1.                                                       |
-| Bitwise       | -         | $bitsAnyClear  | Matches numeric or binary values in which any bit from a set of bit positions has a value of 0.                                               |
-| Bitwise       | -         | $bitsAnySet    | Matches numeric or binary values in which any bit from a set of bit positions has a value of 1.                                               |
-| Miscellaneous | -         | $comment       | Adds a comment to a query predicate.                                                                                                          |
-| Miscellaneous | -         | $rand          | Generates a random float between 0 and 1.                                                                                                     |
-| Miscellaneous | -         | $natural       | A special hint that can be provided via the sort() or hint() methods that can be used to force either a forward or reverse collection scan.   |
-
+| **Category**  | **Supported** | **Operator**   | **Description**                                                                                                                               |
+|---------------|:-------------:|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| Comparison    |      Yes      | <field>: value | Implicit $eq. Specify a document field and value. A matching document will have that field strictly equal to that value.                      |
+| Comparison    |      Yes      | $eq            | Matches values that are equal to a specified value.                                                                                           |
+| Comparison    |      Yes      | $ne            | Matches all values that are not equal to a specified value.                                                                                   |
+| Comparison    |      Yes      | $gt            | Matches values that are greater than a specified value.                                                                                       |
+| Comparison    |      Yes      | $gte           | Matches values that are greater than or equal to a specified value.                                                                           |
+| Comparison    |      Yes      | $lt            | Matches values that are less than a specified value.                                                                                          |
+| Comparison    |      Yes      | $lte           | Matches values that are less than or equal to a specified value.                                                                              |
+| Comparison    |      Yes      | $in            | Matches any of the values specified in an array.                                                                                              |
+| Comparison    |      Yes      | $nin           | Matches none of the values specified in an array.                                                                                             |
+| Logical       |      Yes      | $and           | Joins query clauses with a logical AND returns all documents that match the conditions of both clauses.                                       |
+| Logical       |      Yes      | $or            | Joins query clauses with a logical OR returns all documents that match the conditions of either clause.                                       |
+| Logical       |      Yes      | $nor           | Joins query clauses with a logical NOR returns all documents that fail to match both clauses.                                                 |
+| Logical       |      Yes      | $not           | Inverts the effect of a query expression and returns documents that do not match the query expression.                                        |
+| Element       |      Yes      | $exists        | Matches documents that have the specified field.                                                                                              |
+| Element       |      Yes      | $type          | Selects documents if a field is of the specified type.                                                                                        |
+| Evaluation    |       -       | $expr          | Allows use of aggregation expressions within the query language.                                                                              |
+| Evaluation    |       -       | $jsonSchema    | Validate documents against the given JSON Schema.                                                                                             |
+| Evaluation    |       -       | $mod           | Performs a modulo operation on the value of a field and selects documents with a specified result.                                            |
+| Evaluation    |      Yes      | $regex         | Selects documents where values match a specified regular expression.                                                                          |
+| Evaluation    |       -       | $text          | Performs text search.                                                                                                                         |
+| Evaluation    |       -       | $where         | Matches documents that satisfy a JavaScript expression.                                                                                       |
+| Geospatial    |       -       | $geoIntersects | Selects geometries that intersect with a GeoJSON geometry. The 2dsphere index supports $geoIntersects.                                        |
+| Geospatial    |       -       | $geoWithin     | Selects geometries within a bounding GeoJSON geometry. The 2dsphere and 2d indexes support $geoWithin.                                        |
+| Geospatial    |       -       | $near          | Returns geospatial objects in proximity to a point. Requires a geospatial index. The 2dsphere and 2d indexes support $near.                   |
+| Geospatial    |       -       | $nearSphere    | Returns geospatial objects in proximity to a point on a sphere. Requires a geospatial index. The 2dsphere and 2d indexes support $nearSphere. |
+| Array         |      Yes      | $elemMatch     | Selects documents if element in the array field matches all the specified $elemMatch conditions.                                              |
+| Array         |      Yes      | $size          | Selects documents if the array field is a specified size.                                                                                     |
+| Array         |      Yes      | $all           | Matches arrays that contain all elements specified in the query.                                                                              |
+| Bitwise       |       -       | $bitsAllClear  | Matches numeric or binary values in which a set of bit positions all have a value of 0.                                                       |
+| Bitwise       |       -       | $bitsAllSet    | Matches numeric or binary values in which a set of bit positions all have a value of 1.                                                       |
+| Bitwise       |       -       | $bitsAnyClear  | Matches numeric or binary values in which any bit from a set of bit positions has a value of 0.                                               |
+| Bitwise       |       -       | $bitsAnySet    | Matches numeric or binary values in which any bit from a set of bit positions has a value of 1.                                               |
+| Miscellaneous |       -       | $comment       | Adds a comment to a query predicate.                                                                                                          |
+| Miscellaneous |       -       | $rand          | Generates a random float between 0 and 1.                                                                                                     |
+| Miscellaneous |       -       | $natural       | A special hint that can be provided via the sort() or hint() methods that can be used to force either a forward or reverse collection scan.   |
 
 ### jsongin Extended Query Operators
 

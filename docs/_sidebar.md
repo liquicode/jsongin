@@ -10,11 +10,11 @@
 
 - MongoDB Mechanics
 
-	- [`Query()`](guides/Query%20Reference.md)
-	- [`Project()`](guides/Projection%20Reference.md)
-	- [`Update()`](guides/Update%20Reference.md)
+	- [`Query()`](guides/jsongin/Query.md)
+	- [`Project()`](guides/jsongin/Project.md)
+	- [`Update()`](guides/jsongin/Update.md)
 	
-	- [Operator Reference](guides/Operators%20Reference.md)
+	- [Operator Reference](guides/Operator%20Reference.md)
 
 <hr>
 

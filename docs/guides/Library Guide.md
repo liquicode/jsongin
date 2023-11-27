@@ -67,6 +67,13 @@ jsongin Functions
 These functions allow you to manipulate Javascript objects and arrays.
 They all share the concept of a document path that is expressed in dot-notation.
 
+- [`SplitPath( Path )`](guides/jsongin/SplitPath.md)
+  : Returns an array of the path elements found in `Path`.
+  The `Path` parameter is a string path to a document field expressed in dot notation.
+
+- [`JoinPaths( PathSegment1, PathSegment2, ... )`](guides/jsongin/JoinPaths.md)
+  : Returns a string from a series a paths joined together in dot notation.
+
 - [`GetValue( Document, Path )`](guides/jsongin/GetValue.md)
   : Gets a value from a document at the specified `Path`.
 
@@ -80,12 +87,11 @@ They all share the concept of a document path that is expressed in dot-notation.
 - [`Expand( Document )`](guides/jsongin/Expand.md)
   : Expands fields found in dot notation into hierarchical elements within the document.
 
-- [`SplitPath( Path )`](guides/jsongin/SplitPath.md)
-  : Returns an array of the path elements found in `Path`.
-  The `Path` parameter is a string path to a document field expressed in dot notation.
+- [`Hybridize( Document )`](guides/jsongin/Hybridize.md)
+  : Hybridizes a hierarchical document into a document with top-level entries only and json-encoded sub-structures.
 
-- [`JoinPaths( PathSegment1, PathSegment2, ... )`](guides/jsongin/JoinPaths.md)
-  : Returns a string from a series a paths joined together in dot notation.
+- [`Unhybridize( Document )`](guides/jsongin/Unhybridize.md)
+  : Unhybridize a document back into a hierarchical document.
 
 > See the [Document Manipulation](guides/Document%20Manipulation.md) document for more information on how to use these functions.
 
