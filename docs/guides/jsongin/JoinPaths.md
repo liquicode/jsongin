@@ -26,7 +26,7 @@ If a path segment is not one of the types `ulnsa`, then an error is thrown.
 ## Examples
 
 
-### It returns a combined path in dot-notation
+### It returns a Document path in dot-notation
 ```js
 jsongin.JoinPaths( 'user' ) === 'user'
 jsongin.JoinPaths( 'user', 'name' ) === 'user.name'
@@ -37,7 +37,7 @@ jsongin.JoinPaths( 'user', 'name' ) === 'user.name'
 jsongin.JoinPaths( 'users', 1, 'name' ) === 'users.1.name'
 ```
 
-### It allows document paths
+### It allows embedded document paths
 ```js
 jsongin.JoinPaths( 'users.1', 'name' ) === 'users.1.name'
 ```

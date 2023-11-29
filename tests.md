@@ -104,6 +104,12 @@
         ✔ should stringify true the same way
         ✔ should stringify 3.14 the same way
         ✔ should stringify "Hello World!" the same way
+        ✔ should stringify complex objects in the same way
+        ✔ should stringify (with whitespace) complex objects in the same way
+      Functionality Beyond Javascript's JSON.stringify()
+        ✔ should stringify complex objects with Javascript syntax
+        ✔ It should parse an object written with JS (not JSON) syntax
+        ✔ It should parse an object followed by unrelated text
     SplitPath Tests
       ✔ It returns an array of path components
       ✔ It returns array indexes as numerics in the output array
@@ -527,6 +533,6 @@
       ✔ should supress the _id field while including others
 
 
-  399 passing (86ms)
+  404 passing (88ms)
 
 ```

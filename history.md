@@ -5,10 +5,10 @@
 # Project History
 
 
-v0.0.14
+v0.0.14 (2023-11-29)
 ---------------------------------------------------------------------
 
-- More docs.
+- More docs and tests.
 - Added `Parse` and `Format` functions.
 
 
