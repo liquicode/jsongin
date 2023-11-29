@@ -81,6 +81,8 @@ module.exports = function ( EngineSettings = {} )
 
 	//---------------------------------------------------------------------
 	// Document Mechanics
+	Engine.Parse = require( './jsongin/Parse' )( Engine );
+	Engine.Format = require( './jsongin/Format' )( Engine );
 	Engine.SplitPath = require( './jsongin/SplitPath' )( Engine );
 	Engine.JoinPaths = require( './jsongin/JoinPaths' )( Engine );
 	Engine.GetValue = require( './jsongin/GetValue' )( Engine );
