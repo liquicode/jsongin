@@ -43,7 +43,6 @@ If you have an array of objects, you can omit the array index to retrieve values
 
 ## Examples
 
-
 ### It returns fields from a document
 ```js
 let document = {

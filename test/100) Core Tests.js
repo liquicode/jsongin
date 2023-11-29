@@ -62,6 +62,349 @@ describe( '100) Core Tests', () =>
 
 
 	//---------------------------------------------------------------------
+	describe( `Parse Tests`, function ()
+	{
+
+
+		//---------------------------------------------------------------------
+		describe( `Equivalence with Javascript's JSON.parse()`, function ()
+		{
+
+
+			//---------------------------------------------------------------------
+			it( `should parse boolean value: true`, function ()
+			{
+				let result1 = JSON.parse( 'true' );
+				let result = jsongin.Parse( 'true' );
+				assert.equal( result, true );
+				assert.equal( result, result1 );
+			} );
+
+
+			//---------------------------------------------------------------------
+			it( `should parse number value: 3.14`, function ()
+			{
+				let result1 = JSON.parse( '3.14' );
+				let result = jsongin.Parse( '3.14' );
+				assert.equal( result, 3.14 );
+				assert.equal( result, result1 );
+			} );
+
+
+			//---------------------------------------------------------------------
+			it( `should parse string value: "text"`, function ()
+			{
+				let result1 = JSON.parse( '"text"' );
+				let result = jsongin.Parse( '"text"' );
+				assert.equal( result, "text" );
+				assert.equal( result, result1 );
+			} );
+
+
+			//---------------------------------------------------------------------
+			it( `should parse empty array: []`, function ()
+			{
+				let result1 = JSON.parse( '[]' );
+				let result = jsongin.Parse( '[]' );
+				assert.equal( typeof result, 'object' );
+				assert.equal( Array.isArray( result ), true );
+				assert.equal( JSON.stringify( result ), JSON.stringify( result1 ) );
+			} );
+
+
+			//---------------------------------------------------------------------
+			it( `should parse empty object: {}`, function ()
+			{
+				let result1 = JSON.parse( '{}' );
+				let result = jsongin.Parse( '{}' );
+				assert.equal( typeof result, 'object' );
+				assert.equal( JSON.stringify( result ), JSON.stringify( result1 ) );
+			} );
+
+
+			//---------------------------------------------------------------------
+			it( `should parse a complex object`, function ()
+			{
+				let json = `{"id":1001, "user":{"name":"Alice","location":"East"}, "profile":{"login":"alice","role":"admin"}, "tags":["Staff", "Dept. A"]}`;
+				let result1 = JSON.parse( json );
+				let result = jsongin.Parse( json );
+				assert.equal( typeof result, 'object' );
+				assert.equal( JSON.stringify( result ), JSON.stringify( result1 ) );
+			} );
+
+
+		} );
+
+
+		//---------------------------------------------------------------------
+		describe( `Functionality Beyond Javascript's JSON.parse()`, function ()
+		{
+
+
+			//---------------------------------------------------------------------
+			it( `It should parse an object written with JS (not JSON) syntax`, function ()
+			{
+				let text = `{ id: 1001, user: { name : 'Alice', location: 'East' }, profile: { login: 'alice', role: 'admin' }, tags: [ 'Staff', 'Dept. A' ] }`;
+				let result = jsongin.Parse( text );
+				assert.ok( result );
+				assert.equal( result.id, 1001 );
+				assert.equal( result.user.name, 'Alice' );
+				assert.equal( result.user.location, 'East' );
+				assert.equal( result.profile.login, 'alice' );
+				assert.equal( result.profile.role, 'admin' );
+				assert.equal( result.tags.length, 2 );
+				assert.equal( result.tags[ 0 ], 'Staff' );
+				assert.equal( result.tags[ 1 ], 'Dept. A' );
+			} );
+
+
+			//---------------------------------------------------------------------
+			it( `It should parse an object followed by unrelated text`, function ()
+			{
+				let text = `{ id: 1001 } // This is an example.`;
+				let result = jsongin.Parse( text );
+				assert.ok( result );
+				assert.equal( result.id, 1001 );
+			} );
+
+
+		} );
+
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( `Format Tests`, function ()
+	{
+
+
+		//---------------------------------------------------------------------
+		describe( `Stringify Primitives`, function ()
+		{
+			it( `should stringify null [null]`, function ()
+			{
+				let result = jsongin.Format( null );
+				assert.strictEqual( result, 'null' );
+			} );
+			it( `should stringify empty string [""]`, function ()
+			{
+				let result = jsongin.Format( "" );
+				assert.strictEqual( result, '""' );
+			} );
+			it( `should stringify empty array [[]]`, function ()
+			{
+				let result = jsongin.Format( [] );
+				assert.strictEqual( result, '[]' );
+			} );
+			it( `should stringify empty object [{}]`, function ()
+			{
+				let result = jsongin.Format( {} );
+				assert.strictEqual( result, '{}' );
+			} );
+			it( `should stringify [true]`, function ()
+			{
+				let result = jsongin.Format( true );
+				assert.strictEqual( result, 'true' );
+			} );
+			it( `should stringify [3.14]`, function ()
+			{
+				let result = jsongin.Format( 3.14 );
+				assert.strictEqual( result, '3.14' );
+			} );
+			it( `should stringify ["Hello World!"]`, function ()
+			{
+				let result = null;
+
+				result = JSON.stringify( "Hello World!" );
+				assert.strictEqual( result, `"Hello World!"` );
+
+				result = jsongin.Format( "Hello World!" );
+				assert.strictEqual( result, `"Hello World!"` );
+			} );
+		} );
+
+
+		//---------------------------------------------------------------------
+		describe( `Equivalence with Javascript's JSON.stringify()`, function ()
+		{
+			it( `should stringify null the same way`, function ()
+			{
+				assert.strictEqual(
+					jsongin.Format( null ),
+					JSON.stringify( null )
+				);
+			} );
+			it( `should stringify empty string "" the same way`, function ()
+			{
+				assert.strictEqual(
+					jsongin.Format( "" ),
+					JSON.stringify( "" )
+				);
+			} );
+			it( `should stringify empty array [] the same way`, function ()
+			{
+				assert.strictEqual(
+					jsongin.Format( [] ),
+					JSON.stringify( [] )
+				);
+			} );
+			it( `should stringify empty object {} the same way`, function ()
+			{
+				assert.strictEqual(
+					jsongin.Format( {} ),
+					JSON.stringify( {} )
+				);
+			} );
+			it( `should stringify true the same way`, function ()
+			{
+				assert.strictEqual(
+					jsongin.Format( true ),
+					JSON.stringify( true )
+				);
+			} );
+			it( `should stringify 3.14 the same way`, function ()
+			{
+				assert.strictEqual(
+					jsongin.Format( 3.14 ),
+					JSON.stringify( 3.14 )
+				);
+			} );
+			it( `should stringify "Hello World!" the same way`, function ()
+			{
+				assert.strictEqual(
+					jsongin.Format( "Hello World!" ),
+					JSON.stringify( "Hello World!" )
+				);
+			} );
+
+			//---------------------------------------------------------------------
+			it( `should stringify complex objects in the same way`, function ()
+			{
+				let document = {
+					id: 1001,
+					user: {
+						name: 'Alice',
+						location: 'East',
+					},
+					profile: {
+						login: 'alice',
+						role: 'admin',
+					},
+					tags: [ 'Staff', 'Dept. A' ]
+				};
+				let text = jsongin.Format( document );
+				assert.strictEqual(
+					jsongin.Format( document ),
+					JSON.stringify( document )
+				);
+			} );
+
+			//---------------------------------------------------------------------
+			it( `should stringify (with whitespace) complex objects in the same way`, function ()
+			{
+				let document = {
+					id: 1001,
+					user: {
+						name: 'Alice',
+						location: 'East',
+					},
+					profile: {
+						login: 'alice',
+						role: 'admin',
+					},
+					tags: [ 'Staff', 'Dept. A' ]
+				};
+				let text = jsongin.Format( document, true );
+				assert.strictEqual(
+					jsongin.Format( document, true ),
+					JSON.stringify( document, null, '    ' )
+				);
+			} );
+
+
+		} );
+
+
+		//---------------------------------------------------------------------
+		describe( `Functionality Beyond Javascript's JSON.stringify()`, function ()
+		{
+
+
+			//---------------------------------------------------------------------
+			it( `should stringify complex objects with Javascript syntax`, function ()
+			{
+				let document = {
+					id: 1001,
+					user: {
+						name: 'Alice',
+						location: 'East',
+					},
+					profile: {
+						login: 'alice',
+						role: 'admin',
+					},
+					tags: [ 'Staff', 'Dept. A' ]
+				};
+				let text = jsongin.Format( document, true, true );
+				assert.strictEqual(
+					jsongin.Format( document, true, true ),
+					`{
+    id:      1001,
+    user:    
+    {
+        name:     "Alice",
+        location: "East",
+    },
+    profile: 
+    {
+        login: "alice",
+        role:  "admin",
+    },
+    tags:    
+    [
+        "Staff",
+        "Dept. A",
+    ],
+}`
+				);
+			} );
+
+
+			//---------------------------------------------------------------------
+			it( `It should parse an object written with JS (not JSON) syntax`, function ()
+			{
+				let text = `{ id: 1001, user: { name : 'Alice', location: 'East' }, profile: { login: 'alice', role: 'admin' }, tags: [ 'Staff', 'Dept. A' ] }`;
+				let result = jsongin.Parse( text );
+				assert.ok( result );
+				assert.equal( result.id, 1001 );
+				assert.equal( result.user.name, 'Alice' );
+				assert.equal( result.user.location, 'East' );
+				assert.equal( result.profile.login, 'alice' );
+				assert.equal( result.profile.role, 'admin' );
+				assert.equal( result.tags.length, 2 );
+				assert.equal( result.tags[ 0 ], 'Staff' );
+				assert.equal( result.tags[ 1 ], 'Dept. A' );
+			} );
+
+
+			//---------------------------------------------------------------------
+			it( `It should parse an object followed by unrelated text`, function ()
+			{
+				let text = `{ id: 1001 } // This is an example.`;
+				let result = jsongin.Parse( text );
+				assert.ok( result );
+				assert.equal( result.id, 1001 );
+			} );
+
+
+		} );
+
+
+	} );
+
+
+	//---------------------------------------------------------------------
 	describe( 'SplitPath Tests', () =>
 	{
 

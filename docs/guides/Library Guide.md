@@ -67,6 +67,8 @@ jsongin Functions
 These functions allow you to manipulate Javascript objects and arrays.
 They all share the concept of a document path that is expressed in dot-notation.
 
+**Working with Document Paths**
+
 - [`SplitPath( Path )`](guides/jsongin/SplitPath.md)
   : Returns an array of the path elements found in `Path`.
   The `Path` parameter is a string path to a document field expressed in dot notation.
@@ -74,12 +76,22 @@ They all share the concept of a document path that is expressed in dot-notation.
 - [`JoinPaths( PathSegment1, PathSegment2, ... )`](guides/jsongin/JoinPaths.md)
   : Returns a string from a series a paths joined together in dot notation.
 
+**Get and Set Document Values**
+
 - [`GetValue( Document, Path )`](guides/jsongin/GetValue.md)
   : Gets a value from a document at the specified `Path`.
 
 - [`SetValue( Document, Path, Value )`](guides/jsongin/SetValue.md)
   : Sets a value in a document at the specified `Path`.
   This function will create fields specified in `Path` if they don't already exist.
+
+**Document Conversions**
+
+- [`Parse( JsonString )`](guides/jsongin/Parse.md)
+  : Similar to `JSON.parse()` but able to read Javascript as well as JSON.
+
+- [`Format( Document, WithWhitespace, LikeJavascript )`](guides/jsongin/Format.md)
+  : Similar to `JSON.stringify()` but with additional format options.
 
 - [`Flatten( Document )`](guides/jsongin/Flatten.md)
   : Flattens a hierarchical document into a document with top-level entries in dot notation.
@@ -96,7 +108,7 @@ They all share the concept of a document path that is expressed in dot-notation.
 > See the [Document Manipulation](guides/Document%20Manipulation.md) document for more information on how to use these functions.
 
 
-### Object Matching and Cloning
+### Object Equality and Cloning
 
 - `StrictEquals( DocumentA, DocumentB )`
   : Performs a strict equality comparison between two values.

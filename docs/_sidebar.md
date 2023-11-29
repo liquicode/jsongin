@@ -22,12 +22,26 @@
 
 	- [Document Manipulation](guides/Document%20Manipulation.md)
 
-	- [`GetValue()`](guides/jsongin/GetValue.md)
-	- [`SetValue()`](guides/jsongin/SetValue.md)
-	- [`Flatten()`](guides/jsongin/Flatten.md)
-	- [`Expand()`](guides/jsongin/Expand.md)
-	- [`SplitPath()`](guides/jsongin/SplitPath.md)
-	- [`JoinPaths()`](guides/jsongin/JoinPaths.md)
+	- **Working with Document Paths**
+
+		- [`SplitPath()`](guides/jsongin/SplitPath.md)
+		- [`JoinPaths()`](guides/jsongin/JoinPaths.md)
+
+	- **Get and Set Document Values**
+
+		- [`GetValue()`](guides/jsongin/GetValue.md)
+		- [`SetValue()`](guides/jsongin/SetValue.md)
+
+	- **Document Conversions**
+
+		- [`Parse()`](guides/jsongin/Parse.md)
+		- [`Format()`](guides/jsongin/Format.md)
+
+		- [`Flatten()`](guides/jsongin/Flatten.md)
+		- [`Expand()`](guides/jsongin/Expand.md)
+
+		- [`Hybridize()`](guides/jsongin/Hybridize.md)
+		- [`Unhybridize()`](guides/jsongin/Unhybridize.md)
 
 <hr>
 
@@ -40,7 +54,7 @@
 
 <hr>
 
-- Data Types and Conversions
+- Work with Data Types
 
 	- [`ShortType()`](guides/Short%20Types.md)
 	- `BsonType()`

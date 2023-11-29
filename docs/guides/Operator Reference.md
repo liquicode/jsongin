@@ -2,7 +2,7 @@
 [`@liquicode/jsongin`](https://github.com/liquicode/jsongin)
 
 
-## Operator Reference
+### Operator Reference
 
 This is a list of existing MongoDB operators.
 There are three types of operators:
@@ -11,7 +11,7 @@ There are three types of operators:
 - `Update` operators modify the contents of one or more documents.
 
 
-### Query Operators
+## Query Operators
 
 Query operators define conditions used to distinguish one or more documents from other documents.
 Use the `jsongin.Query( Document, Criteria )` function to test if a certain document satifies the
@@ -59,7 +59,7 @@ Read the [Query Reference](./Query%20Reference.md) document to understand how th
 | Miscellaneous |       -       | $rand          | Generates a random float between 0 and 1.                                                                                                     |
 | Miscellaneous |       -       | $natural       | A special hint that can be provided via the sort() or hint() methods that can be used to force either a forward or reverse collection scan.   |
 
-### jsongin Extended Query Operators
+## jsongin Extended Query Operators
 
 `jsongin` offers additional query operators which support loose comparisons (==):
 
@@ -68,7 +68,7 @@ Read the [Query Reference](./Query%20Reference.md) document to understand how th
 - `$noop` : Can be anything. No operation is performed on this data. Can be used to "comment out" portions of a query.
 
 
-### Projection Operators
+## Projection Operators
 
 Projection operators allow you to "project" the content of one document into another.
 You can use `jsongin.Project( Document, Projection )` to perform this function.
@@ -82,7 +82,7 @@ You can use `jsongin.Project( Document, Projection )` to perform this function.
 | Field    | -         | $slice     | Limits the number of elements projected from an array. Supports skip and limit slices.  |
 
 
-### Update Operators
+## Update Operators
 
 Update operators modify the contents of a document.
 Use the `jsongin.Update( Document, Updates )` function to apply updates to a document.

@@ -1,5 +1,4 @@
 ```
-```
 
 
   010) Javascript Compatibility Tests
@@ -61,6 +60,10 @@
       ✔ s → n
       ✔ l → u
       ✔ Rules
+    Json stringify/parse
+      ✔ should stringify special fields
+      ✔ should not stringify regular expressions
+      ✔ should not stringify functions
 
   100) Core Tests
     ShortType Tests
@@ -73,76 +76,90 @@
       ✔ should support (f)unction short type
       ✔ should support (r)egex short type
       ✔ should support (u)ndefined short type
+    Parse Tests
+      Equivalence with Javascript's JSON.parse()
+        ✔ should parse boolean value: true
+        ✔ should parse number value: 3.14
+        ✔ should parse string value: "text"
+        ✔ should parse empty array: []
+        ✔ should parse empty object: {}
+        ✔ should parse a complex object
+      Functionality Beyond Javascript's JSON.parse()
+        ✔ It should parse an object written with JS (not JSON) syntax
+        ✔ It should parse an object followed by unrelated text
+    Format Tests
+      Stringify Primitives
+        ✔ should stringify null [null]
+        ✔ should stringify empty string [""]
+        ✔ should stringify empty array [[]]
+        ✔ should stringify empty object [{}]
+        ✔ should stringify [true]
+        ✔ should stringify [3.14]
+        ✔ should stringify ["Hello World!"]
+      Equivalence with Javascript's JSON.stringify()
+        ✔ should stringify null the same way
+        ✔ should stringify empty string "" the same way
+        ✔ should stringify empty array [] the same way
+        ✔ should stringify empty object {} the same way
+        ✔ should stringify true the same way
+        ✔ should stringify 3.14 the same way
+        ✔ should stringify "Hello World!" the same way
     SplitPath Tests
-      ✔ should not allow non-string paths
-      ✔ should return an empty array for an empty path
-      ✔ should not allow the $ element within a path
-      ✔ should not allow the $ element at the root when path extensions are disabled
-      ✔ should ignore bracketed [] array indeces when path extensions are disabled
-      ✔ should split a path
-      ✔ should split a path containing array indeces
+      ✔ It returns an array of path components
+      ✔ It returns array indexes as numerics in the output array
+      ✔ Array indexes within a path can be positive or negative
+      ✔ If the path is undefined, null, or empty "", then it returns an empty array []
+      ✔ It throws an error when an invalid path is given
     JoinPaths Tests
-      ✔ should return an empty string when empty paths are provided
-      ✔ should return an empty string when null is provided
-      ✔ should join paths
+      ✔ It returns a combined path in dot-notation
+      ✔ It allows numeric array indexes
+      ✔ It allows document paths
+      ✔ It allows an array of document paths
+      ✔ Undefined and nulls are ignored
+      ✔ It throws an error when an invalid path segment is given
     GetValue Tests
-      ✔ should return the given document if path is an empty string "", null, or undefined
-      ✔ should get document values
-      ✔ should return an indexed array element, using dot notation
-      ✔ should not allow the "$" root symbol when path extensions are disabled
-      ✔ should not allow the [] array indexing when path extensions are disabled
-      ✔ should return undefined if array index is out of bounds
+      ✔ It returns fields from a document
+      ✔ It returns elements of an array
+      ✔ It returns fields from inside an array of objects
+      ✔ It might return undefined array elements when missing data is encountered
+      ✔ If the path is undefined, null, or empty "", then it returns the entire document
+      ✔ If the path is specified but not found, it returns undefined
+      ✔ It throws an error when an invalid path is given
     SetValue Tests
-      ✔ requires a non-empty document
-      ✔ requires a non-empty path
-      ✔ should create a top level value
-      ✔ should set a top level value
-      ✔ should remove a top level value
-      ✔ should create a nested value
-      ✔ should set a nested value
-      ✔ should remove a nested value
-      ✔ should set an array value
-      ✔ should insert nulls into new array elements
-      ✔ should remove an array value
-    ResolvePathTerminals Tests
-      ✔ should not resolve when path is null
-      ✔ should resolve primitive types
-      ✔ should resolve entire object
-      ✔ should resolve object fields
-      ✔ should resolve indexed array elements
-      ✔ should resolve complex structures
-      ✔ should iterate over arrays
-      ✔ should iterate over nested arrays
-
-  150) Core with Path Extensions Tests
-    SplitPath Tests with Path Extensions
-      ✔ should not allow the $ element within a path
-      ✔ should allow, but remove, the $ element at the root
-      ✔ should allow bracketed [] array indeces
-    JoinPaths Tests with Path Extensions
-      ✔ should join paths with root $ element
-      ✔ should join paths with bracketed [] array indeces
-    GetValue Tests with Path Extensions
-      ✔ should return the given document if path is an empty string "", null, or undefined
-      ✔ should return the given document if path is $
-      ✔ should get document values
-      ✔ should return an indexed array element, using dot notation
-      ✔ should return an indexed array element, using bracketed [] array indeces
-      ✔ should return undefined if array index is out of bounds
-    SetValue Tests with Path Extensions
-      ✔ requires a non-empty document
-      ✔ requires a non-empty path
-      ✔ requires a non-root path
-      ✔ should create a top level value
-      ✔ should set a top level value
-      ✔ should remove a top level value
-      ✔ should create a nested value
-      ✔ should set a nested value
-      ✔ should remove a nested value
-      ✔ should set an array value
-      ✔ should set an array value using barcketed [] array indeces
-      ✔ should insert nulls into new array elements
-      ✔ should remove an array value
+      ✔ It sets fields in a document
+      ✔ It creates document fields if they don't exist
+      ✔ It removes document fields when set to undefined
+      ✔ It sets elements of an array
+      ✔ It creates array elements and grows the array if the elements don't exist
+      ✔ It performs reverse indexing when an array index is negative
+      ✔ Array elements can be set to undefined, but they are not removed
+      ✔ It sets fields inside an array of objects
+      ✔ It sets fields inside all elements of an array of objects
+      ✔ It returns false when an empty path is given
+      ✔ It throws an error when an invalid document is given
+      ✔ It throws an error when an invalid path is given
+    SafeClone Tests
+      ✔ It can clone a simple object
+      ✔ It can clone nested objects
+      ✔ It can clone an array
+      ✔ It can clone an array of objects
+      ✔ It can clone non-value fields
+      ✔ It can selectively clone with the Exceptions parameter
+      ✔ It should throw an error if an invalid Exceptions paramter is provided
+    Flatten/Expand Tests
+      ✔ It flattens a hierarchical document
+      ✔ Use Expand() to turn a flattened document back into a hierarchical document
+      ✔ It should flatten an empty document
+      ✔ It should expand an empty document
+      ✔ It should flatten an array
+      ✔ It should flatten an empty array
+      ✔ It should not flatten a non-document
+    Hybridize/Unhybridize Tests
+      ✔ It hybridizes a hierarchical document
+      ✔ Use Unhybridize() to turn a Hybridized document back into a hierarchical document
+      ✔ It should Hybridize an empty document
+      ✔ It should Unhybridize an empty document
+      ✔ It Hybridizes and Unhybridizes a complex document
 
   200) Comparison Operator Tests
     $eq Tests
@@ -155,6 +172,8 @@
       ✔ should equate null values
       ✔ should equate object values
       ✔ should equate object values, but values must be strictly === to each other
+      ✔ should equate complex object
+      ✔ should equate complex arrays
       ✔ should not equate object values with keys in different order
       ✔ should equate array values
       ✔ should not equate arrays with elements in different order
@@ -173,6 +192,8 @@
       ✔ should equate object values
       ✔ should equate object values and values can be loosely == to each other
       ✔ should equate object values with keys in different order
+      ✔ should equate complex object
+      ✔ should equate complex arrays
       ✔ should equate array values
       ✔ should equate arrays with elements in different order
       ✔ should equate arrays and values can be loosely == to each other
@@ -336,7 +357,7 @@
       $push Tests
         ✔ should push values to the end of an array
       $pullAll Tests
-        ✔ should push values to the end of an array
+        ✔ should pull values from the array
 
   jsongin Query Tests
     Ad-Hoc Query Tests
@@ -355,7 +376,7 @@
         ✔ should not perform loose equality (==) on 'bns'
         ✔ should not perform loose equality (==) on 'o'
         ✔ should not perform loose equality (==) on 'a'
-        ✔ should equate null with undefined
+        ✔ should equate null with an undefined field
       Operator $ne (!==)
         ✔ should perform strict inequality (!==) on 'bns'
         ✔ should perform strict inequality (!==) on 'o'
@@ -366,14 +387,14 @@
       Operator $gte (>=)
         ✔ should perform strict comparison (>=) on 'bns'
         ✔ should not perform loose comparison (>=) on 'bns'
-        ✔ should equate null with undefined
+        ✔ should equate null with an undefined field
       Operator $gt (>)
         ✔ should perform strict comparison (>=) on 'bns'
         ✔ should not perform loose comparison (>=) on 'bns'
       Operator $lte (<=)
         ✔ should perform strict comparison (<=) on 'bns'
         ✔ should not perform loose comparison (<=) on 'bns'
-        ✔ should equate null with undefined
+        ✔ should equate null with an undefined field
       Operator $lt (<)
         ✔ should perform strict comparison (<) on 'bns'
         ✔ should not perform loose comparison (<) on 'bns'
@@ -494,8 +515,18 @@
     Ad-Hoc Update Tests
       ✔ should do simple updates
 
+  jsongin Projection Tests
+    Ad-Hoc Projection Tests
+      ✔ should do simple projection
+      ✔ should project embedded fields
+      ✔ should supress fields
+      ✔ should supress only the _id field
+      ✔ should supress the _id field and other fields
+      ✔ should supress the _id field but include other fields
+      ✔ should return only the _id field
+      ✔ should supress the _id field while including others
 
-  372 passing (76ms)
 
-```
+  399 passing (86ms)
+
 ```
