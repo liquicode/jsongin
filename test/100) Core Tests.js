@@ -1088,4 +1088,69 @@ describe( '100) Core Tests', () =>
 	} );
 
 
+	//---------------------------------------------------------------------
+	describe( 'Sort Tests', () =>
+	{
+
+
+		it( 'It sorts an array of objects', () => 
+		{
+			let documents = [
+				{ id: 1, type: 'A', title: 'First document' },
+				{ id: 2, type: 'B', title: 'Second document' },
+				{ id: 3, type: 'A', title: 'Third document' },
+				{ id: 4, type: 'B', title: 'Fourth document' },
+				{ id: 5, type: 'A', title: 'Fifth document' },
+			];
+			jsongin.Sort( documents, { title: 1 } );
+			assert.ok( documents );
+			assert.strictEqual( documents[ 0 ].id, 5 );
+			assert.strictEqual( documents[ 1 ].id, 1 );
+			assert.strictEqual( documents[ 2 ].id, 4 );
+			assert.strictEqual( documents[ 3 ].id, 2 );
+			assert.strictEqual( documents[ 4 ].id, 3 );
+		} );
+
+
+		it( 'It sorts across multiple keys', () => 
+		{
+			let documents = [
+				{ id: 1, type: 'A', title: 'First document' },
+				{ id: 2, type: 'B', title: 'Second document' },
+				{ id: 3, type: 'A', title: 'Third document' },
+				{ id: 4, type: 'B', title: 'Fourth document' },
+				{ id: 5, type: 'A', title: 'Fifth document' },
+			];
+			jsongin.Sort( documents, { type: 1, title: 1 } );
+			assert.ok( documents );
+			assert.strictEqual( documents[ 0 ].id, 5 );
+			assert.strictEqual( documents[ 1 ].id, 1 );
+			assert.strictEqual( documents[ 2 ].id, 3 );
+			assert.strictEqual( documents[ 3 ].id, 4 );
+			assert.strictEqual( documents[ 4 ].id, 2 );
+		} );
+
+
+		it( 'It sorts in reverse order', () => 
+		{
+			let documents = [
+				{ id: 1, type: 'A', title: 'First document' },
+				{ id: 2, type: 'B', title: 'Second document' },
+				{ id: 3, type: 'A', title: 'Third document' },
+				{ id: 4, type: 'B', title: 'Fourth document' },
+				{ id: 5, type: 'A', title: 'Fifth document' },
+			];
+			jsongin.Sort( documents, { type: 1, title: -1 } );
+			assert.ok( documents );
+			assert.strictEqual( documents[ 0 ].id, 3 );
+			assert.strictEqual( documents[ 1 ].id, 1 );
+			assert.strictEqual( documents[ 2 ].id, 5 );
+			assert.strictEqual( documents[ 3 ].id, 2 );
+			assert.strictEqual( documents[ 4 ].id, 4 );
+		} );
+
+
+	} );
+
+
 } );

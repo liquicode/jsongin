@@ -11,7 +11,7 @@ module.exports = function ( jsongin )
 			Documents.sort(
 				function ( A, B )
 				{
-					for ( key in SortCriteria )
+					for ( let key in SortCriteria )
 					{
 						let direction = SortCriteria[ key ];
 						if ( direction === 0 ) { continue; }

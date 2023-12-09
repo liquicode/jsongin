@@ -166,6 +166,10 @@
       ✔ It should Hybridize an empty document
       ✔ It should Unhybridize an empty document
       ✔ It Hybridizes and Unhybridizes a complex document
+    Sort Tests
+      ✔ It sorts an array of objects
+      ✔ It sorts across multiple keys
+      ✔ It sorts in reverse order
 
   200) Comparison Operator Tests
     $eq Tests
@@ -533,6 +537,6 @@
       ✔ should supress the _id field while including others
 
 
-  404 passing (95ms)
+  407 passing (89ms)
 
 ```
