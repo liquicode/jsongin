@@ -84,6 +84,8 @@
         ✔ should parse empty array: []
         ✔ should parse empty object: {}
         ✔ should parse a complex object
+        ✔ should parse multi-line text
+        ✔ should parse javascript object syntax
       Functionality Beyond Javascript's JSON.parse()
         ✔ It should parse an object written with JS (not JSON) syntax
         ✔ It should parse an object followed by unrelated text
@@ -537,6 +539,6 @@
       ✔ should supress the _id field while including others
 
 
-  407 passing (89ms)
+  409 passing (88ms)
 
 ```

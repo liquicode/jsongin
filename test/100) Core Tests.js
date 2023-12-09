@@ -133,6 +133,69 @@ describe( '100) Core Tests', () =>
 			} );
 
 
+			//---------------------------------------------------------------------
+			it( `should parse multi-line text`, function ()
+			{
+				let json = `
+				{ 
+					"id":1001,
+					"user":
+					{
+						"name": "Alice",
+						"location":"East"
+					},
+					"profile":
+					{
+						"login":"alice",
+						"role":"admin"
+					},
+					"tags":
+					[
+						"Staff",
+						"Dept. A"
+					]
+				}`;
+				let result1 = JSON.parse( json );
+				let result = jsongin.Parse( json );
+				assert.equal( typeof result, 'object' );
+				assert.equal( JSON.stringify( result ), JSON.stringify( result1 ) );
+			} );
+
+
+			//---------------------------------------------------------------------
+			it( `should parse javascript object syntax`, function ()
+			{
+				let json = `
+				{ 
+					id: 1001,
+					user:
+					{
+						name:     "Alice",
+						location: "East",
+					},
+					profile:
+					{
+						login: "alice",
+						role:  "admin",
+					},
+					tags:
+					[
+						"Staff",
+						"Dept. A",
+					],
+				}`;
+				let result = jsongin.Parse( json );
+				assert.ok( result );
+				assert.strictEqual( result.id, 1001 );
+				assert.strictEqual( result.user.name, 'Alice' );
+				assert.strictEqual( result.user.location, 'East' );
+				assert.strictEqual( result.profile.login, 'alice' );
+				assert.strictEqual( result.profile.role, 'admin' );
+				assert.strictEqual( result.tags[ 0 ], 'Staff' );
+				assert.strictEqual( result.tags[ 1 ], 'Dept. A' );
+			} );
+
+
 		} );
 
 

@@ -28,7 +28,7 @@ module.exports = function ( jsongin )
 		// Json = Json.replace( '\n', ' ' );
 		// while ( Json.includes( '  ' ) ) { Json = Json.replace( '  ', ' ' ); }
 
-		let whitespace = ' \t\n';
+		let whitespace = ' \t\r\n';
 		let delimiters = '[]{}:,';
 		let quotes = `'"`;
 
