@@ -1,6 +1,6 @@
 {
 	"name": "@liquicode/jsongin",
-	"version": "0.0.17",
+	"version": "0.0.18",
 	"description": "A JSON Engine for MongoDB-Style Queries and Data Structure Manipulation",
 	"license": "MIT",
 	"homepage": "http://jsongin.liquicode.com",
