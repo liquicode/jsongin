@@ -4,6 +4,7 @@ module.exports = function ( Engine )
 {
 	function BsonType( Value, ReturnAlias = false )
 	{
+		// MongoDB Ref: https://www.mongodb.com/docs/manual/reference/bson-types
 		// Unsupported BSON Types:
 		//	5 - binData
 		//	7 - objectid

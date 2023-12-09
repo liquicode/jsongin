@@ -5,6 +5,14 @@
 # Project History
 
 
+v0.0.15: (2023-12-09)
+---------------------------------------------------------------------
+
+- Added `Text` helper functions.
+- Added `Filter()` function.
+- Added `Sort()` function.
+
+
 v0.0.14 (2023-11-29)
 ---------------------------------------------------------------------
 
@@ -22,7 +30,7 @@ v0.0.12 (2023-11-27)
 ---------------------------------------------------------------------
 
 - Fixed docs
-- Addeed the `Hybridze` and `Unhybridize` functions.
+- Added the `Hybridize` and `Unhybridize` functions.
 
 
 v0.0.11 (2023-11-24)

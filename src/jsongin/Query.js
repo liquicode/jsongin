@@ -69,7 +69,7 @@ module.exports = function ( jsongin )
 				let sub_query = Criteria[ key ];
 				let sub_query_path = jsongin.JoinPaths( Path, key );
 				let result = false;
-				if ( jsongin.IsQuery( sub_query ) )
+				if ( is_query( sub_query ) )
 				{
 					result = jsongin.Query( Document, sub_query, sub_query_path );
 				}
@@ -88,5 +88,31 @@ module.exports = function ( jsongin )
 		}
 		return true; // Implicit $and
 	};
+
+
+	//---------------------------------------------------------------------
+	function is_query( Query )
+	{
+		if ( jsongin.ShortType( Query ) !== 'o' ) { return false; }
+		for ( let key in Query )
+		{
+			if ( typeof jsongin.QueryOperators[ key ] !== 'undefined' ) { return true; }
+			//TODO: This needs more thought/work:
+			// if ( Engine.ShortType( Query[ key ] ) === 'o' )
+			// {
+			// 	if ( Engine.Settings.PathExtensions )
+			// 	{
+			// 		if ( Object.keys( Query ).length === 1 )
+			// 		{
+			// 			if ( Engine.IsQuery( ( Query[ key ] ) ) ) { return true; }
+			// 		}
+			// 	}
+			// }
+		}
+		return false;
+	};
+
+
+	//---------------------------------------------------------------------
 	return Query;
 };

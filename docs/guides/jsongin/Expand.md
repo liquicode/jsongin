@@ -1,5 +1,13 @@
-# jsongin
-[`@liquicode/jsongin`](https://github.com/liquicode/jsongin)
+---
+layout: simple.njk
+bodyClass: "topic-page"
+
+seo:
+  title: jsongin.Expand()
+  description: "Takes a previously flattened document and returns it back to its original form."
+  socialImage: "/assets/images/jsongin-logo-50x50.png"
+  canonicalOverwrite: ""
+---
 
 
 # Expand( Document )
@@ -14,7 +22,7 @@
 
 ## Description
 
-Takes a previously flattened document (from `Flatten()`) and returns it back to its original form.
+Takes a previously flattened document (from `jsongin.Flatten()`) and returns it back to its original form.
 
 The `Document` parameter can be an object.
 

@@ -23,6 +23,24 @@ Read the [Query Reference](./Query%20Reference.md) document to understand how th
 
 | **Category**  | **Supported** | **Operator**   | **Description**                                                                                                                               |
 |---------------|:-------------:|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+<!-- @jsondoc
+```js
+{
+	Storage: jsonstor.GetStorage( 
+		'jsonstor-excel', {
+			Path: '../data/Tables.xls',
+			Sheet: 'Query Operators'
+		}, null ),
+	Query: {},
+	EachRow: {
+		Output: '| {{Row.Category}} | {{Row.Supported}} | {{Row.Operator}} | {{Row.Description}} |\n',
+	}
+}
+```
+-->
+
+| **Category**  | **Supported** | **Operator**   | **Description**                                                                                                                               |
+|---------------|:-------------:|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
 | Comparison    |      Yes      | <field>: value | Implicit $eq. Specify a document field and value. A matching document will have that field strictly equal to that value.                      |
 | Comparison    |      Yes      | $eq            | Matches values that are equal to a specified value.                                                                                           |
 | Comparison    |      Yes      | $ne            | Matches all values that are not equal to a specified value.                                                                                   |

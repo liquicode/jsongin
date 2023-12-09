@@ -4,5 +4,13 @@
 
 # Project TODO
 
+- 2023-12-09: Add 'WiredArray' functionality for fluent syntax.
+	- ex: Documents.Filter( ... ).Sort( ... ).Distinct( ... )
+- 2023-12-09: Add `Distinct()` function.
+- 2023-12-09: Add `ToYaml()` and `FromYaml()` functions.
+
+**Completed**
+
 - The $eq and $eqx operators need to be fixed to properly handle nested objects and arrays.
-- Banner images need to have a background.
+- Banner images need to have a background. (???)
+

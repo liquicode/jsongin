@@ -12,6 +12,8 @@ module.exports = function ( jsongin )
 		TopLevel: false,
 		ValueTypes: 'nsa',
 
+		// MongoDB Ref: https://www.mongodb.com/docs/manual/reference/bson-types
+
 		//---------------------------------------------------------------------
 		Query: function ( Document, MatchValue, Path = '' )
 		{

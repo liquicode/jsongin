@@ -74,10 +74,16 @@ module.exports = function ( EngineSettings = {} )
 	};
 
 	//---------------------------------------------------------------------
+	// Text Helper
+	Engine.Text = require( './Text' );
+
+	//---------------------------------------------------------------------
 	// MongoDB Mechanics
 	Engine.Query = require( './jsongin/Query' )( Engine );
 	Engine.Project = require( './jsongin/Project' )( Engine );
 	Engine.Update = require( './jsongin/Update' )( Engine );
+	Engine.Filter = require( './jsongin/Filter' )( Engine );
+	Engine.Sort = require( './jsongin/Sort' )( Engine );
 
 	//---------------------------------------------------------------------
 	// Document Mechanics
