@@ -172,6 +172,9 @@
       ✔ It sorts an array of objects
       ✔ It sorts across multiple keys
       ✔ It sorts in reverse order
+    Distinct Tests
+      ✔ It gets a distinct array of objects
+      ✔ It gets a distinct array using multiple keys
 
   200) Comparison Operator Tests
     $eq Tests
@@ -539,6 +542,6 @@
       ✔ should supress the _id field while including others
 
 
-  409 passing (88ms)
+  411 passing (91ms)
 
 ```

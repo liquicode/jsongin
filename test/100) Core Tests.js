@@ -1216,4 +1216,58 @@ describe( '100) Core Tests', () =>
 	} );
 
 
+	//---------------------------------------------------------------------
+	describe( 'Distinct Tests', () =>
+	{
+
+
+		it( 'It gets a distinct array of objects', () => 
+		{
+			let documents = [
+				{ type: 1, category: 'A', title: 'First' },
+				{ type: 1, category: 'A', title: 'Second' },
+				{ type: 1, category: 'B', title: 'Third' },
+				{ type: 1, category: 'A', title: 'Fourth' },
+				{ type: 2, category: 'B', title: 'Fifth' },
+				{ type: 2, category: 'B', title: 'Sixth' },
+				{ type: 2, category: 'A', title: 'Seventh' },
+				{ type: 2, category: 'A', title: 'Eighth' },
+			];
+			let distincts = jsongin.Distinct( documents, { type: true } );
+			assert.ok( distincts );
+			assert.strictEqual( distincts.length, 2 );
+			assert.strictEqual( distincts[ 0 ].type, 1 );
+			assert.strictEqual( distincts[ 1 ].type, 2 );
+		} );
+
+
+		it( 'It gets a distinct array using multiple keys', () => 
+		{
+			let documents = [
+				{ type: 1, category: 'A', title: 'First' },
+				{ type: 1, category: 'A', title: 'Second' },
+				{ type: 1, category: 'B', title: 'Third' },
+				{ type: 1, category: 'A', title: 'Fourth' },
+				{ type: 2, category: 'B', title: 'Fifth' },
+				{ type: 2, category: 'B', title: 'Sixth' },
+				{ type: 2, category: 'A', title: 'Seventh' },
+				{ type: 2, category: 'A', title: 'Eighth' },
+			];
+			let distincts = jsongin.Distinct( documents, { type: true, category: true } );
+			assert.ok( distincts );
+			assert.strictEqual( distincts.length, 4 );
+			assert.strictEqual( distincts[ 0 ].type, 1 );
+			assert.strictEqual( distincts[ 0 ].category, 'A' );
+			assert.strictEqual( distincts[ 1 ].type, 1 );
+			assert.strictEqual( distincts[ 1 ].category, 'B' );
+			assert.strictEqual( distincts[ 2 ].type, 2 );
+			assert.strictEqual( distincts[ 2 ].category, 'B' );
+			assert.strictEqual( distincts[ 3 ].type, 2 );
+			assert.strictEqual( distincts[ 3 ].category, 'A' );
+		} );
+
+
+	} );
+
+
 } );

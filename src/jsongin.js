@@ -84,6 +84,7 @@ module.exports = function ( EngineSettings = {} )
 	Engine.Update = require( './jsongin/Update' )( Engine );
 	Engine.Filter = require( './jsongin/Filter' )( Engine );
 	Engine.Sort = require( './jsongin/Sort' )( Engine );
+	Engine.Distinct = require( './jsongin/Distinct' )( Engine );
 
 	//---------------------------------------------------------------------
 	// Document Mechanics
