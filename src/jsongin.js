@@ -1,6 +1,8 @@
 'use strict';
 
-module.exports = function ( EngineSettings = {} )
+module.exports = NewJsongin();
+
+function NewJsongin( EngineSettings = {} )
 {
 	// if ( typeof EngineSettings.PathExtensions === 'undefined' ) { EngineSettings.PathExtensions = false; }
 	if ( typeof EngineSettings.OpLog === 'undefined' ) { EngineSettings.OpLog = null; }
@@ -10,7 +12,24 @@ module.exports = function ( EngineSettings = {} )
 
 
 	//---------------------------------------------------------------------
+	// Factory Method
+	Engine.NewJsongin = NewJsongin;
+
+	//---------------------------------------------------------------------
+	// Library
+	let _package = require( '../package.json' );
+	Engine.Library = {
+		name: _package.name,
+		url: _package.homepage,
+		version: _package.version,
+	};
+
+	//---------------------------------------------------------------------
+	// Settings
 	Engine.Settings = EngineSettings;
+
+	//---------------------------------------------------------------------
+	// Query Operators
 	Engine.QueryOperators = {
 
 		// Comparison Query Operators
@@ -49,6 +68,9 @@ module.exports = function ( EngineSettings = {} )
 		$noop: require( './Operators/Query/Extension/noop' )( Engine ),
 
 	};
+
+	//---------------------------------------------------------------------
+	// Update Operators
 	Engine.UpdateOperators = {
 
 		// Field Update Operators

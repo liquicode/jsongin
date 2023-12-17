@@ -5,6 +5,15 @@
 # Project History
 
 
+v0.0.19
+---------------------------------------------------------------------
+
+- Fixes to `Distinct()` function.
+- Changed the main module's return value to an actual instance of jsongin rather than a factory method.
+- jsongin now includes a factory method `NewJsongin( Settings )` to create instances with custom settings.
+- jsongin now has a `Library` field containing the library's name and version number.
+
+
 v0.0.18 (2023-12-09)
 ---------------------------------------------------------------------
 

@@ -1,10 +1,11 @@
 'use strict';
 
 const assert = require( 'assert' );
-const jsongin = require( '../src/jsongin' )( {
-	PathExtensions: false,
-	Explain: false,
-} );
+const jsongin = require( '../src/jsongin' )
+	.NewJsongin( {
+		PathExtensions: false,
+		Explain: false,
+	} );
 
 
 describe( '200) Comparison Operator Tests', () =>

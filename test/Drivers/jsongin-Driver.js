@@ -3,7 +3,7 @@
 module.exports = function ( Settings )
 {
 
-	const jsongin = require( '../../src/jsongin' )( Settings );
+	const jsongin = require( '../../src/jsongin' ).NewJsongin( Settings );
 
 	let driver =
 	{

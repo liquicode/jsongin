@@ -16,8 +16,9 @@ module.exports = function ( jsongin )
 				let distinct = {};
 				for ( let key in DistinctCriteria )
 				{
-					distinct[ key ] = document[ key ];
-					document_key += JSON.stringify( document[ key ] );
+					let value = jsongin.GetValue( document, key );
+					jsongin.SetValue( distinct, key, value );
+					document_key += JSON.stringify( value );
 				}
 				distincts[ document_key ] = distinct;
 			}

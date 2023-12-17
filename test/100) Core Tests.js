@@ -1,10 +1,7 @@
 'use strict';
 
 const assert = require( 'assert' );
-const jsongin = require( '../src/jsongin' )( {
-	// OpLog: console.log,
-	// OpError: console.error,
-} );
+const jsongin = require( '../src/jsongin' );
 
 
 describe( '100) Core Tests', () =>

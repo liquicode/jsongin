@@ -1,10 +1,11 @@
 'use strict';
 
 const assert = require( 'assert' );
-const jsongin = require( '../src/jsongin' )( {
-	PathExtensions: true,
-	Explain: false,
-} );
+const jsongin = require( '../src/jsongin' )
+	.NewJsongin( {
+		PathExtensions: true,
+		Explain: false,
+	} );
 
 
 describe( '150) Core with Path Extensions Tests', () =>
