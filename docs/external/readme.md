@@ -1,26 +1,30 @@
-# jsongin
-[`@liquicode/jsongin`](https://github.com/liquicode/jsongin) (v0.0.19)
+# @liquicode/jsongin
+
+> Home: [http://jsongin.liquicode.com](http://jsongin.liquicode.com)
+>
+> Version: 0.0.20
 
 ### A JSON Engine for MongoDB-Style Queries and Data Structure Manipulation
 
 
-> Official Docs: [http://jsongin.liquicode.com](http://jsongin.liquicode.com)
-
+<!-- 
 
 Quick Reference
 ---------------------------------------------------------------------
 
-- [Library Guide](docs/guides/Library%20Guide.md)
+- [Library Guide](docs/guides/Library-Guide.md)
 
 ***MongoDB Mechanics***
-- [Query Reference](docs/guides/Query%20Reference.md)
-- [Projection Reference](docs/guides/Projection%20Reference.md)
-- [Update Reference](docs/guides/Update%20Reference.md)
-- [Operator Reference](docs/guides/Operators%20Reference.md)
+- [Query Reference](docs/guides/Query-Reference.md)
+- [Projection Reference](docs/guides/Projection-Reference.md)
+- [Update Reference](docs/guides/Update-Reference.md)
+- [Operator Reference](docs/guides/Operator-Reference.md)
 
 ***Document Inspection and Manipulation***
-- [Short Types](docs/guides/Short%20Types.md)
-- [Document Manipulation](docs/guides/Document%20Manipulation.md)
+- [Short Types](docs/guides/Short-Types.md)
+- [Document Manipulation](docs/guides/Document-Manipulation.md)
+
+-->
 
 
 Overview
@@ -30,7 +34,10 @@ Overview
 It strives to be consistent and easy to use.
 You can use MongoDB style operations in your own projects by using these `jsongin` functions:
 
-- `Query( Document, Criteria )`
+- `Query( Document, QueryCriteria )`
+- `Filter( Documents, QueryCriteria )`
+- `Distinct( Documents, DistinctCriteria )`
+- `Sort( Documents, SortCriteria )`
 - `Project( Document, Projection )`
 - `Update( Document, Updates )`
 
@@ -42,7 +49,7 @@ I developed `jsongin` to provide a single query interface that could be used aga
 Now when I develop an application or server, I can work with my data in memory for development
   and then quickly switch to a full MongoDB server for deployment.
 To look at my project which implements a number of storage adapters for many common platforms and mediums,
-see the [@liquicode/jsonstor]() project.
+see the [@liquicode/jsonstor](https://github.com/liquicode/jsonstor) project.
 
 There are a number of other functions implemented here which serve to not only support the above
   functions, but also provide functionality common to general work with Javascript objects:
@@ -72,9 +79,9 @@ There are a number of other functions implemented here which serve to not only s
 - `AsNumber( Value )`
 - `AsDate( Value )`
 
-See the [Library Guide](docs/guides/Library%20Guide.md) for more information.
+See the [Library Guide](docs/guides/Library-Guide.md) for more information.
 
-See the [Operator Reference](docs/guides/Operator%20Reference.md) for list of all
+See the [Operator Reference](docs/guides/Operator-Reference.md) for list of all
   supported MongoDB query and update operators.
 
 

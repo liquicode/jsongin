@@ -1,11 +1,16 @@
-# jsongin
-[`@liquicode/jsongin`](https://github.com/liquicode/jsongin)
+# @liquicode/jsongin
 
 
 # Project History
 
 
-v0.0.19
+v0.0.20
+---------------------------------------------------------------------
+
+- Fixed `build/prod/devops.tasks.js`.
+
+
+v0.0.19 (2023-12-16)
 ---------------------------------------------------------------------
 
 - Fixes to `Distinct()` function.

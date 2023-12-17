@@ -1,13 +1,4 @@
----
-layout: simple.njk
-bodyClass: "topic-page"
-
-seo:
-  title: jsongin.Expand()
-  description: "Takes a previously flattened document and returns it back to its original form."
-  socialImage: "/assets/images/jsongin-logo-50x50.png"
-  canonicalOverwrite: ""
----
+# @liquicode/jsongin
 
 
 # Expand( Document )

@@ -1,8 +1,8 @@
-# @liquicode/jsongin
+# <%- Context.Package.name %>
 
-> Home: [http://jsongin.liquicode.com](http://jsongin.liquicode.com)
+> Home: [<%- Context.Package.homepage %>](<%- Context.Package.homepage %>)
 >
-> Version: 0.0.20
+> Version: <%- Context.Package.version %>
 
 ### A JSON Engine for MongoDB-Style Queries and Data Structure Manipulation
 
@@ -96,10 +96,10 @@ npm install --save @liquicode/jsongin
 ***Include in your NodeJS Project***
 ```js
 // Create an instance of jsongin:
-const jsongin = require('@liquicode/jsongin')(); // jsongin exports a function to call.
+const jsongin = require('@liquicode/jsongin');
 
 // Or, create with custom settings:
-const jsongin = require('@liquicode/jsongin')( Settings ); // You can pass a Settings parameter.
+const jsongin = require('@liquicode/jsongin').NewJsongin( Settings );
 ```
 
 
@@ -242,8 +242,8 @@ Features
 - Developer Features:
 	- No external dependencies.
 	- 100% pure javascript.
-	- Single minified file (33k) deployment for web.
-	- Use the `Explain` feature to help understand and debug queries.
+	- Single minified file (~35k) for web deployment.
+	- Use the `OpLog` feature to help understand and debug queries.
 	- Extend `jsongin` by developing your own query, projection, and update operators.
 
 - Object Based Queries:

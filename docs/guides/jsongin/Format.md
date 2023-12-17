@@ -1,5 +1,4 @@
-# jsongin
-[`@liquicode/jsongin`](https://github.com/liquicode/jsongin)
+# @liquicode/jsongin
 
 
 # Format( Value, WithWhitespace, LikeJavascript )

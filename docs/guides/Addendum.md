@@ -1,8 +1,8 @@
-# jsongin
-[`@liquicode/jsongin`](https://github.com/liquicode/jsongin)
+# @liquicode/jsongin
 
 
 # Addendum and Other Notes
+
 
 Why this library?
 ---------------------------------------------------------------------
@@ -24,6 +24,34 @@ Goals
 - Full accuracy with implmeneted MongoDB functionality.
 - Generate SQL queries for relational/hybrid databases.
 - Fast, easy to use, low overhead, and minimal (no) dependencies.
+
+
+Similar Projects
+---------------------------------------------------------------------
+
+- [mingo](https://www.npmjs.com/package/mingo) :
+	A MongoDB-style querying mechanism.
+	A full and mature implementation.
+
+- [json-criteria](https://www.npmjs.com/package/json-criteria) :
+	A MongoDB-style querying mechanism.
+	Minimal MongoDB compatibility.
+
+- [nedb](https://www.npmjs.com/package/nedb) : 
+	A MongoDB-style querying mechanism.
+	Create and manage memory-based and file-based data collections.
+	No longer maintained by the author(s).
+	Minimal MongoDB compatibility.
+
+- [@seald-io/nedb](https://www.npmjs.com/package/@seald-io/nedb) : 
+	A currently maintained fork of `nedb`.
+	Minimal MongoDB compatibility.
+
+- [Mongo-Local-DB](https://www.npmjs.com/package/mongo-local-db) :
+
+- [RxDB](https://www.npmjs.com/package/rxdb) :
+
+- [realm](https://www.npmjs.com/package/realm) :
 
 
 Object Cloning

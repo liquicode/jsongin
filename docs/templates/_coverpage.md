@@ -2,7 +2,7 @@
 
 ![logo](media/jsongin-banner-large.png)
 
-# @liquicode/jsongin <small>(v0.0.20)</small>
+# <%- Context.Package.name %> <small>(v<%- Context.Package.version %>)</small>
 
 <hr>
 

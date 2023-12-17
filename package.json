@@ -18,6 +18,7 @@
 	"main": "src/jsongin.js",
 	"scripts": {
 		"test": "mocha -u bdd tests/*.js --timeout 0 --slow 10 --colors",
+		"build docs": "npx @liquicode/devops --tasks .\\build\\prod\\devops.tasks.js build_docs",
 		"publish version": "npx @liquicode/devops --tasks .\\build\\prod\\devops.tasks.js publish_version",
 		"start new version": "npx @liquicode/devops --tasks .\\build\\prod\\devops.tasks.js start_new_version"
 	},

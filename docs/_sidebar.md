@@ -4,23 +4,27 @@
 
 - jsongin Documentation
 
-	- [Library Guide](guides/Library%20Guide.md)
+	- [Main](external/readme.md)
+	- [Library Guide](guides/Library-Guide.md)
 
 <hr>
 
 - MongoDB Mechanics
 
 	- [`Query()`](guides/jsongin/Query.md)
+	- [`Filter()`](guides/jsongin/Filter.md)
+	- [`Distinct()`](guides/jsongin/Distinct.md)
+	- [`Sort()`](guides/jsongin/Sort.md)
 	- [`Project()`](guides/jsongin/Project.md)
 	- [`Update()`](guides/jsongin/Update.md)
 	
-	- [Operator Reference](guides/Operator%20Reference.md)
+	- [Operator Reference](guides/Operator-Reference.md)
 
 <hr>
 
 - Document Mechanics
 
-	- [Document Manipulation](guides/Document%20Manipulation.md)
+	- [Document Manipulation](guides/Document-Manipulation.md)
 
 	- **Working with Document Paths**
 
@@ -56,7 +60,7 @@
 
 - Work with Data Types
 
-	- [`ShortType()`](guides/Short%20Types.md)
+	- [`ShortType()`](guides/jsongin/ShortType.md)
 	- `BsonType()`
 	- `AsNumber()`
 	- `AsDate()`
@@ -71,6 +75,7 @@
 
 - More Information
 
+	- [Addendum / Random](guides/Addendum.md)
 	- [Testing Output](external/tests.md)
 	- [Project History](external/history.md)
 	- [Software License](external/license.md)

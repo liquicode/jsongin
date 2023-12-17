@@ -1,8 +1,7 @@
-# jsongin
-[`@liquicode/jsongin`](https://github.com/liquicode/jsongin)
+# @liquicode/jsongin
 
 
-# Filter( Documents, QueryCriteria )
+# Sort( Documents, SortCriteria )
 
 
 ## Parameters

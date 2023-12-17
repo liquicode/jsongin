@@ -1,5 +1,4 @@
-# jsongin
-[`@liquicode/jsongin`](https://github.com/liquicode/jsongin)
+# @liquicode/jsongin
 
 
 ### Operator Reference
@@ -20,24 +19,6 @@ If it does match all of the criteria, then `jsongin.Query` will return `true`.
 If not all of the criteria are satisfied, then a `false` will be returned instead.
 
 Read the [Query Reference](./Query%20Reference.md) document to understand how these operators are used.
-
-| **Category**  | **Supported** | **Operator**   | **Description**                                                                                                                               |
-|---------------|:-------------:|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-<!-- @jsondoc
-```js
-{
-	Storage: jsonstor.GetStorage( 
-		'jsonstor-excel', {
-			Path: '../data/Tables.xls',
-			Sheet: 'Query Operators'
-		}, null ),
-	Query: {},
-	EachRow: {
-		Output: '| {{Row.Category}} | {{Row.Supported}} | {{Row.Operator}} | {{Row.Description}} |\n',
-	}
-}
-```
--->
 
 | **Category**  | **Supported** | **Operator**   | **Description**                                                                                                                               |
 |---------------|:-------------:|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
