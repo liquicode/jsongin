@@ -3,7 +3,7 @@
 module.exports = {
 
 	Context: {
-		Package: require( '../../package.json' ),
+		Package: require( '../package.json' ),
 		AWS_ProfileName: 'admin',
 		AWS_BucketName: 'jsongin.liquicode.com',
 	},
@@ -18,7 +18,7 @@ module.exports = {
 				err: { console: true },
 			}
 		},
-		{ $PrependTextFile: { filename: 'tests.md', value: '```\n' } },
+		{ $PrependTextFile: { filename: 'tests.md', value: '# ${Package.name}\n\n> Version: ${Package.version}\n\n# Test Results\n\n```\n' } },
 		{ $AppendTextFile: { filename: 'tests.md', value: '```\n' } },
 
 	],

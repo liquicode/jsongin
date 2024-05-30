@@ -1267,4 +1267,89 @@ describe( '100) Core Tests', () =>
 	} );
 
 
+	//---------------------------------------------------------------------
+	describe( 'Merge Tests', () =>
+	{
+		var sample_object_1 = {
+			field1: 1,
+			field2: 2,
+			obj1: {
+				field3: 3,
+				field4: 4,
+			},
+			arr1: [ 5, 6 ],
+		};
+
+
+		it( 'It can merge with null objects', () => 
+		{
+			var document = jsongin.Merge( null, sample_object_1 );
+			assert.ok( document );
+			assert.deepStrictEqual( document, sample_object_1 );
+
+			document = jsongin.Merge( sample_object_1, null );
+			assert.ok( document );
+			assert.deepStrictEqual( document, sample_object_1 );
+		} );
+
+
+		it( 'It can merge with empty objects', () => 
+		{
+			var document = jsongin.Merge( {}, sample_object_1 );
+			assert.ok( document );
+			assert.deepStrictEqual( document, sample_object_1 );
+
+			document = jsongin.Merge( sample_object_1, {} );
+			assert.ok( document );
+			assert.deepStrictEqual( document, sample_object_1 );
+		} );
+
+
+		it( 'It can add new fields', () => 
+		{
+			var document = jsongin.Merge( {}, { test: 'A' } );
+			assert.ok( document );
+			assert.deepStrictEqual( document, { test: 'A' } );
+
+			document = jsongin.Merge( { test: 'A' }, {} );
+			assert.ok( document );
+			assert.deepStrictEqual( document, { test: 'A' } );
+		} );
+
+
+		it( 'It can add new sub-fields', () => 
+		{
+			var document = jsongin.Merge( { A: { B: 2 } }, { A: { C: 3 } } );
+			assert.ok( document );
+			assert.deepStrictEqual( document, { A: { B: 2, C: 3 } } );
+
+			document = jsongin.Merge( { A: { C: 3 } }, { A: { B: 2 } } );
+			assert.ok( document );
+			assert.deepStrictEqual( document, { A: { B: 2, C: 3 } } );
+		} );
+
+
+		it( 'It can update existing fields', () => 
+		{
+			var document = jsongin.Merge( { test: 0 }, { test: 'A' } );
+			assert.ok( document );
+			assert.deepStrictEqual( document, { test: 'A' } );
+
+			document = jsongin.Merge( { test: 'A' }, { test: 0 } );
+			assert.ok( document );
+			assert.deepStrictEqual( document, { test: 0 } );
+		} );
+
+
+		it( 'It can update existing sub-fields', () => 
+		{
+			var document = jsongin.Merge( { A: { B: 2, C: 3 } }, { A: { C: 4 } } );
+			assert.ok( document );
+			assert.deepStrictEqual( document, { A: { B: 2, C: 4 } } );
+		} );
+
+
+	} );
+
+
 } );

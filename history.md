@@ -4,7 +4,13 @@
 # Project History
 
 
-v0.0.20
+v0.0.21 (2024-05-29)
+---------------------------------------------------------------------
+
+- Added the `Merge( DocumentA, DocumentB )` function. Merges DocumentB into DocumentA and returns the merged object.
+
+
+v0.0.20 (2023-12-17)
 ---------------------------------------------------------------------
 
 - Fixed `build/prod/devops.tasks.js`.
@@ -15,6 +21,7 @@ v0.0.19 (2023-12-16)
 
 - Fixes to `Distinct()` function.
 - Changed the main module's return value to an actual instance of jsongin rather than a factory method.
+  e.g. `const jsongin = require( '@liquicode/jsongin' );`
 - jsongin now includes a factory method `NewJsongin( Settings )` to create instances with custom settings.
 - jsongin now has a `Library` field containing the library's name and version number.
 

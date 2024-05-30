@@ -1,3 +1,9 @@
+# @liquicode/jsongin
+
+> Version: 0.0.21
+
+# Test Results
+
 ```
 
 
@@ -175,6 +181,13 @@
     Distinct Tests
       ✔ It gets a distinct array of objects
       ✔ It gets a distinct array using multiple keys
+    Merge Tests
+      ✔ It can merge with null objects
+      ✔ It can merge with empty objects
+      ✔ It can add new fields
+      ✔ It can add new sub-fields
+      ✔ It can update existing fields
+      ✔ It can update existing sub-fields
 
   200) Comparison Operator Tests
     $eq Tests
@@ -542,6 +555,6 @@
       ✔ should supress the _id field while including others
 
 
-  411 passing (91ms)
+  417 passing (78ms)
 
 ```

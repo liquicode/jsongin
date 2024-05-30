@@ -120,6 +120,7 @@ function NewJsongin( EngineSettings = {} )
 	Engine.Expand = require( './jsongin/Expand' )( Engine );
 	Engine.Hybridize = require( './jsongin/Hybridize' )( Engine );
 	Engine.Unhybridize = require( './jsongin/Unhybridize' )( Engine );
+	Engine.Merge = require( './jsongin/Merge' )( Engine );
 
 	//---------------------------------------------------------------------
 	// Object Matching and Cloning

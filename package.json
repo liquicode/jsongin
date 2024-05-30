@@ -18,9 +18,9 @@
     "main": "src/jsongin.js",
     "scripts": {
         "test": "mocha -u bdd tests/*.js --timeout 0 --slow 10 --colors",
-        "build docs": "npx @liquicode/devops --tasks .\\build\\prod\\devops.tasks.js build_docs",
-        "publish version": "npx @liquicode/devops --tasks .\\build\\prod\\devops.tasks.js publish_version",
-        "start new version": "npx @liquicode/devops --tasks .\\build\\prod\\devops.tasks.js start_new_version"
+        "build docs": "npx @liquicode/devops --tasks .\\build\\build.tasks.js build_docs",
+        "publish version": "npx @liquicode/devops --tasks .\\build\\build.tasks.js publish_version",
+        "start new version": "npx @liquicode/devops --tasks .\\build\\build.tasks.js start_new_version"
     },
     "keywords": [
         "mongo",
@@ -33,6 +33,7 @@
         "compare"
     ],
     "devDependencies": {
+        "@liquicode/devops": "^0.0.20",
         "@liquicode/lib-json": "^0.1.5",
         "@seald-io/nedb": "^4.0.2",
         "babel-polyfill": "6.x",
@@ -43,6 +44,5 @@
         "webpack": "^5.89.0",
         "webpack-cli": "^5.1.4",
         "webpack-node-externals": "^3.0.0"
-    },
-    "dependencies": {}
+    }
 }
