@@ -200,3 +200,13 @@ function NewJsongin( EngineSettings = {} )
 	// Return the engine.
 	return Engine;
 };
+
+// Browser compatability.
+if ( typeof window !== 'undefined' )
+{
+	var jsongin = NewJsongin();
+	// window.jsongin = jsongin;
+	if ( typeof window.liquicode === 'undefined' ) { window.liquicode = {}; }
+	window.liquicode.jsongin = jsongin;
+	window.liquicode.NewJsongin = NewJsongin;
+}

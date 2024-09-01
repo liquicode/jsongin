@@ -27,6 +27,13 @@ Quick Reference
 -->
 
 
+Installation Guides
+---------------------------------------------------------------------
+
+- [NodeJS Usage](docs/guides/Usage-NodeJS.md)
+- [Browser Usage](docs/guides/Usage-Browser.md)
+
+
 Overview
 ---------------------------------------------------------------------
 
@@ -83,24 +90,6 @@ See the [Library Guide](docs/guides/Library-Guide.md) for more information.
 
 See the [Operator Reference](docs/guides/Operator-Reference.md) for list of all
   supported MongoDB query and update operators.
-
-
-Getting Started
----------------------------------------------------------------------
-
-***Install with NPM:***
-```bash
-npm install --save @liquicode/jsongin
-```
-
-***Include in your NodeJS Project***
-```js
-// Create an instance of jsongin:
-const jsongin = require('@liquicode/jsongin');
-
-// Or, create with custom settings:
-const jsongin = require('@liquicode/jsongin').NewJsongin( Settings );
-```
 
 
 ### Examples

@@ -4,6 +4,15 @@
 # Project History
 
 
+v0.0.22 (2024-08-31)
+---------------------------------------------------------------------
+
+- Added browser loading compatability. (i.e. window.jsongin)
+- Added function `Text.SearchReplacements( Text, ReplacementMap, CaseSensitive = true )`
+- Added function `Text.SearchReplace( Text, Search, Replace, CaseSensitive = true )`
+- Added documentation for the `Text` module.
+
+
 v0.0.21 (2024-05-29)
 ---------------------------------------------------------------------
 

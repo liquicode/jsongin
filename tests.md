@@ -1,6 +1,6 @@
 # @liquicode/jsongin
 
-> Version: 0.0.21
+> Version: 0.0.22
 
 # Test Results
 
@@ -188,6 +188,52 @@
       ✔ It can add new sub-fields
       ✔ It can update existing fields
       ✔ It can update existing sub-fields
+
+  110) Text Tests
+    Compare Tests (case sensitive)
+      ✔ should compare text
+    Compare Tests (case insensitive)
+      ✔ should compare text
+    FindBetween Tests (case sensitive)
+      ✔ should find the entire string
+      ✔ should find text at start of string
+      ✔ should find text in middle of string
+    FindBetween Tests (case insensitive)
+      ✔ should find the entire string
+      ✔ should find text at start of string
+      ✔ should find text in middle of string
+    Matches Tests (case sensitive)
+      ✔ should match entire string
+      ✔ should match text at start of string
+      ✔ should match text in middle of string
+      ✔ should match text at end of string
+    Matches Tests (case insensitive)
+      ✔ should match entire string
+      ✔ should match text at start of string
+      ✔ should match text in middle of string
+      ✔ should match text at end of string
+    SearchReplacements Tests (case sensitive)
+      ✔ should replace entire string
+      ✔ should replace text at start of string
+      ✔ should replace text in middle of string
+      ✔ should replace text at end of string
+      ✔ should replace multiple strings
+    SearchReplacements Tests (case insensitive)
+      ✔ should replace entire string
+      ✔ should replace text at start of string
+      ✔ should replace text in middle of string
+      ✔ should replace text at end of string
+      ✔ should replace multiple strings
+    SearchReplace Tests (case sensitive)
+      ✔ should replace entire string
+      ✔ should replace text at start of string
+      ✔ should replace text in middle of string
+      ✔ should replace text at end of string
+    SearchReplace Tests (case insensitive)
+      ✔ should replace entire string
+      ✔ should replace text at start of string
+      ✔ should replace text in middle of string
+      ✔ should replace text at end of string
 
   200) Comparison Operator Tests
     $eq Tests
@@ -555,6 +601,6 @@
       ✔ should supress the _id field while including others
 
 
-  417 passing (78ms)
+  451 passing (83ms)
 
 ```

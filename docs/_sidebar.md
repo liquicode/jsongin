@@ -5,6 +5,8 @@
 - jsongin Documentation
 
 	- [Main](external/readme.md)
+	- [NodeJS Usage](guides/Usage-NodeJS.md)
+	- [Browser Usage](guides/Usage-Browser.md)
 	- [Library Guide](guides/Library-Guide.md)
 
 <hr>
@@ -51,19 +53,29 @@
 
 - Object Matching and Cloning
 
-	- `LooseEquals()`
-	- `StrictEquals()`
-	- `Clone( Document )`
-	- [`SafeClone( Document, Exceptions )`](guides/jsongin/SafeClone.md)
+	- <small>*LooseEquals*</small>
+	- <small>*StrictEquals*</small>
+	- <small>*Clone*</small>
+	- [`SafeClone()`](guides/jsongin/SafeClone.md)
 
 <hr>
 
 - Work with Data Types
 
 	- [`ShortType()`](guides/jsongin/ShortType.md)
-	- `BsonType()`
-	- `AsNumber()`
-	- `AsDate()`
+	- <small>*BsonType*</small>
+	- <small>*AsNumber*</small>
+	- <small>*AsDate*</small>
+
+<hr>
+
+- Bonus! Text Functions
+
+	- [`Compare()`](guides/Text/Compare.md)
+	- [`FindBetween()`](guides/Text/FindBetween.md)
+	- [`Matches()`](guides/Text/Matches.md)
+	- [`SearchReplace()`](guides/Text/SearchReplace.md)
+	- [`SearchReplacements()`](guides/Text/SearchReplacements.md)
 
 <hr>
 

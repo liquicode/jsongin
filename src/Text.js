@@ -61,4 +61,43 @@ module.exports = {
 	},
 
 
+	//---------------------------------------------------------------------
+	SearchReplacements:
+		function SearchReplacements( Text, ReplacementMap, CaseSensitive = true )
+		{
+			var replaced = '';
+			if ( CaseSensitive )
+			{
+				// Create a regular expression from the keys of the replacements object
+				var regex = new RegExp( Object.keys( ReplacementMap ).join( '|' ), 'g' );
+				// Perform the replacements
+				replaced = Text.replace( regex, matched => ReplacementMap[ matched ] );
+			}
+			else
+			{
+				// Create a regular expression from the keys of the replacements object
+				var regex = new RegExp( Object.keys( ReplacementMap ).join( '|' ), 'gi' );
+				// Perform the replacements
+				var keys = Object.keys( ReplacementMap );
+				var replacements = {};
+				for ( var index = 0; index < keys.length; index++ )
+				{
+					replacements[ keys[ index ].toLowerCase() ] = ReplacementMap[ keys[ index ] ];
+				}
+				replaced = Text.replace( regex, matched => replacements[ matched.toLowerCase() ] );
+			}
+			return replaced;
+		},
+
+
+	//---------------------------------------------------------------------
+	SearchReplace:
+		function SearchReplace( Text, Search, Replace, CaseSensitive = true )
+		{
+			var replacements = {};
+			replacements[ Search ] = Replace;
+			return this.SearchReplacements( Text, replacements, CaseSensitive );
+		},
+
+
 };
