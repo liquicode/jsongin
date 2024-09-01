@@ -164,6 +164,7 @@ module.exports = {
 	publish_version: [
 
 		// Finalize and publish the existing version.
+		{ $RunTask: { task: 'run_webpack' } },
 		{ $RunTask: { task: 'run_tests' } },
 		{ $RunTask: { task: 'build_docs' } },
 		{ $RunTask: { task: 'update_aws_docs' } },
