@@ -2,7 +2,7 @@
 
 > Home: [http://jsongin.liquicode.com](http://jsongin.liquicode.com)
 >
-> Version: 0.0.23
+> Version: 0.0.24
 
 ### A JSON Engine for MongoDB-Style Queries and Data Structure Manipulation
 
