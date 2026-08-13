@@ -108,3 +108,20 @@ outputs:
 ```
 
 
+
+
+## Dates
+
+A `Date` is written as an ISO string, which is what `JSON.stringify()` does.
+
+```js
+jsongin.Format( { created: new Date( 1700000000000 ) } )
+// === { "created": "2023-11-14T22:13:20.000Z" }
+```
+
+Note that [`Parse()`](./Parse.md) reads that value back as a string, not as a `Date`, exactly
+  as `JSON.parse()` would.
+The `Format` and `Parse` round trip preserves the date's value but not its type.
+
+Use [`Hybridize()`](./Hybridize.md) and [`Unhybridize()`](./Hybridize.md) when the round trip
+  must restore an actual `Date`.

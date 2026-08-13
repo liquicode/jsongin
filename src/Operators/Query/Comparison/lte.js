@@ -10,7 +10,7 @@ module.exports = function ( jsongin )
 		Engine: jsongin,
 		OperatorType: 'Comparison',
 		TopLevel: false,
-		ValueTypes: 'bnslu',
+		ValueTypes: 'bnsdlu',
 
 		//---------------------------------------------------------------------
 		Query: function ( Document, MatchValue, Path = '' )
@@ -27,7 +27,7 @@ module.exports = function ( jsongin )
 				let match_type = jsongin.ShortType( match_value );
 
 				// Compare
-				if ( 'bns'.includes( match_type ) && ( match_type === actual_type ) ) 
+				if ( 'bnsd'.includes( match_type ) && ( match_type === actual_type ) ) 
 				{
 					return ( actual_value <= match_value ); // Comparison of primitive types.
 				}

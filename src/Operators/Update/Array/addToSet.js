@@ -33,7 +33,7 @@ module.exports = function ( jsongin )
 					let result = jsongin.SetValue( Document, field, array );
 					if ( result === false )
 					{
-						if ( jsongin.OpLog ) { Engine.OpLog( `Update.$addToSet: Setting the value of [${field}] to [${JSON.stringify( value )}] failed.` ); }
+						if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$addToSet: Setting the value of [${field}] to [${JSON.stringify( array )}] failed.` ); }
 						operation_result = false;
 						continue;
 					}

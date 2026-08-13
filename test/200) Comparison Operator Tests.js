@@ -963,5 +963,80 @@ describe( '200) Comparison Operator Tests', () =>
 	} );
 
 
+	//---------------------------------------------------------------------
+	describe( 'Date Comparison Tests', () =>
+	{
+
+		// Two Date objects are never === or == to each other, so every comparison operator
+		// needs to compare their time values instead. These call the operators directly.
+
+		const EARLIER = new Date( 1600000000000 );
+		const WHEN = new Date( 1700000000000 );
+		const SAME = new Date( 1700000000000 );
+		const LATER = new Date( 1800000000000 );
+
+		it( 'should equate dates with $eq', () =>
+		{
+			assert.ok( jsongin.QueryOperators.$eq.Query( WHEN, SAME ) === true );
+			assert.ok( jsongin.QueryOperators.$eq.Query( WHEN, EARLIER ) === false );
+		} );
+
+		it( 'should equate dates with $eqx', () =>
+		{
+			assert.ok( jsongin.QueryOperators.$eqx.Query( WHEN, SAME ) === true );
+			assert.ok( jsongin.QueryOperators.$eqx.Query( WHEN, EARLIER ) === false );
+		} );
+
+		it( 'should not equate a date to a non-date', () =>
+		{
+			assert.ok( jsongin.QueryOperators.$eq.Query( WHEN, WHEN.toISOString() ) === false );
+			assert.ok( jsongin.QueryOperators.$eq.Query( WHEN, WHEN.getTime() ) === false );
+			assert.ok( jsongin.QueryOperators.$eqx.Query( WHEN, WHEN.toISOString() ) === false );
+			assert.ok( jsongin.QueryOperators.$eqx.Query( WHEN, {} ) === false );
+		} );
+
+		it( 'should differentiate dates with $ne and $nex', () =>
+		{
+			assert.ok( jsongin.QueryOperators.$ne.Query( WHEN, EARLIER ) === true );
+			assert.ok( jsongin.QueryOperators.$ne.Query( WHEN, SAME ) === false );
+			assert.ok( jsongin.QueryOperators.$nex.Query( WHEN, EARLIER ) === true );
+			assert.ok( jsongin.QueryOperators.$nex.Query( WHEN, SAME ) === false );
+		} );
+
+		it( 'should order dates with $gt and $gte', () =>
+		{
+			assert.ok( jsongin.QueryOperators.$gt.Query( WHEN, EARLIER ) === true );
+			assert.ok( jsongin.QueryOperators.$gt.Query( WHEN, LATER ) === false );
+			assert.ok( jsongin.QueryOperators.$gt.Query( WHEN, SAME ) === false );
+			assert.ok( jsongin.QueryOperators.$gte.Query( WHEN, SAME ) === true );
+			assert.ok( jsongin.QueryOperators.$gte.Query( WHEN, LATER ) === false );
+		} );
+
+		it( 'should order dates with $lt and $lte', () =>
+		{
+			assert.ok( jsongin.QueryOperators.$lt.Query( WHEN, LATER ) === true );
+			assert.ok( jsongin.QueryOperators.$lt.Query( WHEN, EARLIER ) === false );
+			assert.ok( jsongin.QueryOperators.$lt.Query( WHEN, SAME ) === false );
+			assert.ok( jsongin.QueryOperators.$lte.Query( WHEN, SAME ) === true );
+			assert.ok( jsongin.QueryOperators.$lte.Query( WHEN, EARLIER ) === false );
+		} );
+
+		it( 'should find dates with $in and $nin', () =>
+		{
+			assert.ok( jsongin.QueryOperators.$in.Query( WHEN, [ EARLIER, SAME ] ) === true );
+			assert.ok( jsongin.QueryOperators.$in.Query( WHEN, [ EARLIER, LATER ] ) === false );
+			assert.ok( jsongin.QueryOperators.$nin.Query( WHEN, [ EARLIER, LATER ] ) === true );
+			assert.ok( jsongin.QueryOperators.$nin.Query( WHEN, [ SAME ] ) === false );
+		} );
+
+		it( 'should not compare a date against a value of another type', () =>
+		{
+			assert.ok( jsongin.QueryOperators.$gt.Query( WHEN, 0 ) === false );
+			assert.ok( jsongin.QueryOperators.$lt.Query( WHEN, 'abc' ) === false );
+		} );
+
+	} );
+
+
 } );
 

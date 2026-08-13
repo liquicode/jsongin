@@ -21,10 +21,12 @@ module.exports = function ( jsongin )
 				let operation_result = true;
 				for ( let field in UpdateFields )
 				{
-					let result = jsongin.SetValue( Document, field, undefined );
+					// The field is removed, rather than being set to undefined, so that
+					// Object.keys() and the document's contents agree with each other.
+					let result = jsongin.DeleteValue( Document, field );
 					if ( result === false )
 					{
-						if ( Engine.OpLog ) { Engine.OpLog( `Update.$unset: Unsetting the value of [${field}] failed.` ); }
+						if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$unset: Unsetting the value of [${field}] failed.` ); }
 						operation_result = false;
 						continue;
 					}

@@ -100,3 +100,19 @@ flattened === []
 let flattened = jsongin.Flatten( 3.14 ); // throws error: Document must be an object or array.
 ```
 
+### It treats a date as a value rather than a document
+```js
+let document = { user: { created: new Date( 1700000000000 ) } };
+
+let flattened = jsongin.Flatten( document );
+// flattened[ 'user.created' ] is the Date itself, not 'user.created.<something>'
+( flattened[ 'user.created' ] instanceof Date ) === true
+```
+
+A `Date` has the short type `d`, so `Flatten` emits it as a leaf value and does not descend
+  into it.
+This matters because a `Date` has no enumerable fields: descending into one would produce
+  nothing and the field would disappear from the flattened output.
+
+Dates survive the round trip back through [`Expand()`](./Expand.md).
+

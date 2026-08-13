@@ -8,7 +8,6 @@ module.exports = function ( Engine )
 		// Unsupported BSON Types:
 		//	5 - binData
 		//	7 - objectid
-		//	9 - date
 		//	12 - dbPointer (Deprecated)
 		//	13 - javascript
 		//	15 - javascriptWithScope (Deprecated)
@@ -44,6 +43,10 @@ module.exports = function ( Engine )
 		else if ( data_type === 's' )
 		{
 			return ReturnAlias ? 'string' : 2;
+		}
+		else if ( data_type === 'd' )
+		{
+			return ReturnAlias ? 'date' : 9;
 		}
 		else if ( data_type === 'l' )
 		{

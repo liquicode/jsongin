@@ -88,6 +88,12 @@ module.exports = function ( jsongin )
 			{
 				text += 'null';
 			}
+			else if ( Node instanceof Date )
+			{
+				// A Date has no fields to walk. Emit it as an ISO string, which is what
+				// JSON.stringify() does.
+				text += `${StringifyOptions.literal_quote}${Node.toISOString()}${StringifyOptions.literal_quote}`;
+			}
 			else if ( Array.isArray( Node ) )
 			{
 				// text += StringifyOptions.eol_char;

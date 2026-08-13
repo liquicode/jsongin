@@ -15,6 +15,9 @@ module.exports = function ( jsongin )
 				case 'l':
 					simple[ key ] = Document[ key ];
 					break;
+				case 'd':
+					simple[ key ] = JSON.stringify( { type: 'd', value: Document[ key ].toISOString() } );
+					break;
 				case 'o':
 					simple[ key ] = JSON.stringify( { type: 'o', value: Document[ key ] } );
 					break;

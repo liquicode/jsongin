@@ -10,7 +10,7 @@ module.exports = module.exports = function ( jsongin )
 		Engine: jsongin,
 		OperatorType: 'Comparison',
 		TopLevel: false,
-		ValueTypes: 'bnsloaru',
+		ValueTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
 		Query: function ( Document, MatchValue, Path = '' )
@@ -29,9 +29,21 @@ module.exports = module.exports = function ( jsongin )
 				{
 					return ( actual_value == match_value ); // Equivalence of primitive types.
 				}
-				else if ( 'lu'.includes( match_type ) && 'lu'.includes( actual_type ) ) 
+				else if ( 'lu'.includes( match_type ) && 'lu'.includes( actual_type ) )
 				{
 					return true; // null and undefined are always equivalent.
+				}
+				else if ( ( match_type === 'd' ) && ( actual_type === 'd' ) )
+				{
+					// Two Date objects are never == to each other, so compare their time values.
+					// Without this, dates would fall into the member-wise object comparison below,
+					// where a Date presents no members and every pair of dates matches.
+					return ( actual_value.getTime() === match_value.getTime() );
+				}
+				else if ( ( match_type === 'd' ) || ( actual_type === 'd' ) )
+				{
+					if ( jsongin.OpLog ) { jsongin.OpLog( `Query.$eqx: cannot compare a date to a non-date at [${Path}].` ); }
+					return false;
 				}
 				else if ( 'bnslu'.includes( match_type ) || 'bnslu'.includes( actual_type ) ) 
 				{

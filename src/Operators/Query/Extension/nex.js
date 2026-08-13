@@ -10,7 +10,7 @@ module.exports = function ( jsongin )
 		Engine: jsongin,
 		OperatorType: 'Comparison',
 		TopLevel: false,
-		ValueTypes: 'bnsloau',
+		ValueTypes: 'bnsdloau',
 
 		//---------------------------------------------------------------------
 		Query: function ( Document, MatchValue, Path = '' )

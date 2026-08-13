@@ -2,7 +2,7 @@
 
 ![logo](media/jsongin-banner-large.png)
 
-# @liquicode/jsongin <small>(v0.0.24)</small>
+# @liquicode/jsongin <small>(v0.1.0)</small>
 
 <hr>
 

@@ -144,6 +144,27 @@ module.exports = function ()
 			},
 
 		//---------------------------------------------------------------------
+		Aggregate:
+			async function ( Pipeline )
+			{
+				try
+				{
+					let result = await WithCollection(
+						mongodb_settings,
+						async function ( Collection )
+						{
+							let cursor = await Collection.aggregate( Pipeline );
+							return await cursor.toArray();
+						} );
+					return result;
+				}
+				catch ( error )
+				{
+					console.error( error );
+				}
+			},
+
+		//---------------------------------------------------------------------
 		Evaluate:
 			async function ( Query, Data )
 			{

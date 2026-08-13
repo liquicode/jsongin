@@ -10,6 +10,11 @@ node_modules
 npm-debug.log
 .node_history
 
+claude.md
+.claude
+.plans
+.review
+
 .c9
 # .vscode
 .idea

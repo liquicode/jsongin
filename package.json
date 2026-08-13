@@ -1,12 +1,12 @@
 {
     "name": "@liquicode/jsongin",
-    "version": "0.0.24",
+    "version": "0.1.0",
     "description": "A JSON Engine for MongoDB-Style Queries and Data Structure Manipulation",
     "license": "MIT",
     "homepage": "http://jsongin.liquicode.com",
     "repository": {
         "type": "git",
-        "url": "https://github.com/liquicode/jsongin"
+        "url": "git+https://github.com/liquicode/jsongin.git"
     },
     "authors": [
         {
@@ -17,7 +17,7 @@
     ],
     "main": "src/jsongin.js",
     "scripts": {
-        "test": "mocha -u bdd tests/*.js --timeout 0 --slow 10 --colors",
+        "test": "mocha -u bdd test/*.js --timeout 0 --slow 10 --colors",
         "build docs": "npx @liquicode/devops --tasks .\\build\\build.tasks.js build_docs",
         "publish version": "npx @liquicode/devops --tasks .\\build\\build.tasks.js publish_version",
         "start new version": "npx @liquicode/devops --tasks .\\build\\build.tasks.js start_new_version"

@@ -20,6 +20,9 @@ module.exports = function ( jsongin )
 						let value = JSON.parse( Document[ key ] );
 						switch ( value.type )
 						{
+							case 'd':
+								complicated[ key ] = new Date( value.value );
+								break;
 							case 'o':
 								complicated[ key ] = value.value;
 								break;

@@ -29,6 +29,11 @@ function NewJsongin( EngineSettings = {} )
 	Engine.Settings = EngineSettings;
 
 	//---------------------------------------------------------------------
+	// Value Comparison
+	// Assigned before the operator registries, which use it.
+	Engine.CompareValues = require( './jsongin/CompareValues' )( Engine );
+
+	//---------------------------------------------------------------------
 	// Query Operators
 	Engine.QueryOperators = {
 
@@ -50,6 +55,7 @@ function NewJsongin( EngineSettings = {} )
 
 		// Evaluation Query Operators
 		$regex: require( './Operators/Query/Evaluation/regex' )( Engine ),
+		$expr: require( './Operators/Query/Evaluation/expr' )( Engine ),
 
 		// Array Query Operators
 		$elemMatch: require( './Operators/Query/Array/elemMatch' )( Engine ),
@@ -64,8 +70,47 @@ function NewJsongin( EngineSettings = {} )
 		$ImplicitEq: require( './Operators/Query/Extension/ImplicitEq' )( Engine ),
 		$eqx: require( './Operators/Query/Extension/eqx' )( Engine ),
 		$nex: require( './Operators/Query/Extension/nex' )( Engine ),
+		$exprx: require( './Operators/Query/Extension/exprx' )( Engine ),
 		$query: require( './Operators/Query/Extension/query' )( Engine ),
 		$noop: require( './Operators/Query/Extension/noop' )( Engine ),
+
+	};
+
+	//---------------------------------------------------------------------
+	// Expression Operators
+	Engine.ExpressionOperators = {
+
+		// Literal Expression Operators
+		$literal: require( './Operators/Expression/Literal/literal' )( Engine ),
+
+		// Arithmetic Expression Operators
+		$add: require( './Operators/Expression/Arithmetic/add' )( Engine ),
+		$subtract: require( './Operators/Expression/Arithmetic/subtract' )( Engine ),
+		$multiply: require( './Operators/Expression/Arithmetic/multiply' )( Engine ),
+		$divide: require( './Operators/Expression/Arithmetic/divide' )( Engine ),
+		$mod: require( './Operators/Expression/Arithmetic/mod' )( Engine ),
+		$abs: require( './Operators/Expression/Arithmetic/abs' )( Engine ),
+		$min: require( './Operators/Expression/Arithmetic/min' )( Engine ),
+		$max: require( './Operators/Expression/Arithmetic/max' )( Engine ),
+
+		// Comparison Expression Operators
+		$eq: require( './Operators/Expression/Comparison/eq' )( Engine ),
+		$ne: require( './Operators/Expression/Comparison/ne' )( Engine ),
+		$gt: require( './Operators/Expression/Comparison/gt' )( Engine ),
+		$gte: require( './Operators/Expression/Comparison/gte' )( Engine ),
+		$lt: require( './Operators/Expression/Comparison/lt' )( Engine ),
+		$lte: require( './Operators/Expression/Comparison/lte' )( Engine ),
+		$cmp: require( './Operators/Expression/Comparison/cmp' )( Engine ),
+
+		// Logical Expression Operators
+		$and: require( './Operators/Expression/Logical/and' )( Engine ),
+		$or: require( './Operators/Expression/Logical/or' )( Engine ),
+		$not: require( './Operators/Expression/Logical/not' )( Engine ),
+
+		// Conditional Expression Operators
+		$cond: require( './Operators/Expression/Conditional/cond' )( Engine ),
+		$ifNull: require( './Operators/Expression/Conditional/ifNull' )( Engine ),
+		$switch: require( './Operators/Expression/Conditional/switch' )( Engine ),
 
 	};
 
@@ -96,17 +141,55 @@ function NewJsongin( EngineSettings = {} )
 	};
 
 	//---------------------------------------------------------------------
+	// Stage Operators
+	Engine.StageOperators = {
+
+		$match: require( './Operators/Stage/match' )( Engine ),
+		$project: require( './Operators/Stage/project' )( Engine ),
+		$addFields: require( './Operators/Stage/addFields' )( Engine ),
+		$set: require( './Operators/Stage/set' )( Engine ),
+		$unwind: require( './Operators/Stage/unwind' )( Engine ),
+		$group: require( './Operators/Stage/group' )( Engine ),
+		$sort: require( './Operators/Stage/sort' )( Engine ),
+		$limit: require( './Operators/Stage/limit' )( Engine ),
+		$skip: require( './Operators/Stage/skip' )( Engine ),
+
+	};
+
+	//---------------------------------------------------------------------
+	// Accumulator Operators
+	Engine.AccumulatorOperators = {
+
+		$sum: require( './Operators/Accumulator/sum' )( Engine ),
+		$avg: require( './Operators/Accumulator/avg' )( Engine ),
+		$min: require( './Operators/Accumulator/min' )( Engine ),
+		$max: require( './Operators/Accumulator/max' )( Engine ),
+		$count: require( './Operators/Accumulator/count' )( Engine ),
+		$push: require( './Operators/Accumulator/push' )( Engine ),
+		$first: require( './Operators/Accumulator/first' )( Engine ),
+		$last: require( './Operators/Accumulator/last' )( Engine ),
+
+	};
+
+	//---------------------------------------------------------------------
 	// Text Helper
 	Engine.Text = require( './Text' );
 
 	//---------------------------------------------------------------------
 	// MongoDB Mechanics
 	Engine.Query = require( './jsongin/Query' )( Engine );
+	Engine.Evaluate = require( './jsongin/Evaluate' )( Engine );
+	Engine.Aggregate = require( './jsongin/Aggregate' )( Engine );
 	Engine.Project = require( './jsongin/Project' )( Engine );
 	Engine.Update = require( './jsongin/Update' )( Engine );
 	Engine.Filter = require( './jsongin/Filter' )( Engine );
 	Engine.Sort = require( './jsongin/Sort' )( Engine );
 	Engine.Distinct = require( './jsongin/Distinct' )( Engine );
+
+	//---------------------------------------------------------------------
+	// Snapshots
+	Engine.Diff = require( './jsongin/Diff' )( Engine );
+	Engine.Invert = require( './jsongin/Invert' )( Engine );
 
 	//---------------------------------------------------------------------
 	// Document Mechanics
@@ -116,6 +199,7 @@ function NewJsongin( EngineSettings = {} )
 	Engine.JoinPaths = require( './jsongin/JoinPaths' )( Engine );
 	Engine.GetValue = require( './jsongin/GetValue' )( Engine );
 	Engine.SetValue = require( './jsongin/SetValue' )( Engine );
+	Engine.DeleteValue = require( './jsongin/DeleteValue' )( Engine );
 	Engine.Flatten = require( './jsongin/Flatten' )( Engine );
 	Engine.Expand = require( './jsongin/Expand' )( Engine );
 	Engine.Hybridize = require( './jsongin/Hybridize' )( Engine );
@@ -141,14 +225,26 @@ function NewJsongin( EngineSettings = {} )
 
 
 	//---------------------------------------------------------------------
+	// Converts a value to a number. Returns null when the value is not numeric.
+	// Note that zero is a number, so this cannot test the value for falsiness.
 	Engine.AsNumber = function ( Value )
 	{
 		try
 		{
-			if ( !Value ) { return null; }
-			let number = Number( Value );
-			if ( isNaN( number ) ) { return null; }
-			return number;
+			let short_type = Engine.ShortType( Value );
+			if ( short_type === 'n' )
+			{
+				if ( isNaN( Value ) ) { return null; }
+				return Value;
+			}
+			if ( short_type === 's' )
+			{
+				if ( Value.trim().length === 0 ) { return null; }
+				let number = Number( Value );
+				if ( isNaN( number ) ) { return null; }
+				return number;
+			}
+			return null;
 		}
 		catch ( error )
 		{
@@ -158,11 +254,33 @@ function NewJsongin( EngineSettings = {} )
 
 
 	//---------------------------------------------------------------------
+	// Converts a value to a boolean, using MongoDB's expression evaluation rules.
+	// Only false, zero, null, and missing values are false.
+	// Note that the empty string '' and the empty array [] are both true.
+	Engine.AsBoolean = function ( Value )
+	{
+		let short_type = Engine.ShortType( Value );
+		if ( short_type === 'b' ) { return Value; }
+		if ( short_type === 'n' ) { return ( Value !== 0 ); }
+		if ( 'lu'.includes( short_type ) ) { return false; }
+		return true;
+	};
+
+
+	//---------------------------------------------------------------------
+	// Converts a value to a Date. Returns null when the value is not a date.
+	// Note that zero is a valid timestamp, so this cannot test the value for falsiness.
 	Engine.AsDate = function ( Value )
 	{
 		try
 		{
-			if ( !Value ) { return null; }
+			let short_type = Engine.ShortType( Value );
+			if ( short_type === 'd' ) { return new Date( Value.getTime() ); }
+			if ( 'ns'.includes( short_type ) === false ) { return null; }
+			if ( short_type === 's' )
+			{
+				if ( Value.trim().length === 0 ) { return null; }
+			}
 			let date = new Date( Value );
 			if ( isNaN( date ) ) { return null; }
 			return date;

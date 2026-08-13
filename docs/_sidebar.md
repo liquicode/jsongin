@@ -14,6 +14,8 @@
 - MongoDB Mechanics
 
 	- [`Query()`](guides/jsongin/Query.md)
+	- [`Evaluate()`](guides/jsongin/Evaluate.md)
+	- [`Aggregate()`](guides/jsongin/Aggregate.md)
 	- [`Filter()`](guides/jsongin/Filter.md)
 	- [`Distinct()`](guides/jsongin/Distinct.md)
 	- [`Sort()`](guides/jsongin/Sort.md)
@@ -21,6 +23,13 @@
 	- [`Update()`](guides/jsongin/Update.md)
 	
 	- [Operator Reference](guides/Operator-Reference.md)
+
+<hr>
+
+- Snapshots
+
+	- [`Diff()`](guides/jsongin/Diff.md)
+	- [`Invert()`](guides/jsongin/Invert.md)
 
 <hr>
 
@@ -55,6 +64,7 @@
 
 	- <small>*LooseEquals*</small>
 	- <small>*StrictEquals*</small>
+	- <small>*CompareValues*</small>
 	- <small>*Clone*</small>
 	- [`SafeClone()`](guides/jsongin/SafeClone.md)
 

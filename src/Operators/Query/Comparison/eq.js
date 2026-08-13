@@ -10,7 +10,7 @@ module.exports = function ( jsongin )
 		Engine: jsongin,
 		OperatorType: 'Comparison',
 		TopLevel: false,
-		ValueTypes: 'bnsloaru',
+		ValueTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
 		Query: function ( Document, MatchValue, Path = '' )
@@ -26,10 +26,15 @@ module.exports = function ( jsongin )
 				let match_type = jsongin.ShortType( match_value );
 
 				// Compare
-				if ( 'bnslru'.includes( match_type ) && ( match_type === actual_type ) ) 
+				if ( 'bnslru'.includes( match_type ) && ( match_type === actual_type ) )
 				{
 					// Primitive types must match exactly.
 					return ( actual_value === match_value ); // Equivalence of primitive types.
+				}
+				else if ( ( match_type === 'd' ) && ( actual_type === 'd' ) )
+				{
+					// Two Date objects are never === to each other, so compare their time values.
+					return ( actual_value.getTime() === match_value.getTime() );
 				}
 				else if ( 'lu'.includes( match_type ) && 'lu'.includes( actual_type ) ) 
 				{

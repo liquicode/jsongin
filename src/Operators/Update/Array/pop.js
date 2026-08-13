@@ -52,7 +52,7 @@ module.exports = function ( jsongin )
 					let result = jsongin.SetValue( Document, field, array );
 					if ( result === false )
 					{
-						if ( jsongin.OpLog ) { Engine.OpLog( `Update.$pop: Setting the value of [${field}] to [${JSON.stringify( array )}] failed.` ); }
+						if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$pop: Setting the value of [${field}] to [${JSON.stringify( array )}] failed.` ); }
 						operation_result = false;
 						continue;
 					}

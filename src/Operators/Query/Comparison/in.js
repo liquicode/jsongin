@@ -32,11 +32,21 @@ module.exports = function ( jsongin )
 
 				function array_includes_value( engine, array, value )
 				{
-					if ( engine.ShortType( value ) === 'r' )
+					let value_type = engine.ShortType( value );
+					if ( value_type === 'r' )
 					{
 						for ( let index = 0; index < array.length; index++ )
 						{
 							if ( value.test( array[ index ] ) ) { return true; }
+						}
+					}
+					else if ( value_type === 'd' )
+					{
+						// Two Date objects are never === to each other, so compare their time values.
+						for ( let index = 0; index < array.length; index++ )
+						{
+							if ( engine.ShortType( array[ index ] ) !== 'd' ) { continue; }
+							if ( array[ index ].getTime() === value.getTime() ) { return true; }
 						}
 					}
 					else
@@ -47,7 +57,7 @@ module.exports = function ( jsongin )
 				}
 
 				// Compare
-				if ( actual_type === 'a' ) 
+				if ( actual_type === 'a' )
 				{
 					// Match against an array of values.
 					for ( let index = 0; index < match_value.length; index++ )
@@ -56,7 +66,7 @@ module.exports = function ( jsongin )
 						// if ( actual_value.includes( match_value[ index ] ) ) { return true; }
 					}
 				}
-				else if ( 'bnslou'.includes( actual_type ) )
+				else if ( 'bnsdlou'.includes( actual_type ) )
 				{
 					// Match against a single value.
 					if ( array_includes_value( jsongin, match_value, actual_value ) ) { return true; }

@@ -373,7 +373,7 @@ describe( '250) Update Operator Tests', () =>
 		describe( '$pullAll Tests', () =>
 		{
 
-			it( 'should pull values from the array', () => 
+			it( 'should pull values from the array', () =>
 			{
 				let document = { a: [ 1, 2, 3 ] };
 				let result = jsongin.UpdateOperators.$pullAll.Update( document, { a: [ 1, 4 ] } );
@@ -386,6 +386,79 @@ describe( '250) Update Operator Tests', () =>
 
 		} );
 
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'OpLog Failure Paths', () =>
+	{
+
+		/*
+			Every update operator writes to the OpLog when it cannot store the value it
+			computed. That path needs two things at once to run, a failed store and a
+			configured OpLog, so nothing exercised it and two defects lived there unseen:
+			each operator called an undefined `Engine` variable, and $addToSet also logged an
+			undefined `value`. Both threw a ReferenceError instead of logging.
+
+			The store is forced to fail here by replacing the engine's SetValue, which the
+			operators resolve through the engine when they call it rather than capturing.
+		*/
+
+		const NewJsongin = require( '../src/jsongin' ).NewJsongin;
+
+		let cases = [
+			{ Operator: '$set', Document: { a: 1 }, Args: { a: 2 } },
+			{ Operator: '$unset', Document: { a: 1 }, Args: { a: 0 } },
+			{ Operator: '$rename', Document: { a: 1 }, Args: { a: 'b' } },
+			{ Operator: '$inc', Document: { n: 1 }, Args: { n: 1 } },
+			{ Operator: '$min', Document: { n: 5 }, Args: { n: 0 } },
+			{ Operator: '$max', Document: { n: 5 }, Args: { n: 9 } },
+			{ Operator: '$mul', Document: { n: 5 }, Args: { n: 2 } },
+			{ Operator: '$currentDate', Document: { d: 0 }, Args: { d: true } },
+			{ Operator: '$addToSet', Document: { t: [ 1 ] }, Args: { t: 2 } },
+			{ Operator: '$pop', Document: { t: [ 1, 2 ] }, Args: { t: 1 } },
+			{ Operator: '$pullAll', Document: { t: [ 1, 2 ] }, Args: { t: [ 1 ] } },
+			{ Operator: '$push', Document: { t: [ 1 ] }, Args: { t: 2 } },
+		];
+
+		function failing_engine( Messages )
+		{
+			let engine = NewJsongin( {
+				PathExtensions: false,
+				OpLog: function ( Message ) { Messages.push( Message ); },
+			} );
+			// Every way an operator has of storing a value now fails.
+			engine.SetValue = function () { return false; };
+			engine.DeleteValue = function () { return false; };
+			return engine;
+		}
+
+		for ( let index = 0; index < cases.length; index++ )
+		{
+			let test_case = cases[ index ];
+
+			it( `should log rather than throw when ${test_case.Operator} cannot store its value`, () =>
+			{
+				let messages = [];
+				let engine = failing_engine( messages );
+				let operator = engine.UpdateOperators[ test_case.Operator ];
+
+				// The operator reports the failure, it does not raise it.
+				let result = operator.Update( test_case.Document, test_case.Args );
+				assert.strictEqual( result, false );
+
+				// The failure reached the OpLog, in the module's message format.
+				assert.ok( messages.length > 0, `${test_case.Operator} logged nothing.` );
+				let logged = messages[ messages.length - 1 ];
+				assert.ok( logged.startsWith( `Update.${test_case.Operator}: ` ),
+					`${test_case.Operator} logged [${logged}].` );
+
+				// A template which interpolated an undefined variable would have thrown
+				// before reaching this point, so the message is proof the names resolve.
+				assert.ok( logged.length > `Update.${test_case.Operator}: `.length );
+			} );
+		}
 
 	} );
 

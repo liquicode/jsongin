@@ -13,4 +13,6 @@ describe( 'jsongin Query Tests', () =>
 	require( './Query Tests/test-suite/RainbowTests.js' )( Driver );
 	require( './Query Tests/test-suite/MongoDB Reference.js' )( Driver );
 	require( './Query Tests/test-suite/MongoDB Tutorials.js' )( Driver );
+	require( './Query Tests/test-suite/Expr Tests.js' )( Driver );
+	require( './Query Tests/test-suite/Exprx Tests.js' )( Driver );
 } );

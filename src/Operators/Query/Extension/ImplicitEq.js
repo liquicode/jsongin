@@ -10,7 +10,7 @@ module.exports = function ( jsongin )
 		Engine: jsongin,
 		OperatorType: 'Comparison',
 		TopLevel: false,
-		ValueTypes: 'bnsloaru',
+		ValueTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
 		Query: function ( Document, MatchValue, Path = '' )
@@ -28,19 +28,19 @@ module.exports = function ( jsongin )
 
 				// Compare
 				let result = false;
-				if ( 'bnslu'.includes( actual_type ) && 'bnslu'.includes( match_type ) )
+				if ( 'bnsdlu'.includes( actual_type ) && 'bnsdlu'.includes( match_type ) )
 				{
 					// Primtive === Primitive
 					result = jsongin.QueryOperators.$eq.Query( Document, match_value, Path );
 					return result;
 				}
-				else if ( 'bnslu'.includes( actual_type ) && 'a'.includes( match_type ) )
+				else if ( 'bnsdlu'.includes( actual_type ) && 'a'.includes( match_type ) )
 				{
 					// Primtive === Array
 					if ( jsongin.OpLog ) { jsongin.OpLog( `ImplicitEq: cannot compare [${match_type}] type with [${actual_type}] type at [${Path}].` ); }
 					return false;
 				}
-				else if ( 'bnslu'.includes( actual_type ) && 'o'.includes( match_type ) )
+				else if ( 'bnsdlu'.includes( actual_type ) && 'o'.includes( match_type ) )
 				{
 					// Primtive === Object
 					if ( match_is_query )
@@ -54,9 +54,20 @@ module.exports = function ( jsongin )
 						return false;
 					}
 				}
-				else if ( 'a'.includes( actual_type ) && 'bnslu'.includes( match_type ) )
+				else if ( 'a'.includes( actual_type ) && 'bnsdlu'.includes( match_type ) )
 				{
 					// Array === Primitive
+					if ( match_type === 'd' )
+					{
+						// Two Date objects are never === to each other, so compare their time
+						// values. Array.includes() would compare them by reference.
+						for ( let index = 0; index < actual_value.length; index++ )
+						{
+							if ( jsongin.ShortType( actual_value[ index ] ) !== 'd' ) { continue; }
+							if ( actual_value[ index ].getTime() === match_value.getTime() ) { return true; }
+						}
+						return false;
+					}
 					// result = jsongin.QueryOperators.$in.Query( Document, match_value, Path );
 					result = actual_value.includes( match_value );
 					return result;

@@ -17,6 +17,15 @@ jsongin Functions
 - [Query( Document, Criteria )](guides/jsongin/Query.md)
   : Returns `true` if the `Document` satisfies `Criteria`.
 
+- [Evaluate( Document, Expression )](guides/jsongin/Evaluate.md)
+  : Evaluates an aggregation `Expression` against a `Document` and returns the resulting value.
+  Use the `$expr` query operator to match documents with an expression.
+
+- [Aggregate( Documents, Pipeline )](guides/jsongin/Aggregate.md)
+  : Runs an array of documents through an aggregation `Pipeline` and returns the resulting
+  array of documents.
+  Neither the given array nor the documents within it are modified.
+
 - [Filter( Documents, Criteria )](guides/jsongin/Filter.md)
   : Returns an array of filtered documents.
 
@@ -35,6 +44,21 @@ jsongin Functions
 
 > See the [Operator Reference](guides/Operator-Reference.md) document for more information on which
   operators `jsongin` supports and how to use them.
+
+
+### Snapshots
+
+These functions describe the difference between two documents as an update document, which is
+the same shape `Update()` applies. They are the primitives behind undo/redo, save states, and
+replay.
+
+- [Diff( Before, After )](guides/jsongin/Diff.md)
+  : Returns an update document which turns `Before` into `After`.
+  Arrays are compared whole, and neither document is modified.
+
+- [Invert( Before, Patch )](guides/jsongin/Invert.md)
+  : Returns the update document which undoes `Patch`.
+  Any update operator inverts, not only the ones `Diff` writes.
 
 
 ### Document Mechanics
@@ -59,6 +83,11 @@ They all share the concept of a document path that is expressed in dot-notation.
 - [SetValue( Document, Path, Value )](guides/jsongin/SetValue.md)
   : Sets a value in a document at the specified `Path`.
   This function will create fields specified in `Path` if they don't already exist.
+
+- `DeleteValue( Document, Path )`
+  : Removes the field at the specified `Path`.
+  The key is removed rather than being set to `undefined`, so that `Object.keys()` and the
+  document's contents agree with each other.
 
 **Document Conversions**
 
@@ -93,6 +122,13 @@ They all share the concept of a document path that is expressed in dot-notation.
   : Performs a loose equality comparison between two values.
   Values must match loosely (==) and values can appear in different orders.
 
+- `CompareValues( ValueA, ValueB )`
+  : Compares two values and returns `-1`, `0`, or `1`.
+  Values of different types are ordered by MongoDB's comparison order:
+  `null` < numbers < strings < objects < arrays < booleans < dates < regular expressions.
+  Null and missing values are equivalent.
+  This is the comparison used by the expression comparison operators and by `Sort()`.
+
 - `Clone( Document )`
   : Clones a document using `JSON.parse( JSON.stringify( Document ) )`.
 
@@ -109,6 +145,10 @@ They all share the concept of a document path that is expressed in dot-notation.
 - `BsonType( Value, ReturnAlias )`
 - `AsNumber( Value )`
 - `AsDate( Value )`
+- `AsBoolean( Value )`
+  : Converts a value to a boolean, using MongoDB's expression evaluation rules.
+  Only `false`, `0`, `null`, and missing values are false.
+  Note that the empty string `""` and the empty array `[]` are both true.
 
 
 MongoDB References

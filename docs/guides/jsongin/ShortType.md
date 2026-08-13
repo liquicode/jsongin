@@ -37,6 +37,7 @@ List of ShortTypes:
 - [`b`]oolean
 - [`n`]umber
 - [`s`]tring
+- [`d`]ate
 - nul[`l`]
 - [`o`]bject
 - [`a`]rray
@@ -44,6 +45,30 @@ List of ShortTypes:
 - [`r`]egexp
 - s[`y`]mbol (not used)
 - [`u`]ndefined
+
+
+## Dates
+
+A `Date` has its own short type, `d`, rather than being reported as an `o`bject.
+
+This matters because a `Date` keeps its value internally and has no fields to walk.
+Code which treats a date as an ordinary object finds nothing inside it and produces an empty
+  object, losing the value silently.
+Giving dates their own short type is what allows `Query`, `Sort`, `Flatten`, `SafeClone`, and
+  the expression operators to handle them correctly.
+
+A value is recognized as a date by its ***type only***, never by parsing.
+A number which would be a valid timestamp is still an `n`, and a string which would parse as a
+  date is still an `s`:
+
+```js
+jsongin.ShortType( new Date() ) === 'd'
+jsongin.ShortType( 1700000000000 ) === 'n'
+jsongin.ShortType( '2023-11-14T22:13:20.000Z' ) === 's'
+```
+
+This is deliberate. Every number is a valid timestamp, so classifying by parsing would make
+  every number a date.
 
 
 ## Examples
@@ -61,6 +86,7 @@ jsongin.ShortType( 'abc' ) === 's'
 jsongin.ShortType( null ) === 'l'
 jsongin.ShortType( { a: 1 } ) === 'o'
 jsongin.ShortType( [ 1, 2, 3 ] ) === 'a'
+jsongin.ShortType( new Date() ) === 'd'
 jsongin.ShortType( /^abc/ ) === 'r'
 ```
 

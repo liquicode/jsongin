@@ -30,6 +30,7 @@ module.exports = function ( jsongin )
 					case 'n': return Node;
 					case 's': return Node;
 					case 'l': return Node;
+					case 'd': return new Date( Node.getTime() );
 					case 'o':
 						{
 							let value = {};

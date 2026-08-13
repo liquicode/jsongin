@@ -10,7 +10,8 @@ module.exports = function ( Engine )
 			if ( Engine.OpLog ) { Engine.OpLog( `Update: The Document parameter must be an object.` ); }
 			return null;
 		}
-		Document = Engine.Clone( Document );
+		// Cloned with SafeClone rather than Clone, so that dates survive an update.
+		Document = Engine.SafeClone( Document );
 		let st_Update = Engine.ShortType( Updates );
 		if ( 'lu'.includes( st_Update ) === true ) { return Document; }
 		if ( st_Update !== 'o' )

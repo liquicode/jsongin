@@ -90,6 +90,25 @@ clone.l === null
 ( typeof clone.u === 'undefined' )
 ```
 
+### It can clone dates
+```js
+let doc = { d: new Date( 1700000000000 ) };
+
+let clone = jsongin.SafeClone( doc );
+( clone.d instanceof Date ) === true
+clone.d.getTime() === 1700000000000
+
+// Dates are cloned by value, so the clone can be modified independently.
+( clone.d !== doc.d ) === true
+```
+
+Dates are worth calling out.
+A `Date` has the short type `o`, but it keeps its value internally and has no fields to walk,
+  so a member-wise clone of one would produce an empty object.
+`SafeClone` handles this and returns a new `Date` carrying the same time value.
+Note that [`Clone( Document )`](../Library-Guide.md) does not: it uses stringify/parse, so a
+  date becomes an ISO string.
+
 ### It can selectively clone with the Exceptions parameter
 ```js
 let doc = { id: 42, ref: { name: 'Alice' } };

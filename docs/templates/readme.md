@@ -42,11 +42,15 @@ It strives to be consistent and easy to use.
 You can use MongoDB style operations in your own projects by using these `jsongin` functions:
 
 - `Query( Document, QueryCriteria )`
+- `Evaluate( Document, Expression )`
+- `Aggregate( Documents, Pipeline )`
 - `Filter( Documents, QueryCriteria )`
 - `Distinct( Documents, DistinctCriteria )`
 - `Sort( Documents, SortCriteria )`
 - `Project( Document, Projection )`
 - `Update( Document, Updates )`
+- `Diff( Before, After )`
+- `Invert( Before, Patch )`
 
 With these functions you can query and manipulate your own data structures with MongoDB-style interface.
 Each MongoDB feature that is implemented here, operates accurately and in accordance with MongoDB.
@@ -67,6 +71,7 @@ There are a number of other functions implemented here which serve to not only s
 - `JoinPaths( Path1, Path2, ... )`
 - `GetValue( Document, Path )`
 - `SetValue( Document, Path, Value )`
+- `DeleteValue( Document, Path )`
 - `Flatten( Document )`
 - `Expand( Document )`
 - `Hybridize( Document )`
@@ -76,6 +81,7 @@ There are a number of other functions implemented here which serve to not only s
 
 - `LooseEquals( DocumentA, DocumentB )`
 - `StrictEquals( DocumentA, DocumentB )`
+- `CompareValues( ValueA, ValueB )`
 - `Clone( Document )`
 - `SafeClone( Document )`
 
@@ -166,8 +172,8 @@ p === {
 // Use Project to select nested fields.
 let p = jsongin.Project( document, { id: 1, "user.name": 1 } );
 p === {
+	id: 1001,
 	user: { name: 'Alice' },
-	tags: [ 'Staff', 'Dept. A' ],
 }
 ```
 

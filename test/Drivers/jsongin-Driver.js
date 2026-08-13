@@ -77,6 +77,20 @@ module.exports = function ( Settings )
 			},
 
 		//---------------------------------------------------------------------
+		Aggregate:
+			async function ( Pipeline )
+			{
+				try
+				{
+					return await jsongin.Aggregate( this.Storage, Pipeline );
+				}
+				catch ( error )
+				{
+					console.error( error );
+				}
+			},
+
+		//---------------------------------------------------------------------
 		Evaluate:
 			async function ( Criteria, Data )
 			{

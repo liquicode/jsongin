@@ -68,3 +68,21 @@ let hybrid = jsongin.Hybridize( document );
 let unhybrid = jsongin.Unhybridize( hybrid );
 unhybrid === document
 ```
+
+### It preserves dates across the round trip
+```js
+let document = { created: new Date( 1700000000000 ) };
+
+let hybrid = jsongin.Hybridize( document );
+hybrid.created === '{"type":"d","value":"2023-11-14T22:13:20.000Z"}'
+
+let unhybrid = jsongin.Unhybridize( hybrid );
+( unhybrid.created instanceof Date ) === true
+```
+
+A `Date` is recorded with its own type marker `d`, so `Unhybridize` can rebuild an actual
+  `Date` rather than a string or an empty object.
+
+This is the round trip to use when the ***type*** of a date must survive.
+[`Format()`](./Format.md) and [`Parse()`](./Parse.md) follow JSON's rules instead, where a date
+  becomes an ISO string and reads back as a string.

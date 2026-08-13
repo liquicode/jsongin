@@ -50,9 +50,160 @@ describe( '100) Core Tests', () =>
 		{
 			assert.ok( jsongin.ShortType( /test/ ) === 'r' );
 		} );
-		it( 'should support (u)ndefined short type', () => 
+		it( 'should support (u)ndefined short type', () =>
 		{
 			assert.ok( jsongin.ShortType() === 'u' );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'AsNumber Tests', () =>
+	{
+
+		it( 'should convert numeric values', () =>
+		{
+			assert.ok( jsongin.AsNumber( 42 ) === 42 );
+			assert.ok( jsongin.AsNumber( 3.14 ) === 3.14 );
+			assert.ok( jsongin.AsNumber( -7 ) === -7 );
+			assert.ok( jsongin.AsNumber( Infinity ) === Infinity );
+		} );
+
+		it( 'should convert zero, which is a number and not a missing value', () =>
+		{
+			assert.ok( jsongin.AsNumber( 0 ) === 0 );
+			assert.ok( jsongin.AsNumber( -0 ) === 0 );
+			assert.ok( jsongin.AsNumber( '0' ) === 0 );
+			assert.ok( jsongin.AsNumber( '0.0' ) === 0 );
+		} );
+
+		it( 'should convert numeric string values', () =>
+		{
+			assert.ok( jsongin.AsNumber( '42' ) === 42 );
+			assert.ok( jsongin.AsNumber( '3.14' ) === 3.14 );
+			assert.ok( jsongin.AsNumber( ' 42 ' ) === 42 );
+			assert.ok( jsongin.AsNumber( '-7' ) === -7 );
+		} );
+
+		it( 'should return null for non-numeric string values', () =>
+		{
+			assert.ok( jsongin.AsNumber( 'abc' ) === null );
+			assert.ok( jsongin.AsNumber( '42abc' ) === null );
+			assert.ok( jsongin.AsNumber( '' ) === null );
+			assert.ok( jsongin.AsNumber( '   ' ) === null );
+		} );
+
+		it( 'should return null for boolean values', () =>
+		{
+			// Javascript would convert these to 1 and 0.
+			assert.ok( jsongin.AsNumber( true ) === null );
+			assert.ok( jsongin.AsNumber( false ) === null );
+		} );
+
+		it( 'should return null for objects and arrays', () =>
+		{
+			// Javascript would convert [] to 0 and [ 5 ] to 5.
+			assert.ok( jsongin.AsNumber( [] ) === null );
+			assert.ok( jsongin.AsNumber( [ 5 ] ) === null );
+			assert.ok( jsongin.AsNumber( {} ) === null );
+			assert.ok( jsongin.AsNumber( { value: 5 } ) === null );
+		} );
+
+		it( 'should return null for missing and invalid values', () =>
+		{
+			assert.ok( jsongin.AsNumber( null ) === null );
+			assert.ok( jsongin.AsNumber( undefined ) === null );
+			assert.ok( jsongin.AsNumber() === null );
+			assert.ok( jsongin.AsNumber( NaN ) === null );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'AsBoolean Tests', () =>
+	{
+
+		it( 'should return boolean values unchanged', () =>
+		{
+			assert.ok( jsongin.AsBoolean( true ) === true );
+			assert.ok( jsongin.AsBoolean( false ) === false );
+		} );
+
+		it( 'should treat zero as false and other numbers as true', () =>
+		{
+			assert.ok( jsongin.AsBoolean( 0 ) === false );
+			assert.ok( jsongin.AsBoolean( 1 ) === true );
+			assert.ok( jsongin.AsBoolean( -1 ) === true );
+			assert.ok( jsongin.AsBoolean( 3.14 ) === true );
+		} );
+
+		it( 'should treat null and missing values as false', () =>
+		{
+			assert.ok( jsongin.AsBoolean( null ) === false );
+			assert.ok( jsongin.AsBoolean( undefined ) === false );
+			assert.ok( jsongin.AsBoolean() === false );
+		} );
+
+		it( 'should treat the empty string and the empty array as true', () =>
+		{
+			// Javascript would treat the empty string as false.
+			assert.ok( jsongin.AsBoolean( '' ) === true );
+			assert.ok( jsongin.AsBoolean( [] ) === true );
+		} );
+
+		it( 'should treat other values as true', () =>
+		{
+			assert.ok( jsongin.AsBoolean( 'abc' ) === true );
+			assert.ok( jsongin.AsBoolean( {} ) === true );
+			assert.ok( jsongin.AsBoolean( [ 1, 2 ] ) === true );
+			assert.ok( jsongin.AsBoolean( new Date() ) === true );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'AsDate Tests', () =>
+	{
+
+		it( 'should convert numeric timestamps', () =>
+		{
+			assert.ok( jsongin.AsDate( 1 ).getTime() === 1 );
+			assert.ok( jsongin.AsDate( 1700000000000 ).getTime() === 1700000000000 );
+		} );
+
+		it( 'should convert the zero timestamp, which is a date and not a missing value', () =>
+		{
+			let date = jsongin.AsDate( 0 );
+			assert.ok( date !== null );
+			assert.ok( date.getTime() === 0 );
+		} );
+
+		it( 'should convert date string values', () =>
+		{
+			assert.ok( jsongin.AsDate( '2024-01-01T00:00:00.000Z' ).toISOString() === '2024-01-01T00:00:00.000Z' );
+		} );
+
+		it( 'should convert Date objects', () =>
+		{
+			let date = new Date( '2024-01-01T00:00:00.000Z' );
+			assert.ok( jsongin.AsDate( date ).getTime() === date.getTime() );
+		} );
+
+		it( 'should return null for values which are not dates', () =>
+		{
+			assert.ok( jsongin.AsDate( 'abc' ) === null );
+			assert.ok( jsongin.AsDate( '' ) === null );
+			assert.ok( jsongin.AsDate( '   ' ) === null );
+			assert.ok( jsongin.AsDate( true ) === null );
+			assert.ok( jsongin.AsDate( false ) === null );
+			assert.ok( jsongin.AsDate( {} ) === null );
+			assert.ok( jsongin.AsDate( [] ) === null );
+			assert.ok( jsongin.AsDate( null ) === null );
+			assert.ok( jsongin.AsDate( undefined ) === null );
+			assert.ok( jsongin.AsDate() === null );
 		} );
 
 	} );
@@ -928,7 +1079,53 @@ describe( '100) Core Tests', () =>
 			assert.ok( typeof clone.u === 'undefined' );
 		} );
 
-		it( 'It can selectively clone with the Exceptions parameter', () => 
+		it( 'It can clone dates', () =>
+		{
+			// A Date has short type 'o' but no enumerable own properties, so a member-wise
+			// clone of one would silently produce an empty object.
+			let doc = { d: new Date( 1700000000000 ) };
+
+			let clone = jsongin.SafeClone( doc );
+			assert.ok( clone );
+			assert.ok( clone.d instanceof Date );
+			assert.strictEqual( clone.d.getTime(), 1700000000000 );
+		} );
+
+		it( 'It can clone dates which are nested and within arrays', () =>
+		{
+			let doc = {
+				nested: { d: new Date( 1000 ) },
+				list: [ new Date( 2000 ), { d: new Date( 3000 ) } ],
+			};
+
+			let clone = jsongin.SafeClone( doc );
+			assert.ok( clone );
+			assert.ok( clone.nested.d instanceof Date );
+			assert.strictEqual( clone.nested.d.getTime(), 1000 );
+			assert.ok( clone.list[ 0 ] instanceof Date );
+			assert.strictEqual( clone.list[ 0 ].getTime(), 2000 );
+			assert.ok( clone.list[ 1 ].d instanceof Date );
+			assert.strictEqual( clone.list[ 1 ].d.getTime(), 3000 );
+		} );
+
+		it( 'It clones dates by value, not by reference', () =>
+		{
+			let doc = { d: new Date( 1000 ) };
+
+			let clone = jsongin.SafeClone( doc );
+			assert.ok( clone.d !== doc.d );
+			clone.d.setTime( 9999 );
+			assert.strictEqual( doc.d.getTime(), 1000 );
+		} );
+
+		it( 'It can clone a date given as the document itself', () =>
+		{
+			let clone = jsongin.SafeClone( new Date( 4000 ) );
+			assert.ok( clone instanceof Date );
+			assert.strictEqual( clone.getTime(), 4000 );
+		} );
+
+		it( 'It can selectively clone with the Exceptions parameter', () =>
 		{
 			let doc = { id: 42, ref: { name: 'Alice' } };
 
@@ -1209,6 +1406,167 @@ describe( '100) Core Tests', () =>
 			assert.strictEqual( documents[ 4 ].id, 4 );
 		} );
 
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'CompareValues Tests', () =>
+	{
+
+		it( 'should compare values of the same type', () =>
+		{
+			assert.ok( jsongin.CompareValues( 1, 2 ) === -1 );
+			assert.ok( jsongin.CompareValues( 2, 2 ) === 0 );
+			assert.ok( jsongin.CompareValues( 3, 2 ) === 1 );
+			assert.ok( jsongin.CompareValues( 'abc', 'abd' ) === -1 );
+			assert.ok( jsongin.CompareValues( false, true ) === -1 );
+		} );
+
+		it( 'should treat null and missing values as equivalent', () =>
+		{
+			assert.ok( jsongin.CompareValues( null, undefined ) === 0 );
+			assert.ok( jsongin.CompareValues( null, null ) === 0 );
+		} );
+
+		it( 'should order values of different types by MongoDB comparison order', () =>
+		{
+			// null < numbers < strings < objects < arrays < booleans < dates < regex
+			assert.ok( jsongin.CompareValues( null, 5 ) === -1 );
+			assert.ok( jsongin.CompareValues( 5, 'abc' ) === -1 );
+			assert.ok( jsongin.CompareValues( 'abc', { a: 1 } ) === -1 );
+			assert.ok( jsongin.CompareValues( { a: 1 }, [ 1 ] ) === -1 );
+			assert.ok( jsongin.CompareValues( [ 1 ], true ) === -1 );
+			assert.ok( jsongin.CompareValues( true, new Date( 0 ) ) === -1 );
+			assert.ok( jsongin.CompareValues( new Date( 0 ), /abc/ ) === -1 );
+		} );
+
+		it( 'should compare dates by their timestamp', () =>
+		{
+			assert.ok( jsongin.CompareValues( new Date( 1000 ), new Date( 5000 ) ) === -1 );
+			assert.ok( jsongin.CompareValues( new Date( 5000 ), new Date( 5000 ) ) === 0 );
+		} );
+
+		it( 'should compare arrays element by element', () =>
+		{
+			assert.ok( jsongin.CompareValues( [ 1, 2 ], [ 1, 2 ] ) === 0 );
+			assert.ok( jsongin.CompareValues( [ 1, 2 ], [ 1, 3 ] ) === -1 );
+			assert.ok( jsongin.CompareValues( [ 1 ], [ 1, 2 ] ) === -1 );
+		} );
+
+		it( 'should compare objects field by field', () =>
+		{
+			assert.ok( jsongin.CompareValues( { a: 1 }, { a: 1 } ) === 0 );
+			assert.ok( jsongin.CompareValues( { a: 1 }, { a: 2 } ) === -1 );
+			assert.ok( jsongin.CompareValues( { a: 1 }, { b: 1 } ) === -1 );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'Sort Ordering Tests', () =>
+	{
+
+		it( 'should sort documents which are missing the sort field, as null', () =>
+		{
+			let documents = [ { n: 2 }, { x: 9 }, { n: 1 } ];
+			jsongin.Sort( documents, { n: 1 } );
+			assert.ok( documents[ 0 ].x === 9 );
+			assert.ok( documents[ 1 ].n === 1 );
+			assert.ok( documents[ 2 ].n === 2 );
+		} );
+
+		it( 'should sort values of different types by MongoDB comparison order', () =>
+		{
+			let documents = [ { n: 'abc' }, { n: 5 }, { n: null }, { n: true } ];
+			jsongin.Sort( documents, { n: 1 } );
+			assert.ok( documents[ 0 ].n === null );
+			assert.ok( documents[ 1 ].n === 5 );
+			assert.ok( documents[ 2 ].n === 'abc' );
+			assert.ok( documents[ 3 ].n === true );
+		} );
+
+		it( 'should sort an array field by its smallest element when ascending', () =>
+		{
+			let documents = [ { a: [ 5, 1 ] }, { a: [ 3 ] }, { a: [ 9, 0 ] }, { a: [ 4, 6 ] } ];
+			jsongin.Sort( documents, { a: 1 } );
+			// Sort keys are the smallest elements: 0, 1, 3, 4
+			assert.ok( jsongin.StrictEquals( documents.map( function ( d ) { return d.a; } ),
+				[ [ 9, 0 ], [ 5, 1 ], [ 3 ], [ 4, 6 ] ] ) );
+		} );
+
+		it( 'should sort an array field by its largest element when descending', () =>
+		{
+			let documents = [ { a: [ 5, 1 ] }, { a: [ 3 ] }, { a: [ 9, 0 ] }, { a: [ 4, 6 ] } ];
+			jsongin.Sort( documents, { a: -1 } );
+			// Sort keys are the largest elements: 9, 6, 5, 3
+			assert.ok( jsongin.StrictEquals( documents.map( function ( d ) { return d.a; } ),
+				[ [ 9, 0 ], [ 4, 6 ], [ 5, 1 ], [ 3 ] ] ) );
+		} );
+
+		it( 'should sort dates', () =>
+		{
+			let documents = [ { d: new Date( 5000 ) }, { d: new Date( 1000 ) }, { d: new Date( 3000 ) } ];
+			jsongin.Sort( documents, { d: 1 } );
+			assert.ok( documents[ 0 ].d.getTime() === 1000 );
+			assert.ok( documents[ 1 ].d.getTime() === 3000 );
+			assert.ok( documents[ 2 ].d.getTime() === 5000 );
+		} );
+
+		it( 'should sort a field holding an empty array below every other value', () =>
+		{
+			// Verified against MongoDB 8.0: [] sorts below null and below a missing field.
+			let documents = [ { v: [] }, { v: null }, { v: 5 }, { v: [ 3 ] }, { v: 'a' } ];
+			jsongin.Sort( documents, { v: 1 } );
+			assert.ok( jsongin.StrictEquals( documents[ 0 ].v, [] ) );
+			assert.ok( documents[ 1 ].v === null );
+			assert.ok( jsongin.StrictEquals( documents[ 2 ].v, [ 3 ] ) );
+			assert.ok( documents[ 3 ].v === 5 );
+			assert.ok( documents[ 4 ].v === 'a' );
+		} );
+
+		it( 'should sort an empty array below a missing field', () =>
+		{
+			let documents = [ { v: 5 }, { x: 1 }, { v: [] } ];
+			jsongin.Sort( documents, { v: 1 } );
+			assert.ok( jsongin.StrictEquals( documents[ 0 ].v, [] ) );
+			assert.ok( documents[ 1 ].x === 1 );
+			assert.ok( documents[ 2 ].v === 5 );
+		} );
+
+		it( 'should place an empty array last when sorting descending', () =>
+		{
+			let documents = [ { v: [] }, { v: null }, { v: 5 }, { v: 'a' } ];
+			jsongin.Sort( documents, { v: -1 } );
+			assert.ok( documents[ 0 ].v === 'a' );
+			assert.ok( documents[ 1 ].v === 5 );
+			assert.ok( documents[ 2 ].v === null );
+			assert.ok( jsongin.StrictEquals( documents[ 3 ].v, [] ) );
+		} );
+
+		it( 'should still compare an empty array as an array outside of sorting', () =>
+		{
+			// The empty array sort rule belongs to Sort() only. As a value, an empty
+			// array still carries the array type rank, which is above null.
+			assert.ok( jsongin.CompareValues( [], null ) === 1 );
+			assert.ok( jsongin.Evaluate( {}, { $gt: [ { $literal: [] }, null ] } ) === true );
+		} );
+
+		it( 'should sort the array in place and return it', () =>
+		{
+			let documents = [ { n: 3 }, { n: 1 } ];
+			let result = jsongin.Sort( documents, { n: 1 } );
+			assert.ok( result === documents );
+			assert.ok( documents[ 0 ].n === 1 );
+		} );
+
+		it( 'should ignore sort fields with a direction of zero', () =>
+		{
+			let documents = [ { n: 3 }, { n: 1 } ];
+			jsongin.Sort( documents, { n: 0 } );
+			assert.ok( documents[ 0 ].n === 3 );
+		} );
 
 	} );
 
