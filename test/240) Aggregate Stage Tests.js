@@ -198,7 +198,8 @@ describe( '240) Aggregate Stage Tests', () =>
 		it( 'should throw when the argument is not an object', () =>
 		{
 			assert.throws( function () { jsongin.Aggregate( [], [ { $addFields: 'a' } ] ); }, /\$addFields requires an object/ );
-			assert.throws( function () { jsongin.Aggregate( [], [ { $set: 'a' } ] ); }, /\$addFields requires an object/ );
+			// $set shares the implementation but reports under its own name.
+			assert.throws( function () { jsongin.Aggregate( [], [ { $set: 'a' } ] ); }, /\$set requires an object/ );
 		} );
 
 	} );

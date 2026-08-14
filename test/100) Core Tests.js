@@ -1699,11 +1699,122 @@ describe( '100) Core Tests', () =>
 		} );
 
 
-		it( 'It can update existing sub-fields', () => 
+		it( 'It can update existing sub-fields', () =>
 		{
 			var document = jsongin.Merge( { A: { B: 2, C: 3 } }, { A: { C: 4 } } );
 			assert.ok( document );
 			assert.deepStrictEqual( document, { A: { B: 2, C: 4 } } );
+		} );
+
+
+		it( 'It requires both parameters to be objects', () =>
+		{
+			assert.throws( () => jsongin.Merge( [ 1, 2 ], { a: 1 } ) );
+			assert.throws( () => jsongin.Merge( { a: 1 }, [ 1, 2 ] ) );
+			assert.throws( () => jsongin.Merge( 5, { a: 1 } ) );
+			assert.throws( () => jsongin.Merge( { a: 1 }, 'abc' ) );
+			assert.throws( () => jsongin.Merge( { a: 1 }, new Date() ) );
+		} );
+
+
+		it( 'It treats a missing document as an empty one', () =>
+		{
+			// This is what allows Merge( DEFAULTS, options ) when no options were supplied.
+			assert.deepStrictEqual( jsongin.Merge( undefined, { a: 1 } ), { a: 1 } );
+			assert.deepStrictEqual( jsongin.Merge( { a: 1 }, undefined ), { a: 1 } );
+			assert.deepStrictEqual( jsongin.Merge( null, { a: 1 } ), { a: 1 } );
+			assert.deepStrictEqual( jsongin.Merge( { a: 1 }, null ), { a: 1 } );
+		} );
+
+
+		it( 'It replaces arrays rather than merging them member-wise', () =>
+		{
+			// An array is a value, not a structure to descend into.
+			assert.deepStrictEqual( jsongin.Merge( { a: [ 1, 2, 3 ] }, { a: [ 9 ] } ), { a: [ 9 ] } );
+			assert.deepStrictEqual( jsongin.Merge( { a: [ 1, 2 ] }, { a: [ 3, 4, 5 ] } ), { a: [ 3, 4, 5 ] } );
+			// An empty array must be able to clear a default list.
+			assert.deepStrictEqual( jsongin.Merge( { a: [ 1, 2, 3 ] }, { a: [] } ), { a: [] } );
+		} );
+
+
+		it( 'It treats null as a value rather than a deletion', () =>
+		{
+			// This is a deliberate difference from RFC 7386, and agrees with Diff(),
+			// which reports a change to null as $set rather than $unset.
+			var document = jsongin.Merge( { a: 1, b: 2 }, { a: null } );
+			assert.deepStrictEqual( document, { a: null, b: 2 } );
+			assert.ok( 'a' in document );
+
+			document = jsongin.Merge( { a: { b: 'c' } }, { a: { b: 'd', c: null } } );
+			assert.deepStrictEqual( document, { a: { b: 'd', c: null } } );
+		} );
+
+
+		it( 'It skips undefined values rather than storing them', () =>
+		{
+			// Storing undefined would leave a key which Object.keys() reports but JSON does not.
+			var document = jsongin.Merge( { a: 1 }, { a: undefined } );
+			assert.deepStrictEqual( document, { a: 1 } );
+			assert.deepStrictEqual( Object.keys( document ), [ 'a' ] );
+
+			document = jsongin.Merge( { a: 1 }, { b: undefined } );
+			assert.deepStrictEqual( Object.keys( document ), [ 'a' ] );
+		} );
+
+
+		it( 'It overwrites dates and regular expressions', () =>
+		{
+			// These have no enumerable members, so member-wise code used to silently
+			// discard them and leave the original value in place.
+			var document = jsongin.Merge( { w: new Date( 0 ) }, { w: new Date( 86400000 ) } );
+			assert.ok( document.w instanceof Date );
+			assert.strictEqual( document.w.getTime(), 86400000 );
+
+			document = jsongin.Merge( { w: 123 }, { w: new Date( 86400000 ) } );
+			assert.ok( document.w instanceof Date );
+
+			document = jsongin.Merge( { r: /aaa/ }, { r: /bbb/ } );
+			assert.ok( document.r instanceof RegExp );
+			assert.strictEqual( document.r.source, 'bbb' );
+		} );
+
+
+		it( 'It handles a value which changes type', () =>
+		{
+			assert.deepStrictEqual( jsongin.Merge( { a: 'c' }, { a: [ 'b' ] } ), { a: [ 'b' ] } );
+			assert.deepStrictEqual( jsongin.Merge( { a: { x: 1 } }, { a: [ 1, 2 ] } ), { a: [ 1, 2 ] } );
+			assert.deepStrictEqual( jsongin.Merge( { a: [ 1, 2 ] }, { a: { x: 1 } } ), { a: { x: 1 } } );
+		} );
+
+
+		it( 'It does not modify either of the given documents', () =>
+		{
+			var document_a = { x: { y: 1 }, arr: [ 1, 2 ] };
+			var document_b = { x: { z: 2 }, arr: [ 9 ] };
+			var merged = jsongin.Merge( document_a, document_b );
+
+			assert.deepStrictEqual( document_a, { x: { y: 1 }, arr: [ 1, 2 ] } );
+			assert.deepStrictEqual( document_b, { x: { z: 2 }, arr: [ 9 ] } );
+
+			// The result must not share structure with either document.
+			merged.x.y = 99;
+			merged.arr.push( 7 );
+			assert.strictEqual( document_a.x.y, 1 );
+			assert.deepStrictEqual( document_b.arr, [ 9 ] );
+		} );
+
+
+		it( 'It is idempotent', () =>
+		{
+			// Applying the same overrides twice gives the same result, which is what makes
+			// Merge safe to use for layering settings.
+			var defaults = { plugins: [ 'a', 'b' ], ui: { theme: 'dark' } };
+			var overrides = { plugins: [ 'a' ], ui: { scale: 2 } };
+
+			var once = jsongin.Merge( defaults, overrides );
+			var twice = jsongin.Merge( once, overrides );
+			assert.deepStrictEqual( twice, once );
+			assert.deepStrictEqual( once, { plugins: [ 'a' ], ui: { theme: 'dark', scale: 2 } } );
 		} );
 
 

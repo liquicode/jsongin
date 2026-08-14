@@ -252,9 +252,47 @@ describe( '110) Text Tests', () =>
 			assert.ok( jsongin.Text.SearchReplace( 'THE RED FOX', 'red', 'blue', false ) === 'THE blue FOX' );
 		} );
 
-		it( 'should replace text at end of string', () => 
+		it( 'should replace text at end of string', () =>
 		{
 			assert.ok( jsongin.Text.SearchReplace( 'THE RED FOX', 'fox', 'dog', false ) === 'THE RED dog' );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'Detached Function Tests', () =>
+	{
+
+		// SearchReplace called its sibling SearchReplacements through `this`, so it threw
+		// whenever it was called as anything other than a member of the Text object.
+
+		it( 'should support SearchReplace when detached', () =>
+		{
+			let search_replace = jsongin.Text.SearchReplace;
+			assert.strictEqual( search_replace( 'a-b-c', '-', '+' ), 'a+b+c' );
+			assert.strictEqual( search_replace( 'THE RED FOX', 'red', 'blue', false ), 'THE blue FOX' );
+		} );
+
+		it( 'should support SearchReplace as a callback', () =>
+		{
+			let values = [ 'a-1', 'b-2' ];
+			let search_replace = jsongin.Text.SearchReplace;
+			let replaced = values.map( function ( Value ) { return search_replace( Value, '-', '=' ); } );
+			assert.deepStrictEqual( replaced, [ 'a=1', 'b=2' ] );
+		} );
+
+		it( 'should support every Text function when detached', () =>
+		{
+			let compare = jsongin.Text.Compare;
+			let find_between = jsongin.Text.FindBetween;
+			let matches = jsongin.Text.Matches;
+			let search_replacements = jsongin.Text.SearchReplacements;
+
+			assert.strictEqual( compare( 'a', 'b' ), -1 );
+			assert.strictEqual( find_between( '[x]', '[', ']' ), 'x' );
+			assert.strictEqual( matches( 'abc', 'a*' ), true );
+			assert.strictEqual( search_replacements( 'a-b-c', { '-': '+' } ), 'a+b+c' );
 		} );
 
 	} );

@@ -31,7 +31,7 @@ jsongin.Sort( documents, { type: 1, title: -1 } );
 
 ## Sort Order
 
-Values are ordered by [`CompareValues()`](#), which follows MongoDB's comparison order:
+Values are ordered by [`CompareValues()`](./CompareValues.md), which follows MongoDB's comparison order:
 
     null < numbers < strings < objects < arrays < booleans < dates < regular expressions
 

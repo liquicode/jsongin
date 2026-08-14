@@ -2,74 +2,80 @@
 
 module.exports = function ( jsongin )
 {
+
+	//---------------------------------------------------------------------
+	// Merges DocumentB into DocumentA and returns the merged document.
+	// Neither of the given documents is modified.
+	//
+	// The merge is member-wise and recursive. Two sub-documents are merged into each other,
+	// while any other value in DocumentB replaces the one in DocumentA.
+	// Arrays, dates, and regular expressions are values here rather than structures to
+	// descend into, so DocumentB's copy of one replaces DocumentA's.
+	//
+	// Note that null is a value. A field set to null in DocumentB is set to null in the
+	// result rather than being removed from it. This is a deliberate difference from
+	// RFC 7386 (JSON Merge Patch), which spends null on deletion because the format has no
+	// other way to express it. jsongin has $unset and DeleteValue for that.
+	// Merge therefore adds and overwrites fields, but never removes one.
+
 	function Merge( DocumentA, DocumentB )
 	{
 		try
 		{
-			if ( !DocumentA ) { return jsongin.SafeClone( DocumentB ); }
-			if ( !DocumentB ) { return jsongin.SafeClone( DocumentA ); }
+			// Validate the documents.
+			// A missing document is treated as an empty one, so that a call such as
+			// Merge( DEFAULTS, options ) still works when no options were supplied.
+			let st_a = jsongin.ShortType( DocumentA );
+			let st_b = jsongin.ShortType( DocumentB );
+			if ( 'lu'.includes( st_a ) ) { DocumentA = {}; st_a = 'o'; }
+			if ( 'lu'.includes( st_b ) ) { DocumentB = {}; st_b = 'o'; }
+			if ( st_a !== 'o' ) { throw new Error( `DocumentA must be an object.` ); }
+			if ( st_b !== 'o' ) { throw new Error( `DocumentB must be an object.` ); }
 
-			// let C = JSON.parse( JSON.stringify( ObjectA ) );
-			var C = jsongin.SafeClone( DocumentA );
-
-			function update_children( ParentA, ParentB )
-			{
-				Object.keys( ParentB ).forEach(
-					key =>
-					{
-						let value = ParentB[ key ];
-						if ( ParentA[ key ] === undefined )
-						{
-							ParentA[ key ] = jsongin.SafeClone( value );
-						}
-						else
-						{
-							if ( typeof value === 'object' )
-							{
-								// Merge objects.
-								if ( ( ParentA[ key ] === null ) && ( value === null ) )
-								{
-									// Do nothing.
-								}
-								else if ( ( ParentA[ key ] !== null ) && ( value === null ) )
-								{
-									ParentA[ key ] = null;
-								}
-								else if ( ( ParentA[ key ] === null ) && ( value !== null ) )
-								{
-									ParentA[ key ] = {};
-									update_children( ParentA[ key ], value );
-								}
-								else if ( ( ParentA[ key ] !== null ) && ( value !== null ) )
-								{
-									update_children( ParentA[ key ], value );
-								}
-							}
-							else
-							{
-								// Overwrite values.
-								if ( typeof value === 'function' )
-								{
-									ParentA[ key ] = value;
-								}
-								else
-								{
-									ParentA[ key ] = jsongin.SafeClone( value );
-								}
-							}
-						}
-					} );
-			}
-
-			update_children( C, DocumentB );
-			return C;
-
+			let merged = jsongin.SafeClone( DocumentA );
+			merge_children( merged, DocumentB );
+			return merged;
 		}
 		catch ( error )
 		{
 			if ( jsongin.OpError ) { jsongin.OpError( 'Merge: ' + error.message ); }
 			throw error;
 		}
-	};
+	}
+
+
+	//---------------------------------------------------------------------
+	// Copies the fields of ParentB into ParentA.
+	// Recurses only when both sides hold a sub-document. Every other value is replaced.
+
+	function merge_children( ParentA, ParentB )
+	{
+		let keys = Object.keys( ParentB );
+		for ( let index = 0; index < keys.length; index++ )
+		{
+			let key = keys[ index ];
+			let value_a = ParentA[ key ];
+			let value_b = ParentB[ key ];
+
+			// A field which was not supplied is not a field. Skipping it avoids leaving a
+			// key which holds undefined, which Object.keys() reports but JSON does not.
+			if ( jsongin.ShortType( value_b ) === 'u' ) { continue; }
+
+			if ( ( jsongin.ShortType( value_a ) === 'o' )
+				&& ( jsongin.ShortType( value_b ) === 'o' ) )
+			{
+				// Merge two sub-documents.
+				merge_children( value_a, value_b );
+			}
+			else
+			{
+				// Replace the value.
+				ParentA[ key ] = jsongin.SafeClone( value_b );
+			}
+		}
+	}
+
+
+	//---------------------------------------------------------------------
 	return Merge;
 };

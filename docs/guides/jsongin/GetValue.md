@@ -71,10 +71,10 @@ let document = {
 		{ id: 103, name: 'Eve' },
 	]
 };
-jsongin.GetValue( document, 'users.1' ) === { id: 102, name: 'Bob' }
+// jsongin.GetValue( document, 'users.1' ) returns { id: 102, name: 'Bob' }
 jsongin.GetValue( document, 'users.1.name' ) === 'Bob'
 // Omit the array index to reurn an array of sub-values:
-jsongin.GetValue( document, 'users.name' ) === [ 'Alice', 'Bob', 'Eve' ]
+// jsongin.GetValue( document, 'users.name' ) returns [ 'Alice', 'Bob', 'Eve' ]
 ```
 
 ### It might return undefined array elements when missing data is encountered
@@ -87,15 +87,15 @@ let document = {
 	]
 };
 jsongin.GetValue( document, 'users.1.id' ) === undefined
-jsongin.GetValue( document, 'users.id' ) === [ 101, undefined, 103 ]
-jsongin.GetValue( document, 'users.name' ) === [ 'Alice', 'Bob', 'Eve' ]
+// jsongin.GetValue( document, 'users.id' ) returns [ 101, undefined, 103 ]
+// jsongin.GetValue( document, 'users.name' ) returns [ 'Alice', 'Bob', 'Eve' ]
 ```
 
 ### If the path is undefined, null, or empty "", then it returns the entire document
 ```js
 jsongin.GetValue( 'abc' )  === 'abc'
-jsongin.GetValue( [ 'one', 'two', 'three' ], null ) === [ 'one', 'two', 'three' ]
-jsongin.GetValue( { id: 101, name: 'Alice' }, '' ) === { id: 101, name: 'Alice' }
+// jsongin.GetValue( [ 'one', 'two', 'three' ], null ) returns [ 'one', 'two', 'three' ]
+// jsongin.GetValue( { id: 101, name: 'Alice' }, '' ) returns { id: 101, name: 'Alice' }
 ```
 
 ### If the path is specified but not found, it returns undefined

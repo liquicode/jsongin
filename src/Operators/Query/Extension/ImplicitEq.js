@@ -105,13 +105,15 @@ module.exports = function ( jsongin )
 				else if ( 'a'.includes( actual_type ) && 'r'.includes( match_type ) )
 				{
 					// Array === Regexp
+					// An array field matches when any one of its elements matches, which is
+					// what MongoDB does and what the other array branches here already do.
 					for ( let index = 0; index < actual_value.length; index++ )
 					{
 						let sub_path = jsongin.JoinPaths( Path, index );
 						result = jsongin.QueryOperators.$regex.Query( Document, match_value, sub_path );
-						if ( result === false ) { return false; }
+						if ( result === true ) { return true; }
 					}
-					return true;
+					return false;
 				}
 				else if ( 'o'.includes( actual_type ) && 'o'.includes( match_type ) )
 				{

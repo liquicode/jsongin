@@ -70,6 +70,17 @@ module.exports = {
 		{ $CopyFile: { from: 'history.md', to: 'docs/external/history.md' } },
 		{ $CopyFile: { from: 'tests.md', to: 'docs/external/tests.md' } },
 
+		// Check the generated docs.
+		// Halts the build on a code fence which does not parse, a link which does not
+		// resolve, or a page which nothing links to.
+		{
+			$Shell: {
+				command: 'node build/docs-check.js',
+				out: { console: true },
+				err: { console: true },
+			}
+		},
+
 	],
 
 	run_webpack: [

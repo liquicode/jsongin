@@ -18,37 +18,45 @@
 This function will return `true` if the given `Document` matches all of the criteria specified in `Criteria`.
 
 Match criteria is a Javascript object which specifies a document field, a query operator, and a value:
-```js
-{ name: { eq$: 'Alice' }} // Does name === 'Alice'?
+```
+{ name: { $eq: 'Alice' }} // Does name === 'Alice'?
 ```
 You can match against nested fields by using dot notation path:
-```js
-{ 'user.name': { eq$: 'Alice' }}
+```
+{ 'user.name': { $eq: 'Alice' }}
 ```
 You can match against an array element by referencing the element's index:
-```js
-{ 'user.0.name': { eq$: 'Alice' }}
+```
+{ 'user.0.name': { $eq: 'Alice' }}
 ```
 You can compose complex queries with logical operators:
-```js
+```
 { $or: [
-	{ star_count { $gte: 100 } },      // Either has 100 stars
-	{ follower_count { $gte: 5000 } }, // or 5000 followers.
+	{ star_count: { $gte: 100 } },      // Either has 100 stars
+	{ follower_count: { $gte: 5000 } }, // or 5000 followers.
 ] }
 ```
 
 ## Operator Summary
 
-|          **Comparison**          |  **Logical**  |         **Other**         |
-|:--------------------------------:|:-------------:|:-------------------------:|
-|     [$eq](#$eq), [$ne](#$ne)     | [$and](#$and) |    [$exists](#$exists)    |
-|    [$gt](#$gt), [$gte](#$gte)    |  [$or](#$or)  |     [$regex](#$regex)     |
-|    [$lt](#$lt), [$lte](#$lte)    | [$nor](#$nor) | [$elemMatch](#$elemMatch) |
-|    [$in](#$in), [$nin](#$nin)    | [$not](#$not) |       [$all](#$all)       |
-| [$eqx](#$eqx) *, [$nex](#$nex) * |               |     [$noop](#$noop) *     |
-|   [$ImplicitEq](#$ImplicitEq) *  |               |                           |
+|          **Comparison**          |  **Logical**  |       **Element**       |         **Array**         |      **Evaluation**       |
+|:--------------------------------:|:-------------:|:-----------------------:|:-------------------------:|:-------------------------:|
+|     [$eq](#$eq), [$ne](#$ne)     | [$and](#$and) |  [$exists](#$exists)    | [$elemMatch](#$elemMatch) |     [$regex](#$regex)     |
+|    [$gt](#$gt), [$gte](#$gte)    |  [$or](#$or)  |    [$type](#$type)      |      [$size](#$size)      |      [$expr](#$expr)      |
+|    [$lt](#$lt), [$lte](#$lte)    | [$nor](#$nor) |                         |       [$all](#$all)       |   [$exprx](#$exprx) *     |
+|    [$in](#$in), [$nin](#$nin)    | [$not](#$not) |                         |                           |     [$noop](#$noop) *     |
+| [$eqx](#$eqx) *, [$nex](#$nex) * |               |                         |                           |                           |
+|   [$ImplicitEq](#$ImplicitEq) *  |               |                         |                           |                           |
 
 `*` - Extension operator, not part of MongoDB.
+
+***Note on dates*** :
+A `Date` has its own short type `d`, so the comparison operators handle dates directly.
+`$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$in`, and `$nin` all compare dates by their time
+  value, and `$type` selects them with either `'date'` or `9`.
+A date is never equal to the string or number which represents it: `$eq` against an ISO string
+  or a timestamp is `false`.
+See [`ShortType()`](./ShortType.md) for why dates are treated as their own type.
 
 
 ## See Also
@@ -76,20 +84,21 @@ let document = {
 };
 
 // You can do comparisons on document fields.
+// Note that the field comes first and the operator is applied to it.
 jsongin.Query( document, { id: 101 } ) === true
-jsongin.Query( document, { $gte: { id: 100 } } ) === true
-jsongin.Query( document, { $eq: { 'user.name': 'Alice' } } ) === true
-jsongin.Query( document, { $in: { tags: [ 'Staff' ] } } ) === true
+jsongin.Query( document, { id: { $gte: 100 } } ) === true
+jsongin.Query( document, { 'user.name': { $eq: 'Alice' } } ) === true
+jsongin.Query( document, { tags: { $in: [ 'Staff' ] } } ) === true
 
 // If a comparison fails, then false is returned.
-jsongin.Query( document, { $lte: { id: 100 } } ) === false
-jsongin.Query( document, { $eq: { Location: 'East' } } ) === false
+jsongin.Query( document, { id: { $lte: 100 } } ) === false
+jsongin.Query( document, { Location: { $eq: 'East' } } ) === false
 
 // Can combine criteria with logical operators.
 jsongin.Query( document, {
 	$and: [
 		{ 'profile.role': 'admin' },
-		{ $in: { tags: [ 'Staff' ] } }
+		{ tags: { $in: [ 'Staff' ] } }
 	] } ) === true
 ```
 
@@ -612,6 +621,59 @@ jsongin.Query( document, { 'user.role': { $regex: /^admin/ } } ) === true
 jsongin.Query( document, { 'user.role': { $regex: '^admin' } } ) === true
 ```
 
+When the document field holds an ***array***, it matches if ***any one*** of its elements
+  matches, which is how every other array comparison in `jsongin` behaves.
+
+```js
+jsongin.Query( { tags: [ 'staff', 'x' ] }, { tags: /^st/ } ) === true
+```
+
+> ***Breaking change in v0.1.0*** :
+  a regular expression matched against an array field previously required ***every*** element
+  to match. A single element array happened to work, so the defect only showed on arrays of two
+  or more. Queries which relied on the old behavior will now match more documents.
+
+
+<a id="$expr"></a>$expr
+---------------------------------------------------------------------
+
+**Usage** : `{ $expr: expression }`
+
+The `$expr` operator evaluates an aggregation ***expression*** and matches the document when
+  the result is true.
+
+This is what lets a query compare one document field to ***another***.
+Every other query operator compares a field to a constant you supply; `$expr` compares computed
+  values, either of which can be read out of the document.
+
+Within an expression, a string beginning with `$` is a reference to a document field
+  (e.g. `'$user.name'`). Anything else is a literal value.
+
+`$expr` is a ***top-level*** operator. It does not appear within a field.
+Use [`$exprx`](#$exprx) for that.
+
+The result is converted to a boolean using MongoDB's rules, where only `false`, `0`, `null`,
+  and missing values are false. Note that the empty string `""` and the empty array `[]` are
+  both true.
+
+> See the [`Evaluate()`](./Evaluate.md) document for the full list of expression operators and
+  how they are written.
+
+### Example
+```js
+let document = { dmg: 12, armor: 5, stats: { hp: 20, max: 30 } };
+
+// Compare two fields of the same document.
+jsongin.Query( document, { $expr: { $gt: [ '$dmg', '$armor' ] } } ) === true
+jsongin.Query( document, { $expr: { $lt: [ '$dmg', '$armor' ] } } ) === false
+
+// Field references may use dot notation.
+jsongin.Query( document, { $expr: { $lt: [ '$stats.hp', '$stats.max' ] } } ) === true
+
+// Compute a value first, then compare it.
+jsongin.Query( { a: 10, b: 3 }, { $expr: { $gt: [ { $subtract: [ '$a', '$b' ] }, 5 ] } } ) === true
+```
+
 
 # Array Operators
 
@@ -628,12 +690,12 @@ The `$elemMatch` operator tests the elements of an array.
 
 ### Example
 ```js
-let product_results = {
+let product_results = [
 	{ _id: 1, results: [ { product: 'abc', score: 10 }, { product: 'xyz', score: 5 } ] },
 	{ _id: 2, results: [ { product: 'abc', score: 8 }, { product: 'xyz', score: 7 } ] },
 	{ _id: 3, results: [ { product: 'abc', score: 7 }, { product: 'xyz', score: 8 } ] },
 	{ _id: 4, results: [ { product: 'abc', score: 7 }, { product: 'def', score: 8 } ] }
-}
+]
 
 let query = {
 	results:
@@ -747,13 +809,66 @@ jsongin.Query( document, { login_attempts: { $nex: '7' } } ) === false
 ```
 
 
+<a id="$exprx"></a>$exprx
+---------------------------------------------------------------------
+
+**Usage** : `{ $exprx: expression }` or `{ field: { $exprx: expression }}`
+
+The `$exprx` operator is a `jsongin` extension of [`$expr`](#$expr).
+
+It does everything `$expr` does, and it can additionally appear ***within a field***, where it
+  evaluates its expression against the sub-document found at that field.
+Field references inside the expression are then relative to that sub-document rather than to
+  the whole document.
+
+This is what makes it possible to compare two fields of a sub-document without repeating the
+  path to it.
+
+The `$exprx` operator is a `jsongin` extension and does not appear in MongoDB.
+
+### Example
+```js
+let document = { dmg: 12, armor: 5, stats: { hp: 20, max: 30 } };
+
+// Within a field, the expression is evaluated against that sub-document.
+jsongin.Query( document, { stats: { $exprx: { $lt: [ '$hp', '$max' ] } } } ) === true
+
+// The same comparison written with $expr needs the full paths.
+jsongin.Query( document, { $expr: { $lt: [ '$stats.hp', '$stats.max' ] } } ) === true
+
+// At the top level, $exprx behaves exactly like $expr.
+jsongin.Query( document, { $exprx: { $gt: [ '$dmg', '$armor' ] } } ) === true
+
+// $expr does not work within a field. It finds no such fields and does not match.
+jsongin.Query( document, { stats: { $expr: { $lt: [ '$hp', '$max' ] } } } ) === false
+```
+
+
 <a id="$noop"></a>$noop
 ---------------------------------------------------------------------
 
-**Usage** : `{ field: { $noop: any }}`
+**Usage** : `{ $noop: any }` or `{ field: { $noop: any }}`
 
 The `$noop` operator performs No Operation on its operand.
 This can be used to disable (i.e. comment out) a portion of a query.
+
+It matches everything, so renaming a clause's key to `$noop` disables that clause while leaving
+  the rest of the query intact.
+It can appear at the ***top level*** of a query or within a field.
+
+The one value it does not accept is `undefined`, which `Query` rejects for every operator so
+  that a missing variable is never silently ignored.
+
+```js
+// The b clause is disabled. The a clause still applies.
+jsongin.Query( { a: 1, b: 2 }, { a: 1, $noop: { b: 999 } } ) === true
+jsongin.Query( { a: 1, b: 2 }, { a: 9, $noop: { b: 999 } } ) === false
+```
+
+> ***Fixed in v0.1.0*** :
+  `$noop` was marked as not allowed at the top level of a query, which is exactly where a
+  commented out clause sits, so `Query( doc, { a: 1, $noop: { b: 2 } } )` returned `false`
+  instead of ignoring the `$noop` clause.
 
 ### Example
 ```js

@@ -18,7 +18,7 @@ Use the `jsongin.Query( Document, Criteria )` function to test if a certain docu
 If it does match all of the criteria, then `jsongin.Query` will return `true`.
 If not all of the criteria are satisfied, then a `false` will be returned instead.
 
-Read the [Query Reference](./Query%20Reference.md) document to understand how these operators are used.
+Read the [`Query()`](./jsongin/Query.md) document to understand how these operators are used.
 
 | **Category**  | **Supported** | **Operator**   | **Description**                                                                                                                               |
 |---------------|:-------------:|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
@@ -444,7 +444,7 @@ Use the `jsongin.Update( Document, Updates )` function to apply updates to a doc
 | Field    |    Yes    | $min             | Only updates the field if the specified value is less than the existing field value.                                                          |
 | Field    |    Yes    | $max             | Only updates the field if the specified value is greater than the existing field value.                                                       |
 | Field    |    Yes    | $mul             | Multiplies the value of the field by the specified amount.                                                                                    |
-| Field    |    Yes    | $currentDate     | Sets the value of a field to current date either as a Date or a Timestamp.                                                                    |
+| Field    |    Yes    | $currentDate     | Sets the value of a field to the current date, as an ISO string, a numeric timestamp, or a date string. Takes `true` or `{ $type: '...' }`, never a bare string. |
 | Field    |     -     | $setOnInsert     | Sets the value of a field if an update results in an insert of a document. Has no effect on update operations that modify existing documents. |
 | Array    |    Yes    | $addToSet        | *(partially implemented)* Adds elements to an array only if they do not already exist in the set.                                             |
 | Array    |    Yes    | $pop             | Removes the first or last item of an array.                                                                                                   |

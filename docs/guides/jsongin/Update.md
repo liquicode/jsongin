@@ -59,22 +59,22 @@ let updates = {
 let updated = jsongin.Update( document, updates );
 
 // Updated document has all the changes:
-updated === {
-	id: 101,
-	user: {
-		name: 'Alice',
-		location: 'East',
-		status: 'online',
-	},
-	profile: {
-		login: 'alice',
-		role: 'admin',
-	},
-	tags: [ 'Staff', 'Dept. A', 'Logged In' ],
-	session: {
-		started: '2023-11-24T07:51:47.064Z',
-	},
-}
+// updated is {
+// 	id: 101,
+// 	user: {
+// 		name: 'Alice',
+// 		location: 'East',
+// 		status: 'online',
+// 	},
+// 	profile: {
+// 		login: 'alice',
+// 		role: 'admin',
+// 	},
+// 	tags: [ 'Staff', 'Dept. A', 'Logged In' ],
+// 	session: {
+// 		started: '2023-11-24T07:51:47.064Z',
+// 	},
+// }
 
 ```
 
@@ -95,7 +95,7 @@ let updated = jsongin.Update(
 				{ user: { name: 'Alice' } },
 				{ $set: { 'user.name': 'Bob' } }
 			);
-updated === { user: { name: 'Bob' } }
+// updated is { user: { name: 'Bob' } }
 ```
 
 
@@ -112,7 +112,7 @@ let updated = jsongin.Update(
 				{ user: { name: 'Alice' } },
 				{ $unset: { 'user.name': 1 } }
 			);
-updated === { user: {} }
+// updated is { user: {} }
 ```
 
 
@@ -129,7 +129,7 @@ let updated = jsongin.Update(
 				{ user: { name: 'Alice' } },
 				{ $rename: { 'user.name': 'user.first_name' } }
 			);
-updated === { user: { first_name: 'Alice' } }
+// updated is { user: { first_name: 'Alice' } }
 ```
 
 
@@ -146,7 +146,7 @@ let updated = jsongin.Update(
 				{ user: { name: 'Alice', login_count: 42 } },
 				{ $min: { 'user.login_count': 7 } }
 			);
-updated === { user: { name: 'Alice', login_count: 7 } }
+// updated is { user: { name: 'Alice', login_count: 7 } }
 ```
 
 
@@ -163,7 +163,7 @@ let updated = jsongin.Update(
 				{ user: { name: 'Alice', login_count: 42 } },
 				{ $max: { 'user.login_count': 50 } }
 			);
-updated === { user: { name: 'Alice', login_count: 50 } }
+// updated is { user: { name: 'Alice', login_count: 50 } }
 ```
 
 
@@ -181,7 +181,7 @@ let updated = jsongin.Update(
 				{ user: { name: 'Alice', login_count: 1 } },
 				{ $inc: { 'user.login_count': 5 } }
 			);
-updated === { user: { name: 'Alice', login_count: 6 } }
+// updated is { user: { name: 'Alice', login_count: 6 } }
 ```
 
 
@@ -198,19 +198,32 @@ let updated = jsongin.Update(
 				{ user: { name: 'Alice', login_count: 42 } },
 				{ $mul: { 'user.login_count': 2 } }
 			);
-updated === { user: { name: 'Alice', login_count: 84 } }
+// updated is { user: { name: 'Alice', login_count: 84 } }
 ```
 
 
  $currentDate
 ---------------------------------------------------------------------
 
-**Usage** : `$mul: { field: date-spec, field: date-spec, ... }`
+**Usage** : `$currentDate: { field: date-spec, field: date-spec, ... }`
 
-Sets the value of a field to current date either as a Date or a Timestamp.
-Use `true` to set a `Date.toISOString()` zulu timestamp.
-Use the string "timestamp" to set a `Date.getTime()` numeric value.
-Use the string "date" to set a `Date.toDateString()` string timestamp.
+Sets the value of a field to the current date.
+
+A `date-spec` is either the boolean `true` or an object of the form `{ $type: string }`,
+  which is the same shape MongoDB uses.
+A bare string is ***not*** a valid `date-spec`.
+
+| **date-spec**            | **Sets the field to**                                        |
+|--------------------------|--------------------------------------------------------------|
+| `true`                   | A `Date.toISOString()` zulu timestamp string.                |
+| `{ $type: 'timestamp' }` | A `Date.getTime()` numeric value.                            |
+| `{ $type: 'date' }`      | A `Date.toDateString()` string.                              |
+
+All of the fields named in one `$currentDate` operation receive the ***same*** timestamp,
+  which is read once before the fields are visited.
+
+Note that `jsongin` stores a string or a number here, never a `Date` object.
+To store an actual `Date`, use `$set` with a date value.
 
 **Examples**
 ```js
@@ -218,13 +231,29 @@ let updated = jsongin.Update(
 				{ user: { name: 'Alice', last_login: null } },
 				{ $currentDate: { 'user.last_login': true } }
 			);
-updated === { user: { name: 'Alice', last_login: '2023-11-24T07:51:47.064Z' } }
+// updated is { user: { name: 'Alice', last_login: '2023-11-24T07:51:47.064Z' } }
 
-let updated = jsongin.Update(
+updated = jsongin.Update(
 				{ user: { name: 'Alice', last_login: null } },
+				{ $currentDate: { 'user.last_login': { $type: 'timestamp' } } }
+			);
+// updated is { user: { name: 'Alice', last_login: 1700812593086 } }
+
+updated = jsongin.Update(
+				{ user: { name: 'Alice', last_login: null } },
+				{ $currentDate: { 'user.last_login': { $type: 'date' } } }
+			);
+// updated is { user: { name: 'Alice', last_login: 'Fri Nov 24 2023' } }
+```
+
+An invalid `date-spec` leaves the field alone and reports the reason to the `OpLog`:
+```js
+// A bare string is not a date-spec. This does nothing.
+let updated = jsongin.Update(
+				{ user: { last_login: null } },
 				{ $currentDate: { 'user.last_login': 'timestamp' } }
 			);
-updated === { user: { name: 'Alice', last_login: 1700812593086 } }
+// updated is { user: { last_login: null } }
 ```
 
 
@@ -244,7 +273,7 @@ let updated = jsongin.Update(
 				{ a: [ 1, 2, 3 ] },
 				{ $addToSet: { a: 4 } }
 			);
-updated === { a: [ 1, 2, 3, 4 ] }
+// updated is { a: [ 1, 2, 3, 4 ] }
 ```
 
 
@@ -261,13 +290,13 @@ let updated = jsongin.Update(
 				{ a: [ 1, 2, 3 ] },
 				{ $pop: { a: 1 } }
 			);
-updated === { a: [ 1, 2 ] }
+// updated is { a: [ 1, 2 ] }
 
-let updated = jsongin.Update(
+updated = jsongin.Update(
 				{ a: [ 1, 2, 3 ] },
 				{ $pop: { a: -1 } }
 			);
-updated === { a: [ 2, 3 ] }
+// updated is { a: [ 2, 3 ] }
 ```
 
 
@@ -284,7 +313,7 @@ let updated = jsongin.Update(
 				{ a: [ 1, 2, 3 ] },
 				{ $push: { a: 4 } }
 			);
-updated === { a: [ 1, 2, 3, 4 ] }
+// updated is { a: [ 1, 2, 3, 4 ] }
 ```
 
 
@@ -301,6 +330,6 @@ let updated = jsongin.Update(
 				{ a: [ 1, 2, 3 ] },
 				{ $pullAll: { a: [ 1, 3 ] } }
 			);
-updated === { a: [ 2 ] }
+// updated is { a: [ 2 ] }
 ```
 

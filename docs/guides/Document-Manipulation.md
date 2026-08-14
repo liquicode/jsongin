@@ -40,7 +40,7 @@ the `document.user` object.
 
 ```js
 jsongin.GetValue( document, 'id' ) === 1001
-jsongin.GetValue( document, 'user' ) === { name: 'Alice', location: 'East' }
+// jsongin.GetValue( document, 'user' ) returns { name: 'Alice', location: 'East' }
 ```
 
 To specify a nested field within the document, use the dot '.' notation to specify 

@@ -111,7 +111,7 @@ jsongin.Evaluate( document, {
 	attacker: '$dmg',
 	net_damage: { $subtract: [ '$dmg', '$armor' ] },
 } )
-// === { attacker: 8, net_damage: 3 }
+// returns { attacker: 8, net_damage: 3 }
 ```
 
 ### It returns literal values with $literal

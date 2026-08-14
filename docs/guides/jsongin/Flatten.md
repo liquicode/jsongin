@@ -45,15 +45,15 @@ let document = {
 };
 
 let flattened = jsongin.Flatten( document );
-flattened === {
-	id: 1001,
-	'user.name': 'Alice',
-	'user.location': 'East',
-	'profile.login': 'alice',
-	'profile.role': 'admin',
-	'tags.0': 'Staff',
-	'tags.1': 'Dept. A',
-};
+// flattened is {
+// 	id: 1001,
+// 	'user.name': 'Alice',
+// 	'user.location': 'East',
+// 	'profile.login': 'alice',
+// 	'profile.role': 'admin',
+// 	'tags.0': 'Staff',
+// 	'tags.1': 'Dept. A',
+// };
 ```
 
 ### Use Expand() to turn a flattened document back into a hierarchical document
@@ -70,29 +70,29 @@ let document = {
 
 let flattened = jsongin.Flatten( document );
 let expanded = jsongin.Expand( flattened );
-expanded === document
+// expanded matches document
 ```
 
 ### It should flatten an empty document
 ```js
 let flattened = jsongin.Flatten( {} );
-flattened === {}
+// flattened is {}
 ```
 
 ### It should flatten an array
 ```js
 let flattened = jsongin.Flatten( [ 1, 2, 'three' ] );
-flattened === {
-	0: 1,
-	1: 2,
-	2: 'three',
-}
+// flattened is {
+// 	0: 1,
+// 	1: 2,
+// 	2: 'three',
+// }
 ```
 
 ### It should flatten an empty array
 ```js
 let flattened = jsongin.Flatten( [] );
-flattened === []
+// flattened is []
 ```
 
 ### It should not flatten a non-document

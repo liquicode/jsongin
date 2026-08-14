@@ -15,7 +15,7 @@ module.exports = function ( Engine )
 		//	19 - decimal
 		//	-1 - minKey
 		//	127 - maxKey
-		let data_type = this.ShortType( Value );
+		let data_type = Engine.ShortType( Value );
 		if ( data_type === 'b' )
 		{
 			return ReturnAlias ? 'bool' : 8;

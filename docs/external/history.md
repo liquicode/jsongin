@@ -4,12 +4,91 @@
 # Project History
 
 
-v0.1.0 (???)
+v0.1.0 (2026-08-13)
 ---------------------------------------------------------------------
 
-- Fixed a minor error in the documentation.
+- Documentation was brought up to date with this release:
+  - Fixed three passages which did not work as written. The `OpLog` document initialized the
+    library with `require( '@liquicode/jsongin' )( Settings )`, which has thrown since v0.0.19
+    when the module's export became an instance rather than a factory. The `$currentDate`
+    update operator was documented as taking the bare strings `'timestamp'` and `'date'`; it
+    takes `{ $type: 'timestamp' }`, so the documented form silently did nothing. The browser
+    guide linked to an UNPKG URL which serves a file browser page rather than the script.
+  - Added pages for the functions which had none: `DeleteValue`, `CompareValues`, `AsBoolean`,
+    `AsNumber`, `AsDate`, `BsonType`, `Clone`, `LooseEquals`, `StrictEquals`, and `IsQuery`.
+  - Documented the `$expr` and `$exprx` query operators, which were added in this version but
+    never written up in the [Query](http://jsongin.liquicode.com/#/guides/jsongin/Query.md) document.
+  - Added an [Operator Authoring](http://jsongin.liquicode.com/#/guides/Operator-Authoring.md) guide, describing the
+    operator contract and how to register one. Extensibility was an advertised feature with no
+    document behind it.
+  - Added a [Testing](http://jsongin.liquicode.com/#/guides/Testing.md) guide covering `npm test`, `npm run coverage`,
+    and the driver harness which runs the same suite against a real MongoDB server.
+  - Linked the `Merge` document, which existed but was unreachable from the sidebar, the
+    library guide, and the readme.
+  - Rewrote the `Merge` document for the behavior described below.
+  - Added `npm run check-docs`, which asserts that every ` ```js ` block parses as Javascript,
+    that every local link resolves, and that every page is reachable from another page.
+    It runs as the last step of `build docs`, so any of those failing now halts the docs build
+    and, through it, a release. It uses only Node's own modules and adds no dependency.
+  - ***What goes inside a code fence is now code.*** A result is written as a comment rather
+    than as a bare expression, e.g. `// merged matches doc`. `===` is kept only where it is
+    literally true, which is scalars and booleans, and not for objects or arrays where
+    reference equality does not hold. A block which is not Javascript — program output, the
+    shape of a value, a method signature — no longer claims to be.
+  - Fixed the defects that enforcing the above uncovered: the `Query` document named the
+    equality operator `eq$` rather than `$eq` in its first three examples, omitted the colon
+    between a field and its operator document in the `$or` example, declared an array of
+    documents with braces, and gave four headline examples in the form
+    `{ $gte: { id: 100 } }`. That last one is inverted — `$gte` is not a top level operator —
+    so all four returned `false` where the document claimed `true`. They are now written
+    `{ id: { $gte: 100 } }` and were verified against the library.
+  - Fixed the documentation links. The site resolved links from the docs root while the files
+    were written relative to each other, so roughly half of the cross-references were broken in
+    any given context, the readme's own links included.
+- ***Breaking***: `Merge( DocumentA, DocumentB )` now descends into a field only when ***both***
+  documents hold a sub-document there. Every other value in `DocumentB` replaces the value in
+  `DocumentA`. See the [Merge](http://jsongin.liquicode.com/#/guides/jsongin/Merge.md) document.
+  `Merge` dispatched on Javascript's `typeof`, which reports `object` for arrays, dates,
+  regular expressions, and `null` alike, so it walked all of them member-wise. That one mistake
+  produced four separate defects:
+  - An array in `DocumentB` was merged into `DocumentA`'s array ***by index*** rather than
+    replacing it, so a shorter array could not narrow a longer one and an empty array could not
+    clear one at all. `Merge( { tags: [ 'a', 'b', 'c' ] }, { tags: [ 'a' ] } )` returned all
+    three tags. This is the case that matters for a defaults document, where an override has to
+    be able to narrow a list and not only extend it.
+  - A `Date` or `RegExp` in `DocumentB` was ***silently discarded***, leaving `DocumentA`'s
+    value in place, because neither has any enumerable own properties to walk.
+    `Merge( { w: dateA }, { w: dateB } )` returned `dateA`.
+  - A value which changed type either threw or produced nonsense.
+    `Merge( { a: 'c' }, { a: [ 'b' ] } )` threw a `TypeError`, and
+    `Merge( { a: { x: 1 } }, { a: [ 1, 2 ] } )` returned `{ a: { '0': 1, '1': 2, x: 1 } }`.
+  - `Merge` is now idempotent. Applying the same overrides twice gives the same result as
+    applying them once, so settings can be layered without the result depending on how many
+    times a layer was applied.
+  This follows RFC 7386, JSON Merge Patch, with one deliberate difference: `null` is a value
+  and sets the field to `null` rather than removing it. The RFC spends `null` on deletion
+  because a merge patch has no other way to express removal; `jsongin` has `$unset` and
+  `DeleteValue`. This also keeps `Merge` consistent with `ShortType()`, which gives `null` its
+  own type `l`, and with `Diff()`, which reports a change to `null` as `$set`.
+  ***`Merge` adds and overwrites fields, but never removes one.***
+- ***Breaking***: `Merge( DocumentA, DocumentB )` now requires both parameters to be objects.
+  A `null` or missing document is still treated as an empty one, so that
+  `Merge( DEFAULTS, options )` works when no options were supplied, but any other type throws.
+  Merging arrays at the top level is no longer supported.
+  This also removes a falsiness test which treated a legitimate value as an absent one:
+  `Merge( 0, { a: 1 } )` ignored the `0`. The parameters are checked with `ShortType()` now.
+- Fixed `BsonType( Value, ReturnAlias )`, which threw whenever it was called as anything other
+  than a method of the engine. It read the engine through `this` rather than through the
+  instance it was built with, so detaching it or passing it as a callback threw a `TypeError`.
+  e.g. `const BsonType = jsongin.BsonType; BsonType( 42 )` now returns `16`.
+- Fixed `Text.SearchReplace( Text, Search, Replace, CaseSensitive )`, which had the same defect.
+  It called its sibling `Text.SearchReplacements` through `this`, so it threw whenever it was
+  called as anything other than a member of the `Text` object.
+  The `Text` functions are now declared at module scope and call each other directly, so every
+  one of them can be detached or passed as a callback.
+  These two were the only places in `src` which reached for `this`.
 - Added the `Evaluate( Document, Expression )` function, which evaluates a MongoDB aggregation
-  expression against a document. See the [Evaluate](docs/guides/jsongin/Evaluate.md) document.
+  expression against a document. See the [Evaluate](http://jsongin.liquicode.com/#/guides/jsongin/Evaluate.md) document.
 - Added 22 expression operators, available in `jsongin.ExpressionOperators`:
   `$literal`, `$add`, `$subtract`, `$multiply`, `$divide`, `$mod`, `$abs`, `$min`, `$max`,
   `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$cmp`, `$and`, `$or`, `$not`,
@@ -96,7 +175,7 @@ v0.1.0 (???)
 - Added tests for `AsNumber` and `AsDate`.
 - Added the `Aggregate( Documents, Pipeline )` function, which runs an array of documents
   through a MongoDB aggregation pipeline.
-  See the [Aggregate](docs/guides/jsongin/Aggregate.md) document.
+  See the [Aggregate](http://jsongin.liquicode.com/#/guides/jsongin/Aggregate.md) document.
   e.g. `Aggregate( players, [ { $match: { alive: true } }, { $group: { _id: '$team', score: { $sum: '$points' } } } ] )`
 - Added 9 pipeline stages, available in `jsongin.StageOperators`:
   `$match`, `$project`, `$addFields`, `$set`, `$unwind`, `$group`, `$sort`, `$limit`, and
@@ -115,7 +194,7 @@ v0.1.0 (???)
   against a real MongoDB server.
 - Added the `Diff( Before, After )` function, which describes the changes between two documents
   as a `jsongin` update document, so that a change is expressed in the same shape that `Update()`
-  already applies. See the [Diff](docs/guides/jsongin/Diff.md) document.
+  already applies. See the [Diff](http://jsongin.liquicode.com/#/guides/jsongin/Diff.md) document.
   e.g. `Diff( { hp: 10, n: 1 }, { hp: 7 } )` returns `{ $set: { hp: 7 }, $unset: { n: '' } }`
   - Arrays are atomic: a change anywhere inside an array replaces the whole array. Describing
     an array element-wise would need a way to shorten one, which the update operators cannot
@@ -126,7 +205,7 @@ v0.1.0 (???)
   - Values are compared strictly, so a value which changed type is a change. `null` is a value
     rather than an absence, so a field which changed to `null` is `$set` rather than `$unset`.
 - Added the `Invert( Before, Patch )` function, which returns the update document that undoes
-  `Patch`. See the [Invert](docs/guides/jsongin/Invert.md) document.
+  `Patch`. See the [Invert](http://jsongin.liquicode.com/#/guides/jsongin/Invert.md) document.
   It applies the patch and diffs the result back toward the original, so it inverts ***any***
   update document rather than only the `$set` and `$unset` which `Diff` writes. `$inc`, `$push`,
   `$rename`, and the rest all invert.
@@ -149,6 +228,20 @@ v0.1.0 (???)
   which its loop never declared, and now logs the array it was storing.
   This path needs a failed store and a configured `OpLog` at the same time, which is why it went
   unnoticed. All twelve update operators are now tested for it.
+- ***Breaking***: fixed matching a regular expression against an array field, which required
+  ***every*** element to match instead of any one of them. An array field matches when any one
+  of its elements matches, which is what MongoDB does and what every other array comparison in
+  `jsongin` already did. A single element array happened to work, so the defect only showed on
+  arrays of two or more.
+  e.g. `Query( { tags: [ 'staff', 'x' ] }, { tags: /^st/ } )` returned `false` and now returns
+  `true`. Queries which relied on the old all-must-match behavior will match more documents.
+- Fixed `Distinct( Documents, DistinctCriteria )`, which reported its failures to the `OpError`
+  log under the name `Sort`.
+- The `$set` aggregation stage now reports errors under its own name. It shares its
+  implementation with `$addFields`, of which it is an alias, and was reporting
+  `$addFields requires an object.` for a malformed `$set`.
+- Added `npm run coverage`, which reports the parts of `src` that the test suite never executes.
+  It uses Node's own coverage collector, so it adds no dependency.
 - Fixed the `$push` update operator, which returned `true` no matter what happened. It tracked
   its own success in a variable and then ignored it, so pushing onto a field which is not an
   array reported success while doing nothing. It now returns the result, as the other eleven

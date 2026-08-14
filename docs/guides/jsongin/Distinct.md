@@ -36,10 +36,10 @@ let documents = [
 	{ type: 2, category: 'A', title: 'Eighth' },
 ];
 let result = jsongin.Distinct( documents, { type: true, category: true } );
-result === [
-		{ type: 1, category: 'A' },
-		{ type: 1, category: 'B' },
-		{ type: 2, category: 'B' },
-		{ type: 2, category: 'A' },
-	]
+// result is [
+// 	{ type: 1, category: 'A' },
+// 	{ type: 1, category: 'B' },
+// 	{ type: 2, category: 'B' },
+// 	{ type: 2, category: 'A' },
+// ]
 ```

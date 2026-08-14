@@ -32,29 +32,29 @@ If `Path` is not of type `ulsn`, then an error is thrown.
 
 ### It returns an array of path components
 ```js
-jsongin.SplitPath( 'user' ) === [ 'user' ]
-jsongin.SplitPath( 'user.name' ) === [ 'user', 'name' ]
+// jsongin.SplitPath( 'user' ) returns [ 'user' ]
+// jsongin.SplitPath( 'user.name' ) returns [ 'user', 'name' ]
 ```
 
 ### It returns array indexes as numerics in the output array
 ```js
-jsongin.SplitPath( document, '1' ) === [ 1 ]
-jsongin.SplitPath( document, 'users.1' ) === [ 'users', 1 ]
-jsongin.SplitPath( document, 'users.1.name' ) === [ 'users', 1, 'name' ]
+// jsongin.SplitPath( document, '1' ) returns [ 1 ]
+// jsongin.SplitPath( document, 'users.1' ) returns [ 'users', 1 ]
+// jsongin.SplitPath( document, 'users.1.name' ) returns [ 'users', 1, 'name' ]
 ```
 
 ### Array indexes within a path can be positive or negative
 ```js
-jsongin.SplitPath( document, '-1' ) === [ -1 ]
-jsongin.SplitPath( document, 'users.-1' ) === [ 'users', -1 ]
-jsongin.SplitPath( document, 'users.-1.name' ) === [ 'users', -1, 'name' ]
+// jsongin.SplitPath( document, '-1' ) returns [ -1 ]
+// jsongin.SplitPath( document, 'users.-1' ) returns [ 'users', -1 ]
+// jsongin.SplitPath( document, 'users.-1.name' ) returns [ 'users', -1, 'name' ]
 ```
 
 ### If the path is undefined, null, or empty "", then it returns an empty array []
 ```js
-jsongin.SplitPath()  === []
-jsongin.SplitPath( null )  === []
-jsongin.SplitPath( '' )  === []
+// jsongin.SplitPath() returns []
+// jsongin.SplitPath( null ) returns []
+// jsongin.SplitPath( '' ) returns []
 ```
 
 ### It throws an error when an invalid path is given

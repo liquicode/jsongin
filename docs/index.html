@@ -27,6 +27,10 @@
 		window.$docsify = {
 			coverpage: true,
 			loadSidebar: true,
+			// Resolve links relative to the file they appear in, so that the same link
+			// works both on this site and when the file is read on GitHub.
+			// Note: _sidebar.md links must be root-absolute (/guides/...) to survive this.
+			relativePath: true,
 			subMaxLevel: 2,
 			auto2top: true,
 			// themeColor: '#34495E', // grey

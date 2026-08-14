@@ -20,7 +20,7 @@
 
 Consider the following JSON string:
 
-```js
+```
 { name: 'Books', count: 4, } // This is my object.
 ```
 
@@ -50,26 +50,26 @@ The `jsongin.Parse()` function will work equally well with either string and wil
 ```js
 let text = `{"id":1001, "user":{"name":"Alice","location":"East"}, "tags":["Staff", "Dept. A"]}`;
 let result = jsongin.Parse( text );
-result === {
-	id: 1001,
-	user: {
-		name: 'Alice',
-		location: 'East',
-	},
-	tags: [ 'Staff', 'Dept. A' ]
-}
+// result is {
+// 	id: 1001,
+// 	user: {
+// 		name: 'Alice',
+// 		location: 'East',
+// 	},
+// 	tags: [ 'Staff', 'Dept. A' ]
+// }
 ```
 
 ### It reads JSON that uses a Javascript syntax
 ```js
 let text = `{ id: 1001, user: { name : 'Alice', location: 'East' }, tags: [ 'Staff', 'Dept. A' ], }`;
 let result = jsongin.Parse( text );
-result === {
-	id: 1001,
-	user: {
-		name: 'Alice',
-		location: 'East',
-	},
-	tags: [ 'Staff', 'Dept. A' ]
-}
+// result is {
+// 	id: 1001,
+// 	user: {
+// 		name: 'Alice',
+// 		location: 'East',
+// 	},
+// 	tags: [ 'Staff', 'Dept. A' ]
+// }
 ```

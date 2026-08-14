@@ -26,7 +26,7 @@ module.exports = function ( jsongin )
 		}
 		catch ( error )
 		{
-			if ( jsongin.OpError ) { jsongin.OpError( 'Sort: ' + error.message ); }
+			if ( jsongin.OpError ) { jsongin.OpError( 'Distinct: ' + error.message ); }
 			throw error;
 		}
 	};

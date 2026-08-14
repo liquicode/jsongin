@@ -22,11 +22,11 @@ For example, to say that a value must be of type `'bns'` means that it must be o
 
 Rather than using statements like this one:
 ```js
-if( (typeof Value === 'boolean') || (typeof Value === 'number') || (typeof Value === 'string') ) { ... }
+if( (typeof Value === 'boolean') || (typeof Value === 'number') || (typeof Value === 'string') ) { /* ... */ }
 ```
 we can express the same constraint in a more concise way:
 ```js
-if( 'bns'.includes( jsongin.ShortType( Value ) ) ) { ... }
+if( 'bns'.includes( jsongin.ShortType( Value ) ) ) { /* ... */ }
 ```
 
 To get a value's short type, call the `jsongin.ShortType( Value )` function.

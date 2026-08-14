@@ -45,9 +45,9 @@ Because the inverse is computed from the ***observed result*** rather than from 
   [`Diff`](./Diff.md) emits:
 
 ```js
-jsongin.Invert( { n: 5 }, { $inc: { n: 3 } } )            // === { $set: { n: 5 } }
-jsongin.Invert( { t: [ 'a' ] }, { $push: { t: 'b' } } )   // === { $set: { t: [ 'a' ] } }
-jsongin.Invert( { a: 1 }, { $rename: { a: 'b' } } )       // === { $set: { a: 1 }, $unset: { b: '' } }
+jsongin.Invert( { n: 5 }, { $inc: { n: 3 } } )            // returns { $set: { n: 5 } }
+jsongin.Invert( { t: [ 'a' ] }, { $push: { t: 'b' } } )   // returns { $set: { t: [ 'a' ] } }
+jsongin.Invert( { a: 1 }, { $rename: { a: 'b' } } )       // returns { $set: { a: 1 }, $unset: { b: '' } }
 ```
 
 The inverse is always expressed as `$set` and `$unset`, whatever the original patch used, since

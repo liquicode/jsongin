@@ -1038,5 +1038,108 @@ describe( '200) Comparison Operator Tests', () =>
 	} );
 
 
+	//---------------------------------------------------------------------
+	describe( 'ImplicitEq Type Combination Tests', () =>
+	{
+
+		/*
+			$ImplicitEq runs on every { field: value } clause anyone writes, so it is the most
+			travelled code in the library, but several of its type combinations had no test.
+			It dispatches on the pair of short types, and these are the pairings which the rest
+			of the suite never produced.
+		*/
+
+		it( 'should not match a primitive field against an array', () =>
+		{
+			assert.strictEqual( jsongin.Query( { a: 1 }, { a: [ 1, 2 ] } ), false );
+		} );
+
+		it( 'should not match a primitive field against an object', () =>
+		{
+			assert.strictEqual( jsongin.Query( { a: 1 }, { a: { x: 1 } } ), false );
+		} );
+
+		it( 'should find a date within an array holding other types', () =>
+		{
+			// The elements which are not dates are skipped rather than compared by reference.
+			assert.strictEqual( jsongin.Query( { a: [ 'x', 9, new Date( 0 ) ] }, { a: new Date( 0 ) } ), true );
+			assert.strictEqual( jsongin.Query( { a: [ 'x', 9, new Date( 5 ) ] }, { a: new Date( 0 ) } ), false );
+		} );
+
+		it( 'should match a regular expression when any element of an array matches', () =>
+		{
+			// An array field matches when any one element matches, as it does in MongoDB.
+			// This once required every element to match, so an array of more than one value
+			// almost never matched a regular expression.
+			assert.strictEqual( jsongin.Query( { a: [ 'abc' ] }, { a: /b/ } ), true );
+			assert.strictEqual( jsongin.Query( { a: [ 'abc', 'def' ] }, { a: /b/ } ), true );
+			assert.strictEqual( jsongin.Query( { a: [ 'zzz', 'abc' ] }, { a: /b/ } ), true );
+			assert.strictEqual( jsongin.Query( { a: [ 'abc', 'def' ] }, { a: /e/ } ), true );
+		} );
+
+		it( 'should not match a regular expression when no element of an array matches', () =>
+		{
+			assert.strictEqual( jsongin.Query( { a: [ 'abc', 'def' ] }, { a: /z/ } ), false );
+			assert.strictEqual( jsongin.Query( { a: [] }, { a: /b/ } ), false );
+		} );
+
+		it( 'should filter documents by a regular expression on an array field', () =>
+		{
+			let documents = [ { t: [ 'staff', 'x' ] }, { t: [ 'y' ] }, { t: [ 'z', 'stone' ] } ];
+			let filtered = jsongin.Filter( documents, { t: /^st/ } );
+			assert.strictEqual( filtered.length, 2 );
+		} );
+
+		it( 'should match an object field against an object', () =>
+		{
+			assert.strictEqual( jsongin.Query( { a: { x: 1 } }, { a: { x: 1 } } ), true );
+			assert.strictEqual( jsongin.Query( { a: { x: 1 } }, { a: { x: 2 } } ), false );
+		} );
+
+		it( 'should return false for a type pairing it cannot compare', () =>
+		{
+			assert.strictEqual( jsongin.Query( { a: { x: 1 } }, { a: /z/ } ), false );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'eqx Type Combination Tests', () =>
+	{
+
+		it( 'should not equate a date to a non-date', () =>
+		{
+			assert.strictEqual( jsongin.LooseEquals( new Date( 0 ), 'x' ), false );
+			assert.strictEqual( jsongin.LooseEquals( new Date( 0 ), 0 ), false );
+		} );
+
+		it( 'should not equate a primitive to a non-primitive', () =>
+		{
+			assert.strictEqual( jsongin.LooseEquals( 1, { a: 1 } ), false );
+			assert.strictEqual( jsongin.LooseEquals( { a: 1 }, [ 1 ] ), false );
+		} );
+
+		it( 'should not equate arrays of different lengths', () =>
+		{
+			assert.strictEqual( jsongin.LooseEquals( [ 1, 2 ], [ 1 ] ), false );
+			assert.strictEqual( jsongin.LooseEquals( [ 1 ], [ 1, 2 ] ), false );
+		} );
+
+		it( 'should equate arrays holding the same values in a different order', () =>
+		{
+			// This is what makes it the loose comparison. StrictEquals does not do this.
+			assert.strictEqual( jsongin.LooseEquals( [ 1, 2 ], [ 2, 1 ] ), true );
+			assert.strictEqual( jsongin.StrictEquals( [ 1, 2 ], [ 2, 1 ] ), false );
+		} );
+
+		it( 'should not equate arrays of the same length holding different values', () =>
+		{
+			assert.strictEqual( jsongin.LooseEquals( [ 1, 2 ], [ 1, 3 ] ), false );
+		} );
+
+	} );
+
+
 } );
 

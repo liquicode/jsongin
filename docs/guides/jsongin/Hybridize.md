@@ -45,11 +45,11 @@ let document = {
 };
 
 let hybrid = jsongin.Hybridize( document );
-hybrid === {
-	id: 1001,
-	user: '{"type":"o","value":{"name":"Alice","location":"East"}}',
-	tags: '{"type":"a","value":["Staff","Dept. A"]}',
-};
+// hybrid is {
+// 	id: 1001,
+// 	user: '{"type":"o","value":{"name":"Alice","location":"East"}}',
+// 	tags: '{"type":"a","value":["Staff","Dept. A"]}',
+// };
 ```
 
 ### Use Unhybridize() to turn a hybrid document back into a hierarchical document
@@ -66,7 +66,7 @@ let document = {
 
 let hybrid = jsongin.Hybridize( document );
 let unhybrid = jsongin.Unhybridize( hybrid );
-unhybrid === document
+// unhybrid matches document
 ```
 
 ### It preserves dates across the round trip

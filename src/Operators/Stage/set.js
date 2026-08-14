@@ -28,8 +28,13 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		// An alias. The implementation is shared with $addFields rather than duplicated.
-		Stage: add_fields.Stage,
+		// An alias. The implementation is shared with $addFields rather than duplicated, but
+		// this stage reports under its own name so that an error names the operator which was
+		// actually written.
+		Stage: function ( Documents, Args )
+		{
+			return add_fields.ApplyFields( Documents, Args, '$set' );
+		},
 
 	};
 

@@ -51,7 +51,7 @@ Paths are in dot notation, so a change is described at the deepest path which ac
 ```js
 jsongin.Diff( { user: { name: 'Alice', role: 'admin' } },
               { user: { name: 'Alice', role: 'user' } } )
-// === { $set: { 'user.role': 'user' } }
+// returns { $set: { 'user.role': 'user' } }
 ```
 
 Values are compared with [`StrictEquals`](../Library-Guide.md), so a value which changed type is
@@ -69,7 +69,7 @@ A field which is present but holds `undefined` counts as missing, on either side
 
 ```js
 jsongin.Diff( { tags: [ 'a', 'b', 'c' ] }, { tags: [ 'a', 'z' ] } )
-// === { $set: { tags: [ 'a', 'z' ] } }
+// returns { $set: { tags: [ 'a', 'z' ] } }
 ```
 
 `Diff` does not descend into arrays, and element order is part of an array's value, so
@@ -90,9 +90,9 @@ Removal is per key, so an object which was ***emptied*** keeps its place, while 
   was ***removed*** does not:
 
 ```js
-jsongin.Diff( { a: { x: 1 } }, { a: {} } )   // === { $unset: { 'a.x': '' } }
-jsongin.Diff( { a: { x: 1 } }, {} )          // === { $unset: { a: '' } }
-jsongin.Diff( {}, { a: {} } )                // === { $set: { a: {} } }
+jsongin.Diff( { a: { x: 1 } }, { a: {} } )   // returns { $unset: { 'a.x': '' } }
+jsongin.Diff( { a: { x: 1 } }, {} )          // returns { $unset: { a: '' } }
+jsongin.Diff( {}, { a: {} } )                // returns { $set: { a: {} } }
 ```
 
 Note that this is why `Diff` does not build on [`Flatten()`](./Flatten.md), which would
@@ -103,8 +103,8 @@ Only the both-are-objects case descends, so a value whose ***type*** changed is 
   in either direction:
 
 ```js
-jsongin.Diff( { a: { x: 1 } }, { a: 5 } )        // === { $set: { a: 5 } }
-jsongin.Diff( { a: 5 }, { a: { x: 1 } } )        // === { $set: { a: { x: 1 } } }
+jsongin.Diff( { a: { x: 1 } }, { a: 5 } )        // returns { $set: { a: 5 } }
+jsongin.Diff( { a: 5 }, { a: { x: 1 } } )        // returns { $set: { a: { x: 1 } } }
 ```
 
 
@@ -114,7 +114,7 @@ jsongin.Diff( { a: 5 }, { a: { x: 1 } } )        // === { $set: { a: { x: 1 } } 
   document, and produce an empty patch:
 
 ```js
-jsongin.Diff( { a: 1, b: 2 }, { b: 2, a: 1 } )   // === {}
+jsongin.Diff( { a: 1, b: 2 }, { b: 2, a: 1 } )   // returns {}
 ```
 
 The consequence is worth knowing when asserting on a round trip: applying a patch restores
@@ -155,7 +155,7 @@ let before = { hp: 10, tags: [ 'x' ], nest: { k: 1, keep: 2 } };
 let after  = { hp: 7, tags: [ 'x', 'y' ], nest: { keep: 2 }, other: 2 };
 
 jsongin.Diff( before, after );
-// === {
+// returns {
 //       $set: { hp: 7, tags: [ 'x', 'y' ], other: 2 },
 //       $unset: { 'nest.k': '' },
 //     }
@@ -170,7 +170,7 @@ jsongin.StrictEquals( jsongin.Diff( result, after ), {} ) === true
 
 ### It reports nothing when nothing changed
 ```js
-jsongin.Diff( { a: 1 }, { a: 1 } )   // === {}
+jsongin.Diff( { a: 1 }, { a: 1 } )   // returns {}
 ```
 
 ### It can be used as a strict, order-insensitive comparison

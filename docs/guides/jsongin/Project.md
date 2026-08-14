@@ -49,15 +49,15 @@ let document = { _id: 1, name: 'Alice', dmg: 8, armor: 5 };
 
 // Compute a new field from an expression.
 jsongin.Project( document, { name: 1, net: { $subtract: [ '$dmg', '$armor' ] } } )
-// === { _id: 1, name: 'Alice', net: 3 }
+// returns { _id: 1, name: 'Alice', net: 3 }
 
 // Rename a field with a field reference.
 jsongin.Project( document, { alias: '$name' } )
-// === { _id: 1, alias: 'Alice' }
+// returns { _id: 1, alias: 'Alice' }
 
 // Build a nested output field.
 jsongin.Project( document, { 'stats.net': { $subtract: [ '$dmg', '$armor' ] } } )
-// === { _id: 1, stats: { net: 3 } }
+// returns { _id: 1, stats: { net: 3 } }
 ```
 
 An expression which evaluates to `null` sets the field to `null`.
@@ -66,10 +66,10 @@ These are different outcomes, and the distinction is the same one `Evaluate()` m
 
 ```js
 jsongin.Project( document, { net: { $subtract: [ '$dmg', '$missing' ] } } )
-// === { _id: 1, net: null }        the arithmetic yielded null
+// returns { _id: 1, net: null }        the arithmetic yielded null
 
 jsongin.Project( document, { alias: '$nothere' } )
-// === { _id: 1 }                   the field reference was missing
+// returns { _id: 1 }                   the field reference was missing
 ```
 
 Note that an invalid expression throws, rather than returning `null`.
@@ -113,21 +113,21 @@ let document = {
 
 // Include certain fields. _id is included by default.
 jsongin.Project( document, { name: 1 } )
-// === { _id: 1, name: 'Alice' }
+// returns { _id: 1, name: 'Alice' }
 
 // Include a nested field.
 jsongin.Project( document, { 'user.name': 1 } )
-// === { _id: 1, user: { name: 'alice' } }
+// returns { _id: 1, user: { name: 'alice' } }
 
 // Exclude certain fields.
 jsongin.Project( document, { dmg: 0, armor: 0 } )
-// === { _id: 1, name: 'Alice', user: { name: 'alice', role: 'admin' } }
+// returns { _id: 1, name: 'Alice', user: { name: 'alice', role: 'admin' } }
 
 // Suppress the _id field.
 jsongin.Project( document, { name: 1, _id: 0 } )
-// === { name: 'Alice' }
+// returns { name: 'Alice' }
 
 // Inclusion and exclusion cannot be combined.
 jsongin.Project( document, { name: 1, dmg: 0 } )
-// === null
+// returns null
 ```

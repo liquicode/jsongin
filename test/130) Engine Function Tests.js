@@ -290,6 +290,23 @@ describe( '130) Engine Function Tests', () =>
 			assert.strictEqual( jsongin.BsonType( new Date() ), 9 );
 		} );
 
+		it( 'should work when detached from the engine', () =>
+		{
+			// BsonType read the engine through `this`, so it threw whenever it was called
+			// as anything other than a method of the engine.
+			let bson_type = jsongin.BsonType;
+			assert.strictEqual( bson_type( 42 ), 16 );
+			assert.strictEqual( bson_type( 42, true ), 'int' );
+			assert.strictEqual( bson_type( new Date() ), 9 );
+		} );
+
+		it( 'should work when passed as a callback', () =>
+		{
+			let values = [ true, 'abc', null ];
+			let types = values.map( function ( Value ) { return jsongin.BsonType( Value ); } );
+			assert.deepStrictEqual( types, [ 8, 2, 10 ] );
+		} );
+
 	} );
 
 
@@ -341,6 +358,168 @@ describe( '130) Engine Function Tests', () =>
 			let document = { id: 1, user: { name: 'Alice', tags: [ 'x', 'y' ] } };
 			let round_tripped = jsongin.Expand( jsongin.Flatten( document ) );
 			assert.ok( jsongin.StrictEquals( round_tripped, document ) );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'DeleteValue Tests', () =>
+	{
+
+		/*
+			DeleteValue is reachable through $unset, Project, and the $unwind stage, but its
+			own contracts were never asserted directly.
+		*/
+
+		it( 'should remove a field', () =>
+		{
+			let document = { a: 1, b: 2 };
+			assert.strictEqual( jsongin.DeleteValue( document, 'a' ), true );
+			assert.deepStrictEqual( Object.keys( document ), [ 'b' ] );
+		} );
+
+		it( 'should remove the key rather than setting it to undefined', () =>
+		{
+			// This is the whole point of the function. Object.keys() and the document's
+			// contents have to agree with each other.
+			let document = { a: 1 };
+			jsongin.DeleteValue( document, 'a' );
+			assert.strictEqual( 'a' in document, false );
+			assert.strictEqual( Object.keys( document ).length, 0 );
+		} );
+
+		it( 'should remove a nested field, leaving its parent', () =>
+		{
+			let document = { n: { x: 1, y: 2 } };
+			assert.strictEqual( jsongin.DeleteValue( document, 'n.x' ), true );
+			assert.deepStrictEqual( document, { n: { y: 2 } } );
+		} );
+
+		it( 'should remove a field from an array document', () =>
+		{
+			let document = [ { x: 1, y: 2 } ];
+			assert.strictEqual( jsongin.DeleteValue( document, '0.x' ), true );
+			assert.deepStrictEqual( document, [ { y: 2 } ] );
+		} );
+
+		it( 'should leave a hole rather than shortening an array', () =>
+		{
+			// Documented behavior, matching the Javascript delete operator. Diff never emits
+			// a path into an array, so nothing in the library depends on this.
+			let document = { t: [ 1, 2, 3 ] };
+			assert.strictEqual( jsongin.DeleteValue( document, 't.1' ), true );
+			assert.strictEqual( document.t.length, 3 );
+			assert.strictEqual( document.t[ 1 ], undefined );
+		} );
+
+		it( 'should return true for a field which was not there', () =>
+		{
+			// The parent resolved, so the field is gone either way.
+			assert.strictEqual( jsongin.DeleteValue( { a: 1 }, 'nope' ), true );
+		} );
+
+		it( 'should accept a numeric path', () =>
+		{
+			let document = [ 'a', 'b' ];
+			assert.strictEqual( jsongin.DeleteValue( document, 1 ), true );
+			assert.strictEqual( document[ 1 ], undefined );
+		} );
+
+		it( 'should return false for an empty path', () =>
+		{
+			assert.strictEqual( jsongin.DeleteValue( { a: 1 }, '' ), false );
+		} );
+
+		it( 'should return false when the parent path does not resolve', () =>
+		{
+			assert.strictEqual( jsongin.DeleteValue( { a: 1 }, 'q.r' ), false );
+			assert.strictEqual( jsongin.DeleteValue( { a: 1 }, 'a.b.c' ), false );
+		} );
+
+		it( 'should throw when the document is not an object or array', () =>
+		{
+			assert.throws( function () { jsongin.DeleteValue( 'abc', 'a' ); }, /must be an object or array/ );
+			assert.throws( function () { jsongin.DeleteValue( 42, 'a' ); }, /must be an object or array/ );
+		} );
+
+		it( 'should throw when the path is not a string or a number', () =>
+		{
+			assert.throws( function () { jsongin.DeleteValue( { a: 1 }, {} ); }, /Path is invalid/ );
+			assert.throws( function () { jsongin.DeleteValue( { a: 1 }, null ); }, /Path is invalid/ );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'CompareValues Ordering Tests', () =>
+	{
+
+		/*
+			Sort(), the $min and $max operators, and Diff() all rest on CompareValues, and its
+			array and object ordering rules had no direct assertions. The empty-array sort rule
+			was found to be wrong once already, during the aggregation work, which is the
+			argument for pinning the rest of them.
+		*/
+
+		it( 'should order values of different types by the BSON type order', () =>
+		{
+			// null < numbers < strings < objects < arrays < booleans < dates < regexes
+			let ordered = [ null, 5, 'abc', { a: 1 }, [ 1 ], true, new Date( 0 ), /x/ ];
+			for ( let index = 1; index < ordered.length; index++ )
+			{
+				assert.strictEqual( jsongin.CompareValues( ordered[ index - 1 ], ordered[ index ] ), -1,
+					`[${index - 1}] should sort below [${index}].` );
+				assert.strictEqual( jsongin.CompareValues( ordered[ index ], ordered[ index - 1 ] ), 1 );
+			}
+		} );
+
+		it( 'should compare arrays element-wise', () =>
+		{
+			assert.strictEqual( jsongin.CompareValues( [ 1, 2 ], [ 1, 2 ] ), 0 );
+			assert.strictEqual( jsongin.CompareValues( [ 1, 2 ], [ 1, 3 ] ), -1 );
+			assert.strictEqual( jsongin.CompareValues( [ 2 ], [ 1, 9 ] ), 1 );
+		} );
+
+		it( 'should break an array tie on length', () =>
+		{
+			assert.strictEqual( jsongin.CompareValues( [ 1 ], [ 1, 2 ] ), -1 );
+			assert.strictEqual( jsongin.CompareValues( [ 1, 2 ], [ 1 ] ), 1 );
+			assert.strictEqual( jsongin.CompareValues( [], [] ), 0 );
+			assert.strictEqual( jsongin.CompareValues( [], [ 1 ] ), -1 );
+		} );
+
+		it( 'should compare objects by their key names', () =>
+		{
+			assert.strictEqual( jsongin.CompareValues( { a: 1 }, { b: 1 } ), -1 );
+			assert.strictEqual( jsongin.CompareValues( { b: 1 }, { a: 1 } ), 1 );
+		} );
+
+		it( 'should compare objects by their values when the keys match', () =>
+		{
+			assert.strictEqual( jsongin.CompareValues( { a: 1 }, { a: 1 } ), 0 );
+			assert.strictEqual( jsongin.CompareValues( { a: 1 }, { a: 2 } ), -1 );
+			assert.strictEqual( jsongin.CompareValues( { a: 2 }, { a: 1 } ), 1 );
+		} );
+
+		it( 'should break an object tie on key count', () =>
+		{
+			assert.strictEqual( jsongin.CompareValues( { a: 1 }, { a: 1, b: 2 } ), -1 );
+			assert.strictEqual( jsongin.CompareValues( { a: 1, b: 2 }, { a: 1 } ), 1 );
+			assert.strictEqual( jsongin.CompareValues( {}, {} ), 0 );
+		} );
+
+		it( 'should treat null and missing values as equivalent', () =>
+		{
+			assert.strictEqual( jsongin.CompareValues( null, undefined ), 0 );
+			assert.strictEqual( jsongin.CompareValues( undefined, null ), 0 );
+		} );
+
+		it( 'should compare dates by their time value', () =>
+		{
+			assert.strictEqual( jsongin.CompareValues( new Date( 0 ), new Date( 0 ) ), 0 );
+			assert.strictEqual( jsongin.CompareValues( new Date( 0 ), new Date( 1 ) ), -1 );
 		} );
 
 	} );

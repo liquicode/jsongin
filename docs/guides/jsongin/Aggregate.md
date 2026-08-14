@@ -110,7 +110,7 @@ Each expression is evaluated against the ***original*** document, so a field add
 
 ```js
 jsongin.Aggregate( [ { a: 1 } ], [ { $addFields: { b: '$a', c: '$b' } } ] );
-// === [ { a: 1, b: 1 } ]     the new b is not visible to c
+// returns [ { a: 1, b: 1 } ]     the new b is not visible to c
 ```
 
 
@@ -119,7 +119,7 @@ jsongin.Aggregate( [ { a: 1 } ], [ { $addFields: { b: '$a', c: '$b' } } ] );
 Deconstructs an array field, emitting one document per element of the array.
 The path must begin with a `$`.
 
-```js
+```
 { $unwind: '$tags' }
 { $unwind: { path: '$tags', includeArrayIndex: 'position', preserveNullAndEmptyArrays: true } }
 ```
@@ -274,7 +274,7 @@ jsongin.Aggregate( players, [
 	{ $group: { _id: '$team', score: { $sum: '$points' }, top: { $max: '$points' } } },
 	{ $sort: { score: -1 } },
 ] );
-// === [ { _id: 'red', score: 8, top: 5 }, { _id: 'blue', score: 1, top: 1 } ]
+// returns [ { _id: 'red', score: 8, top: 5 }, { _id: 'blue', score: 1, top: 1 } ]
 ```
 
 ### It builds a leaderboard
@@ -285,7 +285,7 @@ jsongin.Aggregate( players, [
 	{ $limit: 2 },
 	{ $project: { _id: 0, name: 1, bonus: 1 } },
 ] );
-// === [ { name: 'Eve', bonus: 18 }, { name: 'Bob', bonus: 10 } ]
+// returns [ { name: 'Eve', bonus: 18 }, { name: 'Bob', bonus: 10 } ]
 ```
 
 ### It tallies the tags
@@ -295,7 +295,7 @@ jsongin.Aggregate( players, [
 	{ $group: { _id: '$tags', count: { $sum: 1 } } },
 	{ $sort: { count: -1, _id: 1 } },
 ] );
-// === [ { _id: 'ranged', count: 2 }, { _id: 'tank', count: 2 }, { _id: 'melee', count: 1 } ]
+// returns [ { _id: 'ranged', count: 2 }, { _id: 'tank', count: 2 }, { _id: 'melee', count: 1 } ]
 ```
 
 ### It summarizes everything in a single group
@@ -310,7 +310,7 @@ jsongin.Aggregate( players, [
 		}
 	},
 ] );
-// === [ { _id: null, count: 4, total: 18, average: 4.5 } ]
+// returns [ { _id: null, count: 4, total: 18, average: 4.5 } ]
 ```
 
 ### It lists the members of each team
@@ -320,7 +320,7 @@ jsongin.Aggregate( players, [
 	{ $group: { _id: '$team', members: { $push: '$name' } } },
 	{ $sort: { _id: 1 } },
 ] );
-// === [ { _id: 'blue', members: [ 'Eve', 'Mallory' ] }, { _id: 'red', members: [ 'Alice', 'Bob' ] } ]
+// returns [ { _id: 'blue', members: [ 'Eve', 'Mallory' ] }, { _id: 'red', members: [ 'Alice', 'Bob' ] } ]
 ```
 
 ### It pages through the documents
@@ -330,5 +330,5 @@ jsongin.Aggregate( players, [
 	{ $skip: 1 },
 	{ $limit: 2 },
 ] );
-// === the documents for Bob and Eve
+// returns the documents for Bob and Eve
 ```

@@ -7,31 +7,34 @@
 ### A JSON Engine for MongoDB-Style Queries and Data Structure Manipulation
 
 
-<!-- 
+<!-- Note: the links below are absolute on purpose.
+     This file is published to three places which resolve relative links
+     differently: the repository root, the documentation site, and npmjs.com. -->
+
 
 Quick Reference
 ---------------------------------------------------------------------
 
-- [Library Guide](docs/guides/Library-Guide.md)
-
-***MongoDB Mechanics***
-- [Query Reference](docs/guides/Query-Reference.md)
-- [Projection Reference](docs/guides/Projection-Reference.md)
-- [Update Reference](docs/guides/Update-Reference.md)
-- [Operator Reference](docs/guides/Operator-Reference.md)
-
-***Document Inspection and Manipulation***
-- [Short Types](docs/guides/Short-Types.md)
-- [Document Manipulation](docs/guides/Document-Manipulation.md)
-
--->
+- [Library Guide](<%- Context.Package.homepage %>/#/guides/Library-Guide.md)
+- [Operator Reference](<%- Context.Package.homepage %>/#/guides/Operator-Reference.md)
+- [Operator Authoring](<%- Context.Package.homepage %>/#/guides/Operator-Authoring.md)
+- [Document Manipulation](<%- Context.Package.homepage %>/#/guides/Document-Manipulation.md)
+- [Project History](<%- Context.Package.homepage %>/#/external/history.md)
 
 
 Installation Guides
 ---------------------------------------------------------------------
 
-- [NodeJS Usage](docs/guides/Usage-NodeJS.md)
-- [Browser Usage](docs/guides/Usage-Browser.md)
+- [NodeJS Usage](<%- Context.Package.homepage %>/#/guides/Usage-NodeJS.md)
+- [Browser Usage](<%- Context.Package.homepage %>/#/guides/Usage-Browser.md)
+
+```bash
+npm install --save @liquicode/jsongin
+```
+
+```js
+const jsongin = require( '@liquicode/jsongin' );
+```
 
 
 Overview
@@ -76,6 +79,9 @@ There are a number of other functions implemented here which serve to not only s
 - `Expand( Document )`
 - `Hybridize( Document )`
 - `Unhybridize( Document )`
+- `Merge( DocumentA, DocumentB )`
+- `Parse( JsonString )`
+- `Format( Document, WithWhitespace, LikeJavascript )`
 
 **Object Matching and Cloning**
 
@@ -91,11 +97,17 @@ There are a number of other functions implemented here which serve to not only s
 - `BsonType( Value, ReturnAlias )`
 - `AsNumber( Value )`
 - `AsDate( Value )`
+- `AsBoolean( Value )`
 
-See the [Library Guide](docs/guides/Library-Guide.md) for more information.
+**Text Functions**
 
-See the [Operator Reference](docs/guides/Operator-Reference.md) for list of all
-  supported MongoDB query and update operators.
+A small set of string helpers is available at `jsongin.Text`:
+`Compare`, `FindBetween`, `Matches`, `SearchReplace`, and `SearchReplacements`.
+
+See the [Library Guide](<%- Context.Package.homepage %>/#/guides/Library-Guide.md) for more information.
+
+See the [Operator Reference](<%- Context.Package.homepage %>/#/guides/Operator-Reference.md) for list of all
+  supported MongoDB query, expression, update, stage, and accumulator operators.
 
 
 ### Examples
@@ -133,18 +145,48 @@ jsongin.Query( document, { tags: 'Hourly' } ) === false
 jsongin.Query( document, { 'user.name': 'alice' } ) === false
 
 // Use query operators to perform more complex matches.
-jsongin.Query( document, { 'user.name': { $ne: 'Joe' } ) === true
-jsongin.Query( document, { 'profile.role': { $in: ['admin', 'super'] } ) === true
+jsongin.Query( document, { 'user.name': { $ne: 'Joe' } } ) === true
+jsongin.Query( document, { 'profile.role': { $in: [ 'admin', 'super' ] } } ) === true
 jsongin.Query( document, { $or:
 	[
-		{'user.location': 'East'},
-		{'user.location': 'West'}
+		{ 'user.location': 'East' },
+		{ 'user.location': 'West' }
 	] } ) === true
 jsongin.Query( document, { $and:
 	[
-		{'user.location': 'East'},
-		{'user.role': {$ne: 'user'}}
+		{ 'user.location': 'East' },
+		{ 'profile.role': { $ne: 'user' } }
 	] } ) === true
+```
+
+
+#### Evaluate Expressions Against a Document
+
+```js
+// Use Evaluate to compute a value from a document.
+jsongin.Evaluate( { dmg: 12, armor: 5 }, { $subtract: [ '$dmg', '$armor' ] } ) === 7
+
+// Use the $expr query operator to compare one field to another.
+jsongin.Query( { dmg: 12, armor: 5 }, { $expr: { $gt: [ '$dmg', '$armor' ] } } ) === true
+```
+
+
+#### Run Documents Through an Aggregation Pipeline
+
+```js
+let players = [
+	{ team: 'red', name: 'Alice', points: 7, alive: true },
+	{ team: 'red', name: 'Bob', points: 3, alive: true },
+	{ team: 'blue', name: 'Carol', points: 9, alive: false },
+];
+
+let result = jsongin.Aggregate( players,
+	[
+		{ $match: { alive: true } },
+		{ $group: { _id: '$team', score: { $sum: '$points' } } },
+	] );
+
+// result is [ { _id: 'red', score: 10 } ]
 ```
 
 
@@ -153,28 +195,43 @@ jsongin.Query( document, { $and:
 ```js
 // Use Project to supress some fields from the output.
 let p = jsongin.Project( document, { id: 0, user: 0 } );
-p === {
-	profile:
-	{
-		login: 'alice',
-		role: 'admin',
-	},
-	tags: [ 'Staff', 'Dept. A' ],
-}
+// p is {
+// 	profile:
+// 	{
+// 		login: 'alice',
+// 		role: 'admin',
+// 	},
+// 	tags: [ 'Staff', 'Dept. A' ],
+// }
 
 // Use Project to include certain fields and supress the rest.
-let p = jsongin.Project( document, { id: 1, tags: 1 } );
-p === {
-	id: 1001,
-	tags: [ 'Staff', 'Dept. A' ],
-}
+p = jsongin.Project( document, { id: 1, tags: 1 } );
+// p is {
+// 	id: 1001,
+// 	tags: [ 'Staff', 'Dept. A' ],
+// }
 
 // Use Project to select nested fields.
-let p = jsongin.Project( document, { id: 1, "user.name": 1 } );
-p === {
-	id: 1001,
-	user: { name: 'Alice' },
-}
+p = jsongin.Project( document, { id: 1, "user.name": 1 } );
+// p is {
+// 	id: 1001,
+// 	user: { name: 'Alice' },
+// }
+
+// Use Project to compute a new field with an expression.
+// A computed field makes this an inclusion projection, so only the
+// named fields appear in the output.
+p = jsongin.Project( { dmg: 12, armor: 5 }, { net: { $subtract: [ '$dmg', '$armor' ] } } );
+// p is {
+// 	net: 7,
+// }
+
+// Name the other fields to keep them.
+p = jsongin.Project( { dmg: 12, armor: 5 }, { dmg: 1, net: { $subtract: [ '$dmg', '$armor' ] } } );
+// p is {
+// 	dmg: 12,
+// 	net: 7,
+// }
 ```
 
 
@@ -183,51 +240,62 @@ p === {
 ```js
 // Use Update to modify values in a document.
 let p = jsongin.Update( document, { $set: { "user.location": 'West' } } );
-p === {
-	id: 1001,
-	user:
-	{
-		name: 'Alice',
-		location: 'West',
-	},
-	profile:
-	{
-		login: 'alice',
-		role: 'admin',
-	},
-	tags: [ 'Staff', 'Dept. A' ],
-}
+// p is {
+// 	id: 1001,
+// 	user:
+// 	{
+// 		name: 'Alice',
+// 		location: 'West',
+// 	},
+// 	profile:
+// 	{
+// 		login: 'alice',
+// 		role: 'admin',
+// 	},
+// 	tags: [ 'Staff', 'Dept. A' ],
+// }
 
 // Use Update to add fields to a document.
-let p = jsongin.Update( document, { $set: { is_logged_in: true } } );
-p === {
-	id: 1001,
-	user:
-	{
-		name: 'Alice',
-		location: 'West',
-	},
-	profile:
-	{
-		login: 'alice',
-		role: 'admin',
-	},
-	tags: [ 'Staff', 'Dept. A' ],
-	is_logged_in: true,
-}
+p = jsongin.Update( document, { $set: { is_logged_in: true } } );
+// p is {
+// 	id: 1001,
+// 	user:
+// 	{
+// 		name: 'Alice',
+// 		location: 'East',
+// 	},
+// 	profile:
+// 	{
+// 		login: 'alice',
+// 		role: 'admin',
+// 	},
+// 	tags: [ 'Staff', 'Dept. A' ],
+// 	is_logged_in: true,
+// }
 
 // Use Update to remove fields in a document.
-let p = jsongin.Update( document, { $unset: { user: 0 } } );
-p === {
-	id: 1001,
-	profile:
-	{
-		login: 'alice',
-		role: 'admin',
-	},
-	tags: [ 'Staff', 'Dept. A' ],
-}
+p = jsongin.Update( document, { $unset: { user: 0 } } );
+// p is {
+// 	id: 1001,
+// 	profile:
+// 	{
+// 		login: 'alice',
+// 		role: 'admin',
+// 	},
+// 	tags: [ 'Staff', 'Dept. A' ],
+// }
 
+```
+
+
+#### Describe and Undo a Change
+
+```js
+// Use Diff to describe a change as an update document.
+// jsongin.Diff( { hp: 10, n: 1 }, { hp: 7 } ) returns { $set: { hp: 7 }, $unset: { n: '' } }
+
+// Use Invert to build the update document which undoes a patch.
+// jsongin.Invert( { hp: 10 }, { $inc: { hp: -3 } } ) returns { $set: { hp: 10 } }
 ```
 
 
@@ -240,11 +308,11 @@ Features
 	- Single minified file (~35k) for web deployment.
 	- Use the `OpLog` feature to help understand and debug queries.
 	- Extend `jsongin` by developing your own query, projection, and update operators.
+	  See [Operator Authoring](<%- Context.Package.homepage %>/#/guides/Operator-Authoring.md).
 
 - Object Based Queries:
 	- Compose queries in a structured and logical manner.
 	- Easier to read, understand, and debug.
 	- Maintain comments and documentation in your query source.
 	- Programatically create and structure data queries.
-
 
