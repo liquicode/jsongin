@@ -136,10 +136,40 @@ describe( '200) Comparison Operator Tests', () =>
 			assert.ok( jsongin.QueryOperators.$eq.Query( undefined, undefined ) === true );
 		} );
 
-		it( 'should equate null and undefined values', () => 
+		it( 'should equate null and undefined values', () =>
 		{
 			assert.ok( jsongin.QueryOperators.$eq.Query( null, undefined ) === true );
 			assert.ok( jsongin.QueryOperators.$eq.Query( undefined, null ) === true );
+		} );
+
+		// Regexp handling here follows MongoDB, verified against MongoDB 6.0.1:
+		// { field: { $eq: /re/ } } is an equality test against a regexp valued field,
+		// not a pattern match. The implicit form { field: /re/ } is the one which
+		// pattern matches. See ImplicitEq and the $regex operator.
+
+		it( 'should equate two regexp values with the same source and flags', () =>
+		{
+			assert.ok( jsongin.QueryOperators.$eq.Query( /hello/, /hello/ ) === true );
+			assert.ok( jsongin.QueryOperators.$eq.Query( /hello/gi, /hello/gi ) === true );
+		} );
+
+		it( 'should not equate regexp values which differ in source or flags', () =>
+		{
+			assert.ok( jsongin.QueryOperators.$eq.Query( /hello/, /world/ ) === false );
+			assert.ok( jsongin.QueryOperators.$eq.Query( /hello/, /hello/i ) === false );
+		} );
+
+		it( 'should not pattern match a string with a regexp match value', () =>
+		{
+			assert.ok( jsongin.QueryOperators.$eq.Query( 'hello', /ell/ ) === false );
+			assert.ok( jsongin.QueryOperators.$eq.Query( 'hello', /hello/ ) === false );
+		} );
+
+		it( 'should not equate a regexp with a non-regexp value', () =>
+		{
+			assert.ok( jsongin.QueryOperators.$eq.Query( 42, /42/ ) === false );
+			assert.ok( jsongin.QueryOperators.$eq.Query( [ 'hi', 'hello' ], /ell/ ) === false );
+			assert.ok( jsongin.QueryOperators.$eq.Query( undefined, /ell/ ) === false );
 		} );
 
 	} );

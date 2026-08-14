@@ -10,8 +10,8 @@ module.exports = module.exports = function ( jsongin )
 		Engine: jsongin,
 		OperatorType: 'Comparison',
 		TopLevel: false,
-		// No regex branch below, unlike $eq. The same set as $nex, which negates this.
-		ValueTypes: 'bnsdloau',
+		// The same set as $nex, which negates this.
+		ValueTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
 		Query: function ( Document, MatchValue, Path = '' )
@@ -26,7 +26,16 @@ module.exports = module.exports = function ( jsongin )
 				let match_value = MatchValue;
 				let match_type = jsongin.ShortType( match_value );
 
-				if ( 'bns'.includes( match_type ) && 'bns'.includes( actual_type ) ) 
+				if ( match_type === 'r' )
+				{
+					// Two Regexp objects are never == to each other, the same trap dates have
+					// below, so defer to $eq which compares their source and flags.
+					// This must be tested before the primitive branches below, which would
+					// otherwise reject a regexp against a string field as a primitive compared
+					// to a non-primitive.
+					return jsongin.QueryOperators.$eq.Query( Document, match_value, Path );
+				}
+				else if ( 'bns'.includes( match_type ) && 'bns'.includes( actual_type ) )
 				{
 					return ( actual_value == match_value ); // Equivalence of primitive types.
 				}
@@ -85,7 +94,7 @@ module.exports = module.exports = function ( jsongin )
 					return true;
 				}
 				// Unsupported type or equivalence.
-				if ( jsongin.OpLog ) { jsongin.OpLog( `Query.$eqx: cannot compare [${match_type}] type with [${value_type}] type at [${Path}].` ); }
+				if ( jsongin.OpLog ) { jsongin.OpLog( `Query.$eqx: cannot compare [${match_type}] type with [${actual_type}] type at [${Path}].` ); }
 				return false;
 			}
 			catch ( error )

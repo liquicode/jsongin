@@ -422,10 +422,25 @@ describe( '130) Engine Function Tests', () =>
 			assert.strictEqual( jsongin.BsonType( -Infinity, true ), 'double' );
 		} );
 
-		it( 'should still distinguish int from long', () =>
+		it( 'should report an integer inside the int32 range as an int', () =>
 		{
 			assert.strictEqual( jsongin.BsonType( 42, true ), 'int' );
-			assert.strictEqual( jsongin.BsonType( Math.pow( 2, 53 ), true ), 'long' );
+			assert.strictEqual( jsongin.BsonType( 0, true ), 'int' );
+			assert.strictEqual( jsongin.BsonType( -7, true ), 'int' );
+			assert.strictEqual( jsongin.BsonType( 2147483647, true ), 'int' );
+			assert.strictEqual( jsongin.BsonType( -2147483648, true ), 'int' );
+		} );
+
+		it( 'should report a number outside the int32 range as a double', () =>
+		{
+			// A Javascript number is a double, and BSON stores it as an int32 only when it
+			// fits that range. It is never a long. Verified against MongoDB 6.0.1 by
+			// inserting each of these and reading back $type.
+			assert.strictEqual( jsongin.BsonType( 2147483648, true ), 'double' );
+			assert.strictEqual( jsongin.BsonType( -2147483649, true ), 'double' );
+			assert.strictEqual( jsongin.BsonType( 3000000000, true ), 'double' );
+			assert.strictEqual( jsongin.BsonType( Math.pow( 2, 53 ), true ), 'double' );
+			assert.strictEqual( jsongin.BsonType( 3.14, true ), 'double' );
 		} );
 
 	} );

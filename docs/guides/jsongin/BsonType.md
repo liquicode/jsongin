@@ -44,17 +44,22 @@ jsongin.Query( { n: 42 }, { n: { $type: 16 } } ) === true
 | `/^abc/`               |    `11`    | `'regex'`     |
 | `Symbol()`             |    `14`    | `'symbol'`    |
 | `42`                   |    `16`    | `'int'`       |
-| `Math.pow( 2, 53 )`    |    `18`    | `'long'`      |
+| `2147483647`           |    `16`    | `'int'`       |
+| `2147483648`           |     `1`    | `'double'`    |
+| `Math.pow( 2, 53 )`    |     `1`    | `'double'`    |
 | `NaN`                  |     `1`    | `'double'`    |
 | `Infinity`             |     `1`    | `'double'`    |
 
 ***Numbers*** are classified by their value rather than by a declared width, because Javascript
   has only one number type:
-- A number written with a decimal point is a `double`.
-- A whole number within `Number.isSafeInteger()` is an `int`.
-- A whole number outside that range is a `long`.
-- `NaN`, `Infinity`, and `-Infinity` are `double`s, which is what BSON calls them.
-  Note that BSON has no separate type for any of the three.
+- A whole number within the `int32` range, `-2147483648` through `2147483647`, is an `int`.
+- Every other number is a `double`. That includes a number written with a decimal point, a
+  whole number too large for `int32`, and `NaN`, `Infinity`, and `-Infinity`.
+  Note that BSON has no separate type for any of those three.
+- A number is never a `long`. A Javascript number is a double, and the BSON serializer stores
+  it as an `int32` only when it fits that range. This matches MongoDB: inserting `3000000000`
+  and reading back `$type` reports `double`, and a `$type: 'long'` query matches no such
+  document. Verified against MongoDB 6.0.1.
 
 A ***function*** has no BSON type and returns `null`.
 

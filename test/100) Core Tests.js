@@ -809,7 +809,35 @@ describe( '100) Core Tests', () =>
 			assert.ok( elements[ 2 ] === 'name' );
 		} );
 
-		it( 'Array indexes within a path can be positive or negative', () => 
+		it( 'It only converts canonical integer text to an index', () =>
+		{
+			// AsNumber() also accepts these forms, and using it here turned field names
+			// like '01' into array indices, making the field unreachable.
+			// Verified against MongoDB 6.0.1: a query on 'a.01' finds { a: { '01': 'x' } }.
+			assert.strictEqual( jsongin.SplitPath( '01' )[ 0 ], '01' );
+			assert.strictEqual( jsongin.SplitPath( '1e2' )[ 0 ], '1e2' );
+			assert.strictEqual( jsongin.SplitPath( '0x10' )[ 0 ], '0x10' );
+			assert.strictEqual( jsongin.SplitPath( 'Infinity' )[ 0 ], 'Infinity' );
+			assert.strictEqual( jsongin.SplitPath( '+1' )[ 0 ], '+1' );
+
+			// Canonical text still becomes an index.
+			assert.strictEqual( jsongin.SplitPath( '0' )[ 0 ], 0 );
+			assert.strictEqual( jsongin.SplitPath( '7' )[ 0 ], 7 );
+			assert.strictEqual( jsongin.SplitPath( '-1' )[ 0 ], -1 );
+		} );
+
+		it( 'It reaches fields whose names look numeric', () =>
+		{
+			assert.strictEqual( jsongin.GetValue( { '01': 'x' }, '01' ), 'x' );
+			assert.strictEqual( jsongin.GetValue( { '1e2': 'x' }, '1e2' ), 'x' );
+			assert.strictEqual( jsongin.GetValue( { a: { '01': 'x' } }, 'a.01' ), 'x' );
+
+			let document = {};
+			jsongin.SetValue( document, 'a.01', 'x' );
+			assert.deepStrictEqual( document, { a: { '01': 'x' } } );
+		} );
+
+		it( 'Array indexes within a path can be positive or negative', () =>
 		{
 			let elements = null;
 
@@ -1335,7 +1363,79 @@ describe( '100) Core Tests', () =>
 		} );
 
 
-		it( 'Use Expand() to turn a flattened document back into a hierarchical document', () => 
+		it( 'It preserves empty objects and arrays', () =>
+		{
+			// An empty container holds no leaf to descend to. It used to contribute nothing
+			// to the flattened result and so disappeared from the round trip.
+			assert.deepStrictEqual( jsongin.Flatten( { a: {}, b: [] } ), { a: {}, b: [] } );
+			assert.deepStrictEqual( jsongin.Flatten( { a: { b: {}, c: 1 } } ), { 'a.b': {}, 'a.c': 1 } );
+			assert.deepStrictEqual( jsongin.Flatten( { a: { b: { c: {} } } } ), { 'a.b.c': {} } );
+			assert.deepStrictEqual( jsongin.Flatten( { a: [ {} ] } ), { 'a.0': {} } );
+
+			// The root is the exception. There is no path to record it under.
+			assert.deepStrictEqual( jsongin.Flatten( {} ), {} );
+			assert.deepStrictEqual( jsongin.Flatten( [] ), {} );
+		} );
+
+		it( 'It round trips a document containing empty containers', () =>
+		{
+			let documents = [
+				{ a: {}, b: [] },
+				{ a: { b: {}, c: 1 } },
+				{ a: { b: { c: {} } } },
+				{ a: [ {} ] },
+				{ a: [ [] ] },
+				{ a: { b: [], c: {}, d: null } },
+			];
+			for ( let index = 0; index < documents.length; index++ )
+			{
+				let document = documents[ index ];
+				assert.deepStrictEqual( jsongin.Expand( jsongin.Flatten( document ) ), document );
+			}
+		} );
+
+		it( 'The flattened result does not alias its source', () =>
+		{
+			let document = { a: {} };
+			let flattened = jsongin.Flatten( document );
+			flattened.a.injected = true;
+			assert.deepStrictEqual( document, { a: {} } );
+		} );
+
+		// The two round trip limitations documented under Flatten. A dot notation path
+		// does not record whether a container was an object or an array, so these are
+		// properties of the flat representation rather than defects to be fixed.
+
+		it( 'A document which is itself an array expands back as an object', () =>
+		{
+			assert.deepStrictEqual( jsongin.Flatten( [ 1, 2, 'three' ] ), { '0': 1, '1': 2, '2': 'three' } );
+
+			let expanded = jsongin.Expand( jsongin.Flatten( [ 1, 2, 'three' ] ) );
+			assert.strictEqual( Array.isArray( expanded ), false );
+			assert.deepStrictEqual( expanded, { '0': 1, '1': 2, '2': 'three' } );
+
+			// Nested arrays are unaffected, because SetValue builds an array from a
+			// numeric path element.
+			let nested = jsongin.Expand( jsongin.Flatten( { a: [ 1, 2 ], b: [] } ) );
+			assert.strictEqual( Array.isArray( nested.a ), true );
+			assert.strictEqual( Array.isArray( nested.b ), true );
+		} );
+
+		it( 'An object whose keys are canonical integers expands back as an array', () =>
+		{
+			// Both of these flatten to the identical result, so no expansion restores both.
+			assert.deepStrictEqual( jsongin.Flatten( { a: { '0': 'x' } } ), { 'a.0': 'x' } );
+			assert.deepStrictEqual( jsongin.Flatten( { a: [ 'x' ] } ), { 'a.0': 'x' } );
+
+			// Expand resolves the ambiguity in favor of an array.
+			assert.deepStrictEqual( jsongin.Expand( { 'a.0': 'x' } ), { a: [ 'x' ] } );
+
+			// A non canonical numeric key is a field name and is not ambiguous.
+			assert.deepStrictEqual( jsongin.Expand( jsongin.Flatten( { a: { '01': 'x' } } ) ), { a: { '01': 'x' } } );
+		} );
+
+
+		it( 'Use Expand() to turn a flattened document back into a hierarchical document', () =>
 		{
 			let document = {
 				id: 1001,

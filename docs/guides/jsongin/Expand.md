@@ -38,19 +38,17 @@ let document = {
 	tags: [ 'Staff', 'Dept. A' ],
 };
 
-let flattened = jsongin.Flatten( Document );
+let flattened = jsongin.Flatten( document );
 // flattened is {
 // 	id: 1001,
 // 	'user.name': 'Alice',
 // 	'user.location': 'East',
-// 	'profile.login': 'alice',
-// 	'profile.role': 'admin',
 // 	'tags.0': 'Staff',
 // 	'tags.1': 'Dept. A',
 // };
 ```
 
-### Use Expand() to turn a flattened document back into ahierarchical document
+### Use Expand() to turn a flattened document back into a hierarchical document
 ```js
 let document = {
 	id: 1001,
@@ -86,11 +84,26 @@ let flattened = jsongin.Flatten( [ 1, 2, 'three' ] );
 ### It should flatten an empty array
 ```js
 let flattened = jsongin.Flatten( [] );
-// flattened is []
+// flattened is {}
+```
+
+### It preserves empty objects and arrays
+```js
+let expanded = jsongin.Expand( jsongin.Flatten( { a: {}, b: [] } ) );
+// expanded is { a: {}, b: [] }, and expanded.b is a real array
 ```
 
 ### It should not flatten a non-document
 ```js
 let flattened = jsongin.Flatten( 3.14 ); // throws error: Document must be an object or array.
 ```
+
+
+## Round Trip Limitations
+
+`Expand` always builds an object, and a dot notation path cannot record whether a container
+  was an object or an array.
+So a document which is itself an array expands back as an object, and an object whose keys are
+  canonical integers expands back as an array.
+See [Round Trip Limitations](./Flatten.md) under `Flatten` for the details.
 

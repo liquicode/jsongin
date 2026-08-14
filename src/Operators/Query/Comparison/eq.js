@@ -26,10 +26,30 @@ module.exports = function ( jsongin )
 				let match_type = jsongin.ShortType( match_value );
 
 				// Compare
-				if ( 'bnslru'.includes( match_type ) && ( match_type === actual_type ) )
+				if ( 'bnslu'.includes( match_type ) && ( match_type === actual_type ) )
 				{
 					// Primitive types must match exactly.
 					return ( actual_value === match_value ); // Equivalence of primitive types.
+				}
+				else if ( match_type === 'r' )
+				{
+					// A regexp match value here is a value to compare against, not a pattern to
+					// test with. { field: { $eq: /re/ } } matches only a field which is itself
+					// that regexp, while the implicit form { field: /re/ } pattern matches.
+					// That asymmetry is MongoDB's, verified against MongoDB 6.0.1, and the
+					// implicit form is handled separately at ImplicitEq.js:132.
+					if ( actual_type !== 'r' )
+					{
+						if ( jsongin.OpLog ) { jsongin.OpLog( `$eq: a regexp match value compares against a regexp field, but found [${actual_type}] at [${Path}]. Use $regex to pattern match.` ); }
+						return false;
+					}
+					// Two Regexp objects are never === to each other, the same trap dates have
+					// below, so compare what actually identifies them. Regexp used to sit in
+					// the primitive branch above, where === meant two identical regexps never
+					// matched.
+					if ( actual_value.source !== match_value.source ) { return false; }
+					if ( actual_value.flags !== match_value.flags ) { return false; }
+					return true;
 				}
 				else if ( ( match_type === 'd' ) && ( actual_type === 'd' ) )
 				{

@@ -92,8 +92,64 @@ let flattened = jsongin.Flatten( [ 1, 2, 'three' ] );
 ### It should flatten an empty array
 ```js
 let flattened = jsongin.Flatten( [] );
-// flattened is []
+// flattened is {}
 ```
+
+### It preserves empty objects and arrays
+```js
+let flattened = jsongin.Flatten( { a: {}, b: [], c: { d: {} } } );
+// flattened is {
+// 	'a': {},
+// 	'b': [],
+// 	'c.d': {},
+// }
+
+let expanded = jsongin.Expand( flattened );
+// expanded matches the original document, and expanded.b is a real array
+```
+
+An empty container holds no leaf value to descend to.
+It is emitted as a value at its own path so that `Expand` can put it back, because otherwise
+  it would contribute nothing to the result and vanish from the round trip.
+The container emitted is a new one, so the flattened result never aliases the source document.
+
+
+## Round Trip Limitations
+
+`Flatten` always returns a flat ***object*** whose keys are dot notation paths.
+Two things cannot survive that representation, because the path strings do not record them.
+
+***A document which is itself an array*** comes back as an object:
+
+```js
+let flattened = jsongin.Flatten( [ 1, 2, 'three' ] );
+// flattened is { '0': 1, '1': 2, '2': 'three' }
+
+let expanded = jsongin.Expand( flattened );
+// expanded is { '0': 1, '1': 2, '2': 'three' }, an object rather than an array
+```
+
+This applies to `Flatten( [] )` as well, which is `{}`.
+`Expand` always builds an object at the top, and it requires one as its argument, so there is
+  no path element available to tell it otherwise.
+Nested arrays are unaffected: they round trip as arrays, because `SetValue` builds an array
+  when it meets a numeric path element.
+
+***An object whose keys are canonical integers*** comes back as an array:
+
+```js
+let flattened = jsongin.Flatten( { a: { '0': 'x' } } );
+// flattened is { 'a.0': 'x' }
+
+let expanded = jsongin.Expand( flattened );
+// expanded is { a: [ 'x' ] }, an array rather than an object
+```
+
+`Flatten( { a: { '0': 'x' } } )` and `Flatten( { a: [ 'x' ] } )` produce the identical result,
+  so no expansion can restore both.
+`Expand` resolves the ambiguity in favor of an array.
+
+Use `Clone` or `SafeClone` when you need a copy which preserves container types exactly.
 
 ### It should not flatten a non-document
 ```js
