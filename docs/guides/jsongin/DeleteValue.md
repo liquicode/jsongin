@@ -15,7 +15,8 @@
 ## Description
 
 Removes the field at `Path` from `Document` and returns `true`.
-Returns `false` when the path could not be resolved.
+Returns `false` when nothing was removed, which covers a path whose parent does not resolve
+  and a field which was never there.
 
 The `Document` is modified in place.
 
@@ -43,6 +44,30 @@ document.a.length === 3   // still three
 
 To shorten an array, use the `$pop` or `$pullAll` update operators instead.
 See [`Update()`](./Update.md).
+
+A ***negative index*** counts back from the end of the array, the same extension `GetValue`
+  supports.
+
+
+## Implicit Iterator
+
+A ***non numeric key against an array*** applies to every element of that array, which is what
+  `GetValue` and `SetValue` both do.
+
+```js
+let document = { a: [ { x: 1 }, { x: 2 } ] };
+
+jsongin.DeleteValue( document, 'a.x' ) === true
+// document is { a: [ {}, {} ] }
+```
+
+The result is `true` when at least one element had the field removed, and `false` when none
+  did.
+Elements which are not objects or arrays are skipped rather than treated as an error.
+
+This is a ***jsongin path extension***.
+MongoDB requires the all positional operator to reach through an array, as in
+  `$unset: { 'a.$[].x': '' }`; a plain `$unset: { 'a.x': '' }` modifies nothing there.
 
 
 ## See Also
@@ -74,6 +99,17 @@ let document = { a: 1 };
 jsongin.DeleteValue( document, 'x.y' ) === false
 // document is { a: 1 } (unchanged)
 ```
+
+
+### It returns false when the field was never there
+```js
+let document = { a: 1 };
+
+jsongin.DeleteValue( document, 'nope' ) === false
+// document is { a: 1 } (unchanged)
+```
+
+A field holding `undefined` still counts as present, because its key is there to remove.
 
 
 ### It returns false for an empty path

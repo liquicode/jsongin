@@ -762,7 +762,10 @@ describe( '250) Update Operator Tests', () =>
 
 		let cases = [
 			{ Operator: '$set', Document: { a: 1 }, Args: { a: 2 } },
-			{ Operator: '$unset', Document: { a: 1 }, Args: { a: 0 } },
+			// $unset still logs, but a field which cannot be removed because it is not
+			// there is a successful no-op rather than a failure, which is what MongoDB
+			// reports. Every other operator here fails when it cannot store its value.
+			{ Operator: '$unset', Document: { a: 1 }, Args: { a: 0 }, Result: true },
 			{ Operator: '$rename', Document: { a: 1 }, Args: { a: 'b' } },
 			{ Operator: '$inc', Document: { n: 1 }, Args: { n: 1 } },
 			{ Operator: '$min', Document: { n: 5 }, Args: { n: 0 } },
@@ -798,8 +801,10 @@ describe( '250) Update Operator Tests', () =>
 				let operator = engine.UpdateOperators[ test_case.Operator ];
 
 				// The operator reports the failure, it does not raise it.
+				let expected_result = false;
+				if ( typeof test_case.Result !== 'undefined' ) { expected_result = test_case.Result; }
 				let result = operator.Update( test_case.Document, test_case.Args );
-				assert.strictEqual( result, false );
+				assert.strictEqual( result, expected_result );
 
 				// The failure reached the OpLog, in the module's message format.
 				assert.ok( messages.length > 0, `${test_case.Operator} logged nothing.` );

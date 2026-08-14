@@ -624,10 +624,56 @@ describe( '130) Engine Function Tests', () =>
 			assert.strictEqual( document.t[ 1 ], undefined );
 		} );
 
-		it( 'should return true for a field which was not there', () =>
+		it( 'should return false for a field which was not there', () =>
 		{
-			// The parent resolved, so the field is gone either way.
-			assert.strictEqual( jsongin.DeleteValue( { a: 1 }, 'nope' ), true );
+			// The Javascript delete operator returns true for a property which was never
+			// there, so reporting its result made every path whose parent resolved look
+			// like a successful removal.
+			assert.strictEqual( jsongin.DeleteValue( { a: 1 }, 'nope' ), false );
+			assert.strictEqual( jsongin.DeleteValue( { a: { b: 1 } }, 'a.nope' ), false );
+			assert.strictEqual( jsongin.DeleteValue( { a: [ 1, 2 ] }, 'a.9' ), false );
+		} );
+
+		it( 'should report a field holding undefined as present', () =>
+		{
+			let document = { a: undefined };
+			assert.strictEqual( jsongin.DeleteValue( document, 'a' ), true );
+			assert.deepStrictEqual( Object.keys( document ), [] );
+		} );
+
+		it( 'should run the implicit iterator against an array', () =>
+		{
+			// GetValue and SetValue both apply a non numeric key to every element of an
+			// array. DeleteValue looked the key up on the array object itself, where it
+			// never exists, and reported success for removing nothing.
+			let document = { a: [ { x: 1 }, { x: 2 } ] };
+			assert.strictEqual( jsongin.DeleteValue( document, 'a.x' ), true );
+			assert.deepStrictEqual( document, { a: [ {}, {} ] } );
+		} );
+
+		it( 'should iterate partially and skip non containers', () =>
+		{
+			let document = { a: [ { x: 1 }, { y: 2 }, 'scalar' ] };
+			assert.strictEqual( jsongin.DeleteValue( document, 'a.x' ), true );
+			assert.deepStrictEqual( document, { a: [ {}, { y: 2 }, 'scalar' ] } );
+
+			// Nothing matched, so nothing was removed.
+			assert.strictEqual( jsongin.DeleteValue( { a: [ { y: 1 } ] }, 'a.x' ), false );
+		} );
+
+		it( 'should run the implicit iterator at depth', () =>
+		{
+			let document = { a: [ { b: { c: 1 } }, { b: { c: 2 } } ] };
+			assert.strictEqual( jsongin.DeleteValue( document, 'a.b.c' ), true );
+			assert.deepStrictEqual( document, { a: [ { b: {} }, { b: {} } ] } );
+		} );
+
+		it( 'should accept a negative array index', () =>
+		{
+			let document = { a: [ 1, 2, 3 ] };
+			assert.strictEqual( jsongin.DeleteValue( document, 'a.-1' ), true );
+			assert.strictEqual( document.a.length, 3 );
+			assert.strictEqual( Object.prototype.hasOwnProperty.call( document.a, 2 ), false );
 		} );
 
 		it( 'should accept a numeric path', () =>
