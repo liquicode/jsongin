@@ -155,6 +155,51 @@ describe( '130) Engine Function Tests', () =>
 			assert.throws( function () { jsongin.Distinct( [], 42 ); }, /DistinctCriteria must be an object/ );
 		} );
 
+		// The key of a multiple field criteria has to keep the fields apart.
+		// Concatenating the values gave { a: 1, b: 23 } and { a: 12, b: 3 } the same key.
+		it( 'should not run one field value into the next when building the key', () =>
+		{
+			let documents = [ { a: 1, b: 23 }, { a: 12, b: 3 } ];
+			let result = jsongin.Distinct( documents, { a: 1, b: 1 } );
+			assert.strictEqual( result.length, 2 );
+			assert.ok( jsongin.StrictEquals( result, [ { a: 1, b: 23 }, { a: 12, b: 3 } ] ) );
+		} );
+
+		it( 'should not run one string value into the next when building the key', () =>
+		{
+			let documents = [ { a: 'x', b: 'yz' }, { a: 'xy', b: 'z' } ];
+			assert.strictEqual( jsongin.Distinct( documents, { a: 1, b: 1 } ).length, 2 );
+		} );
+
+		// Values which serialize alike but are of different types are different values.
+		it( 'should distinguish a date from its ISO string', () =>
+		{
+			let when = new Date( 1000 );
+			let documents = [ { a: when }, { a: when.toISOString() } ];
+			assert.strictEqual( jsongin.Distinct( documents, { a: 1 } ).length, 2 );
+		} );
+
+		it( 'should distinguish a number from its text', () =>
+		{
+			assert.strictEqual( jsongin.Distinct( [ { a: 1 }, { a: '1' } ], { a: 1 } ).length, 2 );
+		} );
+
+		it( 'should not alias the given documents', () =>
+		{
+			let documents = [ { a: { n: 1 } } ];
+			let result = jsongin.Distinct( documents, { a: 1 } );
+			result[ 0 ].a.n = 999;
+			assert.strictEqual( documents[ 0 ].a.n, 1 );
+		} );
+
+		it( 'should preserve a date in the returned values', () =>
+		{
+			let when = new Date( 1000 );
+			let result = jsongin.Distinct( [ { a: when } ], { a: 1 } );
+			assert.ok( result[ 0 ].a instanceof Date );
+			assert.strictEqual( result[ 0 ].a.getTime(), when.getTime() );
+		} );
+
 	} );
 
 

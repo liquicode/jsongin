@@ -1342,6 +1342,111 @@ describe( '100) Core Tests', () =>
 		} );
 
 
+		//---------------------------------------------------------------------
+		// A plain string which happens to parse as JSON is not an envelope.
+		// Treating it as one matched none of the type cases and dropped the field.
+
+		it( 'It keeps a string which parses as JSON but is not an envelope', () =>
+		{
+			assert.deepStrictEqual( jsongin.Unhybridize( { a: '123' } ), { a: '123' } );
+			assert.deepStrictEqual( jsongin.Unhybridize( { a: 'true' } ), { a: 'true' } );
+			assert.deepStrictEqual( jsongin.Unhybridize( { a: 'null' } ), { a: 'null' } );
+			assert.deepStrictEqual( jsongin.Unhybridize( { a: '[1,2]' } ), { a: '[1,2]' } );
+			assert.deepStrictEqual( jsongin.Unhybridize( { a: '{"b":1}' } ), { a: '{"b":1}' } );
+		} );
+
+
+		it( 'It keeps an object which carries an unrecognized type name', () =>
+		{
+			let text = '{"type":"bogus","value":1}';
+			assert.deepStrictEqual( jsongin.Unhybridize( { a: text } ), { a: text } );
+		} );
+
+
+		it( 'It keeps a plain string', () =>
+		{
+			assert.deepStrictEqual( jsongin.Unhybridize( { a: 'hello' } ), { a: 'hello' } );
+		} );
+
+
+		it( 'It carries a value which is not a string across unchanged', () =>
+		{
+			let when = new Date( 1000 );
+			let result = jsongin.Unhybridize( { n: 1, b: true, l: null, d: when, o: { x: 1 }, a: [ 1 ] } );
+			assert.strictEqual( result.n, 1 );
+			assert.strictEqual( result.b, true );
+			assert.strictEqual( result.l, null );
+			assert.ok( result.d instanceof Date );
+			assert.strictEqual( result.d.getTime(), when.getTime() );
+			assert.deepStrictEqual( result.o, { x: 1 } );
+			assert.deepStrictEqual( result.a, [ 1 ] );
+		} );
+
+
+		//---------------------------------------------------------------------
+		// The envelope's own fields are read from the parsed envelope, never from the string
+		// it was parsed from.
+
+		it( 'It round trips an Error with its message', () =>
+		{
+			let result = jsongin.Unhybridize( jsongin.Hybridize( { a: new Error( 'boom' ) } ) );
+			assert.ok( result.a instanceof Error );
+			assert.strictEqual( result.a.message, 'boom' );
+		} );
+
+
+		it( 'It round trips a function with its source', () =>
+		{
+			let result = jsongin.Unhybridize( jsongin.Hybridize( { a: function () { return 7; } } ) );
+			assert.strictEqual( typeof result.a, 'function' );
+			assert.strictEqual( result.a(), 7 );
+		} );
+
+
+		it( 'It round trips a regular expression with its source and flags', () =>
+		{
+			let result = jsongin.Unhybridize( jsongin.Hybridize( { a: /ab+c/gi } ) );
+			assert.ok( result.a instanceof RegExp );
+			assert.strictEqual( result.a.source, 'ab+c' );
+			assert.strictEqual( result.a.flags, 'gi' );
+		} );
+
+
+		it( 'It round trips an object, an array, and a date', () =>
+		{
+			let when = new Date( 1000 );
+			let document = { o: { x: 1 }, a: [ 1, 2 ], d: when };
+			let result = jsongin.Unhybridize( jsongin.Hybridize( document ) );
+			assert.deepStrictEqual( result.o, { x: 1 } );
+			assert.deepStrictEqual( result.a, [ 1, 2 ] );
+			assert.ok( result.d instanceof Date );
+			assert.strictEqual( result.d.getTime(), when.getTime() );
+		} );
+
+
+		it( 'It round trips an undefined value, keeping the field', () =>
+		{
+			let result = jsongin.Unhybridize( jsongin.Hybridize( { a: undefined } ) );
+			assert.ok( Object.prototype.hasOwnProperty.call( result, 'a' ) );
+			assert.strictEqual( result.a, undefined );
+		} );
+
+
+		// A method shorthand is not an expression on its own, so it cannot be rebuilt from the
+		// source text which Hybridize() recorded for it.
+		it( 'It reports a function which cannot be rebuilt from its source', () =>
+		{
+			let messages = [];
+			let engine = jsongin.NewJsongin( { OpError: function ( Message ) { messages.push( Message ); } } );
+			let methods = { m() { return 9; } };
+			let hybrid = engine.Hybridize( { a: methods.m } );
+
+			assert.throws( function () { engine.Unhybridize( hybrid ); }, SyntaxError );
+			assert.strictEqual( messages.length, 1 );
+			assert.ok( messages[ 0 ].startsWith( 'Unhybridize: Cannot rebuild the function' ) );
+		} );
+
+
 	} );
 
 

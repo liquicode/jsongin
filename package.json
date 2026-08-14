@@ -22,6 +22,7 @@
         "check-docs": "node build/docs-check.js",
         "run tests": "npx @liquicode/devops --tasks .\\build\\build.tasks.js run_tests",
         "build docs": "npx @liquicode/devops --tasks .\\build\\build.tasks.js build_docs",
+        "run webpack": "npx @liquicode/devops --tasks .\\build\\build.tasks.js run_webpack",
         "publish version": "npx @liquicode/devops --tasks .\\build\\build.tasks.js publish_version",
         "start new version": "npx @liquicode/devops --tasks .\\build\\build.tasks.js start_new_version"
     },
