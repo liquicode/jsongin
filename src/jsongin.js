@@ -76,7 +76,6 @@ function NewJsongin( EngineSettings = {} )
 		$eqx: require( './Operators/Query/Extension/eqx' )( Engine ),
 		$nex: require( './Operators/Query/Extension/nex' )( Engine ),
 		$exprx: require( './Operators/Query/Extension/exprx' )( Engine ),
-		$query: require( './Operators/Query/Extension/query' )( Engine ),
 		$noop: require( './Operators/Query/Extension/noop' )( Engine ),
 
 	};

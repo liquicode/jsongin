@@ -10,7 +10,7 @@
 - Add `ToYaml()` and `FromYaml()` functions.
 - Move the MongoDB compatibility tests to a seperate project `mongodb-compatibility-tests`.
 - Add Path functions:
-	- `Path.Anscestor( Path )`
+	- `Path.Ancestor( Path )`
 	- `Path.Parent( Path )`
 	- `Path.Children( Document, Path )`
 	- `Path.FirstChild( Document, Path )`

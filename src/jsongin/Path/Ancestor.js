@@ -2,7 +2,7 @@
 
 module.exports = function ( jsongin )
 {
-	function Anscestor( Document, Path ) 
+	function Ancestor( Document, Path ) 
 	{
 		try
 		{
@@ -16,9 +16,9 @@ module.exports = function ( jsongin )
 		}
 		catch ( error )
 		{
-			if ( jsongin.OpError ) { jsongin.OpError( 'Path.Anscestor: ' + error.message ); }
+			if ( jsongin.OpError ) { jsongin.OpError( 'Path.Ancestor: ' + error.message ); }
 			throw error;
 		}
 	};
-	return Anscestor;
+	return Ancestor;
 };
