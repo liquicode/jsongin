@@ -307,7 +307,7 @@ Features
 - Developer Features:
 	- No external dependencies.
 	- 100% pure javascript.
-	- Single minified file (~35k) for web deployment.
+	- Single minified file (~70k) for web deployment.
 	- Use the `OpLog` feature to help understand and debug queries.
 	- Extend `jsongin` by developing your own query, projection, and update operators.
 	  See [Operator Authoring](<%- Context.Package.homepage %>/#/guides/Operator-Authoring.md).

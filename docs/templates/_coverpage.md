@@ -15,7 +15,7 @@
 - Accurate compatibility with MongoDB mechanics.
 - No dependencies. None. Zero.
 - 100% pure javascript.
-- Single minified file (~35k) for web deployment.
+- Single minified file (~70k) for web deployment.
 
 [GitHub](https://github.com/liquicode/jsongin)
 [NPM](https://www.npmjs.com/package/@liquicode/jsongin)

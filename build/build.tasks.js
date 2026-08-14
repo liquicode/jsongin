@@ -86,12 +86,14 @@ module.exports = {
 	run_webpack: [
 
 		// Run webpack.
+		// Halts on error. This is the first step of publish_version, so a bundle which
+		// fails to build must stop the release rather than let the previous bundle ship
+		// against a new version number.
 		{
 			$Shell: {
 				command: 'npx webpack-cli --config build/webpack.config.js',
 				out: { console: true },
 				err: { console: true },
-				halt_on_error: false
 			}
 		},
 
