@@ -21,6 +21,8 @@ Searches in `Text` for `Pattern` and returns `true` if found.
 The `*` character matches any text while a `?` will match a single letter.
 So, for example, the pattern `*3?5` will match `12345` and `anything 3 5`.
 
+`Matches` throws when `Text` or `Pattern` is not a string.
+
 
 ## Examples
 

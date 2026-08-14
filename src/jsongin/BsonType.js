@@ -1,6 +1,6 @@
 'use strict';
 
-module.exports = function ( Engine )
+module.exports = function ( jsongin )
 {
 	function BsonType( Value, ReturnAlias = false )
 	{
@@ -15,7 +15,7 @@ module.exports = function ( Engine )
 		//	19 - decimal
 		//	-1 - minKey
 		//	127 - maxKey
-		let data_type = Engine.ShortType( Value );
+		let data_type = jsongin.ShortType( Value );
 		if ( data_type === 'b' )
 		{
 			return ReturnAlias ? 'bool' : 8;

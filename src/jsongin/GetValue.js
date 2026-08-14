@@ -1,7 +1,5 @@
 'use strict';
 
-const jsongin = require( '../jsongin' );
-
 module.exports = function ( jsongin )
 {
 	function GetValue( Document, Path )

@@ -1,22 +1,22 @@
 'use strict';
 
-module.exports = function ( Engine )
+module.exports = function ( jsongin )
 {
 
 	//---------------------------------------------------------------------
 	function Project( Document, Projection )
 	{
 		// Validate the parameters.
-		if ( Engine.ShortType( Document ) !== 'o' )
+		if ( jsongin.ShortType( Document ) !== 'o' )
 		{
-			if ( Engine.OpLog ) { Engine.OpLog( `Projection: The Document parameter must be an object.` ); }
+			if ( jsongin.OpLog ) { jsongin.OpLog( `Projection: The Document parameter must be an object.` ); }
 			return null;
 		}
-		let st_Projection = Engine.ShortType( Projection );
-		if ( 'lu'.includes( st_Projection ) === true ) { return Engine.SafeClone( Document ); }
+		let st_Projection = jsongin.ShortType( Projection );
+		if ( 'lu'.includes( st_Projection ) === true ) { return jsongin.SafeClone( Document ); }
 		if ( st_Projection !== 'o' )
 		{
-			if ( Engine.OpLog ) { Engine.OpLog( `Projection: The Projection parameter must be an object.` ); }
+			if ( jsongin.OpLog ) { jsongin.OpLog( `Projection: The Projection parameter must be an object.` ); }
 			return null;
 		}
 
@@ -30,7 +30,7 @@ module.exports = function ( Engine )
 		for ( let key in Projection )
 		{
 			let value = Projection[ key ];
-			let value_type = Engine.ShortType( value );
+			let value_type = jsongin.ShortType( value );
 			let is_exclusion = ( ( ( value_type === 'n' ) && ( value === 0 ) ) || ( ( value_type === 'b' ) && ( value === false ) ) );
 			let is_inclusion = ( ( ( value_type === 'n' ) && ( value !== 0 ) ) || ( ( value_type === 'b' ) && ( value === true ) ) );
 
@@ -47,12 +47,12 @@ module.exports = function ( Engine )
 		// Validate the projection.
 		if ( ( exclude_keys.length > 0 ) && ( include_keys.length > 0 ) )
 		{
-			if ( Engine.OpLog ) { Engine.OpLog( `Projection: Cannot combine inclusion and exclusion in the same projection.` ); }
+			if ( jsongin.OpLog ) { jsongin.OpLog( `Projection: Cannot combine inclusion and exclusion in the same projection.` ); }
 			return null;
 		}
 		if ( ( exclude_keys.length > 0 ) && ( computed_keys.length > 0 ) )
 		{
-			if ( Engine.OpLog ) { Engine.OpLog( `Projection: Cannot use an expression within an exclusion projection.` ); }
+			if ( jsongin.OpLog ) { jsongin.OpLog( `Projection: Cannot use an expression within an exclusion projection.` ); }
 			return null;
 		}
 
@@ -73,13 +73,13 @@ module.exports = function ( Engine )
 		let projected = null;
 		if ( projection_type === 'exclude' )
 		{
-			projected = Engine.SafeClone( Document );
+			projected = jsongin.SafeClone( Document );
 			for ( let index = 0; index < exclude_keys.length; index++ )
 			{
-				let result = Engine.DeleteValue( projected, exclude_keys[ index ] );
+				let result = jsongin.DeleteValue( projected, exclude_keys[ index ] );
 				if ( result === false )
 				{
-					if ( Engine.OpLog ) { Engine.OpLog( `Projection: Failed to remove the field [${exclude_keys[ index ]}] from the projection.` ); }
+					if ( jsongin.OpLog ) { jsongin.OpLog( `Projection: Failed to remove the field [${exclude_keys[ index ]}] from the projection.` ); }
 					continue;
 				}
 			}
@@ -92,19 +92,19 @@ module.exports = function ( Engine )
 			// Only carry the _id when the document actually has one.
 			if ( include_id === true )
 			{
-				if ( typeof Document._id !== 'undefined' ) { projected._id = Engine.SafeClone( Document._id ); }
+				if ( typeof Document._id !== 'undefined' ) { projected._id = jsongin.SafeClone( Document._id ); }
 			}
 
 			for ( let index = 0; index < include_keys.length; index++ )
 			{
 				let key = include_keys[ index ];
-				let value = Engine.GetValue( Document, key );
+				let value = jsongin.GetValue( Document, key );
 				// A field which is not in the document is omitted, rather than being set to undefined.
 				if ( typeof value === 'undefined' ) { continue; }
-				let result = Engine.SetValue( projected, key, Engine.SafeClone( value ) );
+				let result = jsongin.SetValue( projected, key, jsongin.SafeClone( value ) );
 				if ( result === false )
 				{
-					if ( Engine.OpLog ) { Engine.OpLog( `Projection: Failed to set the field [${key}] in the projection.` ); }
+					if ( jsongin.OpLog ) { jsongin.OpLog( `Projection: Failed to set the field [${key}] in the projection.` ); }
 					continue;
 				}
 			}
@@ -112,17 +112,17 @@ module.exports = function ( Engine )
 			for ( let index = 0; index < computed_keys.length; index++ )
 			{
 				let key = computed_keys[ index ];
-				let value = Engine.Evaluate( Document, Projection[ key ] );
+				let value = jsongin.Evaluate( Document, Projection[ key ] );
 				// An expression which evaluates to a missing value omits the field.
 				// An expression which evaluates to null sets the field to null.
 				if ( typeof value === 'undefined' ) { continue; }
 				// Cloned, because a field reference such as '$user' evaluates to the value
 				// inside the given document rather than to a copy of it. Storing it as-is made
 				// the projection share structure with the document it was projected from.
-				let result = Engine.SetValue( projected, key, Engine.SafeClone( value ) );
+				let result = jsongin.SetValue( projected, key, jsongin.SafeClone( value ) );
 				if ( result === false )
 				{
-					if ( Engine.OpLog ) { Engine.OpLog( `Projection: Failed to set the computed field [${key}] in the projection.` ); }
+					if ( jsongin.OpLog ) { jsongin.OpLog( `Projection: Failed to set the computed field [${key}] in the projection.` ); }
 					continue;
 				}
 			}

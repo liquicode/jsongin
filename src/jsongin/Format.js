@@ -1,7 +1,5 @@
 'use strict';
 
-const jsongin = require( '../jsongin' );
-
 module.exports = function ( jsongin )
 {
 	function Format( Value, WithWhitespace = false, LikeJavascript = false )
@@ -230,7 +228,10 @@ module.exports = function ( jsongin )
 				// text += StringifyOptions.eol_char;
 				let keys = Object.keys( Node );
 				let max_key_length = 0;
-				keys.map( ( key ) => { if ( key.length > max_key_length ) { max_key_length = key.length; } } );
+				for ( let index = 0; index < keys.length; index++ )
+				{
+					if ( keys[ index ].length > max_key_length ) { max_key_length = keys[ index ].length; }
+				}
 				for ( let index = 0; index < keys.length; index++ )
 				{
 					let key = keys[ index ];

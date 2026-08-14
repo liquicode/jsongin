@@ -55,6 +55,11 @@ function FindBetween( Text, StartText, EndText, CaseSensitive = true )
 //---------------------------------------------------------------------
 function Matches( Text, Pattern, CaseSensitive = true )
 {
+	// Every other function in this module reports a bad parameter with a described error.
+	// Without these, a non string Pattern surfaced as a raw TypeError from .replace().
+	if ( typeof Text !== 'string' ) { throw new Error( 'The parameter [Text] must be a string.' ); }
+	if ( typeof Pattern !== 'string' ) { throw new Error( 'The parameter [Pattern] must be a string.' ); }
+
 	//FROM: https://stackoverflow.com/a/57527468
 	let wildcard_exp = Pattern.replace( /[.+^${}()|[\]\\]/g, '\\$&' ); // regexp escape
 	let regexp_flags = '';

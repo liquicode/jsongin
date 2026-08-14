@@ -319,6 +319,20 @@ describe( '110) Text Tests', () =>
 			assert.throws( function () { jsongin.Text.SearchReplace( 'abc', 42, 'b' ); }, /must be a string/ );
 		} );
 
+		it( 'should reject Matches parameters of the wrong type', () =>
+		{
+			// Matches was the one function here which did not validate, so a non string
+			// surfaced as a raw TypeError from .replace() rather than a described error.
+			assert.throws( function () { jsongin.Text.Matches( 'abc', 123 ); }, /must be a string/ );
+			assert.throws( function () { jsongin.Text.Matches( 123, 'abc' ); }, /must be a string/ );
+			assert.throws( function () { jsongin.Text.Matches( 'abc', null ); }, /must be a string/ );
+			assert.throws( function () { jsongin.Text.Matches( 'abc' ); }, /must be a string/ );
+
+			// The error is an Error, not a TypeError leaking from the implementation.
+			assert.throws( function () { jsongin.Text.Matches( 'abc', 123 ); },
+				function ( Error_ ) { return ( Error_.constructor === Error ); } );
+		} );
+
 	} );
 
 
