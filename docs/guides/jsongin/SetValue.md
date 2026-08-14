@@ -148,8 +148,29 @@ jsongin.SetValue( document, 'users.1.id', 'abc' ) === true
 document.users[ 1 ].id === 'abc'
 ```
 
-### It sets fields inside all elements of an array of objects
+### It rejects a field name against an array by default
 ```js
+let document = {
+	users: [
+		{ id: 101, name: 'Alice' },
+		{ id: 102, name: 'Bob' },
+	]
+};
+
+jsongin.SetValue( document, 'users.status', 42 );
+// throws: Cannot create field [status] in the array at [users].
+```
+
+MongoDB rejects the same update, with
+  `Cannot create field 'status' in element {users: [ ... ]}`.
+Writing into every element of the array instead is a ***path extension***, and it is off unless
+  the `PathExtensions` setting is enabled.
+
+
+### It sets fields inside all elements of an array of objects, with PathExtensions
+```js
+let engine = jsongin.NewJsongin( { PathExtensions: true } );
+
 let document = {
 	users: [
 		{ id: 101, name: 'Alice' },
@@ -159,11 +180,15 @@ let document = {
 };
 
 // Omit the array index to set into each array element.
-jsongin.SetValue( document, 'users.status', 42 ) === true
-document.users[ 0 ].status === true
-document.users[ 1 ].status === true
-document.users[ 2 ].status === true
+engine.SetValue( document, 'users.status', 42 ) === true
+document.users[ 0 ].status === 42
+document.users[ 1 ].status === 42
+document.users[ 2 ].status === 42
 ```
+
+Note that ***reading*** through an array by field name is not gated, because MongoDB does
+  traverse arrays when it resolves a query path.
+See [`GetValue( Document, Path )`](./GetValue.md).
 
 ### It returns false when an empty path is given
 ```js

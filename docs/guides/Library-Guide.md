@@ -200,6 +200,29 @@ The `Text` module is reachable at `jsongin.Text`.
   See the [OpLog](./OpLog.md) document.
 
 
+### Settings
+
+Settings are given to the `NewJsongin( Settings )` factory method.
+
+- `PathExtensions`
+  : Defaults to `false`. Enables the ***implicit iterator*** on the write side, where a non
+  numeric key against an array applies to every element of that array.
+
+  It is off by default because MongoDB does not do this. `$set` and the arithmetic update
+    operators reject such a path outright, and `$unset` treats it as a no-op which modifies
+    nothing.
+  With the setting off, [`SetValue`](./jsongin/SetValue.md) throws and
+    [`DeleteValue`](./jsongin/DeleteValue.md) returns `false`, which is what makes the update
+    operators agree with MongoDB.
+
+  Reading is ***not*** gated by this setting. MongoDB does traverse arrays when it resolves a
+    query path, so [`GetValue`](./jsongin/GetValue.md) reads through one regardless, and a
+    query like `{ 'users.id': 101 }` matches an array of objects the way it does in MongoDB.
+
+- `OpLog` and `OpError`
+  : See Diagnostics above.
+
+
 MongoDB References
 ---------------------------------------------------------------------
 

@@ -51,23 +51,35 @@ A ***negative index*** counts back from the end of the array, the same extension
 
 ## Implicit Iterator
 
-A ***non numeric key against an array*** applies to every element of that array, which is what
-  `GetValue` and `SetValue` both do.
+A ***non numeric key against an array*** does nothing by default, and returns `false`:
 
 ```js
 let document = { a: [ { x: 1 }, { x: 2 } ] };
 
-jsongin.DeleteValue( document, 'a.x' ) === true
+jsongin.DeleteValue( document, 'a.x' ) === false
+// document is unchanged
+```
+
+This matches MongoDB, where `$unset: { 'a.x': '' }` reports a successful update which modified
+  nothing.
+Reaching through an array there requires the all positional operator,
+  `$unset: { 'a.$[].x': '' }`.
+
+Enabling the `PathExtensions` setting applies the key to ***every element*** of the array
+  instead, the same way `GetValue` reads through one:
+
+```js
+let engine = jsongin.NewJsongin( { PathExtensions: true } );
+
+let document = { a: [ { x: 1 }, { x: 2 } ] };
+
+engine.DeleteValue( document, 'a.x' ) === true
 // document is { a: [ {}, {} ] }
 ```
 
-The result is `true` when at least one element had the field removed, and `false` when none
-  did.
+With the extension enabled the result is `true` when at least one element had the field
+  removed, and `false` when none did.
 Elements which are not objects or arrays are skipped rather than treated as an error.
-
-This is a ***jsongin path extension***.
-MongoDB requires the all positional operator to reach through an array, as in
-  `$unset: { 'a.$[].x': '' }`; a plain `$unset: { 'a.x': '' }` modifies nothing there.
 
 
 ## See Also

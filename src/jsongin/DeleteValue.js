@@ -51,11 +51,20 @@ module.exports = function ( jsongin )
 
 				if ( ( st_node === 'a' ) && ( st_key !== 'n' ) )
 				{
+					// A non numeric key against an array.
+					// MongoDB's $unset does nothing here and reports a successful update with
+					// modifiedCount 0. Verified against MongoDB 6.0.1. Returning false is what
+					// produces that: $unset treats it as a no-op rather than a failure.
+					// Deleting from every element instead is a jsongin path extension, and it
+					// is off by default so that $unset matches MongoDB.
+					if ( jsongin.Settings.PathExtensions !== true )
+					{
+						if ( jsongin.OpLog ) { jsongin.OpLog( `DeleteValue: The path [${Path}] reaches into an array by field name. Enable the PathExtensions setting to delete from every element of the array.` ); }
+						return false;
+					}
+
 					// Execute the Implicit Iterator.
-					// A non numeric key against an array applies to every element, which is
-					// what GetValue and SetValue both do. Without this branch the key was
-					// looked up on the array object itself, where it never exists, and the
-					// delete below reported success for removing nothing.
+					// Applies to every element, which is what GetValue does on the read side.
 					let sub_path = path_elements.slice( path_index ).join( '.' );
 					let removed = false;
 					for ( let index = 0; index < node.length; index++ )

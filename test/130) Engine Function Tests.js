@@ -641,30 +641,40 @@ describe( '130) Engine Function Tests', () =>
 			assert.deepStrictEqual( Object.keys( document ), [] );
 		} );
 
-		it( 'should run the implicit iterator against an array', () =>
+		it( 'should not reach into an array by field name by default', () =>
 		{
-			// GetValue and SetValue both apply a non numeric key to every element of an
-			// array. DeleteValue looked the key up on the array object itself, where it
-			// never exists, and reported success for removing nothing.
+			// MongoDB's $unset does nothing here and reports modifiedCount 0. Verified
+			// against MongoDB 6.0.1. Deleting from every element is a jsongin path
+			// extension, off unless PathExtensions is enabled.
 			let document = { a: [ { x: 1 }, { x: 2 } ] };
-			assert.strictEqual( jsongin.DeleteValue( document, 'a.x' ), true );
+			assert.strictEqual( jsongin.DeleteValue( document, 'a.x' ), false );
+			assert.deepStrictEqual( document, { a: [ { x: 1 }, { x: 2 } ] } );
+		} );
+
+		it( 'should run the implicit iterator against an array when PathExtensions is enabled', () =>
+		{
+			let engine = jsongin.NewJsongin( { PathExtensions: true } );
+			let document = { a: [ { x: 1 }, { x: 2 } ] };
+			assert.strictEqual( engine.DeleteValue( document, 'a.x' ), true );
 			assert.deepStrictEqual( document, { a: [ {}, {} ] } );
 		} );
 
-		it( 'should iterate partially and skip non containers', () =>
+		it( 'should iterate partially and skip non containers when PathExtensions is enabled', () =>
 		{
+			let engine = jsongin.NewJsongin( { PathExtensions: true } );
 			let document = { a: [ { x: 1 }, { y: 2 }, 'scalar' ] };
-			assert.strictEqual( jsongin.DeleteValue( document, 'a.x' ), true );
+			assert.strictEqual( engine.DeleteValue( document, 'a.x' ), true );
 			assert.deepStrictEqual( document, { a: [ {}, { y: 2 }, 'scalar' ] } );
 
 			// Nothing matched, so nothing was removed.
-			assert.strictEqual( jsongin.DeleteValue( { a: [ { y: 1 } ] }, 'a.x' ), false );
+			assert.strictEqual( engine.DeleteValue( { a: [ { y: 1 } ] }, 'a.x' ), false );
 		} );
 
-		it( 'should run the implicit iterator at depth', () =>
+		it( 'should run the implicit iterator at depth when PathExtensions is enabled', () =>
 		{
+			let engine = jsongin.NewJsongin( { PathExtensions: true } );
 			let document = { a: [ { b: { c: 1 } }, { b: { c: 2 } } ] };
-			assert.strictEqual( jsongin.DeleteValue( document, 'a.b.c' ), true );
+			assert.strictEqual( engine.DeleteValue( document, 'a.b.c' ), true );
 			assert.deepStrictEqual( document, { a: [ { b: {} }, { b: {} } ] } );
 		} );
 

@@ -82,8 +82,19 @@ module.exports = function ( jsongin )
 					}
 					else
 					{
+						// A non numeric key against an array.
+						// MongoDB rejects this outright, with "Cannot create field 'x' in
+						// element {a: [ ... ]}", for $set and for every arithmetic update
+						// operator. Verified against MongoDB 6.0.1.
+						// Writing into every element instead is a jsongin path extension, and
+						// it is off by default so that the update operators match MongoDB.
+						if ( jsongin.Settings.PathExtensions !== true )
+						{
+							let container_path = path_elements.slice( 0, path_index ).join( '.' );
+							throw new Error( `Cannot create field [${key}] in the array at [${container_path}]. Enable the PathExtensions setting to write into every element of the array.` );
+						}
+
 						// Execute the Implicit Iterator.
-						let values = [];
 						let sub_path = path_elements.slice( path_index ).join( '.' );
 						for ( let index = 0; index < node.length; index++ )
 						{

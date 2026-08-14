@@ -1143,8 +1143,26 @@ describe( '100) Core Tests', () =>
 			assert.strictEqual( document.users[ 1 ].id, 'abc' );
 		} );
 
-		it( 'It sets fields inside all elements of an array of objects', () => 
+		it( 'It rejects a field name against an array by default', () =>
 		{
+			// MongoDB rejects this outright, with "Cannot create field 'status' in element
+			// {users: [ ... ]}". Verified against MongoDB 6.0.1. Writing into every element
+			// is a jsongin path extension, off unless PathExtensions is enabled.
+			let document = {
+				users: [
+					{ id: 101, name: 'Alice' },
+					{ id: 102, name: 'Bob' },
+				]
+			};
+
+			assert.throws( function () { jsongin.SetValue( document, 'users.status', 42 ); }, /Cannot create field/ );
+			assert.strictEqual( document.users[ 0 ].status, undefined );
+			assert.strictEqual( document.users[ 1 ].status, undefined );
+		} );
+
+		it( 'It sets fields inside all elements of an array of objects when PathExtensions is enabled', () =>
+		{
+			let engine = jsongin.NewJsongin( { PathExtensions: true } );
 			let document = {
 				users: [
 					{ id: 101, name: 'Alice' },
@@ -1154,10 +1172,25 @@ describe( '100) Core Tests', () =>
 			};
 
 			// Omit the array index to set into each array element.
-			assert.ok( jsongin.SetValue( document, 'users.status', 42 ) );
+			assert.ok( engine.SetValue( document, 'users.status', 42 ) );
 			assert.strictEqual( document.users[ 0 ].status, 42 );
 			assert.strictEqual( document.users[ 1 ].status, 42 );
 			assert.strictEqual( document.users[ 2 ].status, 42 );
+		} );
+
+		it( 'It still reads through an array by field name, which MongoDB does too', () =>
+		{
+			// The read side is not gated: MongoDB traverses arrays when resolving a query
+			// path, so { 'users.id': 101 } has to match.
+			let document = {
+				users: [
+					{ id: 101 },
+					{ id: 102 },
+				]
+			};
+
+			assert.deepStrictEqual( jsongin.GetValue( document, 'users.id' ), [ 101, 102 ] );
+			assert.strictEqual( jsongin.Query( document, { 'users.id': 101 } ), true );
 		} );
 
 		it( 'It returns false when an empty path is given', () => 
