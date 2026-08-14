@@ -187,6 +187,36 @@ describe( '240) Aggregate Stage Tests', () =>
 			assert.ok( result[ 0 ].a !== documents[ 0 ].a );
 		} );
 
+		/*
+			A field reference such as '$user' evaluates to the value inside the original
+			document, so an added field which is a field reference has to be cloned too.
+			Cloning the document alone left the added field pointing back into the input.
+		*/
+
+		it( 'should clone a field added from a field reference', () =>
+		{
+			let stages = [ '$addFields', '$set' ];
+			for ( let index = 0; index < stages.length; index++ )
+			{
+				let documents = [ { user: { name: 'Alice' } } ];
+				let stage = {};
+				stage[ stages[ index ] ] = { copy: '$user' };
+
+				let result = jsongin.Aggregate( documents, [ stage ] );
+				assert.ok( result[ 0 ].copy !== documents[ 0 ].user, `${stages[ index ]} shared the value.` );
+
+				result[ 0 ].copy.name = 'Bob';
+				assert.strictEqual( documents[ 0 ].user.name, 'Alice', `${stages[ index ]} wrote to the input.` );
+			}
+		} );
+
+		it( 'should keep a date on a field added from a field reference', () =>
+		{
+			let result = jsongin.Aggregate( [ { when: new Date( 1000 ) } ], [ { $addFields: { w: '$when' } } ] );
+			assert.ok( result[ 0 ].w instanceof Date );
+			assert.strictEqual( result[ 0 ].w.getTime(), 1000 );
+		} );
+
 		it( 'should behave identically as $set', () =>
 		{
 			let documents = [ { dmg: 8, armor: 3 } ];

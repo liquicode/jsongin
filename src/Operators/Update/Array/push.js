@@ -29,7 +29,9 @@ module.exports = function ( jsongin )
 						continue;
 					}
 					let value = UpdateFields[ field ];
-					array.push( value );
+					// Cloned, so that the array element does not share structure with the
+					// update document it came from. This is what $addToSet already does.
+					array.push( jsongin.SafeClone( value ) );
 					let result = jsongin.SetValue( Document, field, array );
 					if ( result === false )
 					{

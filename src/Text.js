@@ -65,37 +65,66 @@ function Matches( Text, Pattern, CaseSensitive = true )
 
 
 //---------------------------------------------------------------------
+// Escapes the characters which have a meaning inside a regular expression, so that a search
+// string is matched as the literal text it is.
+// Without this, searching for 'a.b' also matched 'axb', and searching for '(' threw a
+// SyntaxError while the expression was being built.
+function escape_regexp( Text )
+{
+	return Text.replace( /[.*+?^${}()|[\]\\]/g, '\\$&' );
+}
+
+
+//---------------------------------------------------------------------
 function SearchReplacements( Text, ReplacementMap, CaseSensitive = true )
 {
-	var replaced = '';
+	if ( typeof Text !== 'string' ) { throw new Error( 'The parameter [Text] must be a string.' ); }
+	if ( ( ReplacementMap === undefined ) || ( ReplacementMap === null ) ) { return Text; }
+
+	let keys = Object.keys( ReplacementMap );
+
+	// An empty map has nothing to search for. An empty expression would otherwise match at
+	// every position and replace each one with nothing.
+	if ( keys.length === 0 ) { return Text; }
+
+	let patterns = [];
+	for ( let index = 0; index < keys.length; index++ )
+	{
+		patterns.push( escape_regexp( keys[ index ] ) );
+	}
+
 	if ( CaseSensitive )
 	{
-		// Create a regular expression from the keys of the replacements object
-		var regex = new RegExp( Object.keys( ReplacementMap ).join( '|' ), 'g' );
-		// Perform the replacements
-		replaced = Text.replace( regex, matched => ReplacementMap[ matched ] );
+		let regex = new RegExp( patterns.join( '|' ), 'g' );
+		return Text.replace( regex,
+			function ( Matched )
+			{
+				return ReplacementMap[ Matched ];
+			} );
 	}
-	else
+
+	// Matching without regard to case means the matched text is not necessarily one of the
+	// keys, so the replacements are looked up under a lowercased key.
+	let replacements = {};
+	for ( let index = 0; index < keys.length; index++ )
 	{
-		// Create a regular expression from the keys of the replacements object
-		var regex = new RegExp( Object.keys( ReplacementMap ).join( '|' ), 'gi' );
-		// Perform the replacements
-		var keys = Object.keys( ReplacementMap );
-		var replacements = {};
-		for ( var index = 0; index < keys.length; index++ )
-		{
-			replacements[ keys[ index ].toLowerCase() ] = ReplacementMap[ keys[ index ] ];
-		}
-		replaced = Text.replace( regex, matched => replacements[ matched.toLowerCase() ] );
+		replacements[ keys[ index ].toLowerCase() ] = ReplacementMap[ keys[ index ] ];
 	}
-	return replaced;
+
+	let regex = new RegExp( patterns.join( '|' ), 'gi' );
+	return Text.replace( regex,
+		function ( Matched )
+		{
+			return replacements[ Matched.toLowerCase() ];
+		} );
 }
 
 
 //---------------------------------------------------------------------
 function SearchReplace( Text, Search, Replace, CaseSensitive = true )
 {
-	var replacements = {};
+	if ( typeof Search !== 'string' ) { throw new Error( 'The parameter [Search] must be a string.' ); }
+	let replacements = {};
 	replacements[ Search ] = Replace;
 	return SearchReplacements( Text, replacements, CaseSensitive );
 }

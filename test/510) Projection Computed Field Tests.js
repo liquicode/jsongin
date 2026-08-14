@@ -158,6 +158,36 @@ describe( '510) Projection Computed Field Tests', () =>
 			assert.strictEqual( source.user.name, 'Alice' );
 		} );
 
+		/*
+			A field reference such as '$user' evaluates to the value inside the document rather
+			than to a copy of it, so a computed field needs the same clone an included field
+			gets. Only the included fields used to be cloned.
+		*/
+
+		it( 'should not alias the source document through a computed field', () =>
+		{
+			let source = { user: { name: 'Alice' } };
+			let projected = jsongin.Project( source, { copy: '$user' } );
+			projected.copy.name = 'Bob';
+			assert.strictEqual( source.user.name, 'Alice' );
+		} );
+
+		it( 'should not alias an array through a computed field', () =>
+		{
+			let source = { tags: [ 'a', 'b' ] };
+			let projected = jsongin.Project( source, { t: '$tags' } );
+			projected.t.push( 'c' );
+			assert.strictEqual( source.tags.length, 2 );
+		} );
+
+		it( 'should keep a date through a computed field', () =>
+		{
+			let source = { when: new Date( 1000 ) };
+			let projected = jsongin.Project( source, { w: '$when' } );
+			assert.ok( projected.w instanceof Date );
+			assert.strictEqual( projected.w.getTime(), 1000 );
+		} );
+
 	} );
 
 

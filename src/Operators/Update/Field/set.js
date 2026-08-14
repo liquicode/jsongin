@@ -22,7 +22,10 @@ module.exports = function ( jsongin )
 				for ( let field in UpdateFields )
 				{
 					let value = UpdateFields[ field ];
-					let result = jsongin.SetValue( Document, field, value );
+					// Cloned, so that the updated document does not share structure with the
+					// update document it was built from. Without this, writing to the result
+					// reached back into the caller's $set specification.
+					let result = jsongin.SetValue( Document, field, jsongin.SafeClone( value ) );
 					if ( result === false )
 					{
 						if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$set: Setting the value of [${field}] to [${JSON.stringify( value )}] failed.` ); }

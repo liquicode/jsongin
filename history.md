@@ -4,8 +4,74 @@
 # Project History
 
 
-v0.1.0 (2026-08-13)
+v0.1.0 (current)
 ---------------------------------------------------------------------
+
+- A code review of the whole library was run and its findings worked through. The review is kept
+  at `.reviews/2026-08-14-03-35/review.md`. What it turned up, and what was done about it:
+
+  - ***Breaking:*** `$currentDate` now stores a `Date` object for `true` and for
+    `{ $type: 'date' }`, rather than a `Date.toISOString()` string and a `Date.toDateString()`
+    string. `{ $type: 'timestamp' }` still stores a number, because there is no BSON Timestamp
+    type to store. The stored value now answers a `{ $type: 'date' }` query, which its own
+    output previously did not. Code which read these fields as strings has to change.
+    Each field also gets its own `Date` rather than every field in one operation sharing a
+    single object.
+
+  - `Unhybridize()` silently dropped any string field whose text happened to parse as JSON.
+    `'123'`, `'true'`, and `'[1,2]'` all parse without being one of `Hybridize()`'s envelopes,
+    matched none of the type cases, and left the field unwritten. The parsed value is now
+    checked for an envelope before it is used, and anything else is returned as the string it
+    was. A value which is not a string is carried across unchanged rather than dropped, so a
+    document which was never hybridized survives the call.
+
+  - `Unhybridize()` read the `message` and `source` of an `Error`, a function, and a `Symbol`
+    off the raw JSON string rather than off the parsed envelope, so all three came back
+    `undefined`. Rebuilding a function also passed a whole function declaration to
+    `new Function()`, which takes a body; the source is now evaluated as an expression.
+
+  - `Distinct()` built its key by concatenating the stringified field values with nothing
+    between them, so `{ a: 1, b: 23 }` and `{ a: 12, b: 3 }` produced the same key and one of
+    the two was lost. Each field's key now carries its short type and the parts are combined
+    through `JSON.stringify()`, which is what the `$group` stage already did. The returned
+    values are also cloned, so the result no longer aliases the given documents.
+
+  - `Format()` escaped only the first quote in a string and did not escape the backslash or the
+    control characters at all, so its output could not be read back by `JSON.parse()`. It now
+    escapes exactly what `JSON.stringify()` escapes, including lone surrogates, and it does so
+    for field names as well as for values.
+
+  - `Parse()` dropped the backslash of an escape sequence and took the next character
+    literally, turning `\n` into the letter `n`. It now decodes `\b`, `\f`, `\n`, `\r`, `\t`,
+    `\uXXXX`, and the quote, backslash, and slash escapes; any other escape stands for the
+    character which follows it.
+
+  - `Parse()` threw a raw `TypeError` on truncated input, from reading a token which was not
+    there. It is now a forgiving parser which ***never throws***: a string it cannot read is
+    returned unchanged, as is an argument which is not a string, and the reason is reported to
+    the `OpLog`.
+
+  - Derived values no longer alias the data they came from. A computed field in `Project()` and
+    a field added by the `$addFields` and `$set` stages were stored without being cloned, but a
+    field reference such as `'$user'` evaluates to the value inside the document rather than to
+    a copy of it, so writing to the result reached back into the input. The `$set` and `$push`
+    update operators had the same problem with the update document itself.
+
+  - `$pullAll` matched with `Array.includes()`, which compares objects, arrays, and dates by
+    reference, so it could only ever pull primitives. It now matches by content, which is what
+    `$addToSet` already did.
+
+  - `Text.SearchReplace()` and `Text.SearchReplacements()` built a regular expression from the
+    search text without escaping it. Searching for `a.b` also matched `axb` and then wrote the
+    text `undefined` into the result, and searching for `(` threw a `SyntaxError`. The search
+    text is now matched as the literal text it is, an empty replacement map returns the text
+    unchanged rather than matching at every position, and both functions validate their
+    parameters as the rest of the module does.
+
+  - The test suite grew from 989 to 1043 tests, and the uncovered blocks which
+    `npm run coverage` reports fell from 172 to 155. Every fix above landed with tests, and
+    `Parse` and `Distinct` are now fully covered. A duplicated copy of the `Parse` tests was
+    removed from the `Format` test block.
 
 - Documentation was brought up to date with this release:
   - Fixed three passages which did not work as written. The `OpLog` document initialized the

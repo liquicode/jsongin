@@ -47,7 +47,11 @@ module.exports = function ( jsongin )
 					// An expression which evaluates to a missing value does not add the field.
 					if ( typeof value === 'undefined' ) { continue; }
 
-					jsongin.SetValue( result, key, value );
+					// Cloned, because a field reference such as '$user' evaluates to the value
+					// inside the original document rather than to a copy of it. Storing it
+					// as-is left the emitted document sharing structure with its input, which
+					// is what this stage promises not to do.
+					jsongin.SetValue( result, key, jsongin.SafeClone( value ) );
 				}
 
 				results.push( result );

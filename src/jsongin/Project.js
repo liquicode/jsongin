@@ -116,7 +116,10 @@ module.exports = function ( Engine )
 				// An expression which evaluates to a missing value omits the field.
 				// An expression which evaluates to null sets the field to null.
 				if ( typeof value === 'undefined' ) { continue; }
-				let result = Engine.SetValue( projected, key, value );
+				// Cloned, because a field reference such as '$user' evaluates to the value
+				// inside the given document rather than to a copy of it. Storing it as-is made
+				// the projection share structure with the document it was projected from.
+				let result = Engine.SetValue( projected, key, Engine.SafeClone( value ) );
 				if ( result === false )
 				{
 					if ( Engine.OpLog ) { Engine.OpLog( `Projection: Failed to set the computed field [${key}] in the projection.` ); }

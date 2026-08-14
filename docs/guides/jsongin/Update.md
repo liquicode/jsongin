@@ -215,15 +215,24 @@ A bare string is ***not*** a valid `date-spec`.
 
 | **date-spec**            | **Sets the field to**                                        |
 |--------------------------|--------------------------------------------------------------|
-| `true`                   | A `Date.toISOString()` zulu timestamp string.                |
+| `true`                   | A `Date` object.                                             |
+| `{ $type: 'date' }`      | A `Date` object.                                             |
 | `{ $type: 'timestamp' }` | A `Date.getTime()` numeric value.                            |
-| `{ $type: 'date' }`      | A `Date.toDateString()` string.                              |
 
-All of the fields named in one `$currentDate` operation receive the ***same*** timestamp,
+All of the fields named in one `$currentDate` operation receive the ***same*** moment in time,
   which is read once before the fields are visited.
+Each field gets its own `Date`, so two fields never share one object.
 
-Note that `jsongin` stores a string or a number here, never a `Date` object.
-To store an actual `Date`, use `$set` with a date value.
+A stored `Date` is a real `Date`, so it answers a date query and survives
+  [`SafeClone()`](./SafeClone.md):
+
+```js
+let updated = jsongin.Update( {}, { $currentDate: { when: true } } );
+jsongin.Query( updated, { when: { $type: 'date' } } ) === true
+```
+
+`{ $type: 'timestamp' }` stores a number rather than a `Date` because `jsongin` has no BSON
+  Timestamp type to store.
 
 **Examples**
 ```js
@@ -231,22 +240,23 @@ let updated = jsongin.Update(
 				{ user: { name: 'Alice', last_login: null } },
 				{ $currentDate: { 'user.last_login': true } }
 			);
-// updated is { user: { name: 'Alice', last_login: '2023-11-24T07:51:47.064Z' } }
+// updated is { user: { name: 'Alice', last_login: <Date 2023-11-24T07:51:47.064Z> } }
+
+updated = jsongin.Update(
+				{ user: { name: 'Alice', last_login: null } },
+				{ $currentDate: { 'user.last_login': { $type: 'date' } } }
+			);
+// updated is { user: { name: 'Alice', last_login: <Date 2023-11-24T07:51:47.064Z> } }
 
 updated = jsongin.Update(
 				{ user: { name: 'Alice', last_login: null } },
 				{ $currentDate: { 'user.last_login': { $type: 'timestamp' } } }
 			);
 // updated is { user: { name: 'Alice', last_login: 1700812593086 } }
-
-updated = jsongin.Update(
-				{ user: { name: 'Alice', last_login: null } },
-				{ $currentDate: { 'user.last_login': { $type: 'date' } } }
-			);
-// updated is { user: { name: 'Alice', last_login: 'Fri Nov 24 2023' } }
 ```
 
-An invalid `date-spec` leaves the field alone and reports the reason to the `OpLog`:
+An invalid `date-spec` leaves the field alone, reports the reason to the `OpLog`, and makes the
+  operation report failure:
 ```js
 // A bare string is not a date-spec. This does nothing.
 let updated = jsongin.Update(
@@ -255,6 +265,8 @@ let updated = jsongin.Update(
 			);
 // updated is { user: { last_login: null } }
 ```
+
+`false`, an object with no `$type`, and an unrecognized `$type` are all invalid in the same way.
 
 
 # Array Update Operators
@@ -322,7 +334,14 @@ let updated = jsongin.Update(
 
 **Usage** : `$pullAll: { array-field: array-values, array-field: array-values, ... }`
 
-Removes all matching values from an array.
+Removes every instance of the given values from an array.
+
+Values are matched by ***content***, using the same comparison as the query and expression
+  operators, which is what [`$addToSet`](#$addToSet) does.
+An object, an array, or a date is therefore removed by writing an equal value, rather than only
+  by writing the very instance which is in the array.
+
+A value which is not in the array is not an error; nothing is removed for it.
 
 **Examples**
 ```js
@@ -331,5 +350,12 @@ let updated = jsongin.Update(
 				{ $pullAll: { a: [ 1, 3 ] } }
 			);
 // updated is { a: [ 2 ] }
+
+// Values are matched by content, so an equal object is removed.
+updated = jsongin.Update(
+				{ a: [ { n: 1 }, { n: 2 } ] },
+				{ $pullAll: { a: [ { n: 1 } ] } }
+			);
+// updated is { a: [ { n: 2 } ] }
 ```
 

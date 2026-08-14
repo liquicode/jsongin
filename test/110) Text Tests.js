@@ -261,6 +261,68 @@ describe( '110) Text Tests', () =>
 
 
 	//---------------------------------------------------------------------
+	describe( 'Regular Expression Characters in the Search Text', () =>
+	{
+
+		/*
+			The search text was joined straight into a regular expression, so its characters
+			were interpreted rather than matched. Searching for 'a.b' also matched 'axb', and
+			the replacement lookup for that match then failed and wrote the text 'undefined'.
+			A search for '(' threw a SyntaxError while the expression was being built.
+		*/
+
+		it( 'should match a metacharacter as itself', () =>
+		{
+			assert.strictEqual( jsongin.Text.SearchReplace( 'a.b axb', 'a.b', 'X' ), 'X axb' );
+			assert.strictEqual( jsongin.Text.SearchReplace( 'a+b', '+', '-' ), 'a-b' );
+			assert.strictEqual( jsongin.Text.SearchReplace( 'a*b', '*', '-' ), 'a-b' );
+			assert.strictEqual( jsongin.Text.SearchReplace( 'a?b', '?', '-' ), 'a-b' );
+			assert.strictEqual( jsongin.Text.SearchReplace( 'a|b', '|', '-' ), 'a-b' );
+			assert.strictEqual( jsongin.Text.SearchReplace( 'a^b', '^', '-' ), 'a-b' );
+			assert.strictEqual( jsongin.Text.SearchReplace( 'a$b', '$', '-' ), 'a-b' );
+			assert.strictEqual( jsongin.Text.SearchReplace( 'a\\b', '\\', '/' ), 'a/b' );
+		} );
+
+		it( 'should not throw on a search text which is not a valid expression', () =>
+		{
+			assert.strictEqual( jsongin.Text.SearchReplace( 'c(d)', '(', '[' ), 'c[d)' );
+			assert.strictEqual( jsongin.Text.SearchReplace( 'a[b]', '[', ' ' ), 'a b]' );
+			assert.strictEqual( jsongin.Text.SearchReplace( 'a{2}', '{', '(' ), 'a(2}' );
+		} );
+
+		it( 'should never write the text undefined into the result', () =>
+		{
+			assert.strictEqual( jsongin.Text.SearchReplace( 'a.b axb', 'a.b', 'X' ).includes( 'undefined' ), false );
+		} );
+
+		it( 'should escape the search text when matching without regard to case', () =>
+		{
+			assert.strictEqual( jsongin.Text.SearchReplace( 'A.B AXB', 'a.b', 'X', false ), 'X AXB' );
+		} );
+
+		it( 'should escape every key of a replacement map', () =>
+		{
+			assert.strictEqual( jsongin.Text.SearchReplacements( 'a.b|c', { 'a.b': '1', '|': '2' } ), '12c' );
+		} );
+
+		it( 'should return the text unchanged for an empty replacement map', () =>
+		{
+			// An empty expression otherwise matches at every position.
+			assert.strictEqual( jsongin.Text.SearchReplacements( 'abc', {} ), 'abc' );
+			assert.strictEqual( jsongin.Text.SearchReplacements( 'abc', null ), 'abc' );
+			assert.strictEqual( jsongin.Text.SearchReplacements( 'abc', undefined ), 'abc' );
+		} );
+
+		it( 'should reject parameters of the wrong type', () =>
+		{
+			assert.throws( function () { jsongin.Text.SearchReplacements( 42, { a: 'b' } ); }, /must be a string/ );
+			assert.throws( function () { jsongin.Text.SearchReplace( 'abc', 42, 'b' ); }, /must be a string/ );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
 	describe( 'Detached Function Tests', () =>
 	{
 

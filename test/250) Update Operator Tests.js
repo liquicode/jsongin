@@ -29,7 +29,7 @@ describe( '250) Update Operator Tests', () =>
 				assert.ok( document.c === 103 );
 			} );
 
-			it( 'should set nested values', () => 
+			it( 'should set nested values', () =>
 			{
 				let document = { nest: { a: 1, b: 2, c: 3 } };
 				let result = jsongin.UpdateOperators.$set.Update( document, { 'nest.a': 101, 'nest.b': 102, 'nest.c': 103 } );
@@ -37,6 +37,35 @@ describe( '250) Update Operator Tests', () =>
 				assert.ok( document.nest.a === 101 );
 				assert.ok( document.nest.b === 102 );
 				assert.ok( document.nest.c === 103 );
+			} );
+
+			/*
+				Update() clones the document, but the values come from the update document.
+				Storing one as-is left the result sharing structure with the caller's $set.
+			*/
+
+			it( 'should not alias the update document', () =>
+			{
+				let updates = { $set: { obj: { n: 1 } } };
+				let updated = jsongin.Update( {}, updates );
+				updated.obj.n = 999;
+				assert.strictEqual( updates.$set.obj.n, 1 );
+			} );
+
+			it( 'should apply the same update document twice independently', () =>
+			{
+				let updates = { $set: { obj: { n: 1 } } };
+				let first = jsongin.Update( {}, updates );
+				let second = jsongin.Update( {}, updates );
+				first.obj.n = 999;
+				assert.strictEqual( second.obj.n, 1 );
+			} );
+
+			it( 'should store a date as a date', () =>
+			{
+				let updated = jsongin.Update( {}, { $set: { when: new Date( 1000 ) } } );
+				assert.ok( updated.when instanceof Date );
+				assert.strictEqual( updated.when.getTime(), 1000 );
 			} );
 
 
@@ -236,50 +265,89 @@ describe( '250) Update Operator Tests', () =>
 		describe( '$currentDate Tests', () =>
 		{
 
-			it( 'should set the current date', () => 
+			it( 'should set the current date', () =>
 			{
 				let document = {};
 				let result = jsongin.UpdateOperators.$currentDate.Update( document, { a: true, b: { $type: 'timestamp' }, c: { $type: 'date' } } );
 				assert.ok( result );
 
-				assert.ok( typeof document.a === 'string' );
-				let a = jsongin.AsDate( document.a );
-				assert.ok( a !== null );
+				// true and { $type: 'date' } store a Date. { $type: 'timestamp' } stores a
+				// number, because jsongin has no BSON Timestamp type.
+				assert.ok( document.a instanceof Date );
+				assert.strictEqual( typeof document.b, 'number' );
+				assert.ok( document.c instanceof Date );
 
-				assert.ok( typeof document.b === 'number' );
-				let b = jsongin.AsDate( document.b );
-				assert.ok( b !== null );
-
-				assert.ok( typeof document.c === 'string' );
-				let c = jsongin.AsDate( document.c );
-				assert.ok( c !== null );
-
-				assert.ok( a.toISOString() === b.toISOString() );
-				assert.ok( a.toDateString() === c.toDateString() );
-
+				// Every field named in one operation receives the same moment in time.
+				assert.strictEqual( document.a.getTime(), document.b );
+				assert.strictEqual( document.c.getTime(), document.b );
 			} );
 
-			it( 'should set the current date for nested values', () => 
+			it( 'should set the current date for nested values', () =>
 			{
 				let document = { nest: { a: 1, b: 2, c: 3 } };
 				let result = jsongin.UpdateOperators.$currentDate.Update( document, { 'nest.a': true, 'nest.b': { $type: 'timestamp' }, 'nest.c': { $type: 'date' } } );
 				assert.ok( result );
 
-				assert.ok( typeof document.nest.a === 'string' );
-				let a = jsongin.AsDate( document.nest.a );
-				assert.ok( a !== null );
+				assert.ok( document.nest.a instanceof Date );
+				assert.strictEqual( typeof document.nest.b, 'number' );
+				assert.ok( document.nest.c instanceof Date );
 
-				assert.ok( typeof document.nest.b === 'number' );
-				let b = jsongin.AsDate( document.nest.b );
-				assert.ok( b !== null );
+				assert.strictEqual( document.nest.a.getTime(), document.nest.b );
+				assert.strictEqual( document.nest.c.getTime(), document.nest.b );
+			} );
 
-				assert.ok( typeof document.nest.c === 'string' );
-				let c = jsongin.AsDate( document.nest.c );
-				assert.ok( c !== null );
+			it( 'should give each field its own Date rather than a shared one', () =>
+			{
+				let document = {};
+				jsongin.UpdateOperators.$currentDate.Update( document, { a: true, c: { $type: 'date' } } );
 
-				assert.ok( a.toISOString() === b.toISOString() );
-				assert.ok( a.toDateString() === c.toDateString() );
+				assert.notStrictEqual( document.a, document.c );
+				document.a.setFullYear( 1999 );
+				assert.notStrictEqual( document.c.getFullYear(), 1999 );
+			} );
 
+			it( 'should store a value which answers to a date query', () =>
+			{
+				let document = jsongin.Update( {}, { $currentDate: { when: { $type: 'date' } } } );
+				assert.strictEqual( jsongin.Query( document, { when: { $type: 'date' } } ), true );
+				assert.ok( document.when instanceof Date );
+			} );
+
+			/*
+				An invalid date specification used to fall through without writing the field,
+				without logging, and while still reporting success.
+			*/
+
+			it( 'should report an invalid date specification and fail', () =>
+			{
+				let cases = [ {}, { $type: 5 }, { $type: 'nonsense' }, { type: 'date' }, false, 0, 'timestamp', null ];
+				for ( let index = 0; index < cases.length; index++ )
+				{
+					let messages = [];
+					let engine = require( '../src/jsongin' ).NewJsongin( {
+						OpLog: function ( Message ) { messages.push( Message ); },
+					} );
+
+					let document = { d: 'untouched' };
+					let result = engine.UpdateOperators.$currentDate.Update( document, { d: cases[ index ] } );
+
+					assert.strictEqual( result, false,
+						`$currentDate reported success for [${JSON.stringify( cases[ index ] )}].` );
+					assert.strictEqual( document.d, 'untouched',
+						`$currentDate wrote the field for [${JSON.stringify( cases[ index ] )}].` );
+					assert.strictEqual( messages.length, 1,
+						`$currentDate logged nothing for [${JSON.stringify( cases[ index ] )}].` );
+					assert.ok( messages[ 0 ].startsWith( 'Update.$currentDate: ' ) );
+				}
+			} );
+
+			it( 'should apply the valid fields even when another one is invalid', () =>
+			{
+				let document = {};
+				let result = jsongin.UpdateOperators.$currentDate.Update( document, { good: true, bad: {} } );
+				assert.strictEqual( result, false );
+				assert.ok( document.good instanceof Date );
+				assert.strictEqual( typeof document.bad, 'undefined' );
 			} );
 
 
@@ -410,7 +478,7 @@ describe( '250) Update Operator Tests', () =>
 		describe( '$push Tests', () =>
 		{
 
-			it( 'should push values to the end of an array', () => 
+			it( 'should push values to the end of an array', () =>
 			{
 				let document = { a: [ 1, 2, 3 ] };
 				let result = jsongin.UpdateOperators.$push.Update( document, { a: 4 } );
@@ -420,6 +488,22 @@ describe( '250) Update Operator Tests', () =>
 				assert.ok( document.a[ 1 ] === 2 );
 				assert.ok( document.a[ 2 ] === 3 );
 				assert.ok( document.a[ 3 ] === 4 );
+			} );
+
+			// The pushed element used to be the very object written in the update document.
+			it( 'should not alias the update document', () =>
+			{
+				let updates = { $push: { list: { n: 1 } } };
+				let updated = jsongin.Update( { list: [] }, updates );
+				updated.list[ 0 ].n = 999;
+				assert.strictEqual( updates.$push.list.n, 1 );
+			} );
+
+			it( 'should push a date as a date', () =>
+			{
+				let updated = jsongin.Update( { list: [] }, { $push: { list: new Date( 1000 ) } } );
+				assert.ok( updated.list[ 0 ] instanceof Date );
+				assert.strictEqual( updated.list[ 0 ].getTime(), 1000 );
 			} );
 
 
@@ -437,6 +521,67 @@ describe( '250) Update Operator Tests', () =>
 				assert.ok( document.a.length === 2 );
 				assert.ok( document.a[ 0 ] === 2 );
 				assert.ok( document.a[ 1 ] === 3 );
+			} );
+
+			/*
+				Array.includes() compares objects, arrays, and dates by reference, so a value
+				written in the update document never matched one already in the array. Only
+				primitives could be pulled.
+			*/
+
+			it( 'should pull an object by its content', () =>
+			{
+				let document = { a: [ { n: 1 }, { n: 2 } ] };
+				let result = jsongin.UpdateOperators.$pullAll.Update( document, { a: [ { n: 1 } ] } );
+				assert.ok( result );
+				assert.strictEqual( document.a.length, 1 );
+				assert.strictEqual( document.a[ 0 ].n, 2 );
+			} );
+
+			it( 'should pull an array by its content', () =>
+			{
+				let document = { a: [ [ 1, 2 ], [ 3 ] ] };
+				jsongin.UpdateOperators.$pullAll.Update( document, { a: [ [ 1, 2 ] ] } );
+				assert.strictEqual( document.a.length, 1 );
+				assert.ok( jsongin.StrictEquals( document.a[ 0 ], [ 3 ] ) );
+			} );
+
+			it( 'should pull a date by its value', () =>
+			{
+				let document = { a: [ new Date( 1000 ), new Date( 2000 ) ] };
+				jsongin.UpdateOperators.$pullAll.Update( document, { a: [ new Date( 1000 ) ] } );
+				assert.strictEqual( document.a.length, 1 );
+				assert.strictEqual( document.a[ 0 ].getTime(), 2000 );
+			} );
+
+			it( 'should pull every instance of a value', () =>
+			{
+				let document = { a: [ 1, 2, 1, 3, 1 ] };
+				jsongin.UpdateOperators.$pullAll.Update( document, { a: [ 1 ] } );
+				assert.ok( jsongin.StrictEquals( document.a, [ 2, 3 ] ) );
+			} );
+
+			it( 'should not pull a value which only looks alike', () =>
+			{
+				// A number and its text are different values, as they are everywhere else.
+				let document = { a: [ 1, '1' ] };
+				jsongin.UpdateOperators.$pullAll.Update( document, { a: [ 1 ] } );
+				assert.ok( jsongin.StrictEquals( document.a, [ '1' ] ) );
+			} );
+
+			it( 'should leave the array alone when nothing matches', () =>
+			{
+				let document = { a: [ { n: 1 } ] };
+				let result = jsongin.UpdateOperators.$pullAll.Update( document, { a: [ { n: 9 } ] } );
+				assert.ok( result );
+				assert.strictEqual( document.a.length, 1 );
+			} );
+
+			it( 'should work through the Update function', () =>
+			{
+				let updated = jsongin.Update( { a: [ { n: 1 }, { n: 2 } ] }, { $pullAll: { a: [ { n: 2 } ] } } );
+				assert.strictEqual( updated.a.length, 1 );
+				assert.strictEqual( updated.a[ 0 ].n, 1 );
 			} );
 
 
