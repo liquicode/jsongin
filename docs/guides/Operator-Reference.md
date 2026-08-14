@@ -441,8 +441,8 @@ Use the `jsongin.Update( Document, Updates )` function to apply updates to a doc
 | Field    |    Yes    | $unset           | Removes the specified field from a document.                                                                                                  |
 | Field    |    Yes    | $rename          | Renames a field.                                                                                                                              |
 | Field    |    Yes    | $inc             | Increments the value of the field by the specified amount.                                                                                    |
-| Field    |    Yes    | $min             | Only updates the field if the specified value is less than the existing field value.                                                          |
-| Field    |    Yes    | $max             | Only updates the field if the specified value is greater than the existing field value.                                                       |
+| Field    |    Yes    | $min             | Only updates the field if the specified value is less than the existing field value. Compares by BSON order, not just numerically. See the note below. |
+| Field    |    Yes    | $max             | Only updates the field if the specified value is greater than the existing field value. Compares by BSON order, not just numerically. See the note below. |
 | Field    |    Yes    | $mul             | Multiplies the value of the field by the specified amount.                                                                                    |
 | Field    |    Yes    | $currentDate     | Sets the value of a field to the current date, as a `Date` or as a numeric timestamp. Takes `true` or `{ $type: '...' }`, never a bare string. |
 | Field    |     -     | $setOnInsert     | Sets the value of a field if an update results in an insert of a document. Has no effect on update operations that modify existing documents. |
@@ -455,4 +455,27 @@ Use the `jsongin.Update( Document, Updates )` function to apply updates to a doc
 | Array    |     -     | $[]              | Acts as a placeholder to update all elements in an array for the documents that match the query condition.                                    |
 | Array    |     -     | $[<identifier> ] | Acts as a placeholder to update all elements that match the arrayFilters condition for the documents that match the query condition.          |
 | Bitwise  |     -     | bit              | Performs bitwise AND, OR, and XOR updates of integer values.                                                                                  |
+
+
+***Note on `$min` and `$max`*** :
+Neither is a numeric operator.
+Values are compared by the ***BSON ordering***, the same order
+  [`CompareValues`](./jsongin/CompareValues.md) and [`Sort`](./jsongin/Sort.md) use, so strings,
+  dates, booleans, and comparisons between different types are all meaningful.
+
+```js
+jsongin.Update( { s: 'xyz' }, { $min: { s: 'abc' } } );  // { s: 'abc' }
+jsongin.Update( { n: 5 }, { $max: { n: 'abc' } } );      // { n: 'abc' }  a string outranks a number
+jsongin.Update( { n: 5 }, { $min: { n: null } } );       // { n: null }   null outranks nothing
+```
+
+A field which is ***not present*** is set to the given value, since there is nothing to compare
+  against:
+
+```js
+jsongin.Update( {}, { $min: { n: 5 } } );  // { n: 5 }
+```
+
+A field holding `null` is compared rather than treated as missing.
+Both behaviors match MongoDB, verified against MongoDB 6.0.1.
 

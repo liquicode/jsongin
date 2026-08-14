@@ -2,6 +2,8 @@
 
 module.exports = function ( jsongin )
 {
+	const minmax = require( './_minmax' )( jsongin );
+
 	let operator =
 	{
 
@@ -16,32 +18,9 @@ module.exports = function ( jsongin )
 		{
 			try
 			{
-				if ( jsongin.ShortType( UpdateFields ) !== 'o' ) { throw new Error( `The UpdateFields parameter must be an object.` ); }
-
-				let operation_result = true;
-				for ( let field in UpdateFields )
-				{
-					let value = jsongin.GetValue( Document, field );
-					let min = jsongin.AsNumber( UpdateFields[ field ] );
-					if ( min === null )
-					{
-						if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$min: This operator requires a numeric value but found [${UpdateFields[ field ]}] instead at [${field}].` ); }
-						operation_result = false;
-						continue;
-					}
-					if ( min < value )
-					{
-						let result = jsongin.SetValue( Document, field, min );
-						if ( result === false )
-						{
-							if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$min: Setting the value of [${field}] to [${JSON.stringify( value )}] failed.` ); }
-							operation_result = false;
-							continue;
-						}
-					}
-				}
-
-				return operation_result;
+				// -1 keeps the smaller of the two values.
+				// See _minmax.js for the MongoDB semantics this follows.
+				return minmax.Apply( Document, UpdateFields, '$min', -1 );
 			}
 			catch ( error )
 			{

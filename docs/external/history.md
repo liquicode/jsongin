@@ -132,7 +132,117 @@ v0.1.0 (current)
     weaken the claim, those two were finished, so it stands. It now also points at the Operator
     Reference for which operators are implemented at all.
 
-  - The test suite grew from 989 to 1069 tests, and the uncovered blocks which
+  - ***Breaking: `BsonType()` no longer reports a number as a `long`.*** It tested
+    `Number.isSafeInteger()`, which is not an `int32` range test, so every safe integer was an
+    `int` and everything above one was a `long`. A Javascript number is a double, and the BSON
+    serializer stores it as an `int32` only when it is a whole number inside that range, so a
+    number is never a `long`. It is now `int` between `-2147483648` and `2147483647`, and
+    `double` everywhere else, including `NaN` and the infinities.
+
+    Verified against MongoDB 6.0.1 by inserting each value and reading back `$type`: `42` and
+    `2147483647` store as `int`, while `2147483648`, `3000000000`, and `9007199254740991` store
+    as `double`. A `$type: 'long'` query matched none of them. The `$type` query operator is
+    built directly on this, so `{ a: { $type: 'int' } }` and `{ a: { $type: 'double' } }` now
+    select the same documents MongoDB selects.
+
+  - ***Breaking: a field name which merely looks numeric is a field name again.*** `SplitPath()`
+    converted a path element to a number whenever `AsNumber()` accepted it, and `AsNumber()`
+    accepts `'01'`, `'1e2'`, `'0x10'`, and `'Infinity'`. A field in any of those forms became an
+    array index, which made its data unreachable: `GetValue( { '01': 'x' }, '01' )` returned
+    `undefined`, and `SetValue( {}, 'a.01', 'x' )` built `{ a: [ null, 'x' ] }`.
+
+    Only canonical integer text now converts, which is `'0'`, `'7'`, and the documented negative
+    index `'-1'`. MongoDB 6.0.1 resolves `'a.01'` as a field name and finds
+    `{ a: { '01': 'x' } }`, and so does `jsongin` now. Array indexing and reverse indexing are
+    unchanged.
+
+  - `Flatten()` dropped empty objects and arrays, because an empty container holds no leaf to
+    descend to, so `Flatten( { a: {}, b: [] } )` returned `{}` and the round trip through
+    `Expand()` lost both fields. An empty container is now emitted as a value at its own path,
+    and a new one rather than the one from the document, so the flattened result does not alias
+    its source.
+
+    Two round trip limitations which cannot be fixed this way are now documented rather than
+    left to be discovered: a document which is itself an array expands back as an object, and an
+    object whose keys are canonical integers expands back as an array. Dot notation paths do not
+    record which of the two a container was, and `Flatten( { a: { '0': 'x' } } )` and
+    `Flatten( { a: [ 'x' ] } )` produce identical results.
+
+  - `$eq` and `$ne` compared two regular expressions with `===`, which is never true for
+    distinct objects, so `{ a: { $eq: /ell/ } }` did not match `{ a: /ell/ }`. Regular
+    expressions are now compared by their source and flags, the same trap dates already had a
+    branch for.
+
+    Note that `{ a: { $eq: /ell/ } }` still does ***not*** pattern match the string `'hello'`,
+    while the implicit form `{ a: /ell/ }` does. That asymmetry is MongoDB's own, verified
+    against MongoDB 6.0.1: the explicit form matches only a field which is itself that regular
+    expression, and a regular expression is not even a legal argument to `$ne` there. Use
+    `$regex` to pattern match.
+
+  - ***Breaking: `DeleteValue()` reports whether it removed anything.*** It returned `true` for
+    any path whose parent resolved, because the Javascript `delete` operator returns `true` for
+    a property which was never there. Deleting a field which does not exist, a path into an
+    array by field name, and an out of range array index all reported success while changing
+    nothing. It now returns `false` when nothing was removed.
+
+    `$unset` treats that as a successful no-op rather than a failure, which is what MongoDB
+    reports: unsetting an absent field is an update with `modifiedCount` 0 and no error.
+
+  - The `$query` query operator was removed. It was registered, returned `true` for any input
+    regardless of its match value, and appeared in no document. `$query` was a MongoDB
+    ***query modifier*** which wrapped a whole filter alongside `$orderby` and `$hint`,
+    deprecated in MongoDB 3.2 and removed in 4.4 with the `OP_QUERY` wire protocol; it was never
+    a field level operator, and this implementation did not do what the modifier did either.
+
+    Because it was registered, `{ a: { $query: true } }` silently matched every document where
+    an unrecognized operator returns `false`. `$noop` fills the same role, is documented, and
+    works at the top level of a query where `$query` did not.
+
+  - `Text.Matches()` validates its parameters as the rest of the module does. A non string
+    pattern surfaced as a raw `TypeError` from `String.replace()` rather than as a described
+    error.
+
+  - ***Breaking: a path which reaches into an array by field name is no longer a write
+    target.*** `GetValue`, `SetValue`, and `DeleteValue` all applied a non numeric key against
+    an array to every element of that array. MongoDB does this for reads, and does not do it
+    for writes: `{ $set: { 'a.x': 9 } }` against `{ a: [ { x: 1 }, { x: 2 } ] }` is rejected
+    outright, and `{ $unset: { 'a.x': '' } }` modifies nothing. Reaching through an array there
+    requires the all positional operator, `'a.$[].x'`.
+
+    The write side is now off by default, behind the `PathExtensions` engine setting, which
+    until now was declared and never read. `SetValue` throws and `DeleteValue` returns `false`,
+    which is what makes `$set`, `$inc`, `$mul`, `$rename`, and `$unset` agree with MongoDB.
+    Passing `{ PathExtensions: true }` to `NewJsongin()` restores the previous behavior.
+
+    Reading is deliberately ***not*** gated, because MongoDB does traverse arrays when it
+    resolves a query path. `GetValue( doc, 'users.id' )` and `{ 'users.id': 101 }` are
+    unchanged.
+
+    Three of the affected operators were corrupting data rather than merely differing: through
+    an array, `$inc` wrote the string `"1,21"`, `$mul` wrote `null`, and `$rename` copied the
+    gathered array into every element.
+
+  - ***Breaking: `$min` and `$max` are no longer numeric operators.*** Both forced their operand
+    through `AsNumber()` and rejected anything else, then compared with the raw `<` and `>`
+    operators, which coerce. They now compare by the BSON ordering through `CompareValues()`,
+    the same order `Sort()` uses, so strings, dates, booleans, and comparisons between
+    different types all work:
+
+        jsongin.Update( { s: 'xyz' }, { $min: { s: 'abc' } } );  // { s: 'abc' }
+        jsongin.Update( { n: 5 }, { $max: { n: 'abc' } } );      // { n: 'abc' }
+        jsongin.Update( { n: 5 }, { $min: { n: null } } );       // { n: null }
+
+    A field which is not present is now set to the given value rather than left alone, since
+    there is nothing to compare against. A field holding `null` is compared rather than treated
+    as missing. Code which relied on either operator quietly doing nothing to a non numeric
+    field will see it change.
+
+    Measured against MongoDB 6.0.1, the two went from 14 of 26 cases matching to 26 of 26.
+    `min.js` and `max.js` now share one implementation in `_minmax.js`, differing only in which
+    direction of comparison replaces the value, following the `_arithmetic.js` and
+    `_accumulator.js` helper convention.
+
+  - The test suite grew from 989 to 1104 tests, and the uncovered blocks which
     `npm run coverage` reports fell from 172 to 154. Every fix above landed with tests, and
     `Parse` and `Distinct` are now fully covered. A duplicated copy of the `Parse` tests was
     removed from the `Format` test block.

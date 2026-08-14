@@ -194,7 +194,7 @@ describe( '250) Update Operator Tests', () =>
 				assert.ok( document.c === 3 );
 			} );
 
-			it( 'should set min nested values', () => 
+			it( 'should set min nested values', () =>
 			{
 				let document = { nest: { a: 1, b: 2, c: 3 } };
 				let result = jsongin.UpdateOperators.$min.Update( document, { 'nest.a': 1, 'nest.b': 1, 'nest.c': 100 } );
@@ -204,6 +204,63 @@ describe( '250) Update Operator Tests', () =>
 				assert.ok( document.nest.c === 3 );
 			} );
 
+			// Every case below was measured against MongoDB 6.0.1. $min and $max are not
+			// numeric operators: they compare by the BSON ordering, which is what
+			// CompareValues implements.
+
+			it( 'should set a field which is not there', () =>
+			{
+				assert.deepStrictEqual( jsongin.Update( {}, { $min: { n: 5 } } ), { n: 5 } );
+				assert.deepStrictEqual( jsongin.Update( { a: {} }, { $min: { 'a.b': 7 } } ), { a: { b: 7 } } );
+			} );
+
+			it( 'should compare strings', () =>
+			{
+				assert.deepStrictEqual( jsongin.Update( { s: 'xyz' }, { $min: { s: 'abc' } } ), { s: 'abc' } );
+				assert.deepStrictEqual( jsongin.Update( { s: 'abc' }, { $min: { s: 'xyz' } } ), { s: 'abc' } );
+			} );
+
+			it( 'should compare dates', () =>
+			{
+				let result = jsongin.Update( { d: new Date( 100000 ) }, { $min: { d: new Date( 0 ) } } );
+				assert.strictEqual( result.d.getTime(), 0 );
+			} );
+
+			it( 'should compare booleans', () =>
+			{
+				assert.deepStrictEqual( jsongin.Update( { b: true }, { $min: { b: false } } ), { b: false } );
+			} );
+
+			it( 'should treat null as lower than any number', () =>
+			{
+				// null sorts below numbers in the BSON ordering, so it wins a $min.
+				assert.deepStrictEqual( jsongin.Update( { n: 5 }, { $min: { n: null } } ), { n: null } );
+				assert.deepStrictEqual( jsongin.Update( { n: null }, { $min: { n: 5 } } ), { n: null } );
+			} );
+
+			it( 'should compare across types by the BSON ordering', () =>
+			{
+				// A number sorts below a string, so the number is the minimum.
+				assert.deepStrictEqual( jsongin.Update( { n: 5 }, { $min: { n: 'abc' } } ), { n: 5 } );
+				// A number sorts below an array and below an object.
+				assert.deepStrictEqual( jsongin.Update( { a: [ 3, 1 ] }, { $min: { a: 0 } } ), { a: 0 } );
+				assert.deepStrictEqual( jsongin.Update( { o: { z: 1 } }, { $min: { o: 0 } } ), { o: 0 } );
+			} );
+
+			it( 'should reject a path which reaches into an array', () =>
+			{
+				// MongoDB rejects this whether or not the value would have changed.
+				assert.throws( function () { jsongin.Update( { a: [ { x: 1 }, { x: 2 } ] }, { $min: { 'a.x': 0 } } ); }, /Cannot create field/ );
+				assert.throws( function () { jsongin.Update( { a: [ { x: 1 }, { x: 2 } ] }, { $min: { 'a.x': 9 } } ); }, /Cannot create field/ );
+			} );
+
+			it( 'should not alias the update specification', () =>
+			{
+				let specification = { $min: { o: { n: 1 } } };
+				let result = jsongin.Update( {}, specification );
+				result.o.n = 999;
+				assert.strictEqual( specification.$min.o.n, 1 );
+			} );
 
 		} );
 
@@ -221,7 +278,7 @@ describe( '250) Update Operator Tests', () =>
 				assert.ok( document.c === 100 );
 			} );
 
-			it( 'should set min nested values', () => 
+			it( 'should set min nested values', () =>
 			{
 				let document = { nest: { a: 1, b: 2, c: 3 } };
 				let result = jsongin.UpdateOperators.$max.Update( document, { 'nest.a': 1, 'nest.b': 1, 'nest.c': 100 } );
@@ -231,6 +288,43 @@ describe( '250) Update Operator Tests', () =>
 				assert.ok( document.nest.c === 100 );
 			} );
 
+			// The mirror of the $min cases above, measured against MongoDB 6.0.1.
+
+			it( 'should set a field which is not there', () =>
+			{
+				assert.deepStrictEqual( jsongin.Update( {}, { $max: { n: 5 } } ), { n: 5 } );
+			} );
+
+			it( 'should compare strings', () =>
+			{
+				assert.deepStrictEqual( jsongin.Update( { s: 'abc' }, { $max: { s: 'xyz' } } ), { s: 'xyz' } );
+				assert.deepStrictEqual( jsongin.Update( { s: 'xyz' }, { $max: { s: 'abc' } } ), { s: 'xyz' } );
+			} );
+
+			it( 'should compare dates', () =>
+			{
+				let result = jsongin.Update( { d: new Date( 0 ) }, { $max: { d: new Date( 100000 ) } } );
+				assert.strictEqual( result.d.getTime(), 100000 );
+			} );
+
+			it( 'should treat null as lower than any number', () =>
+			{
+				assert.deepStrictEqual( jsongin.Update( { n: null }, { $max: { n: 5 } } ), { n: 5 } );
+			} );
+
+			it( 'should compare across types by the BSON ordering', () =>
+			{
+				// A string sorts above a number, so the string is the maximum.
+				assert.deepStrictEqual( jsongin.Update( { n: 5 }, { $max: { n: 'abc' } } ), { n: 'abc' } );
+				// An array sorts above a number, so the array stays.
+				assert.deepStrictEqual( jsongin.Update( { a: [ 3, 1 ] }, { $max: { a: 0 } } ), { a: [ 3, 1 ] } );
+			} );
+
+			it( 'should reject a path which reaches into an array', () =>
+			{
+				assert.throws( function () { jsongin.Update( { a: [ { x: 1 }, { x: 2 } ] }, { $max: { 'a.x': 9 } } ); }, /Cannot create field/ );
+				assert.throws( function () { jsongin.Update( { a: [ { x: 1 }, { x: 2 } ] }, { $max: { 'a.x': 0 } } ); }, /Cannot create field/ );
+			} );
 
 		} );
 
