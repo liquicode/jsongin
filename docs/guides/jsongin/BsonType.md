@@ -44,13 +44,17 @@ jsongin.Query( { n: 42 }, { n: { $type: 16 } } ) === true
 | `/^abc/`               |    `11`    | `'regex'`     |
 | `Symbol()`             |    `14`    | `'symbol'`    |
 | `42`                   |    `16`    | `'int'`       |
-| `1e310`                |    `18`    | `'long'`      |
+| `Math.pow( 2, 53 )`    |    `18`    | `'long'`      |
+| `NaN`                  |     `1`    | `'double'`    |
+| `Infinity`             |     `1`    | `'double'`    |
 
 ***Numbers*** are classified by their value rather than by a declared width, because Javascript
   has only one number type:
 - A number written with a decimal point is a `double`.
 - A whole number within `Number.isSafeInteger()` is an `int`.
 - A whole number outside that range is a `long`.
+- `NaN`, `Infinity`, and `-Infinity` are `double`s, which is what BSON calls them.
+  Note that BSON has no separate type for any of the three.
 
 A ***function*** has no BSON type and returns `null`.
 

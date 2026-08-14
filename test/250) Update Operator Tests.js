@@ -308,7 +308,7 @@ describe( '250) Update Operator Tests', () =>
 				assert.ok( document.a[ 3 ] === 4 );
 			} );
 
-			it( 'should not add to a set of values if the value already exists', () => 
+			it( 'should not add to a set of values if the value already exists', () =>
 			{
 				let document = { a: [ 1, 2, 3, 4 ] };
 				let result = jsongin.UpdateOperators.$addToSet.Update( document, { a: 4 } );
@@ -318,6 +318,62 @@ describe( '250) Update Operator Tests', () =>
 				assert.ok( document.a[ 1 ] === 2 );
 				assert.ok( document.a[ 2 ] === 3 );
 				assert.ok( document.a[ 3 ] === 4 );
+			} );
+
+			it( 'should compare values by content rather than by reference', () =>
+			{
+				// Array.includes() compares objects, arrays, and dates by reference, so these
+				// were appended again on every call no matter what they contained.
+				let document = { a: [ { id: 1 } ] };
+				jsongin.UpdateOperators.$addToSet.Update( document, { a: { id: 1 } } );
+				assert.deepStrictEqual( document, { a: [ { id: 1 } ] } );
+
+				document = { a: [ [ 1, 2 ] ] };
+				jsongin.UpdateOperators.$addToSet.Update( document, { a: [ 1, 2 ] } );
+				assert.deepStrictEqual( document, { a: [ [ 1, 2 ] ] } );
+
+				document = { a: [ new Date( 0 ) ] };
+				jsongin.UpdateOperators.$addToSet.Update( document, { a: new Date( 0 ) } );
+				assert.strictEqual( document.a.length, 1 );
+			} );
+
+			it( 'should still add a value which differs in content', () =>
+			{
+				let document = { a: [ { id: 1 } ] };
+				jsongin.UpdateOperators.$addToSet.Update( document, { a: { id: 2 } } );
+				assert.deepStrictEqual( document, { a: [ { id: 1 }, { id: 2 } ] } );
+			} );
+
+			it( 'should compare strictly, without type coercion', () =>
+			{
+				let document = { a: [ 1, 0 ] };
+				jsongin.UpdateOperators.$addToSet.Update( document, { a: '1' } );
+				jsongin.UpdateOperators.$addToSet.Update( document, { a: false } );
+				assert.deepStrictEqual( document, { a: [ 1, 0, '1', false ] } );
+			} );
+
+			it( 'should be idempotent', () =>
+			{
+				let document = { a: [ { id: 1 } ] };
+				for ( let index = 0; index < 3; index++ )
+				{
+					jsongin.UpdateOperators.$addToSet.Update( document, { a: { id: 1 } } );
+				}
+				assert.deepStrictEqual( document, { a: [ { id: 1 } ] } );
+			} );
+
+			it( 'should store a copy rather than the value it was given', () =>
+			{
+				let value = { id: 1 };
+				let document = { a: [] };
+				jsongin.UpdateOperators.$addToSet.Update( document, { a: value } );
+				assert.notStrictEqual( document.a[ 0 ], value );
+				assert.deepStrictEqual( document.a[ 0 ], value );
+
+				// A date must survive as a date.
+				document = { a: [] };
+				jsongin.UpdateOperators.$addToSet.Update( document, { a: new Date( 0 ) } );
+				assert.ok( document.a[ 0 ] instanceof Date );
 			} );
 
 

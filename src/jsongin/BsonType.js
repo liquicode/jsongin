@@ -22,6 +22,12 @@ module.exports = function ( Engine )
 		}
 		else if ( data_type === 'n' )
 		{
+			// NaN and the infinities are doubles. They have no decimal point in their text and
+			// are not safe integers, so classifying by text alone reported them as a long.
+			if ( isNaN( Value ) || !isFinite( Value ) )
+			{
+				return ReturnAlias ? 'double' : 1;
+			}
 			let ns = Value.toString();
 			if ( ns.includes( '.' ) )
 			{

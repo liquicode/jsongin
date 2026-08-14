@@ -52,8 +52,25 @@ jsongin.CompareValues( new Date(), true ) === 1
 
 - ***Numbers*** and ***strings*** compare by value.
 - ***Dates*** compare by their time value.
+- ***Regular expressions*** compare by their text.
 - ***Arrays*** compare element by element, in order.
 - ***Objects*** compare field by field.
+
+`NaN` is a number which is neither less than, equal to, nor greater than anything, including
+  itself. It sorts ***below every other number***, which is where MongoDB places it, and equal
+  to itself. Without a rule of its own it would compare equal to every number, which would make
+  the ordering inconsistent and a sort of those values arbitrary.
+
+```js
+jsongin.CompareValues( NaN, NaN ) === 0
+jsongin.CompareValues( NaN, 1 ) === -1
+jsongin.CompareValues( 1, NaN ) === 1
+jsongin.CompareValues( NaN, null ) === 1
+```
+
+> ***Fixed in v0.1.0*** : `CompareValues` compared numbers with `<` and `>` and fell through to
+  reporting them equal. Every comparison against `NaN` is false, so `NaN` was reported equal to
+  every number, and a single `NaN` was enough to make `Sort()` return an arbitrary order.
 
 ```js
 jsongin.CompareValues( 1, 2 ) === -1

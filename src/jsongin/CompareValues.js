@@ -110,6 +110,19 @@ module.exports = function ( jsongin )
 		if ( rank_a === 4 ) { return compare_objects( ValueA, ValueB ); }
 		if ( rank_a === 5 ) { return compare_arrays( ValueA, ValueB ); }
 
+		// NaN is a number which is neither less than, equal to, nor greater than anything,
+		// including itself. Falling through to the comparisons below would report it as equal
+		// to every number, which makes the ordering inconsistent and a sort of the values
+		// arbitrary. MongoDB orders NaN below every other number, so that is what happens here.
+		if ( rank_a === 2 )
+		{
+			let a_is_nan = isNaN( ValueA );
+			let b_is_nan = isNaN( ValueB );
+			if ( a_is_nan && b_is_nan ) { return 0; }
+			if ( a_is_nan ) { return -1; }
+			if ( b_is_nan ) { return 1; }
+		}
+
 		// Compare primitive values. Booleans compare as false < true.
 		if ( ValueA < ValueB ) { return -1; }
 		if ( ValueA > ValueB ) { return 1; }

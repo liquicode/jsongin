@@ -77,6 +77,43 @@ v0.1.0 (2026-08-13)
   Merging arrays at the top level is no longer supported.
   This also removes a falsiness test which treated a legitimate value as an absent one:
   `Merge( 0, { a: 1 } )` ignored the `0`. The parameters are checked with `ShortType()` now.
+- ***Breaking***: `CompareValues( ValueA, ValueB )` now orders `NaN`, which it previously
+  reported as ***equal to every number***. It compared numbers with `<` and then `>` and fell
+  through to returning `0`. Every comparison against `NaN` is false, so `NaN` took that path.
+  `NaN` now sorts below every other number and equal to itself, which is where MongoDB puts it.
+  This is the same failure this version already repaired for missing fields: a value which
+  compares equal to everything makes the ordering inconsistent, and one such value is enough to
+  make the whole result arbitrary. `Sort( [ 3, NaN, 1, 2 ] )` returned `[ 3, NaN, 1, 2 ]`.
+  It also repairs the expression comparison operators, where `{ $eq: [ 1, NaN ] }` was `true`.
+- ***Breaking***: `StrictEquals( DocumentA, DocumentB )` is now symmetric.
+  It called the `$eq` query operator, whose two parameters are not peers: the first is a
+  document field and the second is a match value, and `$eq` lets a match value equal an
+  ***element*** of a document array. That is correct for querying — `{ tags: [ 1, 2 ] }` should
+  match a document whose `tags` holds `[ [ 1, 2 ], 'x' ]` — but an equality test must not depend
+  on the order of its arguments. `StrictEquals( [ [ 1, 2 ] ], [ 1, 2 ] )` returned `true` while
+  the reverse returned `false`.
+  It now compares with `CompareValues()`, which is symmetric and reflexive.
+  This also repairs `Diff( Before, After )`, which compares with `StrictEquals` and so reported
+  an ***empty patch*** for two documents which differed, losing the change on a round trip.
+  Note that the `$eq` query operator itself is unchanged. Its behavior is MongoDB's.
+  One further difference: two equivalent regular expressions are now equal, where the reference
+  comparison inherited from `$eq` reported `/a/` and `/a/` as different.
+- Fixed `BsonType( Value, ReturnAlias )`, which reported `NaN`, `Infinity`, and `-Infinity` as
+  `18` / `'long'`. None has a decimal point in its text and none is a safe integer, so
+  classifying by text alone sent all three down the long branch. All three are `1` / `'double'`,
+  which is what BSON calls them.
+- ***Breaking***: the `$addToSet` update operator now compares values by ***content*** rather
+  than by reference, so it is a set operation for every value and not only for primitives.
+  It tested for membership with Javascript's `Array.includes()`, which compares objects,
+  arrays, and dates by identity. A value of one of those types was therefore appended again on
+  every call, no matter what it contained, and `$addToSet` was not idempotent.
+  e.g. `Update( { a: [ { id: 1 } ] }, { $addToSet: { a: { id: 1 } } } )` returned
+  `{ a: [ { id: 1 }, { id: 1 } ] }` and now returns `{ a: [ { id: 1 } ] }`.
+  Comparison is by `CompareValues()`, so it remains type strict: `1` and `'1'` are different
+  values, as are `0` and `false`, and two documents whose fields appear in a different order
+  are different documents, which is what MongoDB does.
+  `$addToSet` also stores a copy of the value now, rather than a reference to the one inside
+  the update document, and a `Date` survives as a `Date`.
 - Fixed `BsonType( Value, ReturnAlias )`, which threw whenever it was called as anything other
   than a method of the engine. It read the engine through `this` rather than through the
   instance it was built with, so detaching it or passing it as a callback threw a `TypeError`.

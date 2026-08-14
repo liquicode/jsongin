@@ -307,6 +307,97 @@ describe( '130) Engine Function Tests', () =>
 			assert.deepStrictEqual( types, [ 8, 2, 10 ] );
 		} );
 
+		it( 'should report NaN and the infinities as doubles', () =>
+		{
+			// These have no decimal point in their text and are not safe integers, so
+			// classifying by text alone reported them as a long.
+			assert.strictEqual( jsongin.BsonType( NaN ), 1 );
+			assert.strictEqual( jsongin.BsonType( NaN, true ), 'double' );
+			assert.strictEqual( jsongin.BsonType( Infinity, true ), 'double' );
+			assert.strictEqual( jsongin.BsonType( -Infinity, true ), 'double' );
+		} );
+
+		it( 'should still distinguish int from long', () =>
+		{
+			assert.strictEqual( jsongin.BsonType( 42, true ), 'int' );
+			assert.strictEqual( jsongin.BsonType( Math.pow( 2, 53 ), true ), 'long' );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'CompareValues Tests', () =>
+	{
+
+		it( 'should order NaN below every other number', () =>
+		{
+			// Every comparison against NaN is false, so comparing with < and > and falling
+			// through reported NaN as equal to every number.
+			assert.strictEqual( jsongin.CompareValues( NaN, NaN ), 0 );
+			assert.strictEqual( jsongin.CompareValues( NaN, 1 ), -1 );
+			assert.strictEqual( jsongin.CompareValues( 1, NaN ), 1 );
+			assert.strictEqual( jsongin.CompareValues( NaN, -1e300 ), -1 );
+		} );
+
+		it( 'should keep NaN within the number type rank', () =>
+		{
+			assert.strictEqual( jsongin.CompareValues( NaN, null ), 1 );
+			assert.strictEqual( jsongin.CompareValues( NaN, 'abc' ), -1 );
+		} );
+
+		it( 'should give Sort a total order when a NaN is present', () =>
+		{
+			let documents = [ { n: 3 }, { n: NaN }, { n: 1 }, { n: 2 } ];
+			jsongin.Sort( documents, { n: 1 } );
+			assert.ok( isNaN( documents[ 0 ].n ) );
+			assert.deepStrictEqual( documents.slice( 1 ).map( function ( D ) { return D.n; } ), [ 1, 2, 3 ] );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'StrictEquals Symmetry Tests', () =>
+	{
+
+		it( 'should be symmetric', () =>
+		{
+			// StrictEquals called the $eq query operator, whose parameters are not peers:
+			// a match value may equal an element of a document array. Correct for querying,
+			// wrong for equality.
+			assert.strictEqual( jsongin.StrictEquals( [ [ 1, 2 ] ], [ 1, 2 ] ), false );
+			assert.strictEqual( jsongin.StrictEquals( [ 1, 2 ], [ [ 1, 2 ] ] ), false );
+			assert.strictEqual( jsongin.StrictEquals( [ [ 1 ], [ 2 ] ], [ 1 ] ), false );
+			assert.strictEqual( jsongin.StrictEquals( [ 1 ], [ [ 1 ], [ 2 ] ] ), false );
+		} );
+
+		it( 'should leave the $eq query operator alone', () =>
+		{
+			// The query behavior is MongoDB's and must not change.
+			assert.strictEqual( jsongin.Query( { tags: [ [ 1, 2 ] ] }, { tags: { $eq: [ 1, 2 ] } } ), true );
+		} );
+
+		it( 'should let Diff see a change between those values', () =>
+		{
+			let before = { a: [ [ 1, 2 ] ] };
+			let after = { a: [ 1, 2 ] };
+			let patch = jsongin.Diff( before, after );
+			assert.deepStrictEqual( patch, { $set: { a: [ 1, 2 ] } } );
+			assert.deepStrictEqual( jsongin.Update( before, patch ), after );
+		} );
+
+		it( 'should still compare ordinary values as before', () =>
+		{
+			assert.strictEqual( jsongin.StrictEquals( [ 1, 2 ], [ 1, 2 ] ), true );
+			assert.strictEqual( jsongin.StrictEquals( [ 1, 2 ], [ 2, 1 ] ), false );
+			assert.strictEqual( jsongin.StrictEquals( { a: 1, b: 2 }, { b: 2, a: 1 } ), false );
+			assert.strictEqual( jsongin.StrictEquals( 1, '1' ), false );
+			assert.strictEqual( jsongin.StrictEquals( 0, false ), false );
+			assert.strictEqual( jsongin.StrictEquals( null, undefined ), true );
+			assert.strictEqual( jsongin.StrictEquals( new Date( 0 ), new Date( 0 ) ), true );
+		} );
+
 	} );
 
 

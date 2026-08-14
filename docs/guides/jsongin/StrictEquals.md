@@ -21,19 +21,44 @@ Strict means two things:
 1. Values must match exactly, as Javascript's `===` does. No type coercion is applied.
 2. Values must appear in the ***same order*** within objects and arrays.
 
-`StrictEquals` is the `$eq` query operator applied to two whole values, so it is the same
-  comparison a query performs on a field.
+`StrictEquals` is [`CompareValues()`](./CompareValues.md) asked whether its result is zero.
 
 ```js
 jsongin.StrictEquals( DocumentA, DocumentB )
 // is the same as
-jsongin.QueryOperators.$eq.Query( DocumentA, DocumentB )
+( jsongin.CompareValues( DocumentA, DocumentB ) === 0 )
 ```
 
 Dates are compared by their time value, so two distinct `Date` objects holding the same instant
-  are equal.
+  are equal. Regular expressions are compared by their text, for the same reason.
 
 `null` and a missing value are equal to each other.
+
+
+## Not the Same as the `$eq` Query Operator
+
+`StrictEquals` is ***not*** the `$eq` query operator applied to two values, and the difference
+  is worth knowing if you are comparing the two.
+
+A query operator's parameters are not peers. The first is a document field and the second is a
+  match value, and `$eq` lets a match value equal an ***element*** of a document array — which
+  is what MongoDB does, and is why `{ tags: [ 'A', 'B' ] }` matches a document whose `tags`
+  field holds `[ [ 'A', 'B' ], 'x' ]`.
+
+That rule is correct for querying and wrong for equality, because it is not symmetric.
+`StrictEquals` therefore uses `CompareValues`, which is.
+
+```js
+jsongin.StrictEquals( [ [ 1, 2 ] ], [ 1, 2 ] ) === false
+jsongin.StrictEquals( [ 1, 2 ], [ [ 1, 2 ] ] ) === false
+
+// The query operator answers the other question, and answers it correctly:
+jsongin.Query( { tags: [ [ 1, 2 ] ] }, { tags: { $eq: [ 1, 2 ] } } ) === true
+```
+
+> ***Fixed in v0.1.0*** : `StrictEquals` called `$eq` and so inherited that asymmetry.
+  `StrictEquals( [ [ 1, 2 ] ], [ 1, 2 ] )` returned `true` while the reverse returned `false`.
+  This also caused `Diff()` to miss a change between those two values and report an empty patch.
 
 
 ## See Also

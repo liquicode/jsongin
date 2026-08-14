@@ -209,7 +209,14 @@ function NewJsongin( EngineSettings = {} )
 	//---------------------------------------------------------------------
 	// Object Matching and Cloning
 	Engine.LooseEquals = function ( DocumentA, DocumentB ) { return Engine.QueryOperators.$eqx.Query( DocumentA, DocumentB ); };
-	Engine.StrictEquals = function ( DocumentA, DocumentB ) { return Engine.QueryOperators.$eq.Query( DocumentA, DocumentB ); };
+
+	// Compares two values for equality and returns true or false.
+	// Note that this does not call the $eq query operator. A query operator is not symmetric:
+	// its first parameter is a document field and its second is a match value, and $eq lets a
+	// match value equal an element of a document array, which is what MongoDB does. That rule
+	// makes StrictEquals( [ [ 1, 2 ] ], [ 1, 2 ] ) true while the reverse is false, and an
+	// equality test must not depend on the order of its arguments.
+	Engine.StrictEquals = function ( DocumentA, DocumentB ) { return ( Engine.CompareValues( DocumentA, DocumentB ) === 0 ); };
 	Engine.Clone = function ( Document ) { return JSON.parse( JSON.stringify( Document ) ); };
 	Engine.SafeClone = require( './jsongin/SafeClone' )( Engine );
 
