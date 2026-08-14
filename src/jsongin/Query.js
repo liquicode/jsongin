@@ -56,7 +56,22 @@ module.exports = function ( jsongin )
 					if ( jsongin.OpLog ) { jsongin.OpLog( `Query: Operator [${key}] cannot be set to undefined. Use $exists to test if a field exists in the document.` ); }
 					return false;
 				}
-				let result = jsongin.QueryOperators[ key ].Query( Document, sub_query, Path );
+
+				// Check the value against the types the operator says it takes.
+				// An operator is still free to validate its own value, and does when it is
+				// called directly rather than through here.
+				let operator = jsongin.QueryOperators[ key ];
+				if ( jsongin.ShortType( operator.ValueTypes ) === 's' )
+				{
+					let value_type = jsongin.ShortType( sub_query );
+					if ( operator.ValueTypes.includes( value_type ) === false )
+					{
+						if ( jsongin.OpLog ) { jsongin.OpLog( `Query: Operator [${key}] does not take a value of type [${value_type}]. It takes [${operator.ValueTypes}].` ); }
+						return false;
+					}
+				}
+
+				let result = operator.Query( Document, sub_query, Path );
 				if ( result === false ) 
 				{
 					if ( jsongin.OpLog ) { jsongin.OpLog( `Query: Operator [${key}] returned false at [${Path}].` ); }

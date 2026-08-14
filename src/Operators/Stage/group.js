@@ -69,9 +69,20 @@ module.exports = function ( jsongin )
 					{
 						throw new Error( `$group field [${key}] must have exactly one accumulator, found [${field_keys.length}].` );
 					}
-					if ( typeof jsongin.AccumulatorOperators[ field_keys[ 0 ] ] === 'undefined' )
+					let accumulator = jsongin.AccumulatorOperators[ field_keys[ 0 ] ];
+					if ( typeof accumulator === 'undefined' )
 					{
 						throw new Error( `Unrecognized accumulator [${field_keys[ 0 ]}] in $group field [${key}].` );
+					}
+
+					// Check the argument against the types the accumulator says it takes.
+					if ( jsongin.ShortType( accumulator.ArgTypes ) === 's' )
+					{
+						let argument_type = jsongin.ShortType( field[ field_keys[ 0 ] ] );
+						if ( accumulator.ArgTypes.includes( argument_type ) === false )
+						{
+							throw new Error( `Accumulator [${field_keys[ 0 ]}] does not take an argument of type [${argument_type}]. It takes [${accumulator.ArgTypes}].` );
+						}
 					}
 
 					field_names.push( key );

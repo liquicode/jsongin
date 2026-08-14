@@ -66,8 +66,35 @@ The kind is determined by which registry you put it in.
 | `QueryOperators`        | `Query`       | `TopLevel`, `ValueTypes`   |
 | `ExpressionOperators`   | `Evaluate`    | `ArgCount`, `ArgTypes`     |
 | `UpdateOperators`       | `Update`      | `TopLevel`, `ValueTypes`   |
-| `StageOperators`        | `Stage`       | `ValueTypes`               |
+| `StageOperators`        | `Stage`       | `ArgTypes`                 |
 | `AccumulatorOperators`  | `Accumulate`  | `ArgTypes`                 |
+
+`ValueTypes` and `ArgTypes` are the same idea under two names: the
+  [ShortTypes](./jsongin/ShortType.md) the operator accepts for the ***single value it is
+  handed***.
+The name follows what that value is called — a match value for a query, an argument for
+  everything else.
+
+
+## Type Checking
+
+***The engine checks the declared types before it calls an operator.***
+
+`Query()`, `Evaluate()`, `Update()`, and `Aggregate()` each compare the value they are about to
+  pass against the operator's declared types, and refuse to dispatch when it does not fit.
+A query or an update reports to the [`OpLog`](./OpLog.md) and treats the clause as not matching;
+  an expression or a pipeline stage throws.
+
+***Declare your operator's types accurately, and validate the value anyway.***
+
+The two are not redundant, because the check above only runs when the operator is reached
+  through the engine. An operator called directly, as
+  `jsongin.QueryOperators.$size.Query( doc, 'two' )`, gets whatever the caller passed.
+Every built-in operator therefore still validates what it receives.
+
+A declaration which is narrower than what the operator really accepts is worse than no
+  declaration at all: it turns working input into a rejection, and nothing about the operator's
+  own code will contradict it. Declare what the code actually handles.
 
 
 ### Query Operators
@@ -88,7 +115,7 @@ Use `Engine.GetValue( Document, Path )` to read the field being tested.
 | **Member**   | **Description**                                                                |
 |--------------|---------------------------------------------------------------------------------|
 | `TopLevel`   | `true` when the operator may appear as a key of the query itself, rather than only within a field. `$and` and `$noop` are `true`; `$gt` is `false`. |
-| `ValueTypes` | The [ShortTypes](./jsongin/ShortType.md) this operator accepts as its `MatchValue`. A query which gives it anything else is rejected. |
+| `ValueTypes` | The [ShortTypes](./jsongin/ShortType.md) this operator accepts as its `MatchValue`. A query which gives it anything else is rejected, and the clause does not match. |
 
 
 ### Expression Operators
@@ -104,8 +131,15 @@ Returns the computed value.
 
 | **Member**  | **Description**                                                             |
 |-------------|------------------------------------------------------------------------------|
-| `ArgCount`  | The number of operands expected. Use `0` for a variable count.              |
-| `ArgTypes`  | The ShortTypes accepted for the operands.                                   |
+| `ArgCount`  | The number of operands expected. Use `null` for a variable count.           |
+| `ArgTypes`  | The ShortTypes accepted for `Args`. An expression which gives it anything else throws. |
+
+Note that `ArgTypes` describes `Args` itself, not the operands inside it.
+An operator which takes an operand list declares `'a'`, and one which also accepts a single
+  operand without the enclosing array — which the arithmetic operators do — declares the
+  expression types as well.
+`ArgCount` is not checked by the engine; the operator enforces it, because the count is only
+  known after `Args` has been evaluated.
 
 
 ### Update Operators

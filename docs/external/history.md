@@ -68,7 +68,34 @@ v0.1.0 (current)
     unchanged rather than matching at every position, and both functions validate their
     parameters as the rest of the module does.
 
-  - The test suite grew from 989 to 1043 tests, and the uncovered blocks which
+  - ***The types an operator declares are now checked.*** Every operator has always declared
+    which [ShortTypes](http://jsongin.liquicode.com/#/guides/jsongin/ShortType.md) it takes, as
+    `ValueTypes` or `ArgTypes`, and the authoring guide has always said a value of any other
+    type is rejected. Nothing read those declarations. `Query()`, `Evaluate()`, `Update()`, and
+    `Aggregate()` now check the value against the declaration before dispatching.
+
+    Turning the check on first meant correcting the declarations, which had drifted out of true
+    precisely because nothing read them:
+      - `$all` declared `o` while its own code required `a`, so enforcing it as written would
+        have broken the operator outright.
+      - `$ne` declared a narrower set than the `$eq` it negates, and `$eqx` a wider set than
+        the `$nex` which negates it. A negation cannot accept a different set from what it
+        negates.
+      - `$expr` and `$exprx` declared `o` while passing anything to `Evaluate()`.
+      - The arithmetic and logical expression operators declared `a` while also accepting a
+        single operand written without the enclosing array, which is a documented form.
+      - Seven accumulators omitted `d` from an otherwise complete set.
+      - `$noop` ignores its value, so it now says it takes anything.
+
+    An operator still validates its own value, because the engine's check only runs when the
+    operator is reached through the engine, and an operator can be called directly.
+
+  - The authoring guide was corrected alongside it: it listed `ValueTypes` for stage operators,
+    which declare `ArgTypes`, and said to write `0` for a variable `ArgCount`, which is `null`.
+    It now also states that `ArgTypes` describes the argument itself rather than the operands
+    inside it, and that `ArgCount` is checked by the operator rather than by the engine.
+
+  - The test suite grew from 989 to 1051 tests, and the uncovered blocks which
     `npm run coverage` reports fell from 172 to 155. Every fix above landed with tests, and
     `Parse` and `Distinct` are now fully covered. A duplicated copy of the `Parse` tests was
     removed from the `Format` test block.

@@ -25,7 +25,8 @@ module.exports = function ( jsongin )
 		Engine: jsongin,
 		OperatorType: 'Evaluation',
 		TopLevel: true,
-		ValueTypes: 'o',
+		// Whatever Evaluate() takes, which is any expression rather than only an operator object.
+		ValueTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
 		Query: function ( Document, MatchValue, Path = '' )

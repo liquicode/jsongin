@@ -10,7 +10,8 @@ module.exports = function ( jsongin )
 		Engine: jsongin,
 		OperatorType: 'Comparison',
 		TopLevel: false,
-		ValueTypes: 'bnsdloau',
+		// The same set as $eq, which this negates. The two cannot differ.
+		ValueTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
 		Query: function ( Document, MatchValue, Path = '' )

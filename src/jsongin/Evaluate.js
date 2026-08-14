@@ -45,9 +45,22 @@ module.exports = function ( jsongin )
 				if ( keys.length === 1 )
 				{
 					let key = keys[ 0 ];
-					if ( typeof jsongin.ExpressionOperators[ key ] !== 'undefined' )
+					let operator = jsongin.ExpressionOperators[ key ];
+					if ( typeof operator !== 'undefined' )
 					{
-						return jsongin.ExpressionOperators[ key ].Evaluate( Document, Expression[ key ] );
+						// Check the argument against the types the operator says it takes.
+						// An operator is still free to validate its own argument, and does when
+						// its Evaluate function is called directly rather than through here.
+						if ( jsongin.ShortType( operator.ArgTypes ) === 's' )
+						{
+							let argument_type = jsongin.ShortType( Expression[ key ] );
+							if ( operator.ArgTypes.includes( argument_type ) === false )
+							{
+								throw new Error( `Operator [${key}] does not take an argument of type [${argument_type}]. It takes [${operator.ArgTypes}].` );
+							}
+						}
+
+						return operator.Evaluate( Document, Expression[ key ] );
 					}
 				}
 

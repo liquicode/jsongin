@@ -10,7 +10,8 @@ module.exports = module.exports = function ( jsongin )
 		Engine: jsongin,
 		OperatorType: 'Comparison',
 		TopLevel: false,
-		ValueTypes: 'bnsdloaru',
+		// No regex branch below, unlike $eq. The same set as $nex, which negates this.
+		ValueTypes: 'bnsdloau',
 
 		//---------------------------------------------------------------------
 		Query: function ( Document, MatchValue, Path = '' )

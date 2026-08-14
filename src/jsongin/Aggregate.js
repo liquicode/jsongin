@@ -40,6 +40,18 @@ module.exports = function ( jsongin )
 					throw new Error( `Unrecognized aggregation stage [${key}].` );
 				}
 
+				// Check the argument against the types the stage says it takes.
+				// A stage is still free to validate its own argument, and does when its Stage
+				// function is called directly rather than through here.
+				if ( jsongin.ShortType( operator.ArgTypes ) === 's' )
+				{
+					let argument_type = jsongin.ShortType( stage[ key ] );
+					if ( operator.ArgTypes.includes( argument_type ) === false )
+					{
+						throw new Error( `Pipeline stage [${key}] does not take an argument of type [${argument_type}]. It takes [${operator.ArgTypes}].` );
+					}
+				}
+
 				documents = operator.Stage( documents, stage[ key ] );
 			}
 

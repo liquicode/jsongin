@@ -26,8 +26,24 @@ module.exports = function ( Engine )
 			// Check for operator.
 			if ( typeof Engine.UpdateOperators[ key ] !== 'undefined' )
 			{
+				let operator = Engine.UpdateOperators[ key ];
+				let value = Updates[ key ];
+
+				// Check the value against the types the operator says it takes.
+				// An operator is still free to validate its own value, and does when it is
+				// called directly rather than through here.
+				if ( Engine.ShortType( operator.ValueTypes ) === 's' )
+				{
+					let value_type = Engine.ShortType( value );
+					if ( operator.ValueTypes.includes( value_type ) === false )
+					{
+						if ( Engine.OpLog ) { Engine.OpLog( `Update: Operator [${key}] does not take a value of type [${value_type}]. It takes [${operator.ValueTypes}].` ); }
+						continue;
+					}
+				}
+
 				// Perform the update.
-				let result = Engine.UpdateOperators[ key ].Update( Document, Updates[ key ] );
+				let result = operator.Update( Document, value );
 				if ( result === false )
 				{
 					if ( Engine.OpLog ) { Engine.OpLog( `Update: The update operator [${key}] failed.` ); }

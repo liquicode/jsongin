@@ -86,7 +86,11 @@ describe( '240) Aggregate Stage Tests', () =>
 
 		it( 'should throw when the argument is not an object', () =>
 		{
-			assert.throws( function () { jsongin.Aggregate( [], [ { $match: 'n' } ] ); }, /\$match requires a query object/ );
+			// Aggregate() checks the argument against the stage's declared ArgTypes before it
+			// dispatches, so that is the error a pipeline sees. The stage keeps its own check
+			// for when its Stage function is called directly.
+			assert.throws( function () { jsongin.Aggregate( [], [ { $match: 'n' } ] ); }, /does not take an argument of type/ );
+			assert.throws( function () { jsongin.StageOperators.$match.Stage( [], 'n' ); }, /\$match requires a query object/ );
 		} );
 
 	} );
@@ -133,7 +137,8 @@ describe( '240) Aggregate Stage Tests', () =>
 
 		it( 'should throw when the argument is not an object', () =>
 		{
-			assert.throws( function () { jsongin.Aggregate( [], [ { $project: 'a' } ] ); }, /\$project requires a projection object/ );
+			assert.throws( function () { jsongin.Aggregate( [], [ { $project: 'a' } ] ); }, /does not take an argument of type/ );
+			assert.throws( function () { jsongin.StageOperators.$project.Stage( [], 'a' ); }, /\$project requires a projection object/ );
 		} );
 
 	} );
@@ -227,9 +232,11 @@ describe( '240) Aggregate Stage Tests', () =>
 
 		it( 'should throw when the argument is not an object', () =>
 		{
-			assert.throws( function () { jsongin.Aggregate( [], [ { $addFields: 'a' } ] ); }, /\$addFields requires an object/ );
+			assert.throws( function () { jsongin.Aggregate( [], [ { $addFields: 'a' } ] ); }, /does not take an argument of type/ );
+			assert.throws( function () { jsongin.StageOperators.$addFields.Stage( [], 'a' ); }, /\$addFields requires an object/ );
 			// $set shares the implementation but reports under its own name.
-			assert.throws( function () { jsongin.Aggregate( [], [ { $set: 'a' } ] ); }, /\$set requires an object/ );
+			assert.throws( function () { jsongin.Aggregate( [], [ { $set: 'a' } ] ); }, /does not take an argument of type/ );
+			assert.throws( function () { jsongin.StageOperators.$set.Stage( [], 'a' ); }, /\$set requires an object/ );
 		} );
 
 	} );
@@ -308,7 +315,8 @@ describe( '240) Aggregate Stage Tests', () =>
 
 		it( 'should throw when the argument is not a string or an object', () =>
 		{
-			assert.throws( function () { jsongin.Aggregate( [], [ { $unwind: 3 } ] ); }, /requires a path string or an object/ );
+			assert.throws( function () { jsongin.Aggregate( [], [ { $unwind: 3 } ] ); }, /does not take an argument of type/ );
+			assert.throws( function () { jsongin.StageOperators.$unwind.Stage( [], 3 ); }, /requires a path string or an object/ );
 			assert.throws( function () { jsongin.Aggregate( [], [ { $unwind: {} } ] ); }, /requires a path string/ );
 		} );
 
@@ -430,7 +438,8 @@ describe( '240) Aggregate Stage Tests', () =>
 
 		it( 'should throw when the argument is not an object', () =>
 		{
-			assert.throws( function () { jsongin.Aggregate( [], [ { $group: 'a' } ] ); }, /\$group requires an object/ );
+			assert.throws( function () { jsongin.Aggregate( [], [ { $group: 'a' } ] ); }, /does not take an argument of type/ );
+			assert.throws( function () { jsongin.StageOperators.$group.Stage( [], 'a' ); }, /\$group requires an object/ );
 		} );
 
 	} );
@@ -481,7 +490,8 @@ describe( '240) Aggregate Stage Tests', () =>
 
 		it( 'should throw when the argument is not an object', () =>
 		{
-			assert.throws( function () { jsongin.Aggregate( [], [ { $sort: 'n' } ] ); }, /\$sort requires a sort criteria object/ );
+			assert.throws( function () { jsongin.Aggregate( [], [ { $sort: 'n' } ] ); }, /does not take an argument of type/ );
+			assert.throws( function () { jsongin.StageOperators.$sort.Stage( [], 'n' ); }, /\$sort requires a sort criteria object/ );
 		} );
 
 	} );
@@ -509,10 +519,12 @@ describe( '240) Aggregate Stage Tests', () =>
 
 		it( 'should throw when the count is not a non-negative integer', () =>
 		{
-			assert.throws( function () { jsongin.Aggregate( [], [ { $limit: '2' } ] ); }, /\$limit requires a number/ );
+			assert.throws( function () { jsongin.Aggregate( [], [ { $limit: '2' } ] ); }, /does not take an argument of type/ );
+			assert.throws( function () { jsongin.StageOperators.$limit.Stage( [], '2' ); }, /\$limit requires a number/ );
 			assert.throws( function () { jsongin.Aggregate( [], [ { $limit: 1.5 } ] ); }, /\$limit requires an integer/ );
 			assert.throws( function () { jsongin.Aggregate( [], [ { $limit: -1 } ] ); }, /\$limit cannot be negative/ );
-			assert.throws( function () { jsongin.Aggregate( [], [ { $skip: '2' } ] ); }, /\$skip requires a number/ );
+			assert.throws( function () { jsongin.Aggregate( [], [ { $skip: '2' } ] ); }, /does not take an argument of type/ );
+			assert.throws( function () { jsongin.StageOperators.$skip.Stage( [], '2' ); }, /\$skip requires a number/ );
 			assert.throws( function () { jsongin.Aggregate( [], [ { $skip: 1.5 } ] ); }, /\$skip requires an integer/ );
 			assert.throws( function () { jsongin.Aggregate( [], [ { $skip: -1 } ] ); }, /\$skip cannot be negative/ );
 		} );

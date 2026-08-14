@@ -85,6 +85,105 @@ describe( '150) Error Handling Tests', () =>
 
 
 	//---------------------------------------------------------------------
+	describe( 'Declared Type Checking', () =>
+	{
+
+		/*
+			Every operator declares the ShortTypes it takes, and the engine checks a value
+			against that declaration before dispatching to the operator.
+
+			These declarations went unread for a long time and drifted out of true while nothing
+			was looking: $all declared 'o' while its code required 'a', $ne declared a narrower
+			set than the $eq it negates, and the arithmetic operators declared 'a' while
+			accepting a single operand without the enclosing array. A declaration which is
+			narrower than the code turns working input into a rejection, so these guard it.
+		*/
+
+		it( 'should declare types which every operator actually accepts', () =>
+		{
+			// The cases which were wrong, kept as the record of what correct looks like.
+			assert.strictEqual( jsongin.QueryOperators.$all.ValueTypes, 'a' );
+			assert.strictEqual( jsongin.QueryOperators.$ne.ValueTypes, jsongin.QueryOperators.$eq.ValueTypes );
+			assert.strictEqual( jsongin.QueryOperators.$nex.ValueTypes, jsongin.QueryOperators.$eqx.ValueTypes );
+			assert.ok( jsongin.ExpressionOperators.$add.ArgTypes.includes( 's' ) );
+			assert.ok( jsongin.ExpressionOperators.$and.ArgTypes.includes( 'b' ) );
+		} );
+
+		it( 'should give every operator a declaration to check against', () =>
+		{
+			let registries = [
+				[ 'QueryOperators', 'ValueTypes' ],
+				[ 'UpdateOperators', 'ValueTypes' ],
+				[ 'ExpressionOperators', 'ArgTypes' ],
+				[ 'StageOperators', 'ArgTypes' ],
+				[ 'AccumulatorOperators', 'ArgTypes' ],
+			];
+			for ( let index = 0; index < registries.length; index++ )
+			{
+				let registry = registries[ index ][ 0 ];
+				let member = registries[ index ][ 1 ];
+				let names = Object.keys( jsongin[ registry ] );
+				for ( let name_index = 0; name_index < names.length; name_index++ )
+				{
+					let name = names[ name_index ];
+					assert.strictEqual( jsongin.ShortType( jsongin[ registry ][ name ][ member ] ), 's',
+						`${registry}.${name} has no ${member}.` );
+				}
+			}
+		} );
+
+		it( 'should reject a query value the operator does not take', () =>
+		{
+			let messages = [];
+			let engine = NewJsongin( { OpLog: function ( Message ) { messages.push( Message ); } } );
+
+			assert.strictEqual( engine.Query( { a: [ 1, 2 ] }, { a: { $size: 'two' } } ), false );
+			assert.ok( messages.some( function ( m ) { return m.includes( 'does not take a value of type' ); } ),
+				`nothing reported the rejection: ${JSON.stringify( messages )}` );
+		} );
+
+		it( 'should skip an update operator whose value it does not take', () =>
+		{
+			let messages = [];
+			let engine = NewJsongin( { OpLog: function ( Message ) { messages.push( Message ); } } );
+
+			let updated = engine.Update( { a: 1 }, { $set: 'abc' } );
+			assert.deepStrictEqual( updated, { a: 1 } );
+			assert.ok( messages.some( function ( m ) { return m.includes( 'does not take a value of type' ); } ) );
+		} );
+
+		it( 'should throw for a stage argument it does not take', () =>
+		{
+			assert.throws( function () { jsongin.Aggregate( [], [ { $limit: 'abc' } ] ); },
+				/does not take an argument of type/ );
+		} );
+
+		it( 'should throw for an expression argument it does not take', () =>
+		{
+			assert.throws( function () { jsongin.Evaluate( {}, { $switch: 5 } ); },
+				/does not take an argument of type/ );
+		} );
+
+		it( 'should throw for an accumulator argument it does not take', () =>
+		{
+			assert.throws( function () { jsongin.Aggregate( [], [ { $group: { _id: null, n: { $count: 'x' } } } ] ); },
+				/does not take an argument of type/ );
+		} );
+
+		it( 'should let a declared type through', () =>
+		{
+			// The forms which the corrected declarations have to keep working.
+			assert.strictEqual( jsongin.Query( { t: [ 'a', 'b' ] }, { t: { $all: [ 'a' ] } } ), true );
+			assert.strictEqual( jsongin.Query( { a: 'x' }, { a: { $ne: /y/ } } ), true );
+			assert.strictEqual( jsongin.Evaluate( { a: 5 }, { $add: '$a' } ), 5 );
+			assert.strictEqual( jsongin.Evaluate( { a: 5 }, { $multiply: '$a' } ), 5 );
+			assert.strictEqual( jsongin.Evaluate( {}, { $and: true } ), true );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
 	describe( 'Expression Operator Argument Validation', () =>
 	{
 
@@ -96,7 +195,12 @@ describe( '150) Error Handling Tests', () =>
 
 			it( `should reject a non-array argument to ${name}`, () =>
 			{
+				// Evaluate() checks the argument against the operator's declared ArgTypes
+				// before it dispatches, so that is what a caller sees.
 				assert.throws( function () { jsongin.Evaluate( {}, { [ name ]: 'abc' } ); },
+					/does not take an argument of type/ );
+				// The operator keeps its own check for a direct call.
+				assert.throws( function () { jsongin.ExpressionOperators[ name ].Evaluate( {}, 'abc' ); },
 					/requires an array of two arguments/ );
 			} );
 
@@ -118,7 +222,8 @@ describe( '150) Error Handling Tests', () =>
 
 		it( 'should reject a malformed $switch', () =>
 		{
-			assert.throws( function () { jsongin.Evaluate( {}, { $switch: 'abc' } ); }, /\$switch: requires an object/ );
+			assert.throws( function () { jsongin.Evaluate( {}, { $switch: 'abc' } ); }, /does not take an argument of type/ );
+			assert.throws( function () { jsongin.ExpressionOperators.$switch.Evaluate( {}, 'abc' ); }, /\$switch: requires an object/ );
 			assert.throws( function () { jsongin.Evaluate( {}, { $switch: { branches: [ 'abc' ] } } ); }, /each branch must be/ );
 			assert.throws( function () { jsongin.Evaluate( {}, { $switch: { branches: [ { then: 1 } ] } } ); }, /each branch requires/ );
 			assert.throws( function () { jsongin.Evaluate( {}, { $switch: { branches: [ { case: true } ] } } ); }, /each branch requires/ );
@@ -126,7 +231,8 @@ describe( '150) Error Handling Tests', () =>
 
 		it( 'should reject a malformed $ifNull', () =>
 		{
-			assert.throws( function () { jsongin.Evaluate( {}, { $ifNull: 'abc' } ); }, /\$ifNull: requires an array/ );
+			assert.throws( function () { jsongin.Evaluate( {}, { $ifNull: 'abc' } ); }, /does not take an argument of type/ );
+			assert.throws( function () { jsongin.ExpressionOperators.$ifNull.Evaluate( {}, 'abc' ); }, /\$ifNull: requires an array/ );
 		} );
 
 		it( 'should reject two date operands to $add', () =>
@@ -213,8 +319,10 @@ describe( '150) Error Handling Tests', () =>
 
 		it( 'should report from every expression operator which rejects its argument', () =>
 		{
+			// Called directly rather than through Evaluate(), which would reject the argument
+			// on the operator's behalf and report under its own name instead.
 			let reported = sweep( 'ExpressionOperators', 'Expression.',
-				function ( Engine, Name ) { Engine.Evaluate( {}, { [ Name ]: 'abc' } ); } );
+				function ( Engine, Name ) { Engine.ExpressionOperators[ Name ].Evaluate( {}, 'abc' ); } );
 			assert.ok( reported >= 14, `only ${reported} expression operators reported.` );
 		} );
 

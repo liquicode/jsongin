@@ -29,7 +29,7 @@ module.exports = function ( jsongin )
 		//---------------------------------------------------------------------
 		Engine: jsongin,
 		OperatorType: 'Accumulator',
-		ArgTypes: 'bnsloaru',
+		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
 		Accumulate: function ( Documents, Args )
