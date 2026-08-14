@@ -95,8 +95,45 @@ v0.1.0 (current)
     It now also states that `ArgTypes` describes the argument itself rather than the operands
     inside it, and that `ArgCount` is checked by the operator rather than by the engine.
 
-  - The test suite grew from 989 to 1051 tests, and the uncovered blocks which
-    `npm run coverage` reports fell from 172 to 155. Every fix above landed with tests, and
+  - ***The two browser globals are now one instance.*** The module published
+    `window.liquicode.jsongin` by building a second engine, while the bundle publishes this
+    module's export as `window.jsongin`. The Browser Usage document said the two were the same
+    instance; they were not. Because the operator registries belong to an instance, an operator
+    registered through one global was invisible through the other. The module now publishes its
+    own export. Note that a browser only sees this once `dist/jsongin.min.js` is rebuilt.
+
+  - ***`$push` and `$addToSet` now support their modifiers.*** Neither implemented `$each`, and
+    neither rejected it: a modifier document was stored as a literal array element, so
+    `{ $push: { a: { $each: [ 3, 4 ] } } }` appended the object `{ $each: [ 3, 4 ] }` rather
+    than `3` and `4`. Valid MongoDB syntax silently corrupted the array.
+
+    `$push` now supports `$each`, `$position`, `$sort`, and `$slice`, applied in the order
+    MongoDB applies them, and `$addToSet` supports `$each`. A modifier written without `$each`
+    is rejected, as MongoDB rejects it, and so is an unrecognized `$` field within a modifier
+    document. The whole modifier document is checked before the first element is inserted, so
+    a rejected modifier leaves the array untouched.
+
+    A document with no `$each` is still a value rather than a modifier, so
+    `{ $push: { a: { n: 1 } } }` appends `{ n: 1 }` as before.
+
+    Both operators are no longer marked *(partially implemented)* in the Operator Reference.
+
+  - Two published statements which were not true were corrected:
+      - The Library Guide described `StrictEquals` as requiring values to match `===`. It is
+        `CompareValues()` asked whether its result is zero, so two `Date` objects holding the
+        same instant are equal, as are two equal regular expressions, and `null` equals a
+        missing value. The `StrictEquals` page already described this correctly; only the
+        one-line summary in the guide did not.
+      - The Browser Usage document's claim about the two globals, described above, was made
+        true by changing the code rather than the document.
+
+    The readme's claim that "each MongoDB feature that is implemented here operates accurately
+    and in accordance with MongoDB" was contradicted by `$push` and `$addToSet`. Rather than
+    weaken the claim, those two were finished, so it stands. It now also points at the Operator
+    Reference for which operators are implemented at all.
+
+  - The test suite grew from 989 to 1069 tests, and the uncovered blocks which
+    `npm run coverage` reports fell from 172 to 154. Every fix above landed with tests, and
     `Parse` and `Distinct` are now fully covered. A duplicated copy of the `Parse` tests was
     removed from the `Format` test block.
 

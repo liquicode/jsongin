@@ -17,6 +17,66 @@ describe( '130) Engine Function Tests', () =>
 
 
 	//---------------------------------------------------------------------
+	describe( 'Browser Globals', () =>
+	{
+
+		/*
+			The browser build publishes two globals. window.jsongin is this module's export,
+			written by the bundle, and window.liquicode.jsongin is written by the module itself.
+			The Browser Usage document says the two are the same instance, and they have to be:
+			the operator registries belong to an instance, so an operator registered through one
+			global would otherwise be invisible through the other.
+
+			The module used to build a second engine for window.liquicode.jsongin.
+		*/
+
+		function load_with_window()
+		{
+			let path = require.resolve( '../src/jsongin' );
+			let saved_window = global.window;
+			let saved_module = require.cache[ path ];
+
+			delete require.cache[ path ];
+			global.window = {};
+			let engine = require( '../src/jsongin' );
+			let published = global.window.liquicode;
+
+			// Put the environment back the way it was found.
+			delete require.cache[ path ];
+			if ( typeof saved_window === 'undefined' ) { delete global.window; }
+			else { global.window = saved_window; }
+			if ( saved_module ) { require.cache[ path ] = saved_module; }
+
+			return { Export: engine, Published: published };
+		}
+
+		it( 'should publish the module export rather than a second engine', () =>
+		{
+			let loaded = load_with_window();
+			assert.ok( loaded.Published, 'window.liquicode was not defined.' );
+			assert.strictEqual( loaded.Published.jsongin, loaded.Export );
+		} );
+
+		it( 'should publish the factory as well', () =>
+		{
+			let loaded = load_with_window();
+			assert.strictEqual( typeof loaded.Published.NewJsongin, 'function' );
+			assert.strictEqual( loaded.Published.NewJsongin, loaded.Export.NewJsongin );
+		} );
+
+		it( 'should share one operator registry between the two globals', () =>
+		{
+			let loaded = load_with_window();
+			loaded.Published.jsongin.QueryOperators.$probe = { ValueTypes: 's' };
+			assert.ok( typeof loaded.Export.QueryOperators.$probe !== 'undefined',
+				'an operator registered through one global was invisible through the other.' );
+			delete loaded.Export.QueryOperators.$probe;
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
 	describe( 'IsQuery Tests', () =>
 	{
 

@@ -4,14 +4,19 @@
 ## Operators > Update > $addToSet
 
 Usage: `$addToSet: { array-field: value, ... }`
+  or `$addToSet: { array-field: { $each: [ value, ... ] }, ... }`
 
 Adds a value to an array field, but only when the array does not already contain it.
+
+A document carrying `$each` adds every element of the `$each` array, each one subject to the
+same test. Any other value, including a document with no `$each`, is added as a single value.
 
 Values are compared by ***content***, using the same comparison as the query and expression
 operators. A value which is an object, an array, or a date is therefore recognized as already
 present, rather than being added again because it is a different instance.
 
-Note that `$each` is not implemented, so one value is added per field.
+Note that a value added within one `$each` is also tested against the ones added before it, so
+a repeated value is added once.
 
 */
 
@@ -60,8 +65,29 @@ module.exports = function ( jsongin )
 						continue;
 					}
 					let value = UpdateFields[ field ];
-					if ( set_contains( array, value ) ) { continue; }
-					array.push( jsongin.SafeClone( value ) );
+
+					// A document carrying $each adds each of its elements. Anything else, an
+					// object with no $each included, is a single value.
+					let elements = [ value ];
+					if ( ( jsongin.ShortType( value ) === 'o' ) && ( typeof value.$each !== 'undefined' ) )
+					{
+						if ( jsongin.ShortType( value.$each ) !== 'a' )
+						{
+							if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$addToSet: The $each of [${field}] must be an array.` ); }
+							operation_result = false;
+							continue;
+						}
+						elements = value.$each;
+					}
+
+					// Tested against the array as it grows, so a value repeated within one
+					// $each is added once.
+					for ( let index = 0; index < elements.length; index++ )
+					{
+						if ( set_contains( array, elements[ index ] ) ) { continue; }
+						array.push( jsongin.SafeClone( elements[ index ] ) );
+					}
+
 					let result = jsongin.SetValue( Document, field, array );
 					if ( result === false )
 					{

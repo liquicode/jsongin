@@ -446,9 +446,9 @@ Use the `jsongin.Update( Document, Updates )` function to apply updates to a doc
 | Field    |    Yes    | $mul             | Multiplies the value of the field by the specified amount.                                                                                    |
 | Field    |    Yes    | $currentDate     | Sets the value of a field to the current date, as a `Date` or as a numeric timestamp. Takes `true` or `{ $type: '...' }`, never a bare string. |
 | Field    |     -     | $setOnInsert     | Sets the value of a field if an update results in an insert of a document. Has no effect on update operations that modify existing documents. |
-| Array    |    Yes    | $addToSet        | *(partially implemented)* Adds elements to an array only if they do not already exist in the set.                                             |
+| Array    |    Yes    | $addToSet        | Adds elements to an array only if they do not already exist in the set. Supports the `$each` modifier.                                        |
 | Array    |    Yes    | $pop             | Removes the first or last item of an array.                                                                                                   |
-| Array    |    Yes    | $push            | *(partially implemented)* Adds an item to an array.                                                                                           |
+| Array    |    Yes    | $push            | Adds items to an array. Supports the `$each`, `$position`, `$sort`, and `$slice` modifiers.                                                   |
 | Array    |    Yes    | $pullAll         | Removes all matching values from an array.                                                                                                    |
 | Array    |     -     | $pull            | Removes all array elements that match a specified query.                                                                                      |
 | Array    |     -     | $                | Acts as a placeholder to update the first element that matches the query condition.                                                           |

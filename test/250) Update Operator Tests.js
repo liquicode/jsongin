@@ -444,6 +444,59 @@ describe( '250) Update Operator Tests', () =>
 				assert.ok( document.a[ 0 ] instanceof Date );
 			} );
 
+			/*
+				$each was not implemented, and was not rejected either: the modifier document
+				was added to the set as a literal value.
+			*/
+
+			function added( Array_, Specification )
+			{
+				return jsongin.Update( { a: Array_ }, { $addToSet: { a: Specification } } ).a;
+			}
+
+			it( 'should add every new element of $each', () =>
+			{
+				assert.deepStrictEqual( added( [ 1, 2 ], { $each: [ 2, 3, 4 ] } ), [ 1, 2, 3, 4 ] );
+				assert.deepStrictEqual( added( [ 1 ], { $each: [] } ), [ 1 ] );
+			} );
+
+			it( 'should not add a value repeated within one $each', () =>
+			{
+				assert.deepStrictEqual( added( [], { $each: [ 1, 1, 2 ] } ), [ 1, 2 ] );
+			} );
+
+			it( 'should test the elements of $each by content', () =>
+			{
+				assert.deepStrictEqual( added( [ { n: 1 } ], { $each: [ { n: 1 }, { n: 2 } ] } ),
+					[ { n: 1 }, { n: 2 } ] );
+			} );
+
+			it( 'should treat an object with no $each as a single value', () =>
+			{
+				assert.deepStrictEqual( added( [], { n: 1, x: 2 } ), [ { n: 1, x: 2 } ] );
+			} );
+
+			it( 'should reject a $each which is not an array', () =>
+			{
+				let messages = [];
+				let engine = jsongin.NewJsongin( { OpLog: function ( Message ) { messages.push( Message ); } } );
+				let document = { a: [ 1 ] };
+
+				let result = engine.UpdateOperators.$addToSet.Update( document, { a: { $each: 5 } } );
+
+				assert.strictEqual( result, false );
+				assert.deepStrictEqual( document.a, [ 1 ] );
+				assert.ok( messages.length > 0 );
+			} );
+
+			it( 'should not alias the update document through $each', () =>
+			{
+				let updates = { $addToSet: { a: { $each: [ { n: 1 } ] } } };
+				let updated = jsongin.Update( { a: [] }, updates );
+				updated.a[ 0 ].n = 999;
+				assert.strictEqual( updates.$addToSet.a.$each[ 0 ].n, 1 );
+			} );
+
 
 		} );
 
@@ -504,6 +557,105 @@ describe( '250) Update Operator Tests', () =>
 				let updated = jsongin.Update( { list: [] }, { $push: { list: new Date( 1000 ) } } );
 				assert.ok( updated.list[ 0 ] instanceof Date );
 				assert.strictEqual( updated.list[ 0 ].getTime(), 1000 );
+			} );
+
+			/*
+				The modifiers were not implemented, and were not rejected either: a modifier
+				document was stored as a literal array element, so { $each: [ 3, 4 ] } appended
+				the object { $each: [ 3, 4 ] } rather than 3 and 4.
+			*/
+
+			function pushed( Array_, Specification )
+			{
+				return jsongin.Update( { a: Array_ }, { $push: { a: Specification } } ).a;
+			}
+
+			it( 'should treat an object with no $each as a single value', () =>
+			{
+				assert.deepStrictEqual( pushed( [], { n: 1, x: 2 } ), [ { n: 1, x: 2 } ] );
+			} );
+
+			it( 'should push every element of $each', () =>
+			{
+				assert.deepStrictEqual( pushed( [ 1, 2 ], { $each: [ 3, 4 ] } ), [ 1, 2, 3, 4 ] );
+				assert.deepStrictEqual( pushed( [ 1 ], { $each: [] } ), [ 1 ] );
+				assert.deepStrictEqual( pushed( [], { $each: [ { n: 1 } ] } ), [ { n: 1 } ] );
+			} );
+
+			it( 'should insert at $position', () =>
+			{
+				assert.deepStrictEqual( pushed( [ 1, 2 ], { $each: [ 9 ], $position: 0 } ), [ 9, 1, 2 ] );
+				assert.deepStrictEqual( pushed( [ 1, 2 ], { $each: [ 9 ], $position: 1 } ), [ 1, 9, 2 ] );
+				// A negative position counts back from the end.
+				assert.deepStrictEqual( pushed( [ 1, 2, 3 ], { $each: [ 9 ], $position: -1 } ), [ 1, 2, 9, 3 ] );
+				// A position outside the array is clamped to it.
+				assert.deepStrictEqual( pushed( [ 1, 2 ], { $each: [ 9 ], $position: 99 } ), [ 1, 2, 9 ] );
+				assert.deepStrictEqual( pushed( [ 1 ], { $each: [ 9 ], $position: -99 } ), [ 9, 1 ] );
+			} );
+
+			it( 'should sort with $sort', () =>
+			{
+				assert.deepStrictEqual( pushed( [ 3, 1 ], { $each: [ 2 ], $sort: 1 } ), [ 1, 2, 3 ] );
+				assert.deepStrictEqual( pushed( [ 3, 1 ], { $each: [ 2 ], $sort: -1 } ), [ 3, 2, 1 ] );
+				assert.deepStrictEqual(
+					pushed( [ { n: 3 }, { n: 1 } ], { $each: [ { n: 2 } ], $sort: { n: 1 } } ),
+					[ { n: 1 }, { n: 2 }, { n: 3 } ] );
+			} );
+
+			it( 'should trim with $slice', () =>
+			{
+				assert.deepStrictEqual( pushed( [ 1, 2 ], { $each: [ 3, 4 ], $slice: 2 } ), [ 1, 2 ] );
+				assert.deepStrictEqual( pushed( [ 1, 2 ], { $each: [ 3, 4 ], $slice: -2 } ), [ 3, 4 ] );
+				assert.deepStrictEqual( pushed( [ 1, 2 ], { $each: [ 3 ], $slice: 0 } ), [] );
+				assert.deepStrictEqual( pushed( [ 1 ], { $each: [ 2 ], $slice: 99 } ), [ 1, 2 ] );
+			} );
+
+			it( 'should apply $sort before $slice', () =>
+			{
+				assert.deepStrictEqual( pushed( [ 5, 1 ], { $each: [ 3 ], $sort: 1, $slice: 2 } ), [ 1, 3 ] );
+				assert.deepStrictEqual( pushed( [ 5, 1 ], { $each: [ 3 ], $sort: 1, $slice: -2 } ), [ 3, 5 ] );
+			} );
+
+			it( 'should reject a malformed modifier rather than storing it', () =>
+			{
+				let cases = [
+					{ $each: 5 },
+					{ $slice: 2 },
+					{ $sort: 1 },
+					{ $position: 0 },
+					{ $each: [ 2 ], $bogus: 1 },
+					{ $each: [ 2 ], $position: 'x' },
+					{ $each: [ 2 ], $slice: 'x' },
+					{ $each: [ 2 ], $sort: 'x' },
+					{ $each: [ 2 ], $sort: 2 },
+				];
+				for ( let index = 0; index < cases.length; index++ )
+				{
+					let messages = [];
+					let engine = jsongin.NewJsongin( { OpLog: function ( Message ) { messages.push( Message ); } } );
+					let document = { a: [ 1 ] };
+
+					let result = engine.UpdateOperators.$push.Update( document, { a: cases[ index ] } );
+
+					let label = JSON.stringify( cases[ index ] );
+					assert.strictEqual( result, false, `$push reported success for ${label}.` );
+					assert.deepStrictEqual( document.a, [ 1 ], `$push changed the array for ${label}.` );
+					assert.ok( messages.length > 0, `$push logged nothing for ${label}.` );
+				}
+			} );
+
+			it( 'should not alias the update document through $each', () =>
+			{
+				let updates = { $push: { a: { $each: [ { n: 1 } ] } } };
+				let updated = jsongin.Update( { a: [] }, updates );
+				updated.a[ 0 ].n = 999;
+				assert.strictEqual( updates.$push.a.$each[ 0 ].n, 1 );
+			} );
+
+			it( 'should keep a date pushed through $each', () =>
+			{
+				let updated = jsongin.Update( { a: [] }, { $push: { a: { $each: [ new Date( 1000 ) ] } } } );
+				assert.ok( updated.a[ 0 ] instanceof Date );
 			} );
 
 

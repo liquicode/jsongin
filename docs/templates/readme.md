@@ -57,6 +57,8 @@ You can use MongoDB style operations in your own projects by using these `jsongi
 
 With these functions you can query and manipulate your own data structures with MongoDB-style interface.
 Each MongoDB feature that is implemented here, operates accurately and in accordance with MongoDB.
+See the [Operator Reference](<%- Context.Package.homepage %>/#/guides/Operator-Reference.md) for
+  which operators are implemented.
 
 I developed `jsongin` to provide a single query interface that could be used against data stored
   in different types of storage mediums (e.g. memory, file, server).

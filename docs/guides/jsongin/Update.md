@@ -275,9 +275,17 @@ let updated = jsongin.Update(
  $addToSet
 ---------------------------------------------------------------------
 
-**Usage** : `$addToSet: { array-field: value, array-field: value, ... }`
+**Usage** : `$addToSet: { array-field: value, ... }`
+  or `$addToSet: { array-field: { $each: [ value, ... ] }, ... }`
 
-*(partially implemented)* Adds elements to an array only if they do not already exist in the set.
+Adds elements to an array only if they do not already exist in the set.
+
+A document carrying `$each` adds every element of that array, each one subject to the same
+  test.
+Any other value, ***including a document with no `$each`***, is added as a single value.
+
+Values are compared by their content, so an object, an array, or a date is recognized as
+  already present rather than being added again because it is a different instance.
 
 **Examples**
 ```js
@@ -286,6 +294,20 @@ let updated = jsongin.Update(
 				{ $addToSet: { a: 4 } }
 			);
 // updated is { a: [ 1, 2, 3, 4 ] }
+
+// $each adds each element which is not already present.
+updated = jsongin.Update(
+				{ a: [ 1, 2 ] },
+				{ $addToSet: { a: { $each: [ 2, 3, 4 ] } } }
+			);
+// updated is { a: [ 1, 2, 3, 4 ] }
+
+// An element is also tested against the ones added before it.
+updated = jsongin.Update(
+				{ a: [] },
+				{ $addToSet: { a: { $each: [ 1, 1, 2 ] } } }
+			);
+// updated is { a: [ 1, 2 ] }
 ```
 
 
@@ -315,9 +337,29 @@ updated = jsongin.Update(
  $push
 ---------------------------------------------------------------------
 
-**Usage** : `$push: { array-field: value, array-field: value, ... }`
+**Usage** : `$push: { array-field: value, ... }`
+  or `$push: { array-field: { $each: [ value, ... ], $position: n, $sort: spec, $slice: n }, ... }`
 
-*(partially implemented)* Adds an item to an array.
+Appends to an array.
+
+A plain value is appended as a single element.
+A document carrying `$each` is a ***modifier document***, and appends every element of the
+  `$each` array instead.
+
+| **Modifier**  | **Effect**                                                                  |
+|---------------|------------------------------------------------------------------------------|
+| `$each`       | The values to append. Required by the other three modifiers.                 |
+| `$position`   | Inserts at this index rather than appending. A negative index counts back from the end, and an index outside the array is clamped to it. |
+| `$sort`       | Sorts the array after the insert. Use `1` or `-1` for an array of values, or a sort document such as `{ score: -1 }` for an array of documents. |
+| `$slice`      | Trims the array after the sort. A positive count keeps the first, a negative count keeps the last, and zero empties it. |
+
+The modifiers are applied in the order MongoDB applies them: `$each`, then `$position`, then
+  `$sort`, then `$slice`.
+
+A modifier written without `$each` is rejected, as it is by MongoDB, and so is an unrecognized
+  `$` field within a modifier document.
+***A rejected modifier leaves the array untouched***, because the whole modifier document is
+  checked before the first element is inserted.
 
 **Examples**
 ```js
@@ -326,7 +368,31 @@ let updated = jsongin.Update(
 				{ $push: { a: 4 } }
 			);
 // updated is { a: [ 1, 2, 3, 4 ] }
+
+// $each appends several values.
+updated = jsongin.Update(
+				{ a: [ 1, 2 ] },
+				{ $push: { a: { $each: [ 3, 4 ] } } }
+			);
+// updated is { a: [ 1, 2, 3, 4 ] }
+
+// $position inserts rather than appends.
+updated = jsongin.Update(
+				{ a: [ 1, 2 ] },
+				{ $push: { a: { $each: [ 9 ], $position: 0 } } }
+			);
+// updated is { a: [ 9, 1, 2 ] }
+
+// $sort and $slice keep a top-N list, in that order.
+updated = jsongin.Update(
+				{ a: [ 5, 1 ] },
+				{ $push: { a: { $each: [ 3 ], $sort: -1, $slice: 2 } } }
+			);
+// updated is { a: [ 5, 3 ] }
 ```
+
+Note that a document with no `$each` is a value rather than a modifier, so
+  `{ $push: { a: { n: 1 } } }` appends the document `{ n: 1 }`.
 
 
  $pullAll

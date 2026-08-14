@@ -1,6 +1,11 @@
 'use strict';
 
-module.exports = NewJsongin();
+// The module's export is a ready to use engine instance.
+// It is held here as well so that the browser block at the bottom can publish this same
+// instance rather than building a second one.
+const DEFAULT_ENGINE = NewJsongin();
+
+module.exports = DEFAULT_ENGINE;
 
 function NewJsongin( EngineSettings = {} )
 {
@@ -327,11 +332,15 @@ function NewJsongin( EngineSettings = {} )
 };
 
 // Browser compatability.
+//
+// The bundle publishes this module's export as window.jsongin, and this publishes the same
+// instance as window.liquicode.jsongin, so the two globals are interchangeable.
+// Building a second engine here instead, which is what this used to do, made them two
+// different instances. That matters because the operator registries belong to an instance:
+// an operator registered through one global was invisible through the other.
 if ( typeof window !== 'undefined' )
 {
-	var jsongin = NewJsongin();
-	// window.jsongin = jsongin;
 	if ( typeof window.liquicode === 'undefined' ) { window.liquicode = {}; }
-	window.liquicode.jsongin = jsongin;
+	window.liquicode.jsongin = DEFAULT_ENGINE;
 	window.liquicode.NewJsongin = NewJsongin;
 }

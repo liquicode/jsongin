@@ -134,11 +134,15 @@ They all share the concept of a document path that is expressed in dot-notation.
 
 - [StrictEquals( DocumentA, DocumentB )](./jsongin/StrictEquals.md)
   : Performs a strict equality comparison between two values.
-  Values must match exactly (`===`) and values must appear in the same order within objects and arrays.
+  No type coercion is applied, and values must appear in the same order within objects and arrays.
+  This is [`CompareValues()`](./jsongin/CompareValues.md) asked whether its result is zero, so it
+  is not quite Javascript's `===`: two `Date` objects holding the same instant are equal, as are
+  two equal regular expressions, and `null` equals a missing value.
 
 - [LooseEquals( DocumentA, DocumentB )](./jsongin/LooseEquals.md)
   : Performs a loose equality comparison between two values.
-  Values must match loosely (==) and values can appear in different orders.
+  Primitives are compared with `==`, and values may appear in a different order within objects
+  and arrays.
 
 - [CompareValues( ValueA, ValueB )](./jsongin/CompareValues.md)
   : Compares two values and returns `-1`, `0`, or `1`.
