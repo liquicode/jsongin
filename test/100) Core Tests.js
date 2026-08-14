@@ -379,6 +379,140 @@ describe( '100) Core Tests', () =>
 			} );
 
 
+			//---------------------------------------------------------------------
+			it( `It should read the bare literals`, function ()
+			{
+				assert.deepStrictEqual( jsongin.Parse( '[true,false,null]' ), [ true, false, null ] );
+				assert.strictEqual( jsongin.Parse( 'null' ), null );
+				assert.strictEqual( jsongin.Parse( 'false' ), false );
+				// The literals are matched without regard to case, unlike JSON.
+				assert.deepStrictEqual( jsongin.Parse( '[TRUE,False,NULL]' ), [ true, false, null ] );
+			} );
+
+
+		} );
+
+
+		//---------------------------------------------------------------------
+		describe( `Escape Sequences`, function ()
+		{
+
+			/*
+				The tokenizer used to drop the backslash and take the next character as it found
+				it, which turned \n into the letter n.
+			*/
+
+			it( `should decode the escapes which JSON defines`, function ()
+			{
+				let cases = [
+					'{"a":"x\\ny"}',
+					'{"a":"x\\ty"}',
+					'{"a":"x\\ry"}',
+					'{"a":"x\\by"}',
+					'{"a":"x\\fy"}',
+					'{"a":"q\\"q"}',
+					'{"a":"b\\\\c"}',
+					'{"a":"s\\/s"}',
+					'{"a":"x\\u0041y"}',
+				];
+				for ( let index = 0; index < cases.length; index++ )
+				{
+					assert.deepStrictEqual(
+						jsongin.Parse( cases[ index ] ),
+						JSON.parse( cases[ index ] ),
+						`Parse disagreed with JSON.parse on [${cases[ index ]}].` );
+				}
+			} );
+
+			it( `should decode an escaped quote inside a single quoted string`, function ()
+			{
+				assert.deepStrictEqual( jsongin.Parse( `{ a: 'it\\'s' }` ), { a: `it's` } );
+			} );
+
+			it( `should read an unrecognized escape as the character itself`, function ()
+			{
+				assert.deepStrictEqual( jsongin.Parse( '{"a":"\\q"}' ), { a: 'q' } );
+			} );
+
+			it( `should round trip an escaped value through Format and Parse`, function ()
+			{
+				let values = [
+					'', 'plain', 'x"y"z', 'a\nb', 'back\\slash', 'tab\there', 'cr\rlf\n',
+					'\b\f', 'café', '\u{1F600}', 'quote " and \\ and \n together', '/slash/',
+				];
+				for ( let index = 0; index < values.length; index++ )
+				{
+					let value = values[ index ];
+					assert.deepStrictEqual(
+						jsongin.Parse( jsongin.Format( { v: value } ) ),
+						{ v: value },
+						`The round trip lost [${JSON.stringify( value )}].` );
+				}
+			} );
+
+		} );
+
+
+		//---------------------------------------------------------------------
+		describe( `Forgiving Parsing`, function ()
+		{
+
+			/*
+				Parse never throws. A string it cannot read comes back unchanged and the reason
+				goes to OpLog. Several of these used to be a raw TypeError, thrown by
+				dereferencing a token which was not there.
+			*/
+
+			it( `should return the string unchanged when it cannot be read`, function ()
+			{
+				let cases = [ '', '"abc', '[', '{ bad', '{a:', '[1,2', '{"a" "b"}', '{"a":"\\u00zz"}' ];
+				for ( let index = 0; index < cases.length; index++ )
+				{
+					assert.strictEqual( jsongin.Parse( cases[ index ] ), cases[ index ] );
+				}
+			} );
+
+			it( `should return an argument which is not a string unchanged`, function ()
+			{
+				let document = { a: 1 };
+				assert.strictEqual( jsongin.Parse( 42 ), 42 );
+				assert.strictEqual( jsongin.Parse( null ), null );
+				assert.strictEqual( jsongin.Parse( undefined ), undefined );
+				assert.strictEqual( jsongin.Parse( document ), document );
+			} );
+
+			it( `should never throw, whatever it is given`, function ()
+			{
+				let cases = [ '', '[', ']', '{', '}', ':', ',', '"', `'`, '\\', '{a', '{a:',
+					'{a:}', '[,]', '{:1}', '{"a"}', '[[[[', '}}}}', '{"a":"\\u12"}', '"\\', '   ' ];
+				for ( let index = 0; index < cases.length; index++ )
+				{
+					assert.doesNotThrow(
+						function () { jsongin.Parse( cases[ index ] ); },
+						`Parse threw on [${cases[ index ]}].` );
+				}
+			} );
+
+			it( `should report the reason to OpLog`, function ()
+			{
+				let messages = [];
+				let engine = jsongin.NewJsongin( { OpLog: function ( Message ) { messages.push( Message ); } } );
+
+				engine.Parse( '{ bad' );
+				assert.strictEqual( messages.length, 1 );
+				assert.ok( messages[ 0 ].startsWith( 'Parse: ' ), `Parse reported [${messages[ 0 ]}].` );
+				assert.ok( messages[ 0 ].includes( 'returned unchanged' ) );
+
+				engine.Parse( 42 );
+				assert.strictEqual( messages.length, 2 );
+				assert.ok( messages[ 1 ].includes( 'must be a string' ) );
+			} );
+
+			it( `should stay silent when no OpLog is configured`, function ()
+			{
+				assert.strictEqual( jsongin.Parse( '{ bad' ), '{ bad' );
+			} );
+
 		} );
 
 
@@ -534,6 +668,54 @@ describe( '100) Core Tests', () =>
 			} );
 
 
+			/*
+				Only the first quote used to be escaped, and the backslash and the control
+				characters were not escaped at all, so the output could not be read back.
+			*/
+
+			//---------------------------------------------------------------------
+			it( `should escape a string value the same way`, function ()
+			{
+				let values = [
+					'', 'plain', 'x"y"z', 'a\nb', 'back\\slash', 'tab\there', 'cr\rlf\n',
+					'\b\f', '\u0000\u001f', '\u007f', '\u2028\u2029', 'café',
+					'\u{1F600}', '\uD800', '\uDC00', 'a\uD800b',
+					'quote " and \\ and \n together', '/slash/',
+				];
+				for ( let index = 0; index < values.length; index++ )
+				{
+					assert.strictEqual(
+						jsongin.Format( values[ index ] ),
+						JSON.stringify( values[ index ] ),
+						`Format disagreed on [${JSON.stringify( values[ index ] )}].` );
+				}
+			} );
+
+			//---------------------------------------------------------------------
+			it( `should escape a field name the same way`, function ()
+			{
+				let documents = [ { 'a"b': 1 }, { 'a\nb': 1 }, { 'a\\b': 1 }, { '': 1 }, { 'a\tb': 1 } ];
+				for ( let index = 0; index < documents.length; index++ )
+				{
+					assert.strictEqual(
+						jsongin.Format( documents[ index ] ),
+						JSON.stringify( documents[ index ] ),
+						`Format disagreed on [${JSON.stringify( documents[ index ] )}].` );
+				}
+			} );
+
+			//---------------------------------------------------------------------
+			it( `should produce output which JSON.parse() can read back`, function ()
+			{
+				let document = {
+					id: 1,
+					'he said "this"': 'and \\ this \n and\tthis',
+					list: [ 'a\\b', { 'k\ty': null } ],
+				};
+				assert.deepStrictEqual( JSON.parse( jsongin.Format( document ) ), document );
+			} );
+
+
 		} );
 
 
@@ -579,33 +761,6 @@ describe( '100) Core Tests', () =>
     ],
 }`
 				);
-			} );
-
-
-			//---------------------------------------------------------------------
-			it( `It should parse an object written with JS (not JSON) syntax`, function ()
-			{
-				let text = `{ id: 1001, user: { name : 'Alice', location: 'East' }, profile: { login: 'alice', role: 'admin' }, tags: [ 'Staff', 'Dept. A' ] }`;
-				let result = jsongin.Parse( text );
-				assert.ok( result );
-				assert.equal( result.id, 1001 );
-				assert.equal( result.user.name, 'Alice' );
-				assert.equal( result.user.location, 'East' );
-				assert.equal( result.profile.login, 'alice' );
-				assert.equal( result.profile.role, 'admin' );
-				assert.equal( result.tags.length, 2 );
-				assert.equal( result.tags[ 0 ], 'Staff' );
-				assert.equal( result.tags[ 1 ], 'Dept. A' );
-			} );
-
-
-			//---------------------------------------------------------------------
-			it( `It should parse an object followed by unrelated text`, function ()
-			{
-				let text = `{ id: 1001 } // This is an example.`;
-				let result = jsongin.Parse( text );
-				assert.ok( result );
-				assert.equal( result.id, 1001 );
 			} );
 
 

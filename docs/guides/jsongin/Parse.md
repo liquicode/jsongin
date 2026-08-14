@@ -39,9 +39,53 @@ In order for `JSON.parse()` to read the JSON string, you would have to change it
 The `jsongin.Parse()` function will work equally well with either string and will return the same object.
 
 
+## Escape Sequences
+
+String values are decoded the way `JSON.parse()` decodes them:
+`\b`, `\f`, `\n`, `\r`, `\t`, `\"`, `\\`, `\/`, and `\uXXXX`.
+
+Because `Parse()` also reads single quoted strings, `\'` works as well.
+Any other escape stands for the character which follows the backslash.
+
+```js
+jsongin.Parse( '{ "a": "one\\ntwo" }' )
+// returns { a: 'one\ntwo' }
+```
+
+
+## It Never Throws
+
+`Parse()` is a forgiving parser.
+A string it cannot read is ***returned unchanged*** rather than throwing, and so is an argument
+  which is not a string at all.
+
+```js
+jsongin.Parse( '{ bad' )   // returns '{ bad'
+jsongin.Parse( '"abc' )    // returns '"abc'
+jsongin.Parse( '' )        // returns ''
+jsongin.Parse( 42 )        // returns 42
+```
+
+The reason is reported to [`OpLog`](../OpLog.md), which is where to look when a value comes back
+  as the string that went in:
+
+```js
+const jsongin = require( '@liquicode/jsongin' ).NewJsongin( { OpLog: console.log } );
+jsongin.Parse( '{ bad' );
+// Parse: At position [2]: Expected a ':' after the field name 'bad'. The string was returned unchanged.
+```
+
+Note that a value which was returned unchanged cannot be told apart from a successful parse
+  which happened to produce a string.
+`Parse( '"abc"' )` returns `abc` because it parsed, and `Parse( '"abc' )` returns `"abc` because
+  it did not.
+`OpLog` is what distinguishes them.
+
+
 ## See Also
 
 - [`Format( Value, WithWhitespace, AndPretty )`](./Format.md)
+- [`OpLog`](../OpLog.md)
 
 
 ## Examples

@@ -33,6 +33,12 @@ describe( '150) Error Handling Tests', () =>
 			catch block that names the wrong one is invisible without this.
 		*/
 
+		/*
+			Parse is deliberately absent from this list. It is a forgiving parser which never
+			throws: a string it cannot read comes back unchanged and the reason goes to OpLog,
+			not OpError. Its reporting is covered by the Parse tests instead.
+		*/
+
 		let cases = [
 			{ Name: 'Diff', Call: function ( E ) { E.Diff( 'x', {} ); } },
 			{ Name: 'Invert', Call: function ( E ) { E.Invert( 'x', {} ); } },
@@ -48,7 +54,6 @@ describe( '150) Error Handling Tests', () =>
 			{ Name: 'DeleteValue', Call: function ( E ) { E.DeleteValue( 'x', 'a' ); } },
 			{ Name: 'SplitPath', Call: function ( E ) { E.SplitPath( {} ); } },
 			{ Name: 'JoinPaths', Call: function ( E ) { E.JoinPaths( {} ); } },
-			{ Name: 'Parse', Call: function ( E ) { E.Parse( '{ bad' ); } },
 		];
 
 		for ( let index = 0; index < cases.length; index++ )

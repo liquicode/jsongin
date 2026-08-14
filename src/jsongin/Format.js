@@ -44,6 +44,78 @@ module.exports = function ( jsongin )
 		(2) The LikeJavascript format includes quoted identifiers. It should not do so.
 	*/
 
+
+	//---------------------------------------------------------------------
+	// Escapes the text which goes between a pair of quotes.
+	//
+	// These are the rules JSON.stringify() follows: the quote and the backslash are escaped,
+	// the five control characters which have a short form get it, every other character below
+	// U+0020 becomes a \u escape, and a surrogate which is not part of a pair becomes one too.
+	// Everything else, including U+007F and U+2028, is written as itself.
+	//
+	// Escaping only the quote, and only its first occurrence, produced output which
+	// JSON.parse() could not read back.
+	function escape_string( Text, Quote )
+	{
+		let escaped = '';
+		for ( let index = 0; index < Text.length; index++ )
+		{
+			let character = Text.charAt( index );
+
+			if ( character === Quote ) { escaped += '\\' + Quote; continue; }
+			if ( character === '\\' ) { escaped += '\\\\'; continue; }
+
+			switch ( character )
+			{
+				case '\b': escaped += '\\b'; continue;
+				case '\f': escaped += '\\f'; continue;
+				case '\n': escaped += '\\n'; continue;
+				case '\r': escaped += '\\r'; continue;
+				case '\t': escaped += '\\t'; continue;
+			}
+
+			let code = Text.charCodeAt( index );
+
+			// The control characters which have no short form.
+			if ( code < 0x20 ) { escaped += unicode_escape( code ); continue; }
+
+			// A high surrogate is only a character when a low surrogate follows it.
+			if ( ( code >= 0xD800 ) && ( code <= 0xDBFF ) )
+			{
+				let next = Text.charCodeAt( index + 1 );
+				if ( ( next >= 0xDC00 ) && ( next <= 0xDFFF ) )
+				{
+					escaped += character + Text.charAt( index + 1 );
+					index++;
+					continue;
+				}
+				escaped += unicode_escape( code );
+				continue;
+			}
+
+			// A low surrogate here was not preceded by a high one, so it stands alone.
+			if ( ( code >= 0xDC00 ) && ( code <= 0xDFFF ) )
+			{
+				escaped += unicode_escape( code );
+				continue;
+			}
+
+			escaped += character;
+		}
+		return escaped;
+	}
+
+
+	//---------------------------------------------------------------------
+	// Writes a character code as a four digit \u escape, in lowercase hexadecimal.
+	function unicode_escape( Code )
+	{
+		let digits = Code.toString( 16 );
+		while ( digits.length < 4 ) { digits = '0' + digits; }
+		return '\\u' + digits;
+	}
+
+
 	//---------------------------------------------------------------------
 	function stringify_recurse( Node, Depth, StringifyOptions, Context = null )
 	{
@@ -67,11 +139,7 @@ module.exports = function ( jsongin )
 		}
 		else if ( typeof Node === 'string' )
 		{
-			let value = Node.toString();
-			if ( StringifyOptions.literal_quote )
-			{
-				value = value.replace( StringifyOptions.literal_quote, '\\' + StringifyOptions.literal_quote );
-			}
+			let value = escape_string( Node.toString(), StringifyOptions.literal_quote );
 			text += `${StringifyOptions.literal_quote}${value}${StringifyOptions.literal_quote}`;
 		}
 		else if ( typeof Node === 'symbol' )
@@ -169,10 +237,13 @@ module.exports = function ( jsongin )
 					text += StringifyOptions.tab_char.repeat( Depth + 1 );
 					if ( StringifyOptions.always_quote_identifiers )
 					{
-						text += `${StringifyOptions.identifier_quote}${key}${StringifyOptions.identifier_quote}`;
+						// A field name needs the same escaping a string value does.
+						let name = escape_string( key, StringifyOptions.identifier_quote );
+						text += `${StringifyOptions.identifier_quote}${name}${StringifyOptions.identifier_quote}`;
 					}
 					else
 					{
+						// LikeJavascript writes a bare identifier, which cannot carry an escape.
 						text += key;
 					}
 					text += ':';
