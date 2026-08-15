@@ -10,4 +10,5 @@ const Driver = require( './Drivers/jsongin-Driver.js' )( {
 describe( 'jsongin Aggregate Tests', () =>
 {
 	require( './Aggregate Tests/test-suite/Ad-Hoc Tests.js' )( Driver );
+	require( './Aggregate Tests/test-suite/Sort Parity Tests.js' )( Driver );
 } );

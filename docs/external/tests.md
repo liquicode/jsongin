@@ -266,6 +266,16 @@
       ✔ should still compare an empty array as an array outside of sorting
       ✔ should sort the array in place and return it
       ✔ should ignore sort fields with a direction of zero
+    Sort Keys Through an Array Tests
+      ✔ should reduce through every array the path crosses
+      ✔ should expand only one level when the path crosses no array
+      ✔ should expand a level for each array the path crosses
+      ✔ should treat an empty array element as an ordinary array value
+      ✔ should sort a field holding only an empty array with the arrays
+      ✔ should sort an empty array reached through a path below every value
+      ✔ should sort an empty array crossed by a path as null
+      ✔ should order mixed types among the candidates by value order
+      ✔ should still honor an explicit array index in the sort path
     Distinct Tests
       ✔ It gets a distinct array of objects
       ✔ It gets a distinct array using multiple keys
@@ -917,6 +927,13 @@
       ✔ should evaluate the field values of an expression object
       ✔ should throw when an expression operator is not recognized
       ✔ should throw when system variables are used
+      ✔ should gather a field reference through an array
+      ✔ should omit elements which do not have the field
+      ✔ should evaluate a reference to a missing field as undefined
+      ✔ should keep a field which really holds an array whole
+      ✔ should gather through two levels of array
+      ✔ should index an array by number
+      ✔ should leave GetValue reading the same way it always has
     $add Tests
       ✔ should add numbers
       ✔ should add zero
@@ -1414,6 +1431,19 @@
       ✔ should accept booleans in place of 1 and 0
     Projected Document Shape
       ✔ should remove excluded fields rather than leaving them undefined
+      ✔ should include a field through an array, keeping the array
+      ✔ should give an empty object for an element which lacks the field
+      ✔ should drop an element which cannot carry the field
+      ✔ should include through two levels of array
+      ✔ should descend into an array inside an array
+      ✔ should gather two fields from the same array into one object
+      ✔ should treat a numeric path element as a field name
+      ✔ should omit a field whose path runs below a scalar
+      ✔ should keep an ordinary path working
+      ✔ should not alias the document it projected from
+      ✔ should exclude a field through an array, keeping the array
+      ✔ should exclude through two levels of array
+      ✔ should exclude an array element by index
       ✔ should not add an _id to a document which does not have one
       ✔ should omit an included field which is not in the document
       ✔ should keep dates through a projection
@@ -1434,8 +1464,20 @@
       ✔ should collect values with $push, $first, and $last
       ✔ should group the teams and list their members
       ✔ should return an empty result when nothing matches
+    Sort Through Array Tests
+      ✔ should reduce through every array the path crosses
+      ✔ should expand only one level when the path crosses no array
+      ✔ should expand a level for each array the path crosses
+      ✔ should treat an empty array element as an ordinary array value
+      ✔ should sort a field holding only an empty array with the arrays
+      ✔ should sort the existing empty array cases unchanged
+      ✔ should sort an empty array reached through a path below every value
+      ✔ should sort an empty array crossed by a path as null
+      ✔ should order mixed types among the candidates by value order
+      ✔ should sort an empty array beside a string by the array rank
+      ✔ should honor an explicit array index in the sort path
 
 
-  1172 passing (201ms)
+  1212 passing (216ms)
 
 ```

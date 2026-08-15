@@ -4,6 +4,72 @@ module.exports = function ( jsongin )
 {
 
 	//---------------------------------------------------------------------
+	// Resolves a field reference such as '$a.x' the way an aggregation expression does.
+	//
+	// Returns { Found: true, Value: ... } or { Found: false }. The two are distinct: a path
+	// which resolves to nothing is not the same as one which resolves to a value of
+	// undefined, and only the first makes the whole reference evaluate to undefined.
+	//
+	// A path which crosses an array gathers the values of its elements, which is what MongoDB
+	// does. Elements which do not have the field contribute ***nothing*** rather than a
+	// placeholder, and a path which crosses an array always produces an array, even an empty
+	// one. Verified against MongoDB 6.0.1:
+	//
+	//   { a: [ { x: 5 }, { y: 9 } ] }   '$a.x'    =>  [ 5 ]
+	//   { a: [ { y: 9 } ] }             '$a.x'    =>  []
+	//   { a: [ { x: [ 5, 6 ] } ] }      '$a.x'    =>  [ [ 5, 6 ] ]
+	//   { a: [ { b: [ { c: 1 } ] } ] }  '$a.b.c'  =>  [ [ 1 ] ]
+	//   { b: 1 }                        '$a.x'    =>  missing
+	//
+	// This used to call GetValue, whose implicit iterator pushes a value for every element
+	// including the ones with nothing to give, so the first two produced [ 5, undefined ] and
+	// [ undefined ]. GetValue keeps that behavior on purpose: it is documented, and the
+	// placeholder keeps its result positionally aligned with the array it read from, which a
+	// caller indexing into the result depends on. Sorting relies on the same thing, since
+	// MongoDB treats a missing element as null when it builds a sort key rather than dropping
+	// it. Only the aggregation reading of a path omits, so only this resolves that way.
+	function resolve_field_path( Node, PathElements, Index )
+	{
+		if ( Index >= PathElements.length ) { return { Found: true, Value: Node }; }
+
+		let key = PathElements[ Index ];
+		let st_node = jsongin.ShortType( Node );
+
+		if ( st_node === 'a' )
+		{
+			if ( jsongin.ShortType( key ) === 'n' )
+			{
+				// A numeric key indexes the array, counting from the end when negative.
+				let element_index = key;
+				if ( element_index < 0 ) { element_index = Node.length + element_index; }
+				if ( element_index < 0 ) { return { Found: false }; }
+				if ( element_index >= Node.length ) { return { Found: false }; }
+				return resolve_field_path( Node[ element_index ], PathElements, Index + 1 );
+			}
+
+			// The key applies to the elements rather than to the array, and is not used up.
+			let values = [];
+			for ( let index = 0; index < Node.length; index++ )
+			{
+				let resolved = resolve_field_path( Node[ index ], PathElements, Index );
+				if ( resolved.Found === false ) { continue; }
+				values.push( resolved.Value );
+			}
+			return { Found: true, Value: values };
+		}
+
+		if ( st_node === 'o' )
+		{
+			if ( Object.prototype.hasOwnProperty.call( Node, key ) === false ) { return { Found: false }; }
+			return resolve_field_path( Node[ key ], PathElements, Index + 1 );
+		}
+
+		// A scalar cannot carry the rest of the path.
+		return { Found: false };
+	};
+
+
+	//---------------------------------------------------------------------
 	function Evaluate( Document, Expression )
 	{
 		try
@@ -20,7 +86,11 @@ module.exports = function ( jsongin )
 				if ( Expression.startsWith( '$' ) )
 				{
 					// A field reference. Missing fields evaluate to undefined.
-					return jsongin.GetValue( Document, Expression.substring( 1 ) );
+					// See resolve_field_path above for why this does not call GetValue.
+					let path_elements = jsongin.SplitPath( Expression.substring( 1 ) );
+					let resolved = resolve_field_path( Document, path_elements, 0 );
+					if ( resolved.Found === false ) { return undefined; }
+					return resolved.Value;
 				}
 				return Expression;
 			}

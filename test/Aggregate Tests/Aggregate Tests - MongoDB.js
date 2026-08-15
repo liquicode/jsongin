@@ -12,4 +12,5 @@ const Driver = require( '../Drivers/MongoDB-Driver.js' )();
 describe( 'MongoDB Aggregate Tests', () =>
 {
 	require( './test-suite/Ad-Hoc Tests.js' )( Driver );
+	require( './test-suite/Sort Parity Tests.js' )( Driver );
 } );

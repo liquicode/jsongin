@@ -2075,6 +2075,173 @@ describe( '100) Core Tests', () =>
 
 
 	//---------------------------------------------------------------------
+	describe( 'Sort Keys Through an Array Tests', () =>
+	{
+		// Every ordering below was verified against MongoDB 6.0.1.
+		//
+		// A sort key is built from a set of candidates, not from a single resolved value.
+		// Each array crossed while walking the path applies the remaining path to its
+		// elements, and an array found at the END of the path contributes its elements.
+		// The number of levels expanded therefore depends on the path, not on the value.
+
+		function sorted_ids( Documents, SortCriteria )
+		{
+			return jsongin.Sort( Documents, SortCriteria )
+				.map( function ( document ) { return document._id; } );
+		};
+
+
+		it( 'should reduce through every array the path crosses', () =>
+		{
+			// _id 6 holds x: [ 0, 7 ] reached through the array at 'a', so its candidates
+			// are 0 and 7 rather than the array itself. jsongin used to stop one level
+			// short and sort it last, because an array outranks every number.
+			let documents = [
+				{ _id: 1, a: [ { x: 3 }, { x: 1 } ] },
+				{ _id: 2, a: [ { x: 2 } ] },
+				{ _id: 3, a: [ { x: 5 }, { y: 9 } ] },
+				{ _id: 4, a: [ { y: 9 } ] },
+				{ _id: 5, b: 1 },
+				{ _id: 6, a: [ { x: [ 0, 7 ] } ] },
+			];
+			assert.ok( jsongin.StrictEquals( sorted_ids( documents, { 'a.x': 1 } ), [ 3, 4, 5, 6, 1, 2 ] ) );
+			assert.ok( jsongin.StrictEquals( sorted_ids( documents, { 'a.x': -1 } ), [ 6, 3, 1, 2, 4, 5 ] ) );
+		} );
+
+
+		it( 'should expand only one level when the path crosses no array', () =>
+		{
+			// This is the case which must NOT change. 'v' holds an array of arrays and
+			// the path crosses nothing, so the candidates are the inner arrays themselves
+			// and they keep the array type rank, which sorts above every number.
+			let documents = [
+				{ _id: 1, v: [ [ 3, 4 ], [ 1, 2 ] ] },
+				{ _id: 2, v: 5 },
+				{ _id: 3, v: [ [ 9 ] ] },
+				{ _id: 4, v: 0 },
+			];
+			assert.ok( jsongin.StrictEquals( sorted_ids( documents, { v: 1 } ), [ 4, 2, 1, 3 ] ) );
+			assert.ok( jsongin.StrictEquals( sorted_ids( documents, { v: -1 } ), [ 3, 1, 2, 4 ] ) );
+		} );
+
+
+		it( 'should expand a level for each array the path crosses', () =>
+		{
+			// Two traversed arrays and a leaf array. _id 2 sorts by 2 ascending and 8
+			// descending, three levels below where the path started.
+			let documents = [
+				{ _id: 1, a: [ { b: [ { c: 4 }, { c: 1 } ] } ] },
+				{ _id: 2, a: [ { b: [ { c: [ 8, 2 ] } ] } ] },
+				{ _id: 3, a: [ { b: [ { c: 3 } ] } ] },
+			];
+			assert.ok( jsongin.StrictEquals( sorted_ids( documents, { 'a.b.c': 1 } ), [ 1, 2, 3 ] ) );
+			assert.ok( jsongin.StrictEquals( sorted_ids( documents, { 'a.b.c': -1 } ), [ 2, 1, 3 ] ) );
+		} );
+
+
+		it( 'should treat an empty array element as an ordinary array value', () =>
+		{
+			// _id 1 holds [ 3, [] ]. Ascending its key is 3, because an array outranks a
+			// number and loses the min. Descending its key is the empty array, which wins
+			// the max and sorts FIRST. The empty-array rule does not apply to a key which
+			// was selected out of an array, only to a field which produced no key at all.
+			let documents = [
+				{ _id: 1, v: [ 3, [] ] },
+				{ _id: 2, v: 2 },
+				{ _id: 3, v: 9 },
+				{ _id: 4, v: 4 },
+				{ _id: 5, v: null },
+			];
+			assert.ok( jsongin.StrictEquals( sorted_ids( documents, { v: 1 } ), [ 5, 2, 1, 4, 3 ] ) );
+			assert.ok( jsongin.StrictEquals( sorted_ids( documents, { v: -1 } ), [ 1, 3, 4, 2, 5 ] ) );
+		} );
+
+
+		it( 'should sort a field holding only an empty array with the arrays', () =>
+		{
+			// _id 1 is [ [] ], whose single candidate is the empty array, so it sorts by
+			// the array type rank and NOT below null. _id 4 is [] itself, which produces
+			// no candidate at all and does sort below null.
+			let documents = [
+				{ _id: 1, v: [ [] ] },
+				{ _id: 2, v: null },
+				{ _id: 3, v: 5 },
+				{ _id: 4, v: [] },
+				{ _id: 5, x: 1 },
+			];
+			assert.ok( jsongin.StrictEquals( sorted_ids( documents, { v: 1 } ), [ 4, 2, 5, 3, 1 ] ) );
+			assert.ok( jsongin.StrictEquals( sorted_ids( documents, { v: -1 } ), [ 1, 3, 2, 5, 4 ] ) );
+		} );
+
+
+		it( 'should sort an empty array reached through a path below every value', () =>
+		{
+			// _id 2 resolves to an empty array at the leaf, so it offers no candidate and
+			// sorts below null and below the document which is missing the field.
+			let documents = [
+				{ _id: 1, a: [ { x: [ 0, 7 ] } ] },
+				{ _id: 2, a: [ { x: [] } ] },
+				{ _id: 3, a: [ { x: 2 } ] },
+				{ _id: 4, a: [ { x: null } ] },
+				{ _id: 5, b: 1 },
+				{ _id: 6, a: [ { x: 9 } ] },
+			];
+			assert.ok( jsongin.StrictEquals( sorted_ids( documents, { 'a.x': 1 } ), [ 2, 4, 5, 1, 3, 6 ] ) );
+			assert.ok( jsongin.StrictEquals( sorted_ids( documents, { 'a.x': -1 } ), [ 6, 1, 3, 4, 5, 2 ] ) );
+		} );
+
+
+		it( 'should sort an empty array crossed by a path as null', () =>
+		{
+			// _id 1 is { a: [] }. The path 'a.x' cannot be followed into it, so it yields
+			// null and sorts with the other nulls. This differs from _id 2, whose empty
+			// array sits at the END of the path and yields no key at all.
+			// The _id tiebreaker makes the grouping unambiguous.
+			let documents = [
+				{ _id: 1, a: [] },
+				{ _id: 2, a: [ { x: [] } ] },
+				{ _id: 3, a: [ { x: null } ] },
+				{ _id: 4, b: 1 },
+				{ _id: 5, a: [ { x: 5 } ] },
+			];
+			assert.ok( jsongin.StrictEquals( sorted_ids( documents, { 'a.x': 1, _id: 1 } ), [ 2, 1, 3, 4, 5 ] ) );
+			assert.ok( jsongin.StrictEquals( sorted_ids( documents, { 'a.x': -1, _id: 1 } ), [ 5, 1, 3, 4, 2 ] ) );
+		} );
+
+
+		it( 'should order mixed types among the candidates by value order', () =>
+		{
+			// _id 5 reduces to 6 ascending and to [ 'z' ] descending, so the same document
+			// sorts among the numbers one way and among the arrays the other.
+			let documents = [
+				{ _id: 1, a: [ { x: [ 'b', 2 ] } ] },
+				{ _id: 2, a: [ { x: [ true, 'a' ] } ] },
+				{ _id: 3, a: [ { x: 1 } ] },
+				{ _id: 4, a: [ { x: [ null, 9 ] } ] },
+				{ _id: 5, a: [ { x: [ [ 'z' ], 6 ] } ] },
+			];
+			assert.ok( jsongin.StrictEquals( sorted_ids( documents, { 'a.x': 1 } ), [ 4, 3, 1, 5, 2 ] ) );
+			assert.ok( jsongin.StrictEquals( sorted_ids( documents, { 'a.x': -1 } ), [ 2, 5, 1, 4, 3 ] ) );
+		} );
+
+
+		it( 'should still honor an explicit array index in the sort path', () =>
+		{
+			// An explicit index selects one element instead of iterating, exactly as
+			// GetValue() resolves it, so only the first element of 'a' is considered.
+			let documents = [
+				{ _id: 1, a: [ { x: 9 }, { x: 1 } ] },
+				{ _id: 2, a: [ { x: 4 }, { x: 8 } ] },
+				{ _id: 3, a: [ { x: 6 } ] },
+			];
+			assert.ok( jsongin.StrictEquals( sorted_ids( documents, { 'a.0.x': 1 } ), [ 2, 3, 1 ] ) );
+			assert.ok( jsongin.StrictEquals( sorted_ids( documents, { 'a.0.x': -1 } ), [ 1, 3, 2 ] ) );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
 	describe( 'Distinct Tests', () =>
 	{
 

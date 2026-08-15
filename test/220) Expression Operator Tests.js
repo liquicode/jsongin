@@ -67,6 +67,55 @@ describe( '220) Expression Operator Tests', () =>
 			assert.throws( function () { jsongin.Evaluate( {}, '$$NOW' ); }, /system variables are not supported/ );
 		} );
 
+		// A field reference which crosses an array gathers the values of the elements.
+		// Every case below was measured against MongoDB 6.0.1.
+
+		it( 'should gather a field reference through an array', () =>
+		{
+			assert.deepStrictEqual( jsongin.Evaluate( { a: [ { x: 1 }, { x: 2 } ] }, '$a.x' ), [ 1, 2 ] );
+			assert.deepStrictEqual( jsongin.Evaluate( { a: [ { x: 1 } ] }, '$a.x' ), [ 1 ] );
+		} );
+
+		it( 'should omit elements which do not have the field', () =>
+		{
+			// These used to gather to [ 5, undefined ] and [ undefined ], because GetValue
+			// contributes a placeholder for every element. An aggregation expression omits.
+			assert.deepStrictEqual( jsongin.Evaluate( { a: [ { x: 5 }, { y: 9 } ] }, '$a.x' ), [ 5 ] );
+			assert.deepStrictEqual( jsongin.Evaluate( { a: [ { y: 9 } ] }, '$a.x' ), [] );
+			assert.deepStrictEqual( jsongin.Evaluate( { a: [] }, '$a.x' ), [] );
+		} );
+
+		it( 'should evaluate a reference to a missing field as undefined', () =>
+		{
+			// Distinct from an empty array: nothing was traversed, so there is no value.
+			assert.strictEqual( jsongin.Evaluate( { b: 1 }, '$a.x' ), undefined );
+			assert.strictEqual( jsongin.Evaluate( { a: 5 }, '$a.x' ), undefined );
+		} );
+
+		it( 'should keep a field which really holds an array whole', () =>
+		{
+			assert.deepStrictEqual( jsongin.Evaluate( { a: [ { x: [ 5, 6 ] } ] }, '$a.x' ), [ [ 5, 6 ] ] );
+		} );
+
+		it( 'should gather through two levels of array', () =>
+		{
+			assert.deepStrictEqual( jsongin.Evaluate( { a: [ { b: [ { c: 1 } ] } ] }, '$a.b.c' ), [ [ 1 ] ] );
+		} );
+
+		it( 'should index an array by number', () =>
+		{
+			assert.strictEqual( jsongin.Evaluate( { a: [ { x: 1 }, { x: 2 } ] }, '$a.1.x' ), 2 );
+			assert.strictEqual( jsongin.Evaluate( { a: [ { x: 1 } ] }, '$a.9.x' ), undefined );
+		} );
+
+		it( 'should leave GetValue reading the same way it always has', () =>
+		{
+			// GetValue keeps the placeholder on purpose. Its result stays positionally
+			// aligned with the array it read from, which is documented, and Sort depends on
+			// it because MongoDB treats a missing element as null when building a sort key.
+			assert.deepStrictEqual( jsongin.GetValue( { a: [ { x: 5 }, { y: 9 } ] }, 'a.x' ), [ 5, undefined ] );
+		} );
+
 	} );
 
 

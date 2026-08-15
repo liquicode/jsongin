@@ -40,23 +40,62 @@ A document which does not contain the sort field is sorted as though the field h
   which places it at the beginning of an ascending sort.
 
 ***Array fields*** :
-When a sort field holds an array, the array is first reduced to a single sort key.
-An ascending sort uses the array's ***smallest*** element, and a descending sort uses its
-  ***largest*** element.
-So a field holding `[ 9, 0 ]` sorts as `0` when ascending and as `9` when descending, and it
-  takes its place among the other values accordingly, not among the other arrays.
+A sort key is built from a ***set of candidates*** rather than from the field's value directly.
+An array found at the end of the path offers each of its elements as a candidate.
+An ascending sort takes the smallest candidate and a descending sort takes the largest.
+So a field holding `[ 9, 0 ]` sorts as `0` when ascending and as `9` when descending, taking
+  its place among the other values rather than among the other arrays.
+
+Only ***one*** level is expanded this way.
+A field holding `[ [ 3, 4 ], [ 1, 2 ] ]` offers the two inner arrays as its candidates, not the
+  numbers inside them, so it sorts as `[ 1, 2 ]` when ascending and carries the array type rank.
 
 Note that this differs from how two arrays are compared against each other by the expression
   operators and by `CompareValues()`, which compare element by element.
 Both rules are MongoDB's; which one applies depends on whether you are sorting documents or
   comparing two values.
 
-***Empty array fields*** :
-A field holding an empty array `[]` has no element to reduce to.
-It sorts ***below every other value***, including `null` and below documents which are missing
-  the field entirely.
-This too is a sorting rule only. Compared as a value, an empty array still carries the array
-  type rank, so `CompareValues( [], null )` returns `1`.
+***Paths which cross an array*** :
+Every array crossed while walking the path applies the ***remaining*** path to each of its
+  elements, and each of those contributes candidates in turn.
+The number of array levels which get expanded therefore depends on the shape of the ***path***
+  and not on the shape of the value:
+
+```js
+// 'a.x' crosses the array at 'a' and then finds an array at 'x'.
+// The candidates are 0 and 7, so this sorts as 0 ascending and 7 descending.
+let crossed = { a: [ { x: [ 0, 7 ] } ] };
+
+// 'v' crosses nothing, so the candidates are the two inner arrays themselves.
+let direct = { v: [ [ 3, 4 ], [ 1, 2 ] ] };
+```
+
+An element which does not carry the field contributes `null`, so `{ a: [ { x: 5 }, { y: 9 } ] }`
+  sorted by `a.x` offers `5` and `null` and sorts as `null` when ascending.
+
+***Empty arrays*** :
+A field holding an empty array `[]` offers ***no candidate at all***, and a document with no
+  candidates sorts ***below every other value***, including `null` and below documents which
+  are missing the field entirely.
+
+That rule is about the ***absence*** of candidates, not about the sort key being an empty array.
+An empty array which is ***selected*** as the sort key is an ordinary value carrying the array
+  type rank:
+
+```js
+// [] is a candidate here beside 3, and it wins the descending max,
+// so this document sorts above every number when descending.
+let selected = { v: [ 3, [] ] };
+
+// The only candidate is [], so this sorts by the array type rank, NOT below null.
+let only = { v: [ [] ] };
+```
+
+An empty array which the path merely ***crosses*** cannot be followed into, so it contributes
+  `null` instead: `{ a: [] }` sorted by `a.x` sorts with the other nulls.
+
+Compared as a value rather than sorted, an empty array still carries the array type rank, so
+  `CompareValues( [], null )` returns `1`.
 
 ***Ties*** :
 Documents whose sort keys are equal keep their original relative order.
@@ -105,4 +144,19 @@ jsongin.Sort( documents, { a: 1 } );   // sort keys 1, 3, 0
 
 jsongin.Sort( documents, { a: -1 } );  // sort keys 5, 3, 9
 // => [ { a: [ 9, 0 ] }, { a: [ 5, 1 ] }, { a: [ 3 ] } ]
+```
+
+### A path which crosses an array gathers a candidate from every element
+```js
+let documents = [
+	{ id: 1, a: [ { x: 3 }, { x: 1 } ] },   // candidates 3 and 1
+	{ id: 2, a: [ { x: 5 }, { y: 9 } ] },   // candidates 5 and null
+	{ id: 3, a: [ { x: [ 0, 7 ] } ] },      // candidates 0 and 7
+];
+
+jsongin.Sort( documents, { 'a.x': 1 } );   // sort keys 1, null, 0
+// => [ { id: 2, ... }, { id: 3, ... }, { id: 1, ... } ]
+
+jsongin.Sort( documents, { 'a.x': -1 } );  // sort keys 3, 5, 7
+// => [ { id: 3, ... }, { id: 2, ... }, { id: 1, ... } ]
 ```

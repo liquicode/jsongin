@@ -173,9 +173,13 @@ This is [`Sort( Documents, SortCriteria )`](./Sort.md) applied to a copy of the 
   input array's ordering is left untouched.
 
 Sorting follows MongoDB's rules: a document which is missing the sort field sorts as though the
-  field held `null`, values of different types are ordered by the BSON type order, and a field
-  holding an array is reduced to its smallest element when ascending and its largest element
-  when descending.
+  field held `null`, and values of different types are ordered by the BSON type order.
+
+A sort field which holds an array is reduced to a single sort key first, taking the smallest of
+  its elements when ascending and the largest when descending.
+A sort path which crosses an array gathers a candidate from every element it crosses, so such a
+  path can reduce through more than one array level.
+[`Sort( Documents, SortCriteria )`](./Sort.md) carries the full rule, including empty arrays.
 
 `jsongin` is ***more*** deterministic than MongoDB on ties, because Javascript's array sort is
   required to be stable while MongoDB's sort is not.

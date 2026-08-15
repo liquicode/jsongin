@@ -89,6 +89,10 @@ jsongin.ResolveCandidates( { a: [ [ { c: 1 } ] ] }, 'a.0.0.c' );
 - [`GetValue( Document, Path )`](./GetValue.md), which returns a single value
 - [`SplitPath( Path )`](./SplitPath.md)
 - [`Query( Document, Query )`](./Query.md)
+- [`Sort( Documents, SortCriteria )`](./Sort.md), which builds sort keys from its own candidate
+  walk for the same reason. It is deliberately not this function: sorting must not offer an
+  array whole ***as well as*** by element, because the extra candidate would win a descending
+  max and misplace the document, and it needs a `null` where this function reports nothing.
 
 
 ## Examples

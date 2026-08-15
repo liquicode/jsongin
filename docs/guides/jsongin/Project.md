@@ -42,6 +42,65 @@ Only `_id`, the included fields, and the computed fields appear in the output.
 Using an expression within an exclusion projection returns `null`.
 
 
+## Paths Which Cross an Array
+
+A projection path which reaches into an array ***keeps the array***, producing one object per
+  element rather than one gathered value.
+
+```js
+let document = { a: [ { x: 1, y: 2 }, { x: 3, y: 4 } ] };
+
+jsongin.Project( document, { 'a.x': 1 } );
+// { a: [ { x: 1 }, { x: 3 } ] }
+
+jsongin.Project( document, { 'a.x': 0 } );
+// { a: [ { y: 2 }, { y: 4 } ] }
+```
+
+Two fields taken from the same array arrive in one object per element:
+
+```js
+jsongin.Project( { a: [ { x: 1, y: 2, w: 3 } ] }, { 'a.x': 1, 'a.y': 1 } );
+// { a: [ { x: 1, y: 2 } ] }
+```
+
+An element which does not have the field contributes an ***empty object***, so the array keeps
+  its length. An element which cannot carry a field at all, such as a number or a `null`, is
+  ***dropped***:
+
+```js
+jsongin.Project( { a: [ { x: 1 }, { y: 9 } ] }, { 'a.x': 1 } );
+// { a: [ { x: 1 }, {} ] }
+
+jsongin.Project( { a: [ 1, 2, 3 ] }, { 'a.x': 1 } );
+// { a: [] }
+```
+
+A path element which looks numeric is a ***field name***, not an array index:
+
+```js
+jsongin.Project( { a: [ { x: 1 }, { x: 2 } ] }, { 'a.0': 1 } );
+// { a: [ {}, {} ] }   no element has a field named '0'
+```
+
+***This differs from a computed field.***
+A computed field is an expression, and an expression which crosses an array ***gathers*** the
+  values, which is what MongoDB's aggregation expressions do:
+
+```js
+let document = { a: [ { x: 1 }, { x: 2 } ] };
+
+jsongin.Project( document, { 'a.x': 1 } );      // { a: [ { x: 1 }, { x: 2 } ] }
+jsongin.Project( document, { copy: '$a.x' } );  // { copy: [ 1, 2 ] }
+```
+
+Both match MongoDB. They are different mechanisms with different rules, not an inconsistency.
+
+Note also that projection descends into an array which sits directly inside another array,
+  which a ***query*** path does not.
+See [`ResolveCandidates( Document, Path )`](./ResolveCandidates.md) for the query side.
+
+
 ## Computed Fields
 
 ```js

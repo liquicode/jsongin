@@ -307,6 +307,28 @@ v0.1.0 (current)
     `Parse` and `Distinct` are now fully covered. A duplicated copy of the `Parse` tests was
     removed from the `Format` test block.
 
+- ***Breaking***: `Sort( Documents, SortCriteria )` now builds a sort key by gathering candidates
+  along the sort path, rather than by reducing the single value which `GetValue()` returns.
+  A path which crosses an array reduces through every array level it crosses, so
+  `{ a: [ { x: [ 0, 7 ] } ] }` sorted by `a.x` now sorts as `0` ascending and `7` descending.
+  It previously stopped one level short, sorted by the whole `[ 0, 7 ]` array, and landed above
+  every number because an array outranks one. `GetValue()` gathers the values along a path into
+  one array which is indistinguishable from a field that genuinely holds an array, so sorting
+  could not tell the two shapes apart. A field holding `[ [ 3, 4 ], [ 1, 2 ] ]` sorted by `v`
+  crosses nothing, still expands one level only, and still sorts by `[ 1, 2 ]`.
+
+  The empty array rule changed with it. It applies to a field which produces ***no*** sort key
+  candidate at all, not to a sort key which happens to be an empty array. `{ v: [] }` still
+  sorts below every value including `null` and below documents missing the field, but
+  `{ v: [ [] ] }` now sorts by the array type rank, and `{ v: [ 3, [] ] }` now sorts above every
+  number when descending, because the empty array wins the descending maximum. An empty array
+  which the path merely crosses, as in `{ a: [] }` sorted by `a.x`, contributes `null` and sorts
+  with the other nulls.
+
+  Verified against MongoDB 6.0.1 across 30 orderings. The parity cases are kept at
+  `test/Aggregate Tests/test-suite/Sort Parity Tests.js` and run against both `jsongin` and a
+  live server. The `$sort` aggregation stage delegates to `Sort()` and inherits all of this.
+
 - Documentation was brought up to date with this release:
   - Fixed three passages which did not work as written. The `OpLog` document initialized the
     library with `require( '@liquicode/jsongin' )( Settings )`, which has thrown since v0.0.19

@@ -129,6 +129,130 @@ describe( '510) Projection Computed Field Tests', () =>
 			assert.strictEqual( Object.keys( projected ).includes( 'dmg' ), false );
 		} );
 
+		// Inclusion through an array keeps the array and produces one object per element.
+		// This is a different rule from the one an aggregation expression follows: '$a.x'
+		// gathers to [ 1, 2 ] while { 'a.x': 1 } produces [ { x: 1 }, { x: 2 } ].
+		// Every case below was measured against MongoDB 6.0.1.
+
+		it( 'should include a field through an array, keeping the array', () =>
+		{
+			assert.deepStrictEqual(
+				jsongin.Project( { a: [ { x: 1, y: 2 }, { x: 3, y: 4 } ] }, { 'a.x': 1 } ),
+				{ a: [ { x: 1 }, { x: 3 } ] } );
+		} );
+
+		it( 'should give an empty object for an element which lacks the field', () =>
+		{
+			assert.deepStrictEqual(
+				jsongin.Project( { a: [ { x: 1 }, { y: 9 } ] }, { 'a.x': 1 } ),
+				{ a: [ { x: 1 }, {} ] } );
+
+			assert.deepStrictEqual(
+				jsongin.Project( { a: [ { y: 9 } ] }, { 'a.x': 1 } ),
+				{ a: [ {} ] } );
+		} );
+
+		it( 'should drop an element which cannot carry the field', () =>
+		{
+			// A scalar contributes nothing, so a path into an array of scalars is empty.
+			assert.deepStrictEqual( jsongin.Project( { a: [ 1, 2, 3 ] }, { 'a.x': 1 } ), { a: [] } );
+			assert.deepStrictEqual( jsongin.Project( { a: [ { x: 1 }, 5, { x: 2 } ] }, { 'a.x': 1 } ), { a: [ { x: 1 }, { x: 2 } ] } );
+			assert.deepStrictEqual( jsongin.Project( { a: [ { x: 1 }, null ] }, { 'a.x': 1 } ), { a: [ { x: 1 } ] } );
+			assert.deepStrictEqual( jsongin.Project( { a: [] }, { 'a.x': 1 } ), { a: [] } );
+		} );
+
+		it( 'should include through two levels of array', () =>
+		{
+			assert.deepStrictEqual(
+				jsongin.Project( { a: [ { b: [ { c: 1, d: 2 } ] } ] }, { 'a.b.c': 1 } ),
+				{ a: [ { b: [ { c: 1 } ] } ] } );
+		} );
+
+		it( 'should descend into an array inside an array', () =>
+		{
+			// Projection does this. A query path does not, which is a genuine difference
+			// between the two mechanisms.
+			assert.deepStrictEqual(
+				jsongin.Project( { a: [ [ { c: 1, d: 2 } ] ] }, { 'a.c': 1 } ),
+				{ a: [ [ { c: 1 } ] ] } );
+		} );
+
+		it( 'should gather two fields from the same array into one object', () =>
+		{
+			assert.deepStrictEqual(
+				jsongin.Project( { a: [ { x: 1, y: 2, w: 3 } ] }, { 'a.x': 1, 'a.y': 1 } ),
+				{ a: [ { x: 1, y: 2 } ] } );
+		} );
+
+		it( 'should treat a numeric path element as a field name', () =>
+		{
+			// MongoDB does not index the array here. No element has a field named '0'.
+			assert.deepStrictEqual(
+				jsongin.Project( { a: [ { x: 1 }, { x: 2 } ] }, { 'a.0': 1 } ),
+				{ a: [ {}, {} ] } );
+
+			// Against an object it names the field, which does exist here.
+			assert.deepStrictEqual(
+				jsongin.Project( { a: { '0': 'zero', z: 9 } }, { 'a.0': 1 } ),
+				{ a: { '0': 'zero' } } );
+		} );
+
+		it( 'should omit a field whose path runs below a scalar', () =>
+		{
+			assert.deepStrictEqual( jsongin.Project( { a: 5 }, { 'a.x': 1 } ), {} );
+		} );
+
+		it( 'should keep an ordinary path working', () =>
+		{
+			assert.deepStrictEqual( jsongin.Project( { a: { x: 1, y: 2 } }, { 'a.x': 1 } ), { a: { x: 1 } } );
+			assert.deepStrictEqual( jsongin.Project( { a: [ { x: 1 } ], z: 9 }, { 'a.x': 1, z: 1 } ), { a: [ { x: 1 } ], z: 9 } );
+			assert.deepStrictEqual( jsongin.Project( { a: [ { x: 1, y: 2 } ] }, { a: 1 } ), { a: [ { x: 1, y: 2 } ] } );
+		} );
+
+		it( 'should not alias the document it projected from', () =>
+		{
+			let document = { a: [ { x: { n: 1 } } ] };
+			let projected = jsongin.Project( document, { 'a.x': 1 } );
+			projected.a[ 0 ].x.n = 999;
+			assert.strictEqual( document.a[ 0 ].x.n, 1 );
+		} );
+
+		it( 'should exclude a field through an array, keeping the array', () =>
+		{
+			// MongoDB removes the field from every element and keeps the array.
+			// Verified against MongoDB 6.0.1.
+			//
+			// Exclusion used to route through DeleteValue, which follows the $unset update
+			// operator and refuses a path reaching into an array by field name unless the
+			// PathExtensions setting is on. That made this exclusion remove nothing.
+			assert.deepStrictEqual(
+				jsongin.Project( { a: [ { x: 1, y: 2 } ] }, { 'a.x': 0 } ),
+				{ a: [ { y: 2 } ] } );
+
+			assert.deepStrictEqual(
+				jsongin.Project( { a: [ { x: 1, y: 2 }, { x: 3, y: 4 } ] }, { 'a.x': 0 } ),
+				{ a: [ { y: 2 }, { y: 4 } ] } );
+
+			// An element which does not have the field is left alone.
+			assert.deepStrictEqual(
+				jsongin.Project( { a: [ { x: 1 }, { y: 9 } ] }, { 'a.x': 0 } ),
+				{ a: [ {}, { y: 9 } ] } );
+		} );
+
+		it( 'should exclude through two levels of array', () =>
+		{
+			assert.deepStrictEqual(
+				jsongin.Project( { a: [ { b: [ { c: 1, d: 2 } ] } ] }, { 'a.b.c': 0 } ),
+				{ a: [ { b: [ { d: 2 } ] } ] } );
+		} );
+
+		it( 'should exclude an array element by index', () =>
+		{
+			let projected = jsongin.Project( { a: [ 1, 2, 3 ] }, { 'a.1': 0 } );
+			assert.strictEqual( projected.a.length, 3 );
+			assert.strictEqual( Object.prototype.hasOwnProperty.call( projected.a, 1 ), false );
+		} );
+
 		it( 'should not add an _id to a document which does not have one', () =>
 		{
 			// An inclusion projection once always produced an _id key holding undefined.
