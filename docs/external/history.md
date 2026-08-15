@@ -242,8 +242,68 @@ v0.1.0 (current)
     direction of comparison replaces the value, following the `_arithmetic.js` and
     `_accumulator.js` helper convention.
 
-  - The test suite grew from 989 to 1104 tests, and the uncovered blocks which
-    `npm run coverage` reports fell from 172 to 154. Every fix above landed with tests, and
+  - ***A query path which crosses an array now means what it means in MongoDB.***
+    Twelve measured divergences were closed, across `$eq`, `$ne`, `$not`, `$gt`, `$gte`,
+    `$lt`, `$lte`, `$exists`, `$type`, `$size`, `$all`, `$regex`, and the implicit
+    `{ field: value }` form.
+
+    All of them had one cause. A path was resolved with `GetValue`, which returns a single
+    value, and for a path crossing an array that value is every element's value gathered into
+    one array. That gathered array is indistinguishable from a field which genuinely holds an
+    array:
+
+        { a: [ { x: 1 }, { x: 2 } ] }   at 'a.x' gathered to [ 1, 2 ]
+        { a: [ { x: [ 1, 2 ] } ] }      at 'a.x' gathered to [ 1, 2 ] as well
+
+    Every operator downstream saw the same shape for both and could not apply the right rule.
+    `$size` shows the damage plainly: `{ 'a.x': { $size: 2 } }` matched the first document,
+    whose `x` is not an array at all, and missed the second, whose `x` really is a two element
+    array. One line producing both a false positive and a false negative.
+
+    The new [`ResolveCandidates( Document, Path )`](http://jsongin.liquicode.com/#/guides/jsongin/ResolveCandidates.md)
+    returns the ***list of values*** a path can mean instead of one gathered value. An array
+    offers itself and each of its elements, one level deep; traversal happens at every path
+    element, so two array levels work where one used to; and an array directly inside another
+    is not descended into without an index. An operator matches when any candidate satisfies
+    it. A missing field yields an empty list, which is what lets `$exists` tell it from a field
+    holding `undefined`.
+
+    `GetValue` is unchanged. It is a published function with its own documented behavior, and
+    nothing here required changing it.
+
+    Behavior changes worth calling out individually:
+
+    - `$lt` and `$lte` had a ***false positive***. `{ 'a.x': { $lt: 'zzz' } }` matched a field
+      holding `[ 5, 6 ]`, because comparing an array to a string in Javascript compares the
+      text `'5,6'` to `'zzz'`. The range operators now compare only values of the same type,
+      which is how MongoDB brackets them: `{ $gt: 1 }` never matches a string, however the BSON
+      ordering ranks the two.
+    - `$all` is no longer an array operator. MongoDB defines it as an AND of the given values,
+      each tested as ordinary equality, which is why it works against a field that is not an
+      array: `{ 'qty.num': { $all: [ 50 ] } }` selects a document whose `num` is `50`. An empty
+      match array now selects nothing, as MongoDB does, rather than matching every array.
+    - `$regex` handed the field to `RegExp.test()`, which converts whatever it is given to a
+      string, so a field holding the regexp `/MongoDB/i` was tested as the text `'/MongoDB/i'`
+      and matched the pattern `/MongoDB/`. The pattern now applies only to strings, and a field
+      which is itself a regexp matches when its source and flags are the same. MongoDB matches
+      a field holding `/MongoDB/` against `{ $regex: /MongoDB/ }` and does not match one
+      holding `/MongoDB/i`.
+    - `$exists` now reports a field holding `undefined` as ***present***. `GetValue` could not
+      tell that from a missing field, since both read as `undefined`; a candidate list can.
+      This follows `DeleteValue`, which removes a key rather than setting it to `undefined`
+      precisely so the two states stay distinguishable, and it agrees with `Object.keys()` and
+      the `in` operator. MongoDB has no say here, as BSON cannot store `undefined`.
+    - `$type: 'array'` now finds an array field. It previously tested that field's elements and
+      so never saw the array itself.
+
+    `ImplicitEq` was a dispatch table over every pairing of the field's type with the match
+    value's type, each array pairing carrying its own traversal. Those pairings collapse once
+    equality resolves candidates, so it now only decides which operator the match value calls
+    for. `$gt`, `$gte`, `$lt`, and `$lte` likewise share one implementation, differing in the
+    comparison and in whether an equal value counts.
+
+  - The test suite grew from 989 to 1172 tests, and the uncovered blocks which
+    `npm run coverage` reports fell from 172 to 149. Every fix above landed with tests, and
     `Parse` and `Distinct` are now fully covered. A duplicated copy of the `Parse` tests was
     removed from the `Format` test block.
 

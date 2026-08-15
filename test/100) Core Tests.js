@@ -771,11 +771,121 @@ describe( '100) Core Tests', () =>
 
 
 	//---------------------------------------------------------------------
+	describe( 'ResolveCandidates Tests', () =>
+	{
+
+		// ResolveCandidates returns the list of values a path can legitimately mean, which is
+		// what GetValue cannot express: its gathered array for a path crossing an array is
+		// indistinguishable from a field which genuinely holds an array.
+		//
+		// It is not registered on the engine yet. It lands ahead of the operators which will
+		// use it, so the mechanism can be proven before any operator changes behavior.
+		//
+		// Every rule below was measured against MongoDB 6.0.1. See
+		// .plans/2026-08-14/parity-explicit-operators-through-arrays.md
+
+		const ResolveCandidates = require( '../src/jsongin/ResolveCandidates' )( jsongin );
+
+		it( 'It returns the value itself for an ordinary path', () =>
+		{
+			assert.deepStrictEqual( ResolveCandidates( { a: 1 }, 'a' ), [ 1 ] );
+			assert.deepStrictEqual( ResolveCandidates( { a: { b: 2 } }, 'a.b' ), [ 2 ] );
+		} );
+
+		it( 'It returns the document itself for an empty path', () =>
+		{
+			assert.deepStrictEqual( ResolveCandidates( { a: 1 }, '' ), [ { a: 1 } ] );
+			assert.deepStrictEqual( ResolveCandidates( { a: 1 }, null ), [ { a: 1 } ] );
+		} );
+
+		it( 'It returns nothing for a field which is not there', () =>
+		{
+			// An empty list is how a missing field is reported, which is what lets $exists
+			// tell it from a field holding undefined.
+			assert.deepStrictEqual( ResolveCandidates( { a: 1 }, 'nope' ), [] );
+			assert.deepStrictEqual( ResolveCandidates( { a: { b: 1 } }, 'a.nope' ), [] );
+			assert.deepStrictEqual( ResolveCandidates( { a: 1 }, 'a.b' ), [] );
+			assert.deepStrictEqual( ResolveCandidates( { a: [ { y: 1 } ] }, 'a.x' ), [] );
+
+			// A field which is there holding undefined yields one candidate.
+			assert.deepStrictEqual( ResolveCandidates( { a: undefined }, 'a' ), [ undefined ] );
+		} );
+
+		it( 'It offers an array and each of its elements', () =>
+		{
+			// This is how { tags: 'red' } matches { tags: [ 'red', 'blue' ] } while
+			// { tags: [ 'red' ] } matches the whole array.
+			assert.deepStrictEqual( ResolveCandidates( { tags: [ 'red', 'blue' ] }, 'tags' ),
+				[ [ 'red', 'blue' ], 'red', 'blue' ] );
+			assert.deepStrictEqual( ResolveCandidates( { tags: [] }, 'tags' ), [ [] ] );
+		} );
+
+		it( 'It expands an array exactly one level', () =>
+		{
+			// An element which is itself an array is a candidate as the array it is, and is
+			// not expanded again. MongoDB does not match { tags: 'red' } against
+			// { tags: [ [ 'red' ] ] }.
+			assert.deepStrictEqual( ResolveCandidates( { tags: [ [ 'red' ] ] }, 'tags' ),
+				[ [ [ 'red' ] ], [ 'red' ] ] );
+		} );
+
+		it( 'It keeps a gathered value distinct from a real array', () =>
+		{
+			// The defect this exists for. GetValue returns [ 1, 2 ] for both.
+			assert.deepStrictEqual( ResolveCandidates( { a: [ { x: 1 }, { x: 2 } ] }, 'a.x' ), [ 1, 2 ] );
+			assert.deepStrictEqual( ResolveCandidates( { a: [ { x: [ 5, 6 ] } ] }, 'a.x' ), [ [ 5, 6 ], 5, 6 ] );
+		} );
+
+		it( 'It traverses an array at every path element', () =>
+		{
+			// Two array levels. GetValue handles one and fails at two.
+			assert.deepStrictEqual( ResolveCandidates( { a: [ { b: [ { c: 1 } ] } ] }, 'a.b.c' ), [ 1 ] );
+			assert.deepStrictEqual( ResolveCandidates( { a: [ { b: { c: 1 } } ] }, 'a.b.c' ), [ 1 ] );
+			assert.deepStrictEqual( ResolveCandidates( { a: { b: [ { c: 1 } ] } }, 'a.b.c' ), [ 1 ] );
+		} );
+
+		it( 'It does not descend into an array inside an array without an index', () =>
+		{
+			// MongoDB returns nothing for { 'a.c': 1 } against this document.
+			assert.deepStrictEqual( ResolveCandidates( { a: [ [ { c: 1 } ] ] }, 'a.c' ), [] );
+
+			// An explicit index reaches it.
+			assert.deepStrictEqual( ResolveCandidates( { a: [ [ { c: 1 } ] ] }, 'a.0.0.c' ), [ 1 ] );
+		} );
+
+		it( 'It indexes an array by number, including from the end', () =>
+		{
+			assert.deepStrictEqual( ResolveCandidates( { a: [ 'p', 'q' ] }, 'a.0' ), [ 'p' ] );
+			assert.deepStrictEqual( ResolveCandidates( { a: [ 'p', 'q' ] }, 'a.1' ), [ 'q' ] );
+			assert.deepStrictEqual( ResolveCandidates( { a: [ 'p', 'q' ] }, 'a.-1' ), [ 'q' ] );
+			assert.deepStrictEqual( ResolveCandidates( { a: [ 'p', 'q' ] }, 'a.9' ), [] );
+			assert.deepStrictEqual( ResolveCandidates( { a: [ 'p', 'q' ] }, 'a.-9' ), [] );
+		} );
+
+		it( 'It skips elements which cannot hold the field', () =>
+		{
+			assert.deepStrictEqual( ResolveCandidates( { a: [ 1, 'two', { x: 3 } ] }, 'a.x' ), [ 3 ] );
+		} );
+
+		it( 'It resolves a path against an array document', () =>
+		{
+			assert.deepStrictEqual( ResolveCandidates( [ { x: 1 }, { x: 2 } ], 'x' ), [ 1, 2 ] );
+		} );
+
+		it( 'It rejects an invalid path', () =>
+		{
+			assert.throws( function () { ResolveCandidates( { a: 1 }, { bad: true } ); }, /Path is invalid/ );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
 	describe( 'SplitPath Tests', () =>
 	{
 
 
-		it( 'It returns an array of path components', () => 
+		it( 'It returns an array of path components', () =>
 		{
 			let elements = null;
 

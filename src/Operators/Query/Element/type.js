@@ -19,45 +19,50 @@ module.exports = function ( jsongin )
 		{
 			try
 			{
-				// Get Document Value
-				let actual_value = jsongin.GetValue( Document, Path );
-				let actual_type = jsongin.ShortType( actual_value );
-				if ( actual_type !== 'a' ) { actual_value = [ actual_value ]; }
+				// Validate Expression.
+				// A single type may be given, or an array of them, and any one matching is a
+				// match. Both the BSON type number and its alias are accepted.
+				let match_values = MatchValue;
+				if ( jsongin.ShortType( match_values ) !== 'a' ) { match_values = [ match_values ]; }
 
-				// Validate Expression
-				let match_type = jsongin.ShortType( MatchValue );
-				if ( match_type !== 'a' ) { MatchValue = [ MatchValue ]; }
+				// $type asks about each value the path can mean.
+				//
+				// This used to ask GetValue for one value and, when that value was an array,
+				// test its elements. A path crossing an array gathered every element's value
+				// into an array, so the elements it then tested were the gathered values
+				// rather than the field, and a field which genuinely held an array was never
+				// tested as an array at all:
+				//
+				//   { a: [ { x: [ 5, 6 ] } ] } at 'a.x' gathered to [ [ 5, 6 ] ] and tested
+				//   the element [ 5, 6 ], so { $type: 'int' } did not match although 5 and 6
+				//   are ints, and neither did { $type: 'array' }.
+				//
+				// The candidate list carries the array itself as well as its elements, so both
+				// answers fall out without a special case: an array field offers itself, which
+				// satisfies { $type: 'array' }, and offers its elements, which satisfy their
+				// own types. Verified against MongoDB 6.0.1.
+				let candidates = jsongin.ResolveCandidates( Document, Path );
 
-				// Compare
-				for ( let match_index = 0; match_index < MatchValue.length; match_index++ )
+				for ( let match_index = 0; match_index < match_values.length; match_index++ )
 				{
-					let match_value = MatchValue[ match_index ];
-					match_type = jsongin.ShortType( match_value );
+					let match_value = match_values[ match_index ];
+					let match_type = jsongin.ShortType( match_value );
 
 					if ( match_type === 'n' )
 					{
-						for ( let actual_index = 0; actual_index < actual_value.length; actual_index++ )
+						for ( let index = 0; index < candidates.length; index++ )
 						{
-							let result = jsongin.BsonType( actual_value[ actual_index ], false );
-							if ( match_value === result )
-							{
-								return true;
-							}
+							if ( jsongin.BsonType( candidates[ index ], false ) === match_value ) { return true; }
 						}
 					}
 					else if ( match_type === 's' )
 					{
-						for ( let actual_index = 0; actual_index < actual_value.length; actual_index++ )
+						for ( let index = 0; index < candidates.length; index++ )
 						{
-							let result = jsongin.BsonType( actual_value[ actual_index ], true );
-							if ( match_value === result )
-							{
-								return true;
-							}
-							else if ( ( match_value === 'number' ) && [ 'int', 'long', 'double', 'decimal' ].includes( result ) )
-							{
-								return true;
-							}
+							let result = jsongin.BsonType( candidates[ index ], true );
+							if ( match_value === result ) { return true; }
+							// 'number' is an alias for every numeric BSON type.
+							if ( ( match_value === 'number' ) && [ 'int', 'long', 'double', 'decimal' ].includes( result ) ) { return true; }
 						}
 					}
 					else

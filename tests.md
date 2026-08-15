@@ -68,7 +68,7 @@
       ✔ Rules
     Json stringify/parse
       ✔ should stringify special fields
-      ✔ should not stringify regular expressions (27ms)
+      ✔ should not stringify regular expressions
       ✔ should not stringify functions
 
   100) Core Tests
@@ -115,6 +115,18 @@
       Functionality Beyond Javascript's JSON.parse()
         ✔ It should parse an object written with JS (not JSON) syntax
         ✔ It should parse an object followed by unrelated text
+        ✔ It should read the bare literals
+      Escape Sequences
+        ✔ should decode the escapes which JSON defines
+        ✔ should decode an escaped quote inside a single quoted string
+        ✔ should read an unrecognized escape as the character itself
+        ✔ should round trip an escaped value through Format and Parse
+      Forgiving Parsing
+        ✔ should return the string unchanged when it cannot be read
+        ✔ should return an argument which is not a string unchanged
+        ✔ should never throw, whatever it is given
+        ✔ should report the reason to OpLog
+        ✔ should stay silent when no OpLog is configured
     Format Tests
       Stringify Primitives
         ✔ should stringify null [null]
@@ -134,13 +146,29 @@
         ✔ should stringify "Hello World!" the same way
         ✔ should stringify complex objects in the same way
         ✔ should stringify (with whitespace) complex objects in the same way
+        ✔ should escape a string value the same way
+        ✔ should escape a field name the same way
+        ✔ should produce output which JSON.parse() can read back
       Functionality Beyond Javascript's JSON.stringify()
         ✔ should stringify complex objects with Javascript syntax
-        ✔ It should parse an object written with JS (not JSON) syntax
-        ✔ It should parse an object followed by unrelated text
+    ResolveCandidates Tests
+      ✔ It returns the value itself for an ordinary path
+      ✔ It returns the document itself for an empty path
+      ✔ It returns nothing for a field which is not there
+      ✔ It offers an array and each of its elements
+      ✔ It expands an array exactly one level
+      ✔ It keeps a gathered value distinct from a real array
+      ✔ It traverses an array at every path element
+      ✔ It does not descend into an array inside an array without an index
+      ✔ It indexes an array by number, including from the end
+      ✔ It skips elements which cannot hold the field
+      ✔ It resolves a path against an array document
+      ✔ It rejects an invalid path
     SplitPath Tests
       ✔ It returns an array of path components
       ✔ It returns array indexes as numerics in the output array
+      ✔ It only converts canonical integer text to an index
+      ✔ It reaches fields whose names look numeric
       ✔ Array indexes within a path can be positive or negative
       ✔ If the path is undefined, null, or empty "", then it returns an empty array []
       ✔ It throws an error when an invalid path is given
@@ -168,7 +196,9 @@
       ✔ It performs reverse indexing when an array index is negative
       ✔ Array elements can be set to undefined, but they are not removed
       ✔ It sets fields inside an array of objects
-      ✔ It sets fields inside all elements of an array of objects
+      ✔ It rejects a field name against an array by default
+      ✔ It sets fields inside all elements of an array of objects when PathExtensions is enabled
+      ✔ It still reads through an array by field name, which MongoDB does too
       ✔ It returns false when an empty path is given
       ✔ It throws an error when an invalid document is given
       ✔ It throws an error when an invalid path is given
@@ -180,12 +210,17 @@
       ✔ It can clone non-value fields
       ✔ It can clone dates
       ✔ It can clone dates which are nested and within arrays
-      ✔ It clones dates by value, not by reference (6ms)
+      ✔ It clones dates by value, not by reference
       ✔ It can clone a date given as the document itself
       ✔ It can selectively clone with the Exceptions parameter
       ✔ It should throw an error if an invalid Exceptions paramter is provided
     Flatten/Expand Tests
       ✔ It flattens a hierarchical document
+      ✔ It preserves empty objects and arrays
+      ✔ It round trips a document containing empty containers
+      ✔ The flattened result does not alias its source
+      ✔ A document which is itself an array expands back as an object
+      ✔ An object whose keys are canonical integers expands back as an array
       ✔ Use Expand() to turn a flattened document back into a hierarchical document
       ✔ It should flatten an empty document
       ✔ It should expand an empty document
@@ -198,6 +233,16 @@
       ✔ It should Hybridize an empty document
       ✔ It should Unhybridize an empty document
       ✔ It Hybridizes and Unhybridizes a complex document
+      ✔ It keeps a string which parses as JSON but is not an envelope
+      ✔ It keeps an object which carries an unrecognized type name
+      ✔ It keeps a plain string
+      ✔ It carries a value which is not a string across unchanged
+      ✔ It round trips an Error with its message
+      ✔ It round trips a function with its source
+      ✔ It round trips a regular expression with its source and flags
+      ✔ It round trips an object, an array, and a date
+      ✔ It round trips an undefined value, keeping the field
+      ✔ It reports a function which cannot be rebuilt from its source
     Sort Tests
       ✔ It sorts an array of objects
       ✔ It sorts across multiple keys
@@ -231,6 +276,15 @@
       ✔ It can add new sub-fields
       ✔ It can update existing fields
       ✔ It can update existing sub-fields
+      ✔ It requires both parameters to be objects
+      ✔ It treats a missing document as an empty one
+      ✔ It replaces arrays rather than merging them member-wise
+      ✔ It treats null as a value rather than a deletion
+      ✔ It skips undefined values rather than storing them
+      ✔ It overwrites dates and regular expressions
+      ✔ It handles a value which changes type
+      ✔ It does not modify either of the given documents
+      ✔ It is idempotent
 
   110) Text Tests
     Compare Tests (case sensitive)
@@ -277,6 +331,19 @@
       ✔ should replace text at start of string
       ✔ should replace text in middle of string
       ✔ should replace text at end of string
+    Regular Expression Characters in the Search Text
+      ✔ should match a metacharacter as itself
+      ✔ should not throw on a search text which is not a valid expression
+      ✔ should never write the text undefined into the result
+      ✔ should escape the search text when matching without regard to case
+      ✔ should escape every key of a replacement map
+      ✔ should return the text unchanged for an empty replacement map
+      ✔ should reject parameters of the wrong type
+      ✔ should reject Matches parameters of the wrong type
+    Detached Function Tests
+      ✔ should support SearchReplace when detached
+      ✔ should support SearchReplace as a callback
+      ✔ should support every Text function when detached
 
   120) Date Handling Tests
     Data Types
@@ -342,6 +409,10 @@
       ✔ should format a date as an ISO string, which Parse reads back as a string
 
   130) Engine Function Tests
+    Browser Globals
+      ✔ should publish the module export rather than a second engine
+      ✔ should publish the factory as well
+      ✔ should share one operator registry between the two globals
     IsQuery Tests
       ✔ should identify an object which uses a query operator
       ✔ should not identify a plain document as a query
@@ -363,6 +434,12 @@
       ✔ should return only the fields named in the criteria
       ✔ should return an empty array for no documents
       ✔ should throw when the parameters are wrong
+      ✔ should not run one field value into the next when building the key
+      ✔ should not run one string value into the next when building the key
+      ✔ should distinguish a date from its ISO string
+      ✔ should distinguish a number from its text
+      ✔ should not alias the given documents
+      ✔ should preserve a date in the returned values
     Update Tests
       ✔ should apply an update operator
       ✔ should apply several update operators in one call
@@ -381,6 +458,20 @@
       ✔ should return the BSON type number and alias
       ✔ should distinguish integers from doubles
       ✔ should report dates as the date BSON type
+      ✔ should work when detached from the engine
+      ✔ should work when passed as a callback
+      ✔ should report NaN and the infinities as doubles
+      ✔ should report an integer inside the int32 range as an int
+      ✔ should report a number outside the int32 range as a double
+    CompareValues Tests
+      ✔ should order NaN below every other number
+      ✔ should keep NaN within the number type rank
+      ✔ should give Sort a total order when a NaN is present
+    StrictEquals Symmetry Tests
+      ✔ should be symmetric
+      ✔ should leave the $eq query operator alone
+      ✔ should let Diff see a change between those values
+      ✔ should still compare ordinary values as before
     Clone Tests
       ✔ should copy a document by value
       ✔ should not share nested structure with the original
@@ -394,7 +485,13 @@
       ✔ should remove a nested field, leaving its parent
       ✔ should remove a field from an array document
       ✔ should leave a hole rather than shortening an array
-      ✔ should return true for a field which was not there
+      ✔ should return false for a field which was not there
+      ✔ should report a field holding undefined as present
+      ✔ should not reach into an array by field name by default
+      ✔ should run the implicit iterator against an array when PathExtensions is enabled
+      ✔ should iterate partially and skip non containers when PathExtensions is enabled
+      ✔ should run the implicit iterator at depth when PathExtensions is enabled
+      ✔ should accept a negative array index
       ✔ should accept a numeric path
       ✔ should return false for an empty path
       ✔ should return false when the parent path does not resolve
@@ -502,8 +599,16 @@
       ✔ should report a DeleteValue failure to the OpError log, and rethrow
       ✔ should report a SplitPath failure to the OpError log, and rethrow
       ✔ should report a JoinPaths failure to the OpError log, and rethrow
-      ✔ should report a Parse failure to the OpError log, and rethrow
       ✔ should stay silent when no OpError is configured
+    Declared Type Checking
+      ✔ should declare types which every operator actually accepts
+      ✔ should give every operator a declaration to check against
+      ✔ should reject a query value the operator does not take
+      ✔ should skip an update operator whose value it does not take
+      ✔ should throw for a stage argument it does not take
+      ✔ should throw for an expression argument it does not take
+      ✔ should throw for an accumulator argument it does not take
+      ✔ should let a declared type through
     Expression Operator Argument Validation
       ✔ should reject a non-array argument to $eq
       ✔ should reject the wrong argument count to $eq
@@ -567,6 +672,16 @@
       ✔ should not equate function values
       ✔ should equate undefined values
       ✔ should equate null and undefined values
+      ✔ should equate two regexp values with the same source and flags
+      ✔ should not equate regexp values which differ in source or flags
+      ✔ should not pattern match a string with a regexp match value
+      ✔ should not equate a regexp with a non-regexp value
+      ✔ should match through a path which crosses an array
+      ✔ should match an array field by element or as a whole
+      ✔ should match through two levels of array
+      ✔ should not descend into an array inside an array without an index
+      ✔ should match null against a field which is not there
+      ✔ should tell a gathered value from a real array
     $eqx Tests
       ✔ should equate boolean values
       ✔ should equate boolean values and numeric values
@@ -634,6 +749,9 @@
       ✔ should not compare functions
       ✔ should compare undefined values
       ✔ should compare null and undefined values
+      ✔ should match through a path which crosses an array
+      ✔ should reach the elements of a field which holds an array
+      ✔ should satisfy a null match value with a missing field
     $gt Tests
       ✔ should compare two booleans
       ✔ should not compare boolean values and numeric values
@@ -648,6 +766,10 @@
       ✔ should not compare functions
       ✔ should not compare undefined values
       ✔ should not compare null and undefined values
+      ✔ should match through a path which crosses an array
+      ✔ should reach the elements of a field which holds an array
+      ✔ should bracket the comparison by type
+      ✔ should not match a missing field
     $lte Tests
       ✔ should compare two booleans
       ✔ should not compare boolean values and numeric values
@@ -662,6 +784,9 @@
       ✔ should not compare functions
       ✔ should compare undefined values
       ✔ should compare null and undefined values
+      ✔ should match through a path which crosses an array
+      ✔ should reach the elements of a field which holds an array
+      ✔ should satisfy a null match value with a missing field
     $lt Tests
       ✔ should compare two booleans
       ✔ should not compare boolean values and numeric values
@@ -676,6 +801,10 @@
       ✔ should not compare functions
       ✔ should not compare undefined values
       ✔ should not compare null and undefined values
+      ✔ should match through a path which crosses an array
+      ✔ should reach the elements of a field which holds an array
+      ✔ should bracket the comparison by type
+      ✔ should not match a missing field
     $in Tests
       ✔ should compare two booleans
       ✔ should not compare boolean values and numeric values
@@ -690,6 +819,48 @@
       ✔ should not compare functions
       ✔ should not compare undefined values
       ✔ should not compare null and undefined values
+    Implicit Equality Tests
+      ✔ should match through two levels of array
+      ✔ should agree with the explicit form
+      ✔ should not descend into an array inside an array without an index
+    $regex Tests
+      ✔ should pattern match a string field
+      ✔ should pattern match the elements of an array field
+      ✔ should match a regexp field only when it is the same regexp
+      ✔ should not pattern match a non string value
+    $type Tests
+      ✔ should match a type by alias and by number
+      ✔ should accept a list of types
+      ✔ should treat number as an alias for every numeric type
+      ✔ should find an array field with the array type
+      ✔ should also match the types of an array field elements
+      ✔ should match through a path which crosses an array
+      ✔ should reach the elements of a field which holds an array
+      ✔ should not match a missing field
+    $all Tests
+      ✔ should require every value to be present
+      ✔ should select against a field which is not an array
+      ✔ should match a field which really holds an array
+      ✔ should gather values from across array elements
+      ✔ should match an element which is itself an array
+      ✔ should select nothing for an empty match array
+      ✔ should not match a missing field
+      ✔ should reject a non array match value
+    $size Tests
+      ✔ should measure an array field
+      ✔ should not measure a value which is not an array
+      ✔ should not measure a value gathered from array elements
+      ✔ should measure a field which really holds an array
+      ✔ should reject a non numeric match value
+    $exists Tests
+      ✔ should find a field which is there
+      ✔ should not find a field which is not there
+      ✔ should find a field holding null
+      ✔ should find a field through a path which crosses an array
+      ✔ should not find a field which no array element holds
+      ✔ should not find a field below an array inside an array
+      ✔ should treat a field holding undefined as present
+      ✔ should reject a non boolean match value
     Date Comparison Tests
       ✔ should equate dates with $eq
       ✔ should equate dates with $eqx
@@ -891,6 +1062,8 @@
       ✔ should evaluate every expression against the original document
       ✔ should set a nested field
       ✔ should clone the documents it emits
+      ✔ should clone a field added from a field reference
+      ✔ should keep a date on a field added from a field reference
       ✔ should behave identically as $set
       ✔ should throw when the argument is not an object
     $unwind Tests
@@ -939,6 +1112,9 @@
       $set Tests
         ✔ should set values
         ✔ should set nested values
+        ✔ should not alias the update document
+        ✔ should apply the same update document twice independently
+        ✔ should store a date as a date
       $unset Tests
         ✔ should unset values
         ✔ should set nested values
@@ -953,26 +1129,73 @@
       $min Tests
         ✔ should set min values
         ✔ should set min nested values
+        ✔ should set a field which is not there
+        ✔ should compare strings
+        ✔ should compare dates
+        ✔ should compare booleans
+        ✔ should treat null as lower than any number
+        ✔ should compare across types by the BSON ordering
+        ✔ should reject a path which reaches into an array
+        ✔ should not alias the update specification
       $max Tests
         ✔ should set min values
         ✔ should set min nested values
+        ✔ should set a field which is not there
+        ✔ should compare strings
+        ✔ should compare dates
+        ✔ should treat null as lower than any number
+        ✔ should compare across types by the BSON ordering
+        ✔ should reject a path which reaches into an array
       $mul Tests
         ✔ should multiply values
         ✔ should multiply nested values
       $currentDate Tests
         ✔ should set the current date
         ✔ should set the current date for nested values
+        ✔ should give each field its own Date rather than a shared one
+        ✔ should store a value which answers to a date query
+        ✔ should report an invalid date specification and fail
+        ✔ should apply the valid fields even when another one is invalid
     Array Update Operator Tests
       $addToSet Tests
         ✔ should add to a set of values
         ✔ should not add to a set of values if the value already exists
+        ✔ should compare values by content rather than by reference
+        ✔ should still add a value which differs in content
+        ✔ should compare strictly, without type coercion
+        ✔ should be idempotent
+        ✔ should store a copy rather than the value it was given
+        ✔ should add every new element of $each
+        ✔ should not add a value repeated within one $each
+        ✔ should test the elements of $each by content
+        ✔ should treat an object with no $each as a single value
+        ✔ should reject a $each which is not an array
+        ✔ should not alias the update document through $each
       $pop Tests
         ✔ should remove from the end of an array
         ✔ should remove from the beginning of an array
       $push Tests
         ✔ should push values to the end of an array
+        ✔ should not alias the update document
+        ✔ should push a date as a date
+        ✔ should treat an object with no $each as a single value
+        ✔ should push every element of $each
+        ✔ should insert at $position
+        ✔ should sort with $sort
+        ✔ should trim with $slice
+        ✔ should apply $sort before $slice
+        ✔ should reject a malformed modifier rather than storing it
+        ✔ should not alias the update document through $each
+        ✔ should keep a date pushed through $each
       $pullAll Tests
         ✔ should pull values from the array
+        ✔ should pull an object by its content
+        ✔ should pull an array by its content
+        ✔ should pull a date by its value
+        ✔ should pull every instance of a value
+        ✔ should not pull a value which only looks alike
+        ✔ should leave the array alone when nothing matches
+        ✔ should work through the Update function
     OpLog Failure Paths
       ✔ should log rather than throw when $set cannot store its value
       ✔ should log rather than throw when $unset cannot store its value
@@ -1195,6 +1418,9 @@
       ✔ should omit an included field which is not in the document
       ✔ should keep dates through a projection
       ✔ should not alias the source document
+      ✔ should not alias the source document through a computed field
+      ✔ should not alias an array through a computed field
+      ✔ should keep a date through a computed field
 
   jsongin Aggregate Tests
     Ad-Hoc Aggregate Tests
@@ -1210,6 +1436,6 @@
       ✔ should return an empty result when nothing matches
 
 
-  961 passing (229ms)
+  1172 passing (201ms)
 
 ```

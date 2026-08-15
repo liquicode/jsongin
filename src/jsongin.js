@@ -209,6 +209,7 @@ function NewJsongin( EngineSettings = {} )
 	Engine.SplitPath = require( './jsongin/SplitPath' )( Engine );
 	Engine.JoinPaths = require( './jsongin/JoinPaths' )( Engine );
 	Engine.GetValue = require( './jsongin/GetValue' )( Engine );
+	Engine.ResolveCandidates = require( './jsongin/ResolveCandidates' )( Engine );
 	Engine.SetValue = require( './jsongin/SetValue' )( Engine );
 	Engine.DeleteValue = require( './jsongin/DeleteValue' )( Engine );
 	Engine.Flatten = require( './jsongin/Flatten' )( Engine );

@@ -13,135 +13,44 @@ module.exports = function ( jsongin )
 		ValueTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
+		// The implicit form { field: value }.
+		//
+		// This used to be a dispatch table over every pairing of the field's short type with
+		// the match value's short type, each array pairing carrying its own hand rolled
+		// traversal. That traversal handled one array level, so { 'a.b.c': 1 } did not match
+		// { a: [ { b: [ { c: 1 } ] } ] }, which MongoDB matches.
+		//
+		// The pairings collapse now that $eq and $regex resolve a path to every value it can
+		// mean. Equality already means "the field is this value, or is an array holding it",
+		// at any depth, so there is nothing left here to decide except which operator the
+		// match value calls for.
 		Query: function ( Document, MatchValue, Path = '' )
 		{
 			try
 			{
-				// Get Document Value
-				let actual_value = jsongin.GetValue( Document, Path );
-				let actual_type = jsongin.ShortType( actual_value );
+				let match_type = jsongin.ShortType( MatchValue );
 
-				// Validate Expression
-				let match_value = MatchValue;
-				let match_type = jsongin.ShortType( match_value );
-				let match_is_query = jsongin.IsQuery( match_value );
-
-				// Compare
-				let result = false;
-				if ( 'bnsdlu'.includes( actual_type ) && 'bnsdlu'.includes( match_type ) )
+				// An object holding a query operator is a query to evaluate against the field,
+				// not a value to compare it against. Query() routes only non-query values
+				// here, so this is for callers which reach the operator directly.
+				if ( ( match_type === 'o' ) && jsongin.IsQuery( MatchValue ) )
 				{
-					// Primtive === Primitive
-					result = jsongin.QueryOperators.$eq.Query( Document, match_value, Path );
-					return result;
-				}
-				else if ( 'bnsdlu'.includes( actual_type ) && 'a'.includes( match_type ) )
-				{
-					// Primtive === Array
-					if ( jsongin.OpLog ) { jsongin.OpLog( `ImplicitEq: cannot compare [${match_type}] type with [${actual_type}] type at [${Path}].` ); }
-					return false;
-				}
-				else if ( 'bnsdlu'.includes( actual_type ) && 'o'.includes( match_type ) )
-				{
-					// Primtive === Object
-					if ( match_is_query )
-					{
-						result = jsongin.Query( Document, match_value, Path );
-						return result;
-					}
-					else
-					{
-						if ( jsongin.OpLog ) { jsongin.OpLog( `ImplicitEq: requires query when comparing against [${actual_type}] type with [${actual_type}] type at [${Path}].` ); }
-						return false;
-					}
-				}
-				else if ( 'a'.includes( actual_type ) && 'bnsdlu'.includes( match_type ) )
-				{
-					// Array === Primitive
-					if ( match_type === 'd' )
-					{
-						// Two Date objects are never === to each other, so compare their time
-						// values. Array.includes() would compare them by reference.
-						for ( let index = 0; index < actual_value.length; index++ )
-						{
-							if ( jsongin.ShortType( actual_value[ index ] ) !== 'd' ) { continue; }
-							if ( actual_value[ index ].getTime() === match_value.getTime() ) { return true; }
-						}
-						return false;
-					}
-					// result = jsongin.QueryOperators.$in.Query( Document, match_value, Path );
-					result = actual_value.includes( match_value );
-					return result;
-					// for ( let index = 0; index < actual_value.length; index++ )
-					// {
-					// 	let sub_path = jsongin.JoinPaths( Path, index );
-					// 	result = jsongin.QueryOperators.$eq.Query( Document, match_value, sub_path );
-					// 	if ( result === false ) { return false; }
-					// }
-				}
-				else if ( 'a'.includes( actual_type ) && 'o'.includes( match_type ) )
-				{
-					// Array === Object
-					for ( let index = 0; index < actual_value.length; index++ )
-					{
-						let sub_path = jsongin.JoinPaths( Path, index );
-						if ( match_is_query )
-						{
-							result = jsongin.Query( Document, match_value, sub_path );
-						}
-						else
-						{
-							result = jsongin.QueryOperators.$eq.Query( Document, match_value, sub_path );
-						}
-						if ( result === true ) { return true; }
-					}
-					return false;
-				}
-				else if ( 'a'.includes( actual_type ) && 'a'.includes( match_type ) )
-				{
-					// Array === Array
-					result = jsongin.QueryOperators.$eq.Query( Document, match_value, Path );
-					return result;
-				}
-				else if ( 'a'.includes( actual_type ) && 'r'.includes( match_type ) )
-				{
-					// Array === Regexp
-					// An array field matches when any one of its elements matches, which is
-					// what MongoDB does and what the other array branches here already do.
-					for ( let index = 0; index < actual_value.length; index++ )
-					{
-						let sub_path = jsongin.JoinPaths( Path, index );
-						result = jsongin.QueryOperators.$regex.Query( Document, match_value, sub_path );
-						if ( result === true ) { return true; }
-					}
-					return false;
-				}
-				else if ( 'o'.includes( actual_type ) && 'o'.includes( match_type ) )
-				{
-					// Object === Object
-					if ( match_is_query )
-					{
-						result = jsongin.Query( Document, match_value, Path );
-						return result;
-					}
-					else
-					{
-						result = jsongin.QueryOperators.$eq.Query( Document, match_value, Path );
-						return result;
-					}
-				}
-				else if ( 's'.includes( actual_type ) && 'r'.includes( match_type ) )
-				{
-					// String === Regexp
-					result = jsongin.QueryOperators.$regex.Query( Document, match_value, Path );
-					return result;
-				}
-				else
-				{
-					if ( jsongin.OpLog ) { jsongin.OpLog( `ImplicitEq: cannot compare [${match_type}] type with [${actual_type}] type at [${Path}].` ); }
-					return false;
+					return jsongin.Query( Document, MatchValue, Path );
 				}
 
-				return; // Inaccessible code.
+				// A regexp is a pattern to test the field with, which is the one place the
+				// implicit form differs from the explicit $eq: { field: /re/ } pattern matches
+				// a string, while { field: { $eq: /re/ } } does not. That asymmetry is
+				// MongoDB's own.
+				// $regex matches a string against the pattern and a regexp field against the
+				// same regexp, which is both of the things MongoDB matches here.
+				if ( match_type === 'r' )
+				{
+					return jsongin.QueryOperators.$regex.Query( Document, MatchValue, Path );
+				}
+
+				// Everything else is ordinary equality.
+				return jsongin.QueryOperators.$eq.Query( Document, MatchValue, Path );
 			}
 			catch ( error )
 			{

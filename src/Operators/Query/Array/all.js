@@ -17,45 +17,48 @@ module.exports = function ( jsongin )
 		{
 			try
 			{
-				// Get Document Value
-				let actual_value = jsongin.GetValue( Document, Path );
-				let actual_type = jsongin.ShortType( actual_value );
-				if ( actual_type !== 'a' ) { actual_value = [ actual_value ]; }
-				if ( actual_type !== 'a' ) 
-				{
-					if ( jsongin.OpLog ) { jsongin.OpLog( `$all: document requires an array but found type [${actual_type}] instead at [${Path}].` ); }
-					return false;
-				}
-
 				// Validate Expression
 				let match_type = jsongin.ShortType( MatchValue );
-				if ( match_type !== 'a' ) 
+				if ( match_type !== 'a' )
 				{
 					if ( jsongin.OpLog ) { jsongin.OpLog( `$all: match requires an array but found type [${match_type}] instead at [${Path}].` ); }
 					return false;
 				}
 
-				// Process
+				// $all is an AND of the given values, each tested as ordinary equality against
+				// the field. MongoDB documents it that way, and it is why $all works against a
+				// field which is not an array at all:
+				//
+				//   { 'qty.num': { $all: [ 50 ] } }   selects a document whose num is 50
+				//
+				// Equality already means "the field is this value, or is an array holding it",
+				// which is what the candidate list expresses, so this operator does not need
+				// to reason about arrays itself. Delegating to $eq is what makes
+				// { a: [ { x: [ 5, 6 ] } ] } match { 'a.x': { $all: [ 5, 6 ] } }, which it did
+				// not when this asked GetValue for one gathered value.
+				// Verified against MongoDB 6.0.1.
+
+				// An empty match array asks for nothing and MongoDB selects nothing for it.
+				if ( MatchValue.length === 0 )
+				{
+					if ( jsongin.OpLog ) { jsongin.OpLog( `$all: an empty match array selects no documents at [${Path}].` ); }
+					return false;
+				}
+
 				for ( let index = 0; index < MatchValue.length; index++ )
 				{
 					let result = false;
 					let match_sub_type = jsongin.ShortType( MatchValue[ index ] );
-					if ( 'bnsl'.includes( match_sub_type ) )
+					if ( match_sub_type === 'o' )
 					{
-						result = actual_value.includes( MatchValue[ index ] );
-					}
-					else if ( match_sub_type === 'o' )
-					{
+						// An operator document, such as the { $elemMatch: { ... } } form.
 						result = jsongin.Query( Document, MatchValue[ index ], Path );
 					}
 					else
 					{
-						if ( jsongin.OpLog ) { jsongin.OpLog( `$all: sub-match requires "bnslo" but found type [${match_type}] instead at [${Path}].` ); }
+						result = jsongin.QueryOperators.$eq.Query( Document, MatchValue[ index ], Path );
 					}
-					if ( result === false )
-					{
-						return false;
-					}
+					if ( result === false ) { return false; }
 				}
 				return true;
 			}
@@ -70,4 +73,4 @@ module.exports = function ( jsongin )
 
 	// Return the operator.
 	return operator;
-};;
+};

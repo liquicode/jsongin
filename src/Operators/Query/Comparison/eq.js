@@ -3,6 +3,61 @@
 module.exports = function ( jsongin )
 {
 
+	//---------------------------------------------------------------------
+	// Compares one candidate value against the match value.
+	// This is a single value test: it does not look inside an array for a matching element,
+	// because ResolveCandidates already offers each element as its own candidate.
+	function equals_value( ActualValue, MatchValue, Path )
+	{
+		let actual_type = jsongin.ShortType( ActualValue );
+		let match_type = jsongin.ShortType( MatchValue );
+
+		if ( 'bnslu'.includes( match_type ) && ( match_type === actual_type ) )
+		{
+			// Primitive types must match exactly.
+			return ( ActualValue === MatchValue );
+		}
+		else if ( match_type === 'r' )
+		{
+			// A regexp match value here is a value to compare against, not a pattern to test
+			// with. { field: { $eq: /re/ } } matches only a field which is itself that regexp,
+			// while the implicit form { field: /re/ } pattern matches.
+			// That asymmetry is MongoDB's, verified against MongoDB 6.0.1, and the implicit
+			// form is handled separately at ImplicitEq.js:132.
+			if ( actual_type !== 'r' ) { return false; }
+			// Two Regexp objects are never === to each other, the same trap dates have below,
+			// so compare what actually identifies them.
+			if ( ActualValue.source !== MatchValue.source ) { return false; }
+			if ( ActualValue.flags !== MatchValue.flags ) { return false; }
+			return true;
+		}
+		else if ( ( match_type === 'd' ) && ( actual_type === 'd' ) )
+		{
+			// Two Date objects are never === to each other, so compare their time values.
+			return ( ActualValue.getTime() === MatchValue.getTime() );
+		}
+		else if ( 'lu'.includes( match_type ) && 'lu'.includes( actual_type ) )
+		{
+			return true; // null and undefined are always equivalent.
+		}
+		else if ( ( match_type === 'o' ) && ( actual_type === 'o' ) )
+		{
+			// Objects must match exactly, including the key order.
+			return ( JSON.stringify( MatchValue ) === JSON.stringify( ActualValue ) );
+		}
+		else if ( ( match_type === 'a' ) && ( actual_type === 'a' ) )
+		{
+			// Arrays must match exactly, including the value order.
+			// The match value also matching a single element of the field is handled by the
+			// candidate list rather than here.
+			return ( JSON.stringify( MatchValue ) === JSON.stringify( ActualValue ) );
+		}
+
+		if ( jsongin.OpLog ) { jsongin.OpLog( `$eq: cannot compare [${match_type}] type with [${actual_type}] type at [${Path}].` ); }
+		return false; // Unsupported type or equivalence.
+	};
+
+
 	let operator =
 	{
 
@@ -17,73 +72,26 @@ module.exports = function ( jsongin )
 		{
 			try
 			{
-				// Get Document Value
-				let actual_value = jsongin.GetValue( Document, Path );
-				let actual_type = jsongin.ShortType( actual_value );
+				// A path which crosses an array means "does any element satisfy this", which is
+				// what MongoDB does. ResolveCandidates returns every value the path can mean:
+				// the value itself, and for an array the array and each of its elements.
+				//
+				// This used to ask GetValue for one value, which gathered every element's value
+				// into a single array. That gathered array was indistinguishable from a field
+				// which genuinely held an array, so { 'a.x': { $eq: 1 } } compared [ 1, 2 ]
+				// against 1 and found nothing, while the implicit form matched.
+				let candidates = jsongin.ResolveCandidates( Document, Path );
 
-				// Validate Expression
-				let match_value = MatchValue;
-				let match_type = jsongin.ShortType( match_value );
+				// A path which resolves to nothing is still compared, so that { a: null }
+				// matches a document which has no 'a'. MongoDB matches null against a missing
+				// field.
+				if ( candidates.length === 0 ) { candidates = [ undefined ]; }
 
-				// Compare
-				if ( 'bnslu'.includes( match_type ) && ( match_type === actual_type ) )
+				for ( let index = 0; index < candidates.length; index++ )
 				{
-					// Primitive types must match exactly.
-					return ( actual_value === match_value ); // Equivalence of primitive types.
+					if ( equals_value( candidates[ index ], MatchValue, Path ) === true ) { return true; }
 				}
-				else if ( match_type === 'r' )
-				{
-					// A regexp match value here is a value to compare against, not a pattern to
-					// test with. { field: { $eq: /re/ } } matches only a field which is itself
-					// that regexp, while the implicit form { field: /re/ } pattern matches.
-					// That asymmetry is MongoDB's, verified against MongoDB 6.0.1, and the
-					// implicit form is handled separately at ImplicitEq.js:132.
-					if ( actual_type !== 'r' )
-					{
-						if ( jsongin.OpLog ) { jsongin.OpLog( `$eq: a regexp match value compares against a regexp field, but found [${actual_type}] at [${Path}]. Use $regex to pattern match.` ); }
-						return false;
-					}
-					// Two Regexp objects are never === to each other, the same trap dates have
-					// below, so compare what actually identifies them. Regexp used to sit in
-					// the primitive branch above, where === meant two identical regexps never
-					// matched.
-					if ( actual_value.source !== match_value.source ) { return false; }
-					if ( actual_value.flags !== match_value.flags ) { return false; }
-					return true;
-				}
-				else if ( ( match_type === 'd' ) && ( actual_type === 'd' ) )
-				{
-					// Two Date objects are never === to each other, so compare their time values.
-					return ( actual_value.getTime() === match_value.getTime() );
-				}
-				else if ( 'lu'.includes( match_type ) && 'lu'.includes( actual_type ) ) 
-				{
-					return true; // null and undefined are always equivalent.
-				}
-				else if ( ( match_type === 'o' ) && ( actual_type === 'o' ) ) 
-				{
-					// Objects must match exactly, including the key order.
-					let result = ( JSON.stringify( match_value ) === JSON.stringify( actual_value ) );
-					if ( result === true ) { return true; }
-					return false;
-				}
-				else if ( ( match_type === 'a' ) && ( actual_type === 'a' ) ) 
-				{
-					// Arrays must match exactly, including the value order.
-					let match_json = JSON.stringify( match_value );
-					let result = ( match_json === JSON.stringify( actual_value ) );
-					if ( result === true ) { return true; }
-					// Or, the match array must exactly match an element of the document array.
-					for ( let index = 0; index < actual_value.length; index++ )
-					{
-						result = ( match_json === JSON.stringify( actual_value[ index ] ) );
-						if ( result === true ) { break; }
-					}
-					if ( result === true ) { return true; }
-					return false;
-				}
-				if ( jsongin.OpLog ) { jsongin.OpLog( `$eq: cannot compare [${match_type}] type with [${actual_type}] type at [${Path}].` ); }
-				return false; // Unsupported type or equivalence.
+				return false;
 			}
 			catch ( error )
 			{

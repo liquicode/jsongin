@@ -51,6 +51,7 @@
 	- **Get and Set Document Values**
 
 		- [`GetValue()`](/guides/jsongin/GetValue.md)
+		- [`ResolveCandidates()`](/guides/jsongin/ResolveCandidates.md)
 		- [`SetValue()`](/guides/jsongin/SetValue.md)
 		- [`DeleteValue()`](/guides/jsongin/DeleteValue.md)
 

@@ -89,6 +89,11 @@ They all share the concept of a document path that is expressed in dot-notation.
 - [GetValue( Document, Path )](./jsongin/GetValue.md)
   : Gets a value from a document at the specified `Path`.
 
+- [ResolveCandidates( Document, Path )](./jsongin/ResolveCandidates.md)
+  : Gets the list of values which `Path` can mean, which is what the query operators match
+  against. Unlike `GetValue`, it tells a value gathered from the elements of an array apart from
+  a field which genuinely holds an array.
+
 - [SetValue( Document, Path, Value )](./jsongin/SetValue.md)
   : Sets a value in a document at the specified `Path`.
   This function will create fields specified in `Path` if they don't already exist.
