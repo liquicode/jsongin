@@ -25,6 +25,13 @@ module.exports = function ( jsongin )
 					return false;
 				}
 
+				// An empty array asks nothing. MongoDB refuses it, the same way it refuses an
+				// empty $and or $or. Verified against MongoDB 6.0.1.
+				if ( MatchValue.length === 0 )
+				{
+					throw new Error( `$nor: requires a non-empty array of criteria at [${Path}].` );
+				}
+
 				// Compare
 				for ( let index = 0; index < MatchValue.length; index++ )
 				{

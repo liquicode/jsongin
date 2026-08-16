@@ -91,14 +91,24 @@ describe( '510) Projection Computed Field Tests', () =>
 	describe( 'Projection Validation', () =>
 	{
 
+		/*
+			A projection which cannot mean anything throws, the same way a malformed query or
+			update document does. These used to return null, which is a value a caller carries
+			on with. MongoDB refuses both with an error.
+		*/
+
 		it( 'should reject a projection combining inclusion and exclusion', () =>
 		{
-			assert.strictEqual( jsongin.Project( DOCUMENT, { name: 1, dmg: 0 } ), null );
+			assert.throws(
+				function () { jsongin.Project( DOCUMENT, { name: 1, dmg: 0 } ); },
+				/Cannot combine inclusion and exclusion/ );
 		} );
 
 		it( 'should reject an expression within an exclusion projection', () =>
 		{
-			assert.strictEqual( jsongin.Project( DOCUMENT, { name: 0, net: { $subtract: [ '$dmg', '$armor' ] } } ), null );
+			assert.throws(
+				function () { jsongin.Project( DOCUMENT, { name: 0, net: { $subtract: [ '$dmg', '$armor' ] } } ); },
+				/Cannot use an expression within an exclusion projection/ );
 		} );
 
 		it( 'should allow _id to be suppressed alongside an inclusion', () =>

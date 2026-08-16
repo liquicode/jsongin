@@ -13,7 +13,7 @@ module.exports = function ( jsongin )
 		ValueTypes: 'n',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '' )
+		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
 		{
 			try
 			{
@@ -40,7 +40,7 @@ module.exports = function ( jsongin )
 				//                                   array did not match
 				//
 				// Verified against MongoDB 6.0.1, which matches only the second.
-				let candidates = jsongin.ResolveCandidates( Document, Path );
+				let candidates = jsongin.ResolveCandidates( Document, Path, ExpandArrays );
 				let found_array = false;
 
 				for ( let index = 0; index < candidates.length; index++ )

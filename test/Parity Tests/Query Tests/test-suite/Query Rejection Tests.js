@@ -52,6 +52,57 @@ module.exports = function ( Driver )
 			assert.strictEqual( found.length, 1 );
 		} );
 
+		it( 'should refuse a comparison operator at the top level', async () =>
+		{
+			assert.ok( await refused( [ { a: 1 } ], { $eq: 1 } ) );
+			assert.ok( await refused( [ { a: 1 } ], { $gt: 1 } ) );
+		} );
+
+		it( 'should refuse an operator it does not know', async () =>
+		{
+			// A misspelled operator used to be read as a field name, which tested a field that
+			// is never there and reported that nothing matched. A typo was indistinguishable
+			// from an empty result.
+			assert.ok( await refused( [ { a: 1 } ], { $bogus: 1 } ) );
+			assert.ok( await refused( [ { a: 1 } ], { a: { $bogus: 1 } } ) );
+			assert.ok( await refused( [ { a: 1 } ], { a: { $exists: true, $bogus: 1 } } ) );
+		} );
+
+		it( 'should refuse an operator value of the wrong type', async () =>
+		{
+			assert.ok( await refused( [ { a: [ 1, 2 ] } ], { a: { $size: 'x' } } ) );
+			assert.ok( await refused( [ { a: [ 1, 2 ] } ], { a: { $all: 1 } } ) );
+			assert.ok( await refused( [ { a: [ 1, 2 ] } ], { a: { $in: 1 } } ) );
+			assert.ok( await refused( [ { a: [ 1, 2 ] } ], { a: { $elemMatch: 1 } } ) );
+			assert.ok( await refused( [ { a: 1 } ], { a: { $not: 1 } } ) );
+			assert.ok( await refused( [ { a: 1 } ], { $and: 1 } ) );
+		} );
+
+		it( 'should refuse a logical operator with no conditions', async () =>
+		{
+			// An empty list asks nothing. It used to answer that everything matched for $and
+			// and that nothing matched for $or.
+			assert.ok( await refused( [ { a: 1 } ], { $and: [] } ) );
+			assert.ok( await refused( [ { a: 1 } ], { $or: [] } ) );
+		} );
+
+		it( 'should refuse a malformed $options', async () =>
+		{
+			assert.ok( await refused( [ { a: 'x' } ], { $options: 'i' } ) );
+			assert.ok( await refused( [ { a: 'x' } ], { a: { $regex: 'x', $options: 1 } } ) );
+			assert.ok( await refused( [ { a: 'x' } ], { a: { $regex: /x/i, $options: 'i' } } ) );
+		} );
+
+		it( 'should still answer a query which is merely unsatisfied', async () =>
+		{
+			// The counterpart to every rejection above. A query which is well formed and
+			// simply matches nothing is an answer, not a refusal.
+			await Driver.SetData( [ { a: 1 } ] );
+			assert.strictEqual( ( await Driver.Find( { a: 99 } ) ).length, 0 );
+			assert.strictEqual( ( await Driver.Find( { a: { $gt: 99 } } ) ).length, 0 );
+			assert.strictEqual( ( await Driver.Find( { a: { $gt: null } } ) ).length, 0 );
+		} );
+
 	} );
 
 };

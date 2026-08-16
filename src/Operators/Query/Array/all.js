@@ -13,7 +13,7 @@ module.exports = function ( jsongin )
 		ValueTypes: 'a',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '' )
+		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
 		{
 			try
 			{
@@ -56,7 +56,7 @@ module.exports = function ( jsongin )
 					}
 					else
 					{
-						result = jsongin.QueryOperators.$eq.Query( Document, MatchValue[ index ], Path );
+						result = jsongin.QueryOperators.$eq.Query( Document, MatchValue[ index ], Path, ExpandArrays );
 					}
 					if ( result === false ) { return false; }
 				}

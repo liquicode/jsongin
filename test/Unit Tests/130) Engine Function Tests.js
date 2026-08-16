@@ -346,11 +346,47 @@ describe( '130) Engine Function Tests', () =>
 			assert.strictEqual( jsongin.Update( { a: 1 }, undefined ).a, 1 );
 		} );
 
-		it( 'should ignore an unknown update operator', () =>
+		it( 'should refuse an unknown update operator', () =>
 		{
-			// The operator is logged to the OpLog and skipped, rather than throwing.
-			let result = jsongin.Update( { a: 1 }, { $bogus: { a: 2 } } );
-			assert.strictEqual( result.a, 1 );
+			// This used to be logged and skipped, which returned a clone of the original
+			// document — indistinguishable from a legitimate no-op, so a typo in an operator
+			// name was silently nothing at all. MongoDB refuses it.
+			assert.throws(
+				function () { jsongin.Update( { a: 1 }, { $bogus: { a: 2 } } ); },
+				/Unknown update operator/ );
+		} );
+
+		it( 'should refuse an update document which is not made of operators', () =>
+		{
+			// A replacement document is a different call in MongoDB, and it refuses this one.
+			assert.throws(
+				function () { jsongin.Update( { a: 1 }, { a: 2 } ); },
+				/Unknown update operator/ );
+		} );
+
+		it( 'should refuse two operators which write to conflicting paths', () =>
+		{
+			// The result would depend on which operator happened to run first.
+			assert.throws(
+				function () { jsongin.Update( { a: 1 }, { $set: { a: 2 }, $inc: { a: 1 } } ); },
+				/conflict/ );
+			assert.throws(
+				function () { jsongin.Update( { a: {} }, { $set: { a: 2 }, $inc: { 'a.b': 1 } } ); },
+				/conflict/ );
+		} );
+
+		it( 'should allow two operators which write to different paths', () =>
+		{
+			let result = jsongin.Update( { a: 1, b: 1 }, { $set: { a: 2 }, $inc: { b: 1 } } );
+			assert.deepStrictEqual( result, { a: 2, b: 2 } );
+		} );
+
+		it( 'should leave the document untouched when it refuses', () =>
+		{
+			// The whole update document is checked before any of it is applied.
+			let document = { a: 1, b: 1 };
+			assert.throws( function () { jsongin.Update( document, { $set: { b: 9 }, $bogus: { c: 1 } } ); } );
+			assert.deepStrictEqual( document, { a: 1, b: 1 } );
 		} );
 
 		it( 'should return null when the parameters are wrong', () =>

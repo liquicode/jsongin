@@ -43,6 +43,149 @@ v0.1.0 (current)
   All five were invisible to the test suite because it compared documents with
   `JSON.stringify`, which renders a hole as `null` and drops a member holding `undefined`.
 
+  The query operators followed:
+
+  - ***Breaking: `$in` and `$nin` match the way the implicit form does.*** Each value in the
+    list is now matched by `$ImplicitEq`, so a regexp in the list pattern matches and everything
+    else goes through `$eq`. `$in` carried its own comparison built on `array.includes()`, which
+    is `===`, so it failed every case where equality is not identity: a sub-document, an array,
+    a date, a missing field against `null` — the idiom for "missing or null" — and any path
+    which crosses an array. `$nin` is the exact negation and inherits all of it. A query
+    operator nested inside `$in` is refused rather than run, which is what MongoDB does.
+
+  - ***`$regex` accepts `$options`.*** It is not an operator of its own, so `Query()` consumes
+    the pair together. `$options` used to fall through to the implicit equality branch, which
+    tested a field named `a.$options` against the flags string and took the whole query down
+    with it. `$options` without a `$regex`, with a non-string value, with an invalid flag, or
+    beside a regexp which already carries its own flags is refused.
+
+  - ***`$regex` is no longer stateful across documents.*** The pattern is rebuilt for each call.
+    `RegExp.test()` advances `lastIndex` on a pattern carrying the `g` flag, so the caller's
+    reused object matched every other document: `Filter( documents, { a: /x/g } )` returned 3 of
+    4 identical documents. The caller's own object is left untouched rather than rewound.
+
+  - ***Breaking: `$exists` coerces its value*** rather than requiring a boolean, so
+    `{ $exists: 1 }` and `{ $exists: 0 }` ask the questions MongoDB asks. The narrow
+    `ValueTypes: 'b'` made both of them `false`, the second one the opposite of the right
+    answer. It was a deviation introduced by enforcing `ValueTypes`, which turned a note into
+    behavior.
+
+  - ***Breaking: `$not` is no longer accepted at the top level of a query.*** MongoDB's top
+    level operators are `$and`, `$or`, `$nor`, `$expr`, `$text`, `$where`, `$comment`, and
+    `$jsonSchema`. Negating a whole query is spelled `$nor`.
+
+  - ***`$elemMatch` resolves candidates*** instead of asking `GetValue` for one value and
+    indexing into it, so `{ 'a.b': { $elemMatch: { $gt: 1 } } }` now matches
+    `{ a: [ { b: [ 1, 2 ] } ] }`. An element which is itself an array is treated as a value to
+    test rather than a second array to search, so a field condition no longer looks inside it
+    while a nested `$elemMatch` still does. An empty condition matches an element which can hold
+    fields — a document or an array — and nothing else. `ResolveCandidates()` gained an optional
+    `ExpandArrays` parameter for this; it defaults to `true` and every other caller is unchanged.
+
+  - ***Breaking: `$eq` compares structured values with `CompareValues`*** rather than by their
+    `JSON.stringify` text. Stringifying discards the type before comparing, so an object holding
+    a `Date` compared equal to an object holding the equivalent ISO string. `undefined` members,
+    `NaN`, and `Infinity` collapsed the same way.
+
+  - ***Breaking: `Project( Document, {} )` returns the whole document*** rather than an empty
+    one. An empty projection names nothing to exclude, which is the same rule that makes
+    `{ _id: 0 }` an exclusion. The `$project` aggregation stage has the opposite rule and now
+    refuses an empty specification, as MongoDB does.
+
+  Every operator was then swept against a live MongoDB 6.0.1 server — 317 cases across queries,
+  updates, projections, and aggregation — rather than only the cases the review named. Every
+  implemented aggregation operator already agreed, as did the whole projection surface. The
+  sweep found five more differences, all now fixed:
+
+  - ***Breaking: the range operators compare objects and arrays.*** `$gt`, `$gte`, `$lt`, and
+    `$lte` refused both outright, because their `ValueTypes` did not admit either and the
+    comparison used the raw `>` operator, which cannot order them. They now compare through
+    `CompareValues` within the operand's own type bracket, so `{ v: [ 2 ] }` matches
+    `{ v: { $gt: [ 1 ] } }`. Comparisons across types are still bracketed out.
+
+  - ***Breaking: `SetValue()` fills a gap with `null`*** when it writes past the end of an
+    array, rather than leaving Javascript array holes. `{ a: [ 1 ] }` with
+    `{ $set: { 'a.3': 9 } }` now gives `[ 1, null, null, 9 ]`. A hole is not representable in
+    JSON and only looked like a `null` because `JSON.stringify` renders it as one.
+
+  - ***Breaking: `SetValue()` creates a document for a path which is not there***, whatever the
+    next key looks like. A numeric key no longer implies an array, because only the array
+    update operators ever create one: `{ $set: { 'a.0': 9 } }` against a document with no `a`
+    now gives `{ a: { '0': 9 } }` rather than `{ a: [ 9 ] }`. An array which already exists is
+    still indexed by a numeric key. `SetValue()` takes a new optional `CreateArrays` parameter
+    for the older behavior, and [`Expand()`](http://jsongin.liquicode.com/#/guides/jsongin/Expand.md) is the one caller which
+    asks for it, because it is rebuilding a hierarchy that `Flatten()` took apart.
+
+  - ***`$addToSet` creates the array*** when the field is not there, rather than refusing the
+    update. This is the same defect `$push` had, in its sibling operator.
+
+  - ***Breaking: `$push` stores a modifier document which has no `$each`*** as a plain value.
+    `$each` is what makes a document a modifier document, so `{ $push: { a: { $slice: 1 } } }`
+    appends `{ $slice: 1 }` as data, which is what MongoDB does. This used to be refused, which
+    was safer and was not parity. An unrecognized `$` field *within* a real modifier document
+    is still rejected.
+
+- ***Breaking: a malformed query or update is refused rather than answered.***
+  `Query()` returned `false` and `Update()` returned the document unchanged for input which
+  could not mean anything. Both are legitimate answers — "nothing matched", "nothing to do" —
+  so a typo was indistinguishable from an empty result, and a misspelled query operator was
+  read as a field name, tested a field which was never there, and quietly reported no match.
+  MongoDB refuses every case below with an error, verified against MongoDB 6.0.1.
+
+  `Query()` now throws for an unknown operator, an operator which cannot appear where it was
+  written, an operator value of a type the operator does not take, a `$options` which cannot be
+  applied, and a logical operator given no conditions. `Update()` now throws for an unknown
+  operator, for an update document which is not made of operators, for an operator value of the
+  wrong type, and for ***two operators which write to the same path or to a path and one below
+  it***, which MongoDB refuses because the result would depend on which ran first. The whole
+  update document is checked before any of it is applied.
+
+  ***A well formed statement still answers.*** A query which simply matches nothing returns
+  `false`, including `{ a: { $gt: null } }`. An operator which cannot apply itself to a
+  particular document — `$inc` against a string, `$pop` against a scalar — still reports to the
+  `OpLog` and leaves the field alone. A `Document` parameter of the wrong type still returns
+  `false` from `Query()` and `null` from `Update()`, because those are statements about the
+  data rather than about the query.
+
+  `IsQuery()` changed with it: a key beginning with `$` now makes an object a query, whether or
+  not the operator is one this engine knows. That is what carries a misspelled operator to the
+  refusal instead of to a field comparison.
+
+- The duplicated copy of `is_query()` in `src/jsongin/Query.js` was deleted, along with the
+  seven-line `//TODO` comment it carried in both places. `Query()` calls `IsQuery()` now, so
+  the decision is made in one place.
+
+- ***Breaking: an invalid projection throws*** rather than returning `null`. Combining an
+  inclusion with an exclusion, or writing a computed field inside an exclusion, is refused the
+  same way a malformed query or update document is — `null` was a value a caller could carry on
+  with. `null` is now reserved for a `Document` or `Projection` parameter of the wrong type.
+  This was found by moving the operator sweep into the parity suites.
+
+- ***The Parity Tests are now the whole of the parity evidence.*** The sweep which found the
+  defects above was a throwaway harness comparing two engines' output; everything it covered is
+  now expressed as parity tests with stated expectations, which is a claim a reader can check
+  and a test which survives MongoDB being absent. The suite grew from 248 comparisons to 389.
+  What that migration added, beyond the defects it surfaced:
+
+  - ***All 22 expression operators are measured.*** Only three of them appeared anywhere in the
+    suite before, so `$abs`, `$add`, `$mod`, `$cmp`, `$ifNull`, `$switch`, `$literal`, the six
+    comparisons, the three booleans, and field path resolution had no parity coverage at all.
+    Every one agrees with MongoDB.
+  - Every pipeline stage and every accumulator is measured on its own, rather than only in
+    combination, including the `$unwind` options and the missing-field behavior of `$sum`,
+    `$avg`, and `$min`.
+  - `$currentDate` gained parity coverage, which it had none of.
+  - Projection gained computed fields, nested path inclusion and exclusion, and the two
+    projections MongoDB refuses.
+  - Path semantics gained the cases where a document's shape decides what a path means, such
+    as `'a.0'` being an index into an array and a field name on a document.
+
+  ***Sixteen parity tests are expected to fail***, and `npm run parity-report` exits non-zero
+  while they do. They are not broken tests: 10 record aggregation operators which are not
+  implemented, 3 record projection operators which are not implemented, and 3 record places
+  where jsongin has deliberately settled somewhere other than MongoDB. All 16 pass against the
+  live server, so `test bugs` stays at 0 and the failures are the whole of the difference.
+
 - A code review of the whole library was run and its findings worked through. The review is kept
   at `.reviews/2026-08-14-03-35/review.md`. What it turned up, and what was done about it:
 

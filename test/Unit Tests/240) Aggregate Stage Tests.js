@@ -132,7 +132,9 @@ describe( '240) Aggregate Stage Tests', () =>
 		it( 'should throw when the projection is not valid', () =>
 		{
 			let documents = [ { a: 1, b: 2 } ];
-			assert.throws( function () { jsongin.Aggregate( documents, [ { $project: { a: 1, b: 0 } } ] ); }, /Unable to project the document/ );
+			// Project() raises this itself now, so the stage's own "Unable to project" wrapper
+			// is reached only if Project ever returns null instead of throwing.
+			assert.throws( function () { jsongin.Aggregate( documents, [ { $project: { a: 1, b: 0 } } ] ); }, /Cannot combine inclusion and exclusion/ );
 		} );
 
 		it( 'should throw when the argument is not an object', () =>

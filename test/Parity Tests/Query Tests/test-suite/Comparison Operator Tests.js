@@ -207,6 +207,34 @@ module.exports = function ( Driver )
 				assert.ok( !await matches( { v: [ 1, 2 ] }, { v: { $gt: 5 } } ) );
 			} );
 
+			/*
+				An object and an array are inside the bracket too, ordered against their own
+				type. These were refused outright until the range operators were given a
+				comparison which can order them.
+			*/
+
+			it( 'should compare objects with each other', async () =>
+			{
+				assert.ok( await matches( { v: { a: 2 } }, { v: { $gt: { a: 1 } } } ) );
+				assert.ok( !await matches( { v: { a: 1 } }, { v: { $gt: { a: 2 } } } ) );
+				assert.ok( await matches( { v: { a: 1 } }, { v: { $gte: { a: 1 } } } ) );
+				assert.ok( await matches( { v: { a: 1 } }, { v: { $lt: { a: 2 } } } ) );
+				assert.ok( await matches( { v: { a: 1 } }, { v: { $lte: { a: 1 } } } ) );
+			} );
+
+			it( 'should compare arrays with each other', async () =>
+			{
+				assert.ok( await matches( { v: [ 2 ] }, { v: { $gt: [ 1 ] } } ) );
+				assert.ok( !await matches( { v: [ 1 ] }, { v: { $gt: [ 2 ] } } ) );
+				assert.ok( await matches( { v: [ 1 ] }, { v: { $gte: [ 1 ] } } ) );
+				assert.ok( await matches( { v: [ 1, 1 ] }, { v: { $lt: [ 1, 2 ] } } ) );
+			} );
+
+			it( 'should keep the bracket between an object and an array', async () =>
+			{
+				assert.ok( !await matches( { v: { a: 1 } }, { v: { $gt: [ 1 ] } } ) );
+			} );
+
 			it( 'should compare through a path which crosses an array', async () =>
 			{
 				assert.ok( await matches( { a: [ { x: 1 }, { x: 9 } ] }, { 'a.x': { $gt: 5 } } ) );
@@ -420,6 +448,103 @@ module.exports = function ( Driver )
 			it( 'should match an array reached through a path which crosses an array', async () =>
 			{
 				assert.ok( await matches( { a: [ { b: [ 1, 2 ] } ] }, { 'a.b': { $elemMatch: { $gt: 1 } } } ) );
+				assert.ok( await matches( { a: [ { b: [ { c: 1 } ] } ] }, { 'a.b': { $elemMatch: { c: 1 } } } ) );
+			} );
+
+			it( 'should not match a crossing path which ends at something other than an array', async () =>
+			{
+				assert.ok( !await matches( { a: [ { b: 5 } ] }, { 'a.b': { $elemMatch: { $gt: 1 } } } ) );
+			} );
+
+			it( 'should read a dotted field within an element', async () =>
+			{
+				assert.ok( await matches( { v: [ { b: { c: 1 } } ] }, { v: { $elemMatch: { 'b.c': 1 } } } ) );
+			} );
+
+			it( 'should not read a field of an element which is not a document', async () =>
+			{
+				assert.ok( !await matches( { v: [ 1, 2 ] }, { v: { $elemMatch: { x: 1 } } } ) );
+			} );
+
+			/*
+				An element which is itself an array is a value $elemMatch tests, not a second
+				array for it to search. The field form does not look inside it, and the nested
+				$elemMatch form does, which is the query that asks for it explicitly.
+			*/
+
+			it( 'should not read a field through an element which is an array', async () =>
+			{
+				assert.ok( !await matches( { v: [ [ { x: 1 } ] ] }, { v: { $elemMatch: { x: 1 } } } ) );
+			} );
+
+			it( 'should look inside an element which is an array when nested $elemMatch asks', async () =>
+			{
+				assert.ok( await matches( { v: [ [ { x: 1 } ] ] }, { v: { $elemMatch: { $elemMatch: { x: 1 } } } } ) );
+				assert.ok( await matches( { v: [ [ 1, 9 ] ] }, { v: { $elemMatch: { $elemMatch: { $gt: 5 } } } } ) );
+			} );
+
+			it( 'should not compare into an element which is an array', async () =>
+			{
+				assert.ok( !await matches( { v: [ [ 1, 2 ] ] }, { v: { $elemMatch: { $gt: 1 } } } ) );
+				assert.ok( !await matches( { v: [ [ [ 5 ] ] ] }, { v: { $elemMatch: { $elemMatch: { $gt: 1 } } } } ) );
+			} );
+
+			it( 'should not match any operator into an element which is an array', async () =>
+			{
+				// The rule is the operator's, not $elemMatch's alone: every one of these
+				// resolves the element itself rather than the values it holds.
+				assert.ok( !await matches( { v: [ [ 1, 2 ] ] }, { v: { $elemMatch: { $eq: 1 } } } ) );
+				assert.ok( !await matches( { v: [ [ 1, 2 ] ] }, { v: { $elemMatch: { $in: [ 1 ] } } } ) );
+				assert.ok( !await matches( { v: [ [ 1, 2 ] ] }, { v: { $elemMatch: { $all: [ 1 ] } } } ) );
+				assert.ok( !await matches( { v: [ [ 1, 2 ] ] }, { v: { $elemMatch: { $type: 'number' } } } ) );
+				assert.ok( !await matches( { v: [ [ 'ab' ] ] }, { v: { $elemMatch: { $regex: 'ab' } } } ) );
+			} );
+
+			it( 'should match an operator against the element itself', async () =>
+			{
+				// The other half of the same rule: the element is a value, so an operator
+				// which suits an array matches it as the array it is.
+				assert.ok( await matches( { v: [ [ 1, 2 ] ] }, { v: { $elemMatch: { $eq: [ 1, 2 ] } } } ) );
+				assert.ok( await matches( { v: [ [ 1, 2 ] ] }, { v: { $elemMatch: { $size: 2 } } } ) );
+				assert.ok( await matches( { v: [ [ 1, 2 ] ] }, { v: { $elemMatch: { $type: 'array' } } } ) );
+				assert.ok( await matches( { v: [ [ 1, 2 ] ] }, { v: { $elemMatch: { $in: [ [ 1, 2 ] ] } } } ) );
+			} );
+
+			it( 'should keep the element rule through a logical operator', async () =>
+			{
+				// $or and $and restart nothing: their branches are still matched against the
+				// element, so they miss an element which is an array exactly as a bare field
+				// condition does.
+				assert.ok( !await matches( { v: [ [ { x: 1 } ] ] }, { v: { $elemMatch: { $or: [ { x: 1 } ] } } } ) );
+				assert.ok( !await matches( { v: [ [ { x: 1 } ] ] }, { v: { $elemMatch: { $and: [ { x: 1 } ] } } } ) );
+				assert.ok( await matches( { v: [ [ 1, 2 ] ] }, { v: { $elemMatch: { $not: { $gt: 1 } } } } ) );
+			} );
+
+			it( 'should keep ordinary array rules below the element', async () =>
+			{
+				// The rule stops at the element. A field of the element which holds an array
+				// is matched the ordinary way.
+				assert.ok( await matches( { v: [ { x: [ 1, 2 ] } ] }, { v: { $elemMatch: { x: 1 } } } ) );
+				assert.ok( await matches( { v: [ { x: [ 1, 2 ] } ] }, { v: { $elemMatch: { x: { $gt: 1 } } } } ) );
+				assert.ok( await matches( { v: [ { x: 1 } ] }, { v: { $elemMatch: { $or: [ { x: 1 } ] } } } ) );
+			} );
+
+			/*
+				An empty criteria matches an element which can hold fields, and nothing else.
+			*/
+
+			it( 'should match an empty criteria against a document or an array element', async () =>
+			{
+				assert.ok( await matches( { v: [ { x: 1 } ] }, { v: { $elemMatch: {} } } ) );
+				assert.ok( await matches( { v: [ [ 1, 2 ] ] }, { v: { $elemMatch: {} } } ) );
+				assert.ok( await matches( { v: [ 1, { x: 1 } ] }, { v: { $elemMatch: {} } } ) );
+			} );
+
+			it( 'should not match an empty criteria against a scalar or null element', async () =>
+			{
+				assert.ok( !await matches( { v: [ 1 ] }, { v: { $elemMatch: {} } } ) );
+				assert.ok( !await matches( { v: [ null ] }, { v: { $elemMatch: {} } } ) );
+				assert.ok( !await matches( { v: [] }, { v: { $elemMatch: {} } } ) );
 			} );
 
 		} );

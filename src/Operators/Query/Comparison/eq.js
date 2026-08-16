@@ -7,6 +7,12 @@ module.exports = function ( jsongin )
 	// Compares one candidate value against the match value.
 	// This is a single value test: it does not look inside an array for a matching element,
 	// because ResolveCandidates already offers each element as its own candidate.
+	//
+	// Structured values are compared with CompareValues, which is type aware all the way down.
+	// They used to be compared by their JSON.stringify text, which discards the type before
+	// comparing: a Date renders as its ISO string, so an object holding a date compared equal
+	// to an object holding the equivalent string. undefined members, NaN, and Infinity collapse
+	// the same way. Verified against MongoDB 6.0.1, which matches none of those.
 	function equals_value( ActualValue, MatchValue, Path )
 	{
 		let actual_type = jsongin.ShortType( ActualValue );
@@ -43,14 +49,14 @@ module.exports = function ( jsongin )
 		else if ( ( match_type === 'o' ) && ( actual_type === 'o' ) )
 		{
 			// Objects must match exactly, including the key order.
-			return ( JSON.stringify( MatchValue ) === JSON.stringify( ActualValue ) );
+			return ( jsongin.CompareValues( MatchValue, ActualValue ) === 0 );
 		}
 		else if ( ( match_type === 'a' ) && ( actual_type === 'a' ) )
 		{
 			// Arrays must match exactly, including the value order.
 			// The match value also matching a single element of the field is handled by the
 			// candidate list rather than here.
-			return ( JSON.stringify( MatchValue ) === JSON.stringify( ActualValue ) );
+			return ( jsongin.CompareValues( MatchValue, ActualValue ) === 0 );
 		}
 
 		if ( jsongin.OpLog ) { jsongin.OpLog( `$eq: cannot compare [${match_type}] type with [${actual_type}] type at [${Path}].` ); }
@@ -68,7 +74,10 @@ module.exports = function ( jsongin )
 		ValueTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '' )
+		// ExpandArrays is passed through to ResolveCandidates. It is false only when
+		// $elemMatch is testing one element, where the element is a value rather than an
+		// array to look inside. See ResolveCandidates.
+		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
 		{
 			try
 			{
@@ -80,7 +89,7 @@ module.exports = function ( jsongin )
 				// into a single array. That gathered array was indistinguishable from a field
 				// which genuinely held an array, so { 'a.x': { $eq: 1 } } compared [ 1, 2 ]
 				// against 1 and found nothing, while the implicit form matched.
-				let candidates = jsongin.ResolveCandidates( Document, Path );
+				let candidates = jsongin.ResolveCandidates( Document, Path, ExpandArrays );
 
 				// A path which resolves to nothing is still compared, so that { a: null }
 				// matches a document which has no 'a'. MongoDB matches null against a missing

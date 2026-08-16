@@ -312,23 +312,18 @@ function NewJsongin( EngineSettings = {} )
 
 
 	//---------------------------------------------------------------------
+	// Answers whether a value is a query to evaluate rather than a value to compare against.
+	//
+	// A key beginning with $ makes it a query, whether or not the operator is one this engine
+	// knows. A misspelled operator is a malformed query, and Query() refuses it; reading it as
+	// a value instead compared the field against an object nobody meant to write, and reported
+	// that nothing matched. MongoDB refuses the same thing.
 	Engine.IsQuery = function ( Query )
 	{
 		if ( Engine.ShortType( Query ) !== 'o' ) { return false; }
 		for ( let key in Query )
 		{
-			if ( typeof Engine.QueryOperators[ key ] !== 'undefined' ) { return true; }
-			//TODO: This needs more thought/work:
-			// if ( Engine.ShortType( Query[ key ] ) === 'o' )
-			// {
-			// 	if ( Engine.Settings.PathExtensions )
-			// 	{
-			// 		if ( Object.keys( Query ).length === 1 )
-			// 		{
-			// 			if ( Engine.IsQuery( ( Query[ key ] ) ) ) { return true; }
-			// 		}
-			// 	}
-			// }
+			if ( key.startsWith( '$' ) ) { return true; }
 		}
 		return false;
 	};

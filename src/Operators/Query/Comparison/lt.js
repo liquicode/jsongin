@@ -11,17 +11,18 @@ module.exports = function ( jsongin )
 		Engine: jsongin,
 		OperatorType: 'Comparison',
 		TopLevel: false,
-		ValueTypes: 'bnsd',
+		// null and undefined are accepted, and match nothing. See the note in gt.js.
+		ValueTypes: 'bnsdoalu',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '' )
+		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
 		{
 			try
 			{
 				// See _range.js for the candidate handling and the type bracketing.
 				return range.Query( Document, MatchValue, Path, '$lt',
-					function ( ActualValue, CompareValue ) { return ( ActualValue < CompareValue ); },
-					false );
+					function ( Comparison ) { return ( Comparison < 0 ); },
+					false, ExpandArrays );
 			}
 			catch ( error )
 			{

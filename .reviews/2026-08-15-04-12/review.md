@@ -702,24 +702,51 @@ The ***Current Status*** block is rewritten in place each session. The ***Log***
 
 | Check | Command | Result |
 |-------|---------|--------|
-| Unit tests | `npm test` | 1097 passing, ***green*** |
-| Parity baseline | `npm run parity-test-mongodb` | 248 passing (needs a server) |
-| Parity under test | `npm run parity-test-jsongin` | 235 passing, 13 failing |
-| Parity measurement | `npm run parity-report` | ***94.8%*** — 235 of 248 agree |
-| Coverage | `npm run coverage` | 158 uncovered blocks, 49 files fully covered |
-| Docs | `npm run check-docs` | 319 fences, 273 links, 53 pages — passed |
+| Unit tests | `npm test` | 1108 passing, ***green*** |
+| Parity baseline | `npm run parity-test-mongodb` | 389 passing, ***0 failing*** (needs a server) |
+| Parity under test | `npm run parity-test-jsongin` | 373 passing, 16 failing |
+| Parity measurement | `npm run parity-report` | ***95.9%*** — 373 of 389 agree |
+| Coverage | `npm run coverage` | 165 uncovered blocks, 48 files fully covered |
+| Docs | `npm run check-docs` | 332 fences, 281 links, 53 pages — passed |
 
-***The update operator group is fixed.*** P1 and the three findings the tests turned up are
-  closed, which took parity from 90.3% to 94.8% and the Update area from 33/45 to 44/45.
+***Every parity finding P1–P10 is fixed, and every defect is closed.*** Parity reached ***100%
+  on a 281-comparison suite*** — up from 90.3% on the 248 comparisons this review started with,
+  so it was measuring more than before, not less. The suite then grew to 389 as the operator
+  sweep was migrated in, and the 16 failures below were added deliberately on top of that.
+  ***No failure in the report is an unexplained one.***
 
-Parity by area: Query 154/165, Update 44/45, Projection 16/17, Aggregate 21/21.
+***The 16 failures are deliberate.*** They were added ***after*** reaching 100%, to record the
+  things which are not defects but are also not parity, so that the report keeps asking about
+  them instead of letting them fade. All 16 pass against MongoDB — `test bugs` is 0 — so the
+  baseline run is green and the failures are the whole of the difference.
 
-The 13 remaining gaps are 11 in Query (P2 `$in`/`$nin`, P3 and P4 `$regex`, P7 `$exists`,
-  P8 `$elemMatch`, P10 deep equality, P6 `$not` at the top level), 1 in Update (P9's conflicting
-  paths, which is the only Update gap left), and 1 in Projection (P5's empty projection).
+Parity by area: Query 197/197, Update 78/81, Projection 30/33, Aggregate 68/78.
 
-***Uncommitted.*** The 2026-08-16 test work is committed as `e029586 Updated testing framework`.
-  This session's source, test, and documentation changes are in the working tree on `main`.
+| The 16 | Where | Why it fails |
+|--------|-------|--------------|
+| 10 | `Aggregate Tests/test-suite/Unimplemented Operator Tests.js` | `$ceil`, `$floor`, `$round`, `$trunc`, `$size`, `$arrayElemAt`, `$concatArrays`, `$in` expressions; the `$addToSet` accumulator; the `$count` stage. Feature work, not repair. |
+| 3 | `Projection Tests/test-suite/Unimplemented Projection Tests.js` | The projection `$slice` and `$elemMatch`. Feature work, and **D3** is about the misleading error they raise. |
+| 1 | `Update Rejection Tests` → Known Deviations | A negative array index is written; MongoDB refuses one. Reverse indexing is a documented jsongin extension. |
+| 2 | `Update Rejection Tests` → Known Deviations | An operator which cannot apply itself declines through the OpLog; MongoDB raises an error. |
+
+Deleting one of those tests is only correct when the thing it names has been implemented or
+  decided. See ***Open Decisions***.
+
+***The Parity Tests are the whole of the parity evidence.*** The operator sweep which found
+  five of this session's defects was a throwaway harness comparing two engines' output; it has
+  been migrated into the suites and no longer exists. That was the right trade: a suite states
+  its expectation, which a reader can check and which survives MongoDB being absent, where the
+  harness only asked whether two engines agreed — and would have called both being wrong the
+  same way a pass. The suite grew from 248 comparisons to 389 in the process.
+
+The migration also closed a real hole. ***Only 3 of the 22 expression operators appeared
+  anywhere in the suite***, so most of the expression layer was unmeasured; all 22 are now
+  covered and all agree. `$currentDate` had no parity coverage either. Both were invisible
+  precisely because nothing measured them.
+
+***Where this lives.*** The 2026-08-16 work landed in two commits: `f10ea6f` for the P1 update
+  operator group, and one commit for everything after it. If `git status` is clean, all of the
+  above is committed and the numbers in the table should reproduce exactly.
 
 
 ### Standing Decisions
@@ -741,17 +768,41 @@ Decisions made in session, which later work should not silently reverse:
 5. ***Rejection is behavior.*** The drivers rethrow rather than logging. Rejection tests assert
    only *that* an operation was refused, never the wording, and an update counts as refused if
    it throws ***or*** leaves the document unchanged.
+   *(Qualified 2026-08-16: a malformed update ***document*** now throws, so `refused()` is only
+   still needed for an operator declining a document it does not suit. The Known Deviations
+   block measures that case with a stricter `threw()` helper, and closing Open Decision 3
+   retires this decision along with one of the two helpers.)*
+6. ***A parity test may be expected to fail.*** A behavior which is deliberately not MongoDB's,
+   and a feature which is not implemented, are both recorded as failing parity tests rather
+   than left out of the suite. A gap nothing measures is a gap nobody revisits, so
+   `parity-report` is expected to be non-zero while any remain. What must always hold is
+   `test bugs: 0` — every test passes against the live server. *(User decision, 2026-08-16.)*
 
 
 ### Finding Status
 
 | Group | Open | Notes |
 |-------|-----:|-------|
-| P1–P10 parity | 9 | ***P1 fixed.*** The other nine have parity tests and are open. |
-| S1–S8 consistency | 8 | Not started. Internal; mostly not expressible as parity tests. |
-| R1–R4 conciseness | 3 | ***R2 fixed*** with P1, as `_arith.js`. R1, R3, R4 not started. |
-| T1–T5 test coverage | 2 | T1, T2, T5 addressed 2026-08-16. T3, T4 open. |
-| D1–D3 documentation | 3 | D1 and D2 partly done for `$inc`/`$mul`. D2 shrinks as P items are fixed. |
+| P1–P10 parity | 0 | ***All ten fixed***, and six more defects the review never named: five from the operator sweep, one from migrating it into the suites. |
+| S1–S8 consistency | 7 | ***S2 fixed*** — the stale `ResolveCandidates` header. S1, S3, S4, S5, S6, S7, S8 open. |
+| R1–R4 conciseness | 2 | ***R2 fixed*** as `_arith.js`, ***R3 fixed*** with the refusal work. R1, R4 open. |
+| T1–T5 test coverage | 1 | T1, T2, T5 addressed. ***T4 effectively closed*** — 13 aliasing tests now exist, and the one gap left is `Filter`, which is S4. T3 open. |
+| D1–D3 documentation | 1 | ***D1 and D2 closed.*** Every limitation D2 listed is fixed and documented. D3 open, and now measured by the unimplemented projection tests. |
+
+***The shortest list of what is actually left***, for a session picking this up cold:
+
+- **S1** `LooseEquals` is not symmetric — the one remaining correctness-shaped finding.
+- **S3** `OperatorType` and `ArgCount` are unenforced metadata. **R4** is the same subject.
+- **S4** `Filter()` returns the caller's own documents and nothing says so.
+- **S5** three unregistered modules under `src/jsongin/Path/`.
+- **S6** the blanket accuracy claim in `readme.md`, which is generated from
+  `docs/templates/readme.md`. Worth revisiting now that the claim is nearly true and measured.
+- **S7** `/*md` blocks on 41 of 70 operators — decide it is optional, or fill them in.
+- **S8** `module.exports = module.exports` in `eqx.js`. One line.
+- **R1** the seven expression comparison operators are one implementation written seven times.
+- **T3** 165 uncovered blocks; the tool names the files.
+- **D3** unsupported projection operators report the wrong kind of error.
+- The three **Open Decisions**, each already measured by a failing parity test.
 
 Three findings were discovered by the tests and were ***not*** written up in the sections above.
 ***All three are now fixed***, together with P1:
@@ -765,7 +816,156 @@ All three were invisible to the unit tests because those compare with `JSON.stri
   renders a hole as `null` and drops an `undefined` member.
 
 
+### Open Decisions
+
+Both of the previous decisions were taken and carried out: `Query()` and `Update()` refuse a
+  malformed statement by throwing, and the evaluation option was threaded so `$elemMatch` can
+  resolve an element without array semantics.
+
+***Each of the three below is now a failing parity test***, by decision, so that the report
+  raises it every session until it is settled. None of them is a broken test.
+
+1. ***Should the unimplemented operators be implemented?***
+   Ten in aggregation: `$ceil`, `$floor`, `$round`, `$trunc`, `$size`, `$arrayElemAt`,
+   `$concatArrays`, `$in` as expressions, `$addToSet` as an accumulator, and `$count` as a
+   stage. Three more in projection: `$slice` and `$elemMatch`. This is feature work rather than
+   parity repair — everything implemented already agrees — so it was deliberately separated
+   from the fixes. *(Decided in session: fix the defects first, decide this after.)*
+   ***Measured by*** `Aggregate Tests/test-suite/Unimplemented Operator Tests.js` and
+   `Projection Tests/test-suite/Unimplemented Projection Tests.js`, 13 failures.
+
+2. ***Should a negative array index be refused on write?***
+   `SetValue( doc, 'a.-1', 9 )` writes the last element. MongoDB refuses a negative index in an
+   update. Reverse indexing is a documented jsongin path extension, used by `GetValue` and
+   `DeleteValue` as well, so this is about whether the extension should apply to writes at all
+   rather than about a defect.
+   ***Measured by*** `Update Rejection Tests` → Known Deviations, 1 failure.
+
+3. ***How loudly should an operator refuse a document it does not suit?***
+   The refusal work drew a line: a malformed update ***document*** throws, while an operator
+   which cannot apply itself to a particular document — `$inc` against a string, `$pop` against
+   a scalar — reports to the OpLog and leaves the field alone. MongoDB errors in both cases.
+   A caller cannot tell a declined `$inc` from an `$inc` which had nothing to do, which is the
+   same complaint that moved the other refusals, so this line is probably temporary.
+   ***Measured by*** `Update Rejection Tests` → Known Deviations, 2 failures, using a `threw()`
+   helper which is deliberately stricter than the suite's `refused()`. Note that closing this
+   would make Standing Decision 5 obsolete: an unchanged document would no longer count as a
+   refusal, and `refused()` and `threw()` would collapse into one helper.
+
+
 ### Log
+
+#### 2026-08-16 — Swept every operator, then reached 100% parity
+
+Parity 98.8% → ***100.0%***, with the suite grown from 256 to 281 comparisons.
+
+***The sweep came first.*** Every registered operator was run against the live server — 317
+  cases across queries, updates, projections, and aggregation — rather than only the cases this
+  review names. It cost an hour and found five defects the review never mentioned:
+
+- The range operators refused object and array operands outright: `ValueTypes` did not admit
+  either, and the comparison used the raw `>`, which cannot order them. They now compare
+  through `CompareValues` inside the operand's own type bracket.
+- `SetValue` left Javascript array holes when writing past the end of an array; MongoDB writes
+  nulls. The same class as the `$unset` hole fixed earlier that day, in the other direction.
+- `SetValue` created an array for a numeric key on a path which was not there; MongoDB creates
+  a document, and only the array operators ever create an array. `Expand()` genuinely wants the
+  old rule, so `SetValue` took a `CreateArrays` parameter and `Expand()` is its one caller.
+- `$addToSet` did not create the array for a missing field — the exact defect `$push` had, in
+  its sibling, unnoticed because the fix for `$push` was made from the finding list rather than
+  from a sweep.
+- `$push` refused a modifier document written without `$each`; MongoDB stores it as data.
+  `push.js` documented the refusal as MongoDB's behavior, which it never was.
+
+***The `$elemMatch` threading, and a correction.*** The estimate given for this was wrong in an
+  instructive way. A boolean threaded through the whole sub-evaluation would have broken
+  correct cases: the rule applies at the element's own level, and ordinary array semantics must
+  resume below it, so `$elemMatch: { x: 1 }` against `{ v: [ { x: [ 1, 2 ] } ] }` still has to
+  match. What works is narrower — operators take an `ExpandArrays` argument used only for their
+  own resolution, and `$elemMatch` evaluates `$and`/`$or`/`$nor`/`$not` itself rather than
+  handing them to `Query()`, which would restart their branches with ordinary path semantics.
+  20 of 20 measured `$elemMatch` shapes now agree.
+
+***Refusals.*** MongoDB refuses all 17 malformed queries probed; `jsongin` answered "nothing
+  matched" for every one of them. `Query()` and `Update()` now throw for a statement which
+  cannot mean anything, while a well formed statement which simply does not match still returns
+  `false`. `IsQuery()` treats any `$` key as a query, which is what carries a misspelled
+  operator to the refusal rather than to a field comparison — and deleting `Query.js`'s
+  duplicate copy of it closed **R3**.
+
+Six unit tests asserted the old silent behavior and were rewritten with the reason. Two of them
+  — `$and: []` defaulting to true, `$or: []` to false — had been written as intended features.
+
+***Then failing parity tests were added on purpose.*** Having reached 100%, the things which
+  are neither defects nor parity would have disappeared from view entirely. They are now
+  `Unimplemented Operator Tests.js`, `Unimplemented Projection Tests.js`, and a Known
+  Deviations block in `Update Rejection Tests` — all passing under MongoDB and failing under
+  `jsongin`, which is what makes them gaps rather than broken tests.
+  *(User decision: the failures should force attention in later sessions.)*
+
+#### 2026-08-16 — The sweep migrated into the Parity Tests
+
+The operator sweep was a throwaway harness. Everything it covered is now a parity test with a
+  stated expectation, and the harness is gone. Suite 294 → ***389*** comparisons; parity 95.9%
+  with 16 deliberate failures and `test bugs: 0`.
+  *(User decision: the Parity Tests are the authority of correctness and the evidence behind
+  the parity claim, and parity covers how jsongin ***fails*** as much as how it succeeds.)*
+
+Migrating was not a copy. The harness compared two engines' output with no expected value
+  written down, which would call both engines being wrong the same way a pass; a parity test
+  states what the answer should be. Duplication was avoided by inventorying the existing suites
+  first, which is what exposed the hole below.
+
+- ***Only 3 of the 22 expression operators appeared anywhere in the suite*** — `$cond`,
+  `$divide`, `$subtract`. The whole expression layer was effectively unmeasured. All 22 are now
+  covered by `Aggregate Tests/test-suite/Expression Operator Tests.js`, and all agree.
+- `Stage and Accumulator Tests.js` takes each stage option and each accumulator on its own,
+  where `Ad-Hoc Tests` had only exercised them in combination.
+- `$currentDate` had no parity coverage at all, and now has a block of its own.
+- `Projection Tests/test-suite/Computed Field Tests.js` covers computed fields, nested path
+  inclusion and exclusion, and the two projections MongoDB refuses.
+- `Query Tests/test-suite/Path Semantics Tests.js` covers the cases where the document's shape
+  decides what a path means — `'a.0'` as an index and as a field name.
+
+***One more defect fell out of it.*** `Project()` returned `null` for a projection combining
+  inclusion and exclusion, where MongoDB errors — the same defect class as the query and update
+  refusals, in the third dispatcher, and missed earlier because nothing measured it. It throws
+  now, and `null` is reserved for a parameter of the wrong type.
+
+#### 2026-08-16 — Query and projection findings fixed
+
+Eight of the ten parity findings are now closed. Parity 94.8% → ***98.8%***, and the suite grew
+  from 248 to 256 comparisons, all of the new ones verified against the server first.
+
+- **P2.** `$in` delegates each match value to `$ImplicitEq`, which is MongoDB's own definition
+  of it: a regexp in the list pattern matches, everything else is `$eq`. It had its own
+  comparison built on `array.includes()`, which is `===`. `$nin` is `!$in` and inherited the
+  fix. A query operator nested inside `$in` is refused rather than run, which stops
+  `$ImplicitEq` from quietly treating `{ $in: [ { $gt: 5 } ] }` as `$gt`.
+- **P3, P4.** `$options` is folded into its sibling `$regex` by `Query()`, since it is not an
+  operator and cannot see its siblings from inside one. The pattern is rebuilt per call, which
+  fixes the `g` flag statefulness and leaves the caller's `RegExp` untouched. `in.js:38`, which
+  the review paired with this, no longer constructs a pattern at all.
+- **P5.** An empty projection is an exclusion which excludes nothing. The `$project` stage now
+  refuses an empty specification itself, so the opposite MongoDB rule still holds there — the
+  review called for exactly that split.
+- **P7.** `$exists` coerces through `AsBoolean`, which already implemented MongoDB's rule.
+- **P10.** `$eq` compares objects and arrays with `CompareValues` instead of `JSON.stringify`.
+- **P8, and a bug the review only suspected.** Settled against the live server first, since the
+  review said not to decide it from memory. MongoDB answers ***false*** for
+  `{ a: [ [ { x: 1 } ] ] }` against `{ a: { $elemMatch: { x: 1 } } }`, where `jsongin` answered
+  true. `$elemMatch` now takes candidates without array expansion — a new optional
+  `ExpandArrays` parameter on `ResolveCandidates`, defaulting to the old behavior — and treats
+  an element which is an array as a value rather than a container. 24 cases were probed against
+  MongoDB 6.0.1 and 22 now agree; 8 of them became parity tests.
+- **S2.** The `ResolveCandidates` header no longer claims the module is unused and unregistered.
+
+Two unit tests asserted the old `$in` behavior (an object and an array never matching) and one
+  asserted `$exists` rejecting a non-boolean. All three were the defect written down as an
+  expectation, and were rewritten with the reason.
+
+Coverage 158 → 162 uncovered blocks. The new branches are the `$options` validation paths, and
+  they are unit tested; the rest of the rise is error plumbing.
 
 #### 2026-08-16 — P1 and the update operator group fixed
 
@@ -868,6 +1068,30 @@ npm run coverage                # where the untested code is
 npm run check-docs              # fences, links, orphans
 ```
 
-`parity-report` prints every gap by name, so it is the fastest way back into what is wrong.
+`parity-report` prints every gap by name, so it is the fastest way back into what is open.
   It needs a MongoDB server at `localhost:27017`; the project has one running locally, and it
   is version 6.0.1, which is the version the source comments cite.
+
+***Read this before reacting to the report.***
+
+`parity-report` ***exits non-zero, and that is the expected state.*** Sixteen parity tests are
+  written to fail on purpose. They hold open the work listed under **Open Decisions**, and each
+  of the three files carrying them says so in its header:
+
+- `Aggregate Tests/test-suite/Unimplemented Operator Tests.js` — 10 operators not implemented
+- `Projection Tests/test-suite/Unimplemented Projection Tests.js` — 3 not implemented
+- `Update Tests/test-suite/Update Rejection Tests.js` → `Known Deviations` — 3 deviations
+
+***Do not make one of them pass by deleting or weakening it.*** The only correct way to remove
+  one is to implement the operator, or to settle the decision, that it names. A session which
+  quietly deletes them has erased the reason they exist.
+
+The number which must always be zero is ***`test bugs`***: every parity test passes against the
+  live server, so a test failing under MongoDB is a broken test rather than a jsongin finding.
+  Check that first — `npm run parity-test-mongodb` should report 0 failing.
+
+***What to read, in order:*** *Current Status* for where things stand, *Open Decisions* for what
+  is waiting on a choice, then the *Log* for how it got here. The numbered sections above the
+  Work Notes are the review ***as written on 2026-08-15*** and are not maintained; every P, R,
+  and D finding in them is closed, so treat them as history rather than as a task list. The
+  *Finding Status* table is the current word on what remains.

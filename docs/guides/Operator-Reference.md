@@ -29,25 +29,25 @@ Read the [`Query()`](./jsongin/Query.md) document to understand how these operat
 | Comparison    |      Yes      | $gte           | Matches values that are greater than or equal to a specified value.                                                                           |
 | Comparison    |      Yes      | $lt            | Matches values that are less than a specified value.                                                                                          |
 | Comparison    |      Yes      | $lte           | Matches values that are less than or equal to a specified value.                                                                              |
-| Comparison    |      Yes      | $in            | Matches any of the values specified in an array.                                                                                              |
-| Comparison    |      Yes      | $nin           | Matches none of the values specified in an array.                                                                                             |
+| Comparison    |      Yes      | $in            | Matches any of the values specified in an array. Each value is matched the way the implicit form matches one, so a sub-document, an array, a date, and `null` all work, and a regexp in the list pattern matches. |
+| Comparison    |      Yes      | $nin           | Matches none of the values specified in an array. The exact negation of `$in`.                                                                |
 | Logical       |      Yes      | $and           | Joins query clauses with a logical AND returns all documents that match the conditions of both clauses.                                       |
 | Logical       |      Yes      | $or            | Joins query clauses with a logical OR returns all documents that match the conditions of either clause.                                       |
 | Logical       |      Yes      | $nor           | Joins query clauses with a logical NOR returns all documents that fail to match both clauses.                                                 |
-| Logical       |      Yes      | $not           | Inverts the effect of a query expression and returns documents that do not match the query expression.                                        |
-| Element       |      Yes      | $exists        | Matches documents that have the specified field.                                                                                              |
+| Logical       |      Yes      | $not           | Inverts the effect of a query expression and returns documents that do not match the query expression. Applies to a field, and is not a top level operator: use `$nor` to negate a whole query. |
+| Element       |      Yes      | $exists        | Matches documents that have the specified field. The value is coerced to a boolean, so only `0`, `null`, and `false` ask for a missing field. |
 | Element       |      Yes      | $type          | Selects documents if a field is of the specified type.                                                                                        |
 | Evaluation    |      Yes      | $expr          | Allows use of aggregation expressions within the query language.                                                                              |
 | Evaluation    |       -       | $jsonSchema    | Validate documents against the given JSON Schema.                                                                                             |
 | Evaluation    |       -       | $mod           | Performs a modulo operation on the value of a field and selects documents with a specified result.                                            |
-| Evaluation    |      Yes      | $regex         | Selects documents where values match a specified regular expression.                                                                          |
+| Evaluation    |      Yes      | $regex         | Selects documents where values match a specified regular expression. Accepts a sibling `$options` carrying the flags. See the note below.     |
 | Evaluation    |       -       | $text          | Performs text search.                                                                                                                         |
 | Evaluation    |       -       | $where         | Matches documents that satisfy a JavaScript expression.                                                                                       |
 | Geospatial    |       -       | $geoIntersects | Selects geometries that intersect with a GeoJSON geometry. The 2dsphere index supports $geoIntersects.                                        |
 | Geospatial    |       -       | $geoWithin     | Selects geometries within a bounding GeoJSON geometry. The 2dsphere and 2d indexes support $geoWithin.                                        |
 | Geospatial    |       -       | $near          | Returns geospatial objects in proximity to a point. Requires a geospatial index. The 2dsphere and 2d indexes support $near.                   |
 | Geospatial    |       -       | $nearSphere    | Returns geospatial objects in proximity to a point on a sphere. Requires a geospatial index. The 2dsphere and 2d indexes support $nearSphere. |
-| Array         |      Yes      | $elemMatch     | Selects documents if element in the array field matches all the specified $elemMatch conditions.                                              |
+| Array         |      Yes      | $elemMatch     | Selects documents if a single element of the array field matches all the specified $elemMatch conditions. See the note below.                 |
 | Array         |      Yes      | $size          | Selects documents if the array field is a specified size.                                                                                     |
 | Array         |      Yes      | $all           | Matches arrays that contain all elements specified in the query.                                                                              |
 | Bitwise       |       -       | $bitsAllClear  | Matches numeric or binary values in which a set of bit positions all have a value of 0.                                                       |
@@ -64,7 +64,82 @@ A `Date` has its own short type `d`, so the comparison operators handle dates di
   value, and `$type` selects them with either `'date'` or `9`.
 A date is never equal to the string or number which represents it: `$eq` against an ISO string
   or a timestamp is `false`.
+This holds ***inside*** a sub-document too, so `{ d: <date> }` does not equal
+  `{ d: '1970-01-01T00:00:00.000Z' }`.
 See [`ShortType()`](./jsongin/ShortType.md) for why dates are treated as their own type.
+
+
+***Note on the range operators*** :
+`$gt`, `$gte`, `$lt`, and `$lte` are ***bracketed by type***.
+A value only matches when it is the same type as the operand, however the BSON ordering ranks
+  the two types against each other:
+
+```js
+jsongin.Query( { v: 5 }, { v: { $gt: 'abc' } } );      // false, a number is not a string
+jsongin.Query( { v: 'abc' }, { v: { $gt: 1 } } );      // false
+jsongin.Query( { v: null }, { v: { $gt: 1 } } );       // false
+```
+
+Objects and arrays are inside the bracket too, ordered against their own type by
+  [`CompareValues`](./jsongin/CompareValues.md):
+
+```js
+jsongin.Query( { v: { a: 2 } }, { v: { $gt: { a: 1 } } } );  // true
+jsongin.Query( { v: [ 2 ] }, { v: { $gt: [ 1 ] } } );        // true
+jsongin.Query( { v: { a: 1 } }, { v: { $gt: [ 1 ] } } );     // false, still bracketed
+```
+
+Both behaviors match MongoDB, verified against MongoDB 6.0.1.
+
+
+***Note on `$regex` and `$options`*** :
+`$options` is not an operator of its own.
+It carries the flags for a `$regex` written beside it, and it is only accepted there:
+
+```js
+jsongin.Query( { a: 'FOO' }, { a: { $regex: 'foo', $options: 'i' } } );  // true
+jsongin.Query( { a: 'FOO' }, { a: { $regex: 'foo' } } );                 // false
+```
+
+`$options` given ***without*** a `$regex`, given as anything but a string, carrying a flag which
+  is not valid, or given beside a regexp which already carries its own flags, is refused and the
+  query returns `false`.
+MongoDB reports an error for each of those instead.
+
+A pattern is rebuilt for every document, so a regexp carrying the ***global flag*** is not
+  stateful across a `Filter()`.
+The caller's own `RegExp` object is never written to.
+
+
+***Note on `$elemMatch`*** :
+Every condition must be satisfied by the ***same*** element:
+
+```js
+jsongin.Query( { v: [ 1, 4, 9 ] }, { v: { $elemMatch: { $gt: 2, $lt: 5 } } } );  // true
+jsongin.Query( { v: [ 1, 9 ] }, { v: { $elemMatch: { $gt: 2, $lt: 5 } } } );     // false
+```
+
+An element which is itself an ***array*** is a value to test, not a second array to search.
+A field condition does not look inside it, while a nested `$elemMatch` does, because that is the
+  query which asks for it:
+
+```js
+jsongin.Query( { v: [ [ { x: 1 } ] ] }, { v: { $elemMatch: { x: 1 } } } );                   // false
+jsongin.Query( { v: [ [ { x: 1 } ] ] }, { v: { $elemMatch: { $elemMatch: { x: 1 } } } } );   // true
+```
+
+An ***empty*** condition matches an element which can hold fields, meaning a document or an
+  array, and matches nothing else:
+
+```js
+jsongin.Query( { v: [ { x: 1 } ] }, { v: { $elemMatch: {} } } );  // true
+jsongin.Query( { v: [ 1 ] }, { v: { $elemMatch: {} } } );         // false
+```
+
+All of the above was verified against MongoDB 6.0.1.
+***One known deviation remains***: a comparison operator applied to an element which is itself an
+  array still looks inside that element, so
+  `{ v: { $elemMatch: { $gt: 1 } } }` matches `{ v: [ [ 1, 2 ] ] }` here and does not in MongoDB.
 
 
 ## jsongin Extended Query Operators
@@ -437,7 +512,7 @@ Use the `jsongin.Update( Document, Updates )` function to apply updates to a doc
 
 | Category | Supported | Operator         | Description                                                                                                                                   |
 |----------|:---------:|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| Field    |    Yes    | $set             | Sets the value of a field in a document.                                                                                                      |
+| Field    |    Yes    | $set             | Sets the value of a field in a document. A path which is not there is created as a document, and a gap written past the end of an array is filled with `null`. See [`SetValue`](./jsongin/SetValue.md). |
 | Field    |    Yes    | $unset           | Removes the specified field from a document. An array element is set to `null` rather than being removed, which keeps the array's length.     |
 | Field    |    Yes    | $rename          | Renames a field. A source field which is not present is left alone, and the target field is not created.                                      |
 | Field    |    Yes    | $inc             | Increments the value of the field by the specified amount. A field which is not present is created. See the note below.                       |
@@ -446,9 +521,9 @@ Use the `jsongin.Update( Document, Updates )` function to apply updates to a doc
 | Field    |    Yes    | $mul             | Multiplies the value of the field by the specified amount. A field which is not present is set to `0`. See the note below.                    |
 | Field    |    Yes    | $currentDate     | Sets the value of a field to the current date, as a `Date` or as a numeric timestamp. Takes `true` or `{ $type: '...' }`, never a bare string. |
 | Field    |     -     | $setOnInsert     | Sets the value of a field if an update results in an insert of a document. Has no effect on update operations that modify existing documents. |
-| Array    |    Yes    | $addToSet        | Adds elements to an array only if they do not already exist in the set. Supports the `$each` modifier.                                        |
+| Array    |    Yes    | $addToSet        | Adds elements to an array only if they do not already exist in the set. Supports the `$each` modifier. Creates the array when the field is not present. |
 | Array    |    Yes    | $pop             | Removes the first or last item of an array.                                                                                                   |
-| Array    |    Yes    | $push            | Adds items to an array. Supports the `$each`, `$position`, `$sort`, and `$slice` modifiers. Creates the array when the field is not present.   |
+| Array    |    Yes    | $push            | Adds items to an array. Supports the `$each`, `$position`, `$sort`, and `$slice` modifiers, which require a `$each` beside them to be read as modifiers at all. Creates the array when the field is not present. |
 | Array    |    Yes    | $pullAll         | Removes all matching values from an array.                                                                                                    |
 | Array    |     -     | $pull            | Removes all array elements that match a specified query.                                                                                      |
 | Array    |     -     | $                | Acts as a placeholder to update the first element that matches the query condition.                                                           |

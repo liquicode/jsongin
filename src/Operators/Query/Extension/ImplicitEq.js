@@ -24,7 +24,7 @@ module.exports = function ( jsongin )
 		// mean. Equality already means "the field is this value, or is an array holding it",
 		// at any depth, so there is nothing left here to decide except which operator the
 		// match value calls for.
-		Query: function ( Document, MatchValue, Path = '' )
+		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
 		{
 			try
 			{
@@ -46,11 +46,11 @@ module.exports = function ( jsongin )
 				// same regexp, which is both of the things MongoDB matches here.
 				if ( match_type === 'r' )
 				{
-					return jsongin.QueryOperators.$regex.Query( Document, MatchValue, Path );
+					return jsongin.QueryOperators.$regex.Query( Document, MatchValue, Path, ExpandArrays );
 				}
 
 				// Everything else is ordinary equality.
-				return jsongin.QueryOperators.$eq.Query( Document, MatchValue, Path );
+				return jsongin.QueryOperators.$eq.Query( Document, MatchValue, Path, ExpandArrays );
 			}
 			catch ( error )
 			{

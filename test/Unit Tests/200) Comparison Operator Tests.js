@@ -640,14 +640,22 @@ describe( '200) Comparison Operator Tests', () =>
 			assert.ok( jsongin.QueryOperators.$gte.Query( '', null ) === false );
 		} );
 
-		it( 'should not compare objects', () => 
+		it( 'should compare objects', () =>
 		{
-			assert.ok( jsongin.QueryOperators.$gte.Query( { a: 1, b: 2 }, { a: 1, b: 2 } ) === false );
+			// Objects and arrays are inside the type bracket, ordered against their own type.
+			// The range operators used to refuse both outright, because their ValueTypes did
+			// not admit either and the comparison used the raw > operator, which cannot order
+			// them. Verified against MongoDB 6.0.1.
+			assert.ok( jsongin.QueryOperators.$gte.Query( { a: 1, b: 2 }, { a: 1, b: 2 } ) === true );
+			assert.ok( jsongin.QueryOperators.$gte.Query( { a: 2 }, { a: 1 } ) === true );
+			assert.ok( jsongin.QueryOperators.$gte.Query( { a: 1 }, { a: 2 } ) === false );
 		} );
 
-		it( 'should not compare arrays', () => 
+		it( 'should compare arrays', () =>
 		{
-			assert.ok( jsongin.QueryOperators.$gte.Query( [ 1, 2, 3 ], [ 1, 2, 3 ] ) === false );
+			assert.ok( jsongin.QueryOperators.$gte.Query( [ 1, 2, 3 ], [ 1, 2, 3 ] ) === true );
+			assert.ok( jsongin.QueryOperators.$gte.Query( [ 2 ], [ 1 ] ) === true );
+			assert.ok( jsongin.QueryOperators.$gte.Query( [ 1 ], [ 2 ] ) === false );
 		} );
 
 		it( 'should not compare functions', () => 
@@ -756,14 +764,18 @@ describe( '200) Comparison Operator Tests', () =>
 			assert.ok( jsongin.QueryOperators.$gt.Query( '', null ) === false );
 		} );
 
-		it( 'should not compare objects', () => 
+		it( 'should compare objects', () =>
 		{
+			// Equal is not greater, so the first of these is false for a different reason than
+			// it used to be: the comparison happens now, and reports equality.
 			assert.ok( jsongin.QueryOperators.$gt.Query( { a: 1, b: 2 }, { a: 1, b: 2 } ) === false );
+			assert.ok( jsongin.QueryOperators.$gt.Query( { a: 2 }, { a: 1 } ) === true );
 		} );
 
-		it( 'should not compare arrays', () => 
+		it( 'should compare arrays', () =>
 		{
 			assert.ok( jsongin.QueryOperators.$gt.Query( [ 1, 2, 3 ], [ 1, 2, 3 ] ) === false );
+			assert.ok( jsongin.QueryOperators.$gt.Query( [ 2 ], [ 1 ] ) === true );
 		} );
 
 		it( 'should not compare functions', () => 
@@ -879,14 +891,18 @@ describe( '200) Comparison Operator Tests', () =>
 			assert.ok( jsongin.QueryOperators.$lte.Query( '', null ) === false );
 		} );
 
-		it( 'should not compare objects', () => 
+		it( 'should compare objects', () =>
 		{
-			assert.ok( jsongin.QueryOperators.$lte.Query( { a: 1, b: 2 }, { a: 1, b: 2 } ) === false );
+			assert.ok( jsongin.QueryOperators.$lte.Query( { a: 1, b: 2 }, { a: 1, b: 2 } ) === true );
+			assert.ok( jsongin.QueryOperators.$lte.Query( { a: 1 }, { a: 2 } ) === true );
+			assert.ok( jsongin.QueryOperators.$lte.Query( { a: 2 }, { a: 1 } ) === false );
 		} );
 
-		it( 'should not compare arrays', () => 
+		it( 'should compare arrays', () =>
 		{
-			assert.ok( jsongin.QueryOperators.$lte.Query( [ 1, 2, 3 ], [ 1, 2, 3 ] ) === false );
+			assert.ok( jsongin.QueryOperators.$lte.Query( [ 1, 2, 3 ], [ 1, 2, 3 ] ) === true );
+			assert.ok( jsongin.QueryOperators.$lte.Query( [ 1 ], [ 2 ] ) === true );
+			assert.ok( jsongin.QueryOperators.$lte.Query( [ 2 ], [ 1 ] ) === false );
 		} );
 
 		it( 'should not compare functions', () => 
@@ -994,14 +1010,16 @@ describe( '200) Comparison Operator Tests', () =>
 			assert.ok( jsongin.QueryOperators.$lt.Query( '', null ) === false );
 		} );
 
-		it( 'should not compare objects', () => 
+		it( 'should compare objects', () =>
 		{
 			assert.ok( jsongin.QueryOperators.$lt.Query( { a: 1, b: 2 }, { a: 1, b: 2 } ) === false );
+			assert.ok( jsongin.QueryOperators.$lt.Query( { a: 1 }, { a: 2 } ) === true );
 		} );
 
-		it( 'should not compare arrays', () => 
+		it( 'should compare arrays', () =>
 		{
 			assert.ok( jsongin.QueryOperators.$lt.Query( [ 1, 2, 3 ], [ 1, 2, 3 ] ) === false );
+			assert.ok( jsongin.QueryOperators.$lt.Query( [ 1 ], [ 2 ] ) === true );
 		} );
 
 		it( 'should not compare functions', () => 
@@ -1117,30 +1135,45 @@ describe( '200) Comparison Operator Tests', () =>
 			assert.ok( jsongin.QueryOperators.$in.Query( '', [ null ] ) === false );
 		} );
 
-		it( 'should not compare objects', () => 
+		/*
+			$in delegates each match value to the implicit form, so it agrees with $eq on what
+			equality means. These three used to assert the opposite, back when $in carried its
+			own comparison built on array.includes(), which is ===.
+			The object and array cases are MongoDB behaviors and are also in the parity suite;
+			they are kept here because these call the operator directly rather than through
+			Query(). Verified against MongoDB 6.0.1.
+		*/
+
+		it( 'should compare objects', () =>
 		{
-			assert.ok( jsongin.QueryOperators.$in.Query( { a: 1, b: 2 }, [ { a: 1, b: 2 } ] ) === false );
+			assert.ok( jsongin.QueryOperators.$in.Query( { a: 1, b: 2 }, [ { a: 1, b: 2 } ] ) === true );
+			assert.ok( jsongin.QueryOperators.$in.Query( { a: 1, b: 2 }, [ { a: 1, b: 9 } ] ) === false );
 		} );
 
-		it( 'should not compare arrays', () => 
+		it( 'should compare arrays', () =>
 		{
-			assert.ok( jsongin.QueryOperators.$in.Query( [ [ 1, 2, 3 ] ], [ [ 1, 2, 3 ] ] ) === false );
+			// The field holds an array of arrays, so the candidate list offers the whole field
+			// and each of its elements, and the match value equals the element.
+			assert.ok( jsongin.QueryOperators.$in.Query( [ [ 1, 2, 3 ] ], [ [ 1, 2, 3 ] ] ) === true );
+			assert.ok( jsongin.QueryOperators.$in.Query( [ [ 1, 2, 3 ] ], [ [ 1, 2 ] ] ) === false );
 		} );
 
-		it( 'should not compare functions', () => 
+		it( 'should not compare functions', () =>
 		{
 			assert.ok( jsongin.QueryOperators.$in.Query( function () { }, [ function () { } ] ) === false );
 		} );
 
-		it( 'should not compare undefined values', () => 
+		it( 'should compare undefined values', () =>
 		{
 			assert.ok( jsongin.QueryOperators.$in.Query( undefined, [ undefined ] ) === true );
 		} );
 
-		it( 'should not compare null and undefined values', () => 
+		it( 'should treat null and undefined as equivalent', () =>
 		{
-			assert.ok( jsongin.QueryOperators.$in.Query( null, [ undefined ] ) === false );
-			assert.ok( jsongin.QueryOperators.$in.Query( undefined, [ null ] ) === false );
+			// BSON has no undefined to tell the two apart, so $eq treats them as equivalent and
+			// $in now says the same. The two operators used to disagree with each other.
+			assert.ok( jsongin.QueryOperators.$in.Query( null, [ undefined ] ) === true );
+			assert.ok( jsongin.QueryOperators.$in.Query( undefined, [ null ] ) === true );
 		} );
 
 	} );
@@ -1220,6 +1253,66 @@ describe( '200) Comparison Operator Tests', () =>
 		{
 			assert.strictEqual( jsongin.Query( { a: [ 'hi', 'hello' ] }, { a: { $regex: /ell/ } } ), true );
 			assert.strictEqual( jsongin.Query( { a: [ { x: 'hello' } ] }, { 'a.x': { $regex: /ell/ } } ), true );
+		} );
+
+		/*
+			$options carries the flags for a sibling $regex. It is not an operator of its own,
+			so Query() consumes the pair together rather than dispatching it. That it works at
+			all is a MongoDB behavior and is in the parity suite; the refusals below are how
+			jsongin reports a pair it cannot use, which MongoDB reports as an error instead.
+		*/
+
+		it( 'should apply the flags given by $options', () =>
+		{
+			assert.strictEqual( jsongin.Query( { a: 'FOO' }, { a: { $regex: 'foo', $options: 'i' } } ), true );
+			assert.strictEqual( jsongin.Query( { a: 'FOO' }, { a: { $regex: 'foo' } } ), false );
+			assert.strictEqual( jsongin.Query( { a: 'FOO' }, { a: { $regex: /foo/, $options: 'i' } } ), true );
+			assert.strictEqual( jsongin.Query( { a: 'a\nb' }, { a: { $regex: '^b', $options: 'm' } } ), true );
+		} );
+
+		it( 'should refuse $options without a $regex beside it', () =>
+		{
+			assert.throws(
+				function () { jsongin.Query( { a: 'FOO' }, { a: { $options: 'i' } } ); },
+				/\$options needs a \$regex/ );
+		} );
+
+		it( 'should refuse $options which is not a string', () =>
+		{
+			assert.throws(
+				function () { jsongin.Query( { a: 'FOO' }, { a: { $regex: 'foo', $options: 1 } } ); },
+				/\$options must be a string/ );
+		} );
+
+		it( 'should refuse $options beside a regexp which carries its own flags', () =>
+		{
+			// MongoDB refuses this rather than deciding which of the two wins.
+			assert.throws(
+				function () { jsongin.Query( { a: 'FOO' }, { a: { $regex: /foo/i, $options: 'i' } } ); },
+				/carries its own flags/ );
+		} );
+
+		it( 'should refuse a flag which is not valid', () =>
+		{
+			assert.throws(
+				function () { jsongin.Query( { a: 'FOO' }, { a: { $regex: 'foo', $options: 'q' } } ); },
+				/is not valid/ );
+		} );
+
+		it( 'should test each document independently of the last', () =>
+		{
+			// RegExp.test() advances lastIndex on a pattern carrying the g flag, so the same
+			// object reused across documents used to match every other one.
+			let documents = [ { a: 'xx' }, { a: 'xx' }, { a: 'xx' }, { a: 'xx' } ];
+			assert.strictEqual( jsongin.Filter( documents, { a: /x/g } ).length, 4 );
+
+			let pattern = /x/g;
+			assert.strictEqual( jsongin.Query( { a: 'xx' }, { a: pattern } ), true );
+			assert.strictEqual( jsongin.Query( { a: 'xx' }, { a: pattern } ), true );
+			assert.strictEqual( jsongin.Query( { a: 'xx' }, { a: pattern } ), true );
+
+			// The caller's own object is left alone rather than being rewound in place.
+			assert.strictEqual( pattern.lastIndex, 0 );
 		} );
 
 		it( 'should match a regexp field only when it is the same regexp', () =>
@@ -1469,9 +1562,18 @@ describe( '200) Comparison Operator Tests', () =>
 			assert.strictEqual( jsongin.Query( { a: undefined }, { a: { $exists: false } } ), false );
 		} );
 
-		it( 'should reject a non boolean match value', () =>
+		it( 'should coerce a non boolean match value rather than rejecting it', () =>
 		{
-			assert.strictEqual( jsongin.QueryOperators.$exists.Query( { a: 1 }, 'yes', 'a' ), false );
+			// MongoDB coerces the match value, so anything but zero, null, and false asks the
+			// same question as true. This used to require a boolean and answer false for every
+			// other value, which made { $exists: 0 } the opposite of the right answer.
+			// The coercion is AsBoolean's: only a zero number, null, and undefined are false.
+			// Verified against MongoDB 6.0.1.
+			assert.strictEqual( jsongin.QueryOperators.$exists.Query( { a: 1 }, 'yes', 'a' ), true );
+			assert.strictEqual( jsongin.QueryOperators.$exists.Query( { a: 1 }, 1, 'a' ), true );
+			assert.strictEqual( jsongin.QueryOperators.$exists.Query( { a: 1 }, 0, 'a' ), false );
+			assert.strictEqual( jsongin.QueryOperators.$exists.Query( { b: 1 }, 0, 'a' ), true );
+			assert.strictEqual( jsongin.QueryOperators.$exists.Query( { b: 1 }, null, 'a' ), true );
 		} );
 
 	} );

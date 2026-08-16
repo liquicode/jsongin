@@ -73,6 +73,46 @@ module.exports = function ( Driver )
 				assert.deepStrictEqual( document.a, [ 1, 99, 3 ] );
 			} );
 
+			it( 'should fill the gap with nulls when it writes past the end of an array', async () =>
+			{
+				let document = await applied( { a: [ 1 ] }, { $set: { 'a.3': 9 } } );
+				assert.deepStrictEqual( document.a, [ 1, null, null, 9 ] );
+			} );
+
+			it( 'should fill the gap ahead of a document it creates in an array', async () =>
+			{
+				let document = await applied( { a: [ 1 ] }, { $set: { 'a.2.b': 9 } } );
+				assert.deepStrictEqual( document.a, [ 1, null, { b: 9 } ] );
+			} );
+
+			/*
+				A path element which is not there becomes a document, whatever the key looks
+				like. Only the array update operators ever create an array, so a numeric key
+				here is a field name rather than an index.
+			*/
+
+			it( 'should create a document for a numeric key rather than an array', async () =>
+			{
+				let document = await applied( { other: 1 }, { $set: { 'a.0': 9 } } );
+				assert.strictEqual( Array.isArray( document.a ), false );
+				assert.deepStrictEqual( document.a, { 0: 9 } );
+			} );
+
+			it( 'should create a document for a numeric key at depth', async () =>
+			{
+				let document = await applied( { other: 1 }, { $set: { 'a.1.b': 9 } } );
+				assert.strictEqual( Array.isArray( document.a ), false );
+				assert.deepStrictEqual( document.a, { 1: { b: 9 } } );
+			} );
+
+			it( 'should index an array which is already there', async () =>
+			{
+				// The rule above applies to a path which is not there. An array which exists is
+				// still indexed by a numeric key.
+				let document = await applied( { a: [] }, { $set: { 'a.0': 9 } } );
+				assert.deepStrictEqual( document.a, [ 9 ] );
+			} );
+
 		} );
 
 
@@ -281,6 +321,14 @@ module.exports = function ( Driver )
 				assert.deepStrictEqual( document.a, [ 1, 2, 3 ] );
 			} );
 
+			it( 'should append a modifier written without $each as a value', async () =>
+			{
+				// $each is what makes a document a modifier document, so without one there is
+				// nothing to read as a modifier and the object is ordinary data.
+				let document = await applied( { a: [ 1 ] }, { $push: { a: { $slice: 1 } } } );
+				assert.deepStrictEqual( document.a, [ 1, { $slice: 1 } ] );
+			} );
+
 		} );
 
 
@@ -303,6 +351,18 @@ module.exports = function ( Driver )
 			it( 'should add each value with $each', async () =>
 			{
 				let document = await applied( { a: [ 1 ] }, { $addToSet: { a: { $each: [ 1, 2 ] } } } );
+				assert.deepStrictEqual( document.a, [ 1, 2 ] );
+			} );
+
+			it( 'should create the array when the field is not there', async () =>
+			{
+				let document = await applied( { other: 1 }, { $addToSet: { a: 1 } } );
+				assert.deepStrictEqual( document.a, [ 1 ] );
+			} );
+
+			it( 'should create the array for $each when the field is not there', async () =>
+			{
+				let document = await applied( { other: 1 }, { $addToSet: { a: { $each: [ 1, 2 ] } } } );
 				assert.deepStrictEqual( document.a, [ 1, 2 ] );
 			} );
 
@@ -342,6 +402,120 @@ module.exports = function ( Driver )
 			{
 				let document = await applied( { a: [ 1, 2 ] }, { $pullAll: { a: [ 9 ] } } );
 				assert.deepStrictEqual( document.a, [ 1, 2 ] );
+			} );
+
+			it( 'should remove matching documents', async () =>
+			{
+				let document = await applied( { a: [ { x: 1 }, { x: 2 } ] }, { $pullAll: { a: [ { x: 1 } ] } } );
+				assert.deepStrictEqual( document.a, [ { x: 2 } ] );
+			} );
+
+			it( 'should leave a field which is not there alone', async () =>
+			{
+				let document = await applied( { other: 1 }, { $pullAll: { a: [ 1 ] } } );
+				assert.ok( !( 'a' in document ) );
+			} );
+
+		} );
+
+
+		//---------------------------------------------------------------------
+		describe( '$currentDate Tests', () =>
+		{
+
+			it( 'should store a date for true', async () =>
+			{
+				let document = await applied( { d: 0 }, { $currentDate: { d: true } } );
+				assert.ok( document.d instanceof Date );
+			} );
+
+			it( 'should store a date for the date type', async () =>
+			{
+				let document = await applied( { d: 0 }, { $currentDate: { d: { $type: 'date' } } } );
+				assert.ok( document.d instanceof Date );
+			} );
+
+			it( 'should create the field when it is not there', async () =>
+			{
+				let document = await applied( { other: 1 }, { $currentDate: { d: true } } );
+				assert.ok( document.d instanceof Date );
+			} );
+
+			it( 'should give each field its own date', async () =>
+			{
+				let document = await applied( { other: 1 }, { $currentDate: { a: true, b: true } } );
+				assert.ok( document.a instanceof Date );
+				assert.ok( document.b instanceof Date );
+			} );
+
+		} );
+
+
+		//---------------------------------------------------------------------
+		describe( 'Operator Edge Cases', () =>
+		{
+
+			it( 'should apply $inc to a fractional value', async () =>
+			{
+				let document = await applied( { a: 1.5 }, { $inc: { a: 0.25 } } );
+				assert.strictEqual( document.a, 1.75 );
+			} );
+
+			it( 'should rename from a nested path', async () =>
+			{
+				let document = await applied( { a: { b: 1 } }, { $rename: { 'a.b': 'c' } } );
+				assert.strictEqual( document.c, 1 );
+				assert.deepStrictEqual( document.a, {} );
+			} );
+
+			it( 'should accept an empty set of fields', async () =>
+			{
+				let document = await applied( { a: 1 }, { $set: {} } );
+				assert.strictEqual( document.a, 1 );
+			} );
+
+			it( 'should pop nothing from an empty array', async () =>
+			{
+				let document = await applied( { a: [] }, { $pop: { a: 1 } } );
+				assert.deepStrictEqual( document.a, [] );
+			} );
+
+			it( 'should leave a field which is not there alone for $pop', async () =>
+			{
+				let document = await applied( { other: 1 }, { $pop: { a: 1 } } );
+				assert.ok( !( 'a' in document ) );
+			} );
+
+			it( 'should not add a document which is already in the set', async () =>
+			{
+				let document = await applied( { a: [ { x: 1 } ] }, { $addToSet: { a: { x: 1 } } } );
+				assert.deepStrictEqual( document.a, [ { x: 1 } ] );
+			} );
+
+			it( 'should not add an array which is already in the set', async () =>
+			{
+				let document = await applied( { a: [ [ 1 ] ] }, { $addToSet: { a: [ 1 ] } } );
+				assert.deepStrictEqual( document.a, [ [ 1 ] ] );
+			} );
+
+			it( 'should keep the last elements for a negative $slice', async () =>
+			{
+				let document = await applied( { a: [ 1 ] }, { $push: { a: { $each: [ 2, 3 ], $slice: -2 } } } );
+				assert.deepStrictEqual( document.a, [ 2, 3 ] );
+			} );
+
+			it( 'should order documents with a $sort specification', async () =>
+			{
+				let document = await applied(
+					{ a: [ { n: 2 }, { n: 1 } ] },
+					{ $push: { a: { $each: [ { n: 3 } ], $sort: { n: 1 } } } } );
+				assert.deepStrictEqual( document.a, [ { n: 1 }, { n: 2 }, { n: 3 } ] );
+			} );
+
+			it( 'should append at the end for a $position past the end', async () =>
+			{
+				let document = await applied( { a: [ 1, 2 ] }, { $push: { a: { $each: [ 3 ], $position: 9 } } } );
+				assert.deepStrictEqual( document.a, [ 1, 2, 3 ] );
 			} );
 
 		} );

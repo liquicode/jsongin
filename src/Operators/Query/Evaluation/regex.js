@@ -13,7 +13,7 @@ module.exports = function ( jsongin )
 		ValueTypes: 'sr',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '' )
+		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
 		{
 			try
 			{
@@ -25,8 +25,15 @@ module.exports = function ( jsongin )
 					return false;
 				}
 
-				let pattern = MatchValue;
-				if ( match_type === 's' ) { pattern = new RegExp( pattern ); }
+				// The pattern is rebuilt on every call rather than the caller's RegExp being
+				// used directly. RegExp.test() advances lastIndex on a pattern carrying the g
+				// flag, so one reused object matched every other document:
+				// Filter( documents, { a: /x/g } ) returned 3 of 4 identical documents, and
+				// whether a document matched depended on how many came before it.
+				// new RegExp() compiles a string and copies the source and flags of a regexp,
+				// so the one call covers both forms. Rebuilding also leaves the caller's own
+				// object untouched, which resetting its lastIndex would not.
+				let pattern = new RegExp( MatchValue );
 
 				// The pattern is applied to each value the path can mean.
 				//
@@ -35,7 +42,7 @@ module.exports = function ( jsongin )
 				// holding the regexp /MongoDB/i was therefore tested as the text '/MongoDB/i'
 				// and matched the pattern /MongoDB/, which MongoDB does not do. A path
 				// crossing an array was tested as the text of the gathered array.
-				let candidates = jsongin.ResolveCandidates( Document, Path );
+				let candidates = jsongin.ResolveCandidates( Document, Path, ExpandArrays );
 				for ( let index = 0; index < candidates.length; index++ )
 				{
 					let candidate = candidates[ index ];

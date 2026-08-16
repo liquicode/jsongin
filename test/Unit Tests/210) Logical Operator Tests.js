@@ -15,9 +15,14 @@ describe( '210) Logical Operator Tests', () =>
 	describe( '$and Tests', () =>
 	{
 
-		it( 'should default to true when no conditions are specified', () => 
+		it( 'should refuse an empty list of conditions', () =>
 		{
-			assert.ok( jsongin.QueryOperators.$and.Query( { a: 1 }, [] ) );
+			// This used to default to true, which is a condition every document satisfies.
+			// MongoDB refuses it instead, and a query which cannot mean anything is refused
+			// rather than answered. Verified against MongoDB 6.0.1.
+			assert.throws(
+				function () { jsongin.QueryOperators.$and.Query( { a: 1 }, [] ); },
+				/non-empty array/ );
 		} );
 
 		it( 'should be true when all of its conditions are true', () => 
@@ -59,9 +64,11 @@ describe( '210) Logical Operator Tests', () =>
 	describe( '$or Tests', () =>
 	{
 
-		it( 'should default to false when no conditions are specified', () => 
+		it( 'should refuse an empty list of conditions', () =>
 		{
-			assert.ok( jsongin.QueryOperators.$or.Query( { a: 1 }, [] ) === false );
+			assert.throws(
+				function () { jsongin.QueryOperators.$or.Query( { a: 1 }, [] ); },
+				/non-empty array/ );
 		} );
 
 		it( 'should be true when one of its conditions are true', () => 
@@ -114,9 +121,11 @@ describe( '210) Logical Operator Tests', () =>
 	describe( '$nor Tests', () =>
 	{
 
-		it( 'should default to true when no conditions are specified', () => 
+		it( 'should refuse an empty list of conditions', () =>
 		{
-			assert.ok( jsongin.QueryOperators.$nor.Query( { a: 1 }, [] ) );
+			assert.throws(
+				function () { jsongin.QueryOperators.$nor.Query( { a: 1 }, [] ); },
+				/non-empty array/ );
 		} );
 
 		it( 'should be true when none of its conditions are true', () => 
@@ -207,7 +216,9 @@ describe( '210) Logical Operator Tests', () =>
 		{
 			// Query rejects undefined for every operator, so that a missing variable in a
 			// query is not silently ignored. $noop is not an exception.
-			assert.ok( jsongin.Query( { a: 1 }, { $noop: undefined } ) === false );
+			assert.throws(
+				function () { jsongin.Query( { a: 1 }, { $noop: undefined } ); },
+				/cannot be set to undefined/ );
 		} );
 
 		it( 'should be callable directly', () =>

@@ -11,19 +11,19 @@ module.exports = function ( jsongin )
 		Engine: jsongin,
 		OperatorType: 'Comparison',
 		TopLevel: false,
-		ValueTypes: 'bnsdlu',
+		ValueTypes: 'bnsdluoa',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '' )
+		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
 		{
 			try
 			{
 				// See _range.js for the candidate handling and the type bracketing.
-				// The trailing true is what makes a null or missing field satisfy
-				// { $gte: null }, which $gt does not.
+				// The true is what makes a null or missing field satisfy { $gte: null },
+				// which $gt does not.
 				return range.Query( Document, MatchValue, Path, '$gte',
-					function ( ActualValue, CompareValue ) { return ( ActualValue >= CompareValue ); },
-					true );
+					function ( Comparison ) { return ( Comparison >= 0 ); },
+					true, ExpandArrays );
 			}
 			catch ( error )
 			{

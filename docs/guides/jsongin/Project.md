@@ -31,15 +31,31 @@ Field names may be document paths in dot notation, both when reading from `Docum
 ## Inclusion and Exclusion
 
 A projection is either an inclusion projection or an exclusion projection, never both.
-Combining them returns `null` and writes to the OpLog, because there is no sensible meaning
-  for it. MongoDB rejects the same combination with an error.
+Combining them ***throws***, because there is no sensible meaning for it, and MongoDB rejects
+  the same combination with an error.
+This used to return `null`, which is a value a caller carries on with.
+A projection which cannot mean anything is now refused the same way a malformed query or update
+  document is; `null` is reserved for a `Document` or `Projection` parameter of the wrong type.
 
 The `_id` field is the one exception. It is included by default and can be suppressed with
   `_id: 0` alongside either kind of projection.
 
 A projection which contains a computed field is an ***inclusion*** projection.
 Only `_id`, the included fields, and the computed fields appear in the output.
-Using an expression within an exclusion projection returns `null`.
+Using an expression within an exclusion projection ***throws***, because a computed field is an
+  inclusion and that is the combination above in disguise.
+
+An ***empty*** projection names nothing to exclude, so it is an exclusion projection and returns
+  the whole document:
+
+```js
+jsongin.Project( { a: 1, b: 2 }, {} );  // { a: 1, b: 2 }
+```
+
+This matches MongoDB, verified against MongoDB 6.0.1, and it is the same rule which makes
+  `{ _id: 0 }` return every field but `_id`.
+Note that the [`$project`](../Operator-Reference.md) aggregation stage has the ***opposite***
+  rule and refuses an empty specification, which MongoDB does too.
 
 
 ## Paths Which Cross an Array
@@ -134,6 +150,7 @@ jsongin.Project( document, { alias: '$nothere' } )
 Note that an invalid expression throws, rather than returning `null`.
 An unrecognized operator or a bad argument count is an authoring mistake, and `Evaluate()`
   makes it visible instead of quietly producing an empty result.
+An invalid ***projection*** now throws for the same reason, so the two agree.
 
 
 ## Notes

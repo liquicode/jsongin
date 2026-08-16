@@ -21,10 +21,10 @@
 	The rules below were measured against MongoDB 6.0.1 rather than assumed. See
 	.plans/2026-08-14/parity-explicit-operators-through-arrays.md for the sweep.
 
-	NOT YET USED. This lands ahead of the operators which will use it, so that the mechanism
-	can be proven on its own before any operator changes behavior. It is deliberately not
-	registered on the engine: it becomes public API, with a documentation page, when the
-	operators move onto it.
+	This landed ahead of the operators which use it, so that the mechanism could be proven on
+	its own before any operator changed behavior. That migration has happened: it is registered
+	on the engine, documented at docs/guides/jsongin/ResolveCandidates.md, and called by $eq,
+	$gt/$gte/$lt/$lte, $regex, $size, $exists, $type, $all, and $elemMatch.
 */
 
 module.exports = function ( jsongin )
@@ -35,7 +35,14 @@ module.exports = function ( jsongin )
 	// An empty array means the path resolves to nothing, which is how a missing field is
 	// reported. This is not the same as a path which resolves to undefined, which yields one
 	// candidate holding undefined.
-	function ResolveCandidates( Document, Path )
+	//
+	// ExpandArrays is what makes an array field also offer each of its elements, which is the
+	// rule ordinary equality follows. Pass false to get only the values the path lands on.
+	// $elemMatch is the caller which needs that: it asks about the elements of the array
+	// itself, so an element which is another array is a value it tests, not a second array to
+	// look inside. Verified against MongoDB 6.0.1, where { a: { $elemMatch: { x: 1 } } } does
+	// not match { a: [ [ { x: 1 } ] ] }.
+	function ResolveCandidates( Document, Path, ExpandArrays = true )
 	{
 		try
 		{
@@ -59,12 +66,12 @@ module.exports = function ( jsongin )
 				// than being returned directly, so that an array document offers its elements
 				// the same way an array field does. An operator called with a bare value
 				// rather than a path relies on this.
-				resolve_node( Document, [], 0, candidates );
+				resolve_node( Document, [], 0, candidates, ExpandArrays );
 				return candidates;
 			}
 
 			let path_elements = jsongin.SplitPath( Path );
-			resolve_node( Document, path_elements, 0, candidates );
+			resolve_node( Document, path_elements, 0, candidates, ExpandArrays );
 			return candidates;
 		}
 		catch ( error )
@@ -77,7 +84,7 @@ module.exports = function ( jsongin )
 
 	//---------------------------------------------------------------------
 	// Walks one path element and appends whatever it finds to Candidates.
-	function resolve_node( Node, PathElements, Index, Candidates )
+	function resolve_node( Node, PathElements, Index, Candidates, ExpandArrays )
 	{
 		// The path is used up, so this node is what the path means.
 		if ( Index >= PathElements.length )
@@ -90,6 +97,7 @@ module.exports = function ( jsongin )
 			// Exactly one level deep: an element which is itself an array is a candidate as
 			// the array it is, and is not expanded again. Verified against MongoDB 6.0.1,
 			// where { tags: 'red' } does not match { tags: [ [ 'red' ] ] }.
+			if ( ExpandArrays === false ) { return; }
 			if ( jsongin.ShortType( Node ) === 'a' )
 			{
 				for ( let index = 0; index < Node.length; index++ )
@@ -113,7 +121,7 @@ module.exports = function ( jsongin )
 				if ( element_index < 0 ) { element_index = Node.length + element_index; }
 				if ( element_index < 0 ) { return; }
 				if ( element_index >= Node.length ) { return; }
-				resolve_node( Node[ element_index ], PathElements, Index + 1, Candidates );
+				resolve_node( Node[ element_index ], PathElements, Index + 1, Candidates, ExpandArrays );
 				return;
 			}
 
@@ -126,7 +134,7 @@ module.exports = function ( jsongin )
 			for ( let index = 0; index < Node.length; index++ )
 			{
 				if ( jsongin.ShortType( Node[ index ] ) !== 'o' ) { continue; }
-				resolve_node( Node[ index ], PathElements, Index, Candidates );
+				resolve_node( Node[ index ], PathElements, Index, Candidates, ExpandArrays );
 			}
 			return;
 		}
@@ -136,7 +144,7 @@ module.exports = function ( jsongin )
 			// A field which is not there contributes no candidate, which is what lets
 			// $exists tell { a: [ { y: 1 } ] } from { a: [ { x: 1 } ] } for the path 'a.x'.
 			if ( Object.prototype.hasOwnProperty.call( Node, key ) === false ) { return; }
-			resolve_node( Node[ key ], PathElements, Index + 1, Candidates );
+			resolve_node( Node[ key ], PathElements, Index + 1, Candidates, ExpandArrays );
 			return;
 		}
 

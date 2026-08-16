@@ -9,7 +9,11 @@ module.exports = function ( jsongin )
 		//---------------------------------------------------------------------
 		Engine: jsongin,
 		OperatorType: 'Logical',
-		TopLevel: true,
+		// $not applies to a field, not to a query. MongoDB's top level operators are $and,
+		// $or, $nor, $expr, $text, $where, $comment, and $jsonSchema, and it rejects
+		// { $not: { ... } } with "unknown top level operator". This was declared true, so a
+		// query written that way quietly returned an answer instead of being refused.
+		TopLevel: false,
 		ValueTypes: 'or',
 
 		//---------------------------------------------------------------------

@@ -25,6 +25,14 @@ module.exports = function ( jsongin )
 					return false;
 				}
 
+				// An empty array asks nothing. MongoDB refuses it rather than treating it as
+				// a condition which everything satisfies, verified against MongoDB 6.0.1, and
+				// a query which cannot mean anything is refused rather than answered.
+				if ( MatchValue.length === 0 )
+				{
+					throw new Error( `$and: requires a non-empty array of criteria at [${Path}].` );
+				}
+
 				// Compare
 				for ( let index = 0; index < MatchValue.length; index++ )
 				{

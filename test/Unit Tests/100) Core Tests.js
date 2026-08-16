@@ -1205,8 +1205,11 @@ describe( '100) Core Tests', () =>
 			assert.strictEqual( document[ 1 ], 'def' );
 		} );
 
-		it( 'It creates array elements and grows the array if the elements don\'t exist', () => 
+		it( 'It creates array elements and grows the array if the elements don\'t exist', () =>
 		{
+			// The gap is filled with nulls rather than left as holes. A hole is not
+			// representable in JSON, and it only looked like a null because JSON.stringify
+			// renders it as one. MongoDB writes nulls here, verified against MongoDB 6.0.1.
 			let document = [ 'one', 'two', 'three' ];
 
 			assert.ok( jsongin.SetValue( document, 4, 'xyz' ) );
@@ -1214,7 +1217,8 @@ describe( '100) Core Tests', () =>
 			assert.strictEqual( document[ 0 ], 'one' );
 			assert.strictEqual( document[ 1 ], 'two' );
 			assert.strictEqual( document[ 2 ], 'three' );
-			assert.strictEqual( document[ 3 ], undefined );
+			assert.strictEqual( document[ 3 ], null );
+			assert.strictEqual( Object.prototype.hasOwnProperty.call( document, 3 ), true );
 			assert.strictEqual( document[ 4 ], 'xyz' );
 		} );
 

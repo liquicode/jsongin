@@ -4,6 +4,18 @@ module.exports = function ( jsongin )
 {
 
 	//---------------------------------------------------------------------
+	// Refuses a projection which cannot mean anything.
+	// The counterpart of the same helper in Query.js and Update.js.
+	function refuse( Message )
+	{
+		if ( jsongin.OpLog ) { jsongin.OpLog( `Projection: ${Message}` ); }
+		let error = new Error( `Projection: ${Message}` );
+		if ( jsongin.OpError ) { jsongin.OpError( error.message ); }
+		throw error;
+	};
+
+
+	//---------------------------------------------------------------------
 	// Removes the field at a path from a projected document, reaching through arrays.
 	//
 	// A projection exclusion which crosses an array removes the field from every element and
@@ -188,15 +200,20 @@ module.exports = function ( jsongin )
 		}
 
 		// Validate the projection.
+		//
+		// A projection which cannot mean anything throws, the same way a malformed query or
+		// update document does. These used to return null and write to the OpLog, and null is
+		// a value a caller can easily carry on with; MongoDB refuses both with an error.
+		// A `Document` or `Projection` parameter of the wrong type still returns null, because
+		// that is a statement about the data rather than about the projection.
 		if ( ( exclude_keys.length > 0 ) && ( include_keys.length > 0 ) )
 		{
-			if ( jsongin.OpLog ) { jsongin.OpLog( `Projection: Cannot combine inclusion and exclusion in the same projection.` ); }
-			return null;
+			refuse( `Cannot combine inclusion and exclusion in the same projection.` );
 		}
 		if ( ( exclude_keys.length > 0 ) && ( computed_keys.length > 0 ) )
 		{
-			if ( jsongin.OpLog ) { jsongin.OpLog( `Projection: Cannot use an expression within an exclusion projection.` ); }
-			return null;
+			// A computed field is an inclusion, so this is the case above in disguise.
+			refuse( `Cannot use an expression within an exclusion projection.` );
 		}
 
 		// Determine the type of projection.
@@ -209,7 +226,18 @@ module.exports = function ( jsongin )
 		else if ( ( include_keys.length === 0 ) && ( computed_keys.length === 0 ) )
 		{
 			// Only _id was given, or nothing was.
+			//
+			// { _id: 0 } excludes _id from the whole document, and {} names nothing to exclude
+			// at all. MongoDB returns the whole document for both, so both are exclusion
+			// projections. An empty projection used to stay an inclusion with nothing to
+			// include, which returned an empty document.
+			// Verified against MongoDB 6.0.1.
+			//
+			// The aggregation $project stage has the opposite rule and refuses an empty
+			// specification. That is enforced in the stage, which is the only caller that can
+			// tell it is one.
 			if ( include_id === false ) { projection_type = 'exclude'; }
+			else if ( Object.keys( Projection ).length === 0 ) { projection_type = 'exclude'; }
 		}
 
 		// Process the projection.

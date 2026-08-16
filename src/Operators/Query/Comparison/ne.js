@@ -14,9 +14,9 @@ module.exports = function ( jsongin )
 		ValueTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '' )
+		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
 		{
-			return !jsongin.QueryOperators.$eq.Query( Document, MatchValue, Path );
+			return !jsongin.QueryOperators.$eq.Query( Document, MatchValue, Path, ExpandArrays );
 		},
 
 	};

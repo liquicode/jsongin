@@ -22,6 +22,38 @@ Updates are specified by one more update operators (see below).
 Each operator will be followed by a number of `field: value` arguments that specify the document field
   to update and the value to use in the update.
 
+The given `Document` is never written to.
+`Update()` returns an updated ***copy***, cloned with [`SafeClone()`](./SafeClone.md) so that
+  dates survive.
+
+
+## Refusing an Update
+
+An update ***document*** which cannot be applied throws:
+
+```js
+jsongin.Update( { a: 1 }, { $bogus: { a: 2 } } );            // throws: Unknown update operator
+jsongin.Update( { a: 1 }, { a: 2 } );                        // throws, a replacement is a different call
+jsongin.Update( { a: 1 }, { $set: 'abc' } );                 // throws, $set takes an object
+jsongin.Update( { a: 1 }, { $set: { a: 2 }, $inc: { a: 1 } } ); // throws, both write to 'a'
+```
+
+Two operators ***conflict*** when they write to the same path, or to a path and one below it,
+  because the result would depend on which of them ran first.
+The whole update document is checked before any of it is applied, so a refused update leaves the
+  document untouched rather than half written.
+
+These used to be reported to the `OpLog` and skipped, which returned a clone of the original
+  document — indistinguishable from a legitimate no-op, so a typo in an operator name was
+  silently nothing at all.
+MongoDB refuses each of them, verified against MongoDB 6.0.1.
+
+***An operator which cannot apply itself is a different case.*** `$inc` against a string, or
+  `$pop` against a scalar, is a well formed update meeting a document it does not suit. Those
+  report through the `OpLog` and leave the field alone, and `Update()` returns the document.
+
+`null` is returned only for a `Document` or `Updates` parameter of the wrong type.
+
 
 ## See Also
 

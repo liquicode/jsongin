@@ -27,6 +27,7 @@ module.exports = function ( Driver )
 		require( './test-suite/MongoDB Tutorials.js' )( Driver );
 		require( './test-suite/Expr Tests.js' )( Driver );
 		require( './test-suite/Comparison Operator Tests.js' )( Driver );
+		require( './test-suite/Path Semantics Tests.js' )( Driver );
 		require( './test-suite/Query Rejection Tests.js' )( Driver );
 	} );
 

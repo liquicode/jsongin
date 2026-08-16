@@ -22,8 +22,10 @@ A document carrying `$each` is a ***modifier document***, and appends every elem
 The modifiers are applied in the order MongoDB applies them: `$each`, then `$position`, then
   `$sort`, then `$slice`.
 
-Note that a modifier written without `$each` is rejected, as it is by MongoDB, and that an
-  unrecognized `$` field in a modifier document is rejected rather than being stored.
+`$each` is what makes a document a modifier document.
+An object written ***without*** one is a plain value to append, even when it carries `$slice`,
+  `$position`, or `$sort`, which MongoDB stores as data rather than reading as modifiers.
+An unrecognized `$` field ***within*** a modifier document is rejected rather than being stored.
 
 ***A rejected modifier leaves the array untouched.*** Every part of the modifier document is
   checked before the first element is inserted, so a field is never left half updated.
@@ -112,16 +114,13 @@ module.exports = function ( jsongin )
 
 		if ( is_modifier_document( Value ) === false )
 		{
-			// A modifier written without $each has nothing to apply itself to.
-			if ( jsongin.ShortType( Value ) === 'o' )
-			{
-				let modifiers = Object.keys( Value ).filter( function ( key ) { return MODIFIERS.includes( key ); } );
-				if ( modifiers.length > 0 )
-				{
-					if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$push: The modifier(s) [${modifiers.join( ', ' )}] of [${FieldName}] require a $each.` ); }
-					return null;
-				}
-			}
+			// Without a $each there is no modifier document, so the value is a plain value to
+			// append — including an object which happens to carry $slice, $position, or $sort.
+			// MongoDB appends { $slice: 1 } as data rather than reading it as a modifier,
+			// because $each is what makes a document a modifier document at all.
+			// Verified against MongoDB 6.0.1. This used to refuse the update instead, which
+			// was safer and was not what MongoDB does.
+			//
 			// Cloned, so that the array element does not share structure with the update
 			// document it came from.
 			plan.Elements = [ jsongin.SafeClone( Value ) ];

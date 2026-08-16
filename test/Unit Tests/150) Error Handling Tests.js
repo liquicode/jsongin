@@ -134,21 +134,28 @@ describe( '150) Error Handling Tests', () =>
 
 		it( 'should reject a query value the operator does not take', () =>
 		{
+			// A malformed query throws rather than reporting that nothing matched, which is a
+			// legitimate answer and would hide the mistake. MongoDB refuses it too.
 			let messages = [];
 			let engine = NewJsongin( { OpLog: function ( Message ) { messages.push( Message ); } } );
 
-			assert.strictEqual( engine.Query( { a: [ 1, 2 ] }, { a: { $size: 'two' } } ), false );
+			assert.throws(
+				function () { engine.Query( { a: [ 1, 2 ] }, { a: { $size: 'two' } } ); },
+				/does not take a value of type/ );
 			assert.ok( messages.some( function ( m ) { return m.includes( 'does not take a value of type' ); } ),
 				`nothing reported the rejection: ${JSON.stringify( messages )}` );
 		} );
 
-		it( 'should skip an update operator whose value it does not take', () =>
+		it( 'should refuse an update operator whose value it does not take', () =>
 		{
+			// This used to be skipped, which returned the document unchanged and left the
+			// caller unable to tell that anything had gone wrong.
 			let messages = [];
 			let engine = NewJsongin( { OpLog: function ( Message ) { messages.push( Message ); } } );
 
-			let updated = engine.Update( { a: 1 }, { $set: 'abc' } );
-			assert.deepStrictEqual( updated, { a: 1 } );
+			assert.throws(
+				function () { engine.Update( { a: 1 }, { $set: 'abc' } ); },
+				/does not take a value of type/ );
 			assert.ok( messages.some( function ( m ) { return m.includes( 'does not take a value of type' ); } ) );
 		} );
 

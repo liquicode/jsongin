@@ -10,20 +10,24 @@ module.exports = function ( jsongin )
 		Engine: jsongin,
 		OperatorType: 'Meta',
 		TopLevel: false,
-		ValueTypes: 'b',
+		ValueTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '' )
+		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
 		{
 			try
 			{
-				// Validate Expression
-				let match_type = jsongin.ShortType( MatchValue );
-				if ( match_type !== 'b' )
-				{
-					if ( jsongin.OpLog ) { jsongin.OpLog( `$exists: requires a boolean but found type [${match_type}] instead at [${Path}].` ); }
-					return false;
-				}
+				// MongoDB coerces the match value to a boolean rather than requiring one, so
+				// { $exists: 1 } asks the same question as { $exists: true }.
+				// AsBoolean already implements that coercion: a number is false only when it is
+				// zero, null and undefined are false, and every other value is true.
+				//
+				// This used to declare ValueTypes 'b' and check for a boolean itself, which made
+				// { $exists: 1 } and { $exists: 0 } both return false — the second of them the
+				// opposite of the right answer. The narrow declaration was a deviation
+				// introduced by enforcing ValueTypes, which turned it from a note into behavior.
+				// Verified against MongoDB 6.0.1.
+				let match_value = jsongin.AsBoolean( MatchValue );
 
 				// $exists does not examine a value at all. It asks whether the path resolves
 				// to anything, which is exactly what an empty candidate list reports.
@@ -35,7 +39,7 @@ module.exports = function ( jsongin )
 				// array rather than undefined, so the field read as present.
 				// Verified against MongoDB 6.0.1, where that document does not match
 				// { 'a.x': { $exists: true } } and does match { $exists: false }.
-				let candidates = jsongin.ResolveCandidates( Document, Path );
+				let candidates = jsongin.ResolveCandidates( Document, Path, ExpandArrays );
 				let field_exists = ( candidates.length > 0 );
 
 				// Note that a field which is there holding undefined yields one candidate and
@@ -43,7 +47,7 @@ module.exports = function ( jsongin )
 				// matches DeleteValue, which removes a key rather than setting it to
 				// undefined precisely so that the two states stay distinguishable.
 
-				if ( MatchValue === true ) { return field_exists; }
+				if ( match_value === true ) { return field_exists; }
 				return ( field_exists === false );
 			}
 			catch ( error )

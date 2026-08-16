@@ -15,7 +15,7 @@ module.exports = function ( jsongin )
 		// MongoDB Ref: https://www.mongodb.com/docs/manual/reference/bson-types
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '' )
+		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
 		{
 			try
 			{
@@ -41,7 +41,7 @@ module.exports = function ( jsongin )
 				// answers fall out without a special case: an array field offers itself, which
 				// satisfies { $type: 'array' }, and offers its elements, which satisfy their
 				// own types. Verified against MongoDB 6.0.1.
-				let candidates = jsongin.ResolveCandidates( Document, Path );
+				let candidates = jsongin.ResolveCandidates( Document, Path, ExpandArrays );
 
 				for ( let match_index = 0; match_index < match_values.length; match_index++ )
 				{

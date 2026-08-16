@@ -13,9 +13,15 @@
 
 ## Description
 
-Returns `true` when `Query` is an object which has at least one ***top-level*** query operator
-  as one of its keys.
+Returns `true` when `Query` is an object which has at least one ***top-level*** key beginning
+  with `$`.
 Returns `false` for everything else.
+
+The key does not have to be an operator this engine knows.
+A misspelled operator makes the object a ***malformed query***, which
+  [`Query()`](./Query.md) refuses, rather than a data value to compare a field against.
+Reading `{ $bogus: 1 }` as data compared the field against an object nobody meant to write and
+  reported that nothing matched, which hid the mistake.
 
 Use it to tell a query document apart from a plain data document, which is a decision a storage
   layer often has to make before choosing what to do with a parameter.
@@ -24,7 +30,7 @@ Use it to tell a query document apart from a plain data document, which is a dec
 ## It Only Looks at the Top Level
 
 This is the part worth knowing.
-`IsQuery` checks whether any of the object's ***own keys*** is a registered query operator.
+`IsQuery` checks whether any of the object's ***own keys*** begins with `$`.
 It does not descend into fields, so a perfectly valid query whose operators are all nested
   inside a field reports `false`:
 

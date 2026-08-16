@@ -1,15 +1,16 @@
 # @liquicode/jsongin
 
 
-# ResolveCandidates( Document, Path )
+# ResolveCandidates( Document, Path, ExpandArrays )
 
 
 ## Parameters
 
-| **Parameter** | **Allowed Types** | **Description**                          |
-|---------------|:-----------------:|------------------------------------------|
-| Document      |       o, a        | The document to resolve the path within. |
-| Path          |       s, n        | The path to resolve.                     |
+| **Parameter** | **Allowed Types** | **Description**                                                                    |
+|---------------|:-----------------:|------------------------------------------------------------------------------------|
+| Document      |       o, a        | The document to resolve the path within.                                            |
+| Path          |       s, n        | The path to resolve.                                                                |
+| ExpandArrays  |         b         | Whether an array also offers each of its elements. Defaults to `true`. Optional.    |
 
 
 ## Description
@@ -61,6 +62,19 @@ jsongin.ResolveCandidates( { tags: [ 'red', 'blue' ] }, 'tags' );
 ***An array is expanded exactly one level.***
 An element which is itself an array is a candidate as the array it is, and is not expanded
   again, which is why `{ tags: 'red' }` does not match `{ tags: [ [ 'red' ] ] }`.
+
+***`ExpandArrays: false` turns that expansion off***, leaving only the values the path lands on:
+
+```js
+jsongin.ResolveCandidates( { tags: [ 'red', 'blue' ] }, 'tags', false );
+// [ [ 'red', 'blue' ] ]
+```
+
+[`$elemMatch`](../Operator-Reference.md) is the operator which needs this.
+It asks about the elements of the array itself, so an element which is another array is a value
+  it tests rather than a third array to search.
+Every other operator wants the expansion, because equality means "the field is this value, or is
+  an array holding it".
 
 ***Traversal happens at every path element.***
 A path crosses as many arrays as it meets.

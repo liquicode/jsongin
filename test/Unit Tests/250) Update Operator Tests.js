@@ -865,13 +865,23 @@ describe( '250) Update Operator Tests', () =>
 				assert.deepStrictEqual( pushed( [ 5, 1 ], { $each: [ 3 ], $sort: 1, $slice: -2 } ), [ 3, 5 ] );
 			} );
 
+			it( 'should store a modifier written without $each as a value', () =>
+			{
+				// $each is what makes a document a modifier document. Without one there is no
+				// modifier to read, so the object is a plain value to append — even when it
+				// carries $slice, $sort, or $position. Verified against MongoDB 6.0.1.
+				// These used to be refused, which was safer and was not what MongoDB does.
+				assert.deepStrictEqual( pushed( [ 1 ], { $slice: 2 } ), [ 1, { $slice: 2 } ] );
+				assert.deepStrictEqual( pushed( [ 1 ], { $sort: 1 } ), [ 1, { $sort: 1 } ] );
+				assert.deepStrictEqual( pushed( [ 1 ], { $position: 0 } ), [ 1, { $position: 0 } ] );
+			} );
+
 			it( 'should reject a malformed modifier rather than storing it', () =>
 			{
+				// Every one of these carries a $each, so it is a modifier document, and every
+				// one of them is malformed.
 				let cases = [
 					{ $each: 5 },
-					{ $slice: 2 },
-					{ $sort: 1 },
-					{ $position: 0 },
 					{ $each: [ 2 ], $bogus: 1 },
 					{ $each: [ 2 ], $position: 'x' },
 					{ $each: [ 2 ], $slice: 'x' },

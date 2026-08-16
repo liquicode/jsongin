@@ -13,9 +13,9 @@ module.exports = function ( jsongin )
 		ValueTypes: 'a',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '' )
+		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
 		{
-			return !jsongin.QueryOperators.$in.Query( Document, MatchValue, Path );
+			return !jsongin.QueryOperators.$in.Query( Document, MatchValue, Path, ExpandArrays );
 		},
 
 	};

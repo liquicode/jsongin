@@ -1,16 +1,17 @@
 # @liquicode/jsongin
 
 
-# SetValue( Document, Path, Value )
+# SetValue( Document, Path, Value, CreateArrays )
 
 
 ## Parameters
 
-| **Parameter** | **Allowed Types** | **Description**                          |
-|---------------|:-----------------:|------------------------------------------|
-| Document      |        oa         | The document to set a value into.        |
-| Path          |        sn         | The path of a field within the document. |
-| Value         |       (any)       | The value to set in the document.        |
+| **Parameter** | **Allowed Types** | **Description**                                                                       |
+|---------------|:-----------------:|-----------------------------------------------------------------------------------------|
+| Document      |        oa         | The document to set a value into.                                                        |
+| Path          |        sn         | The path of a field within the document.                                                 |
+| Value         |       (any)       | The value to set in the document.                                                        |
+| CreateArrays  |         b         | Whether a numeric key creates an array rather than a document. Defaults to `false`. Optional. |
 
 
 ## Description
@@ -39,6 +40,36 @@ To specify an element of an array, use the numeric (zero-based) index of that el
 You can use negative index numbers to select from the end of an array.
 Use `-1` to set the last element of an array, `-2` to set the next to last element, and so on.
 If you have an array of objects, you can omit the array index to set the value into each of those objects.
+
+***Writing Past the End of an Array*** :
+The gap is filled with `null`, which is what MongoDB does, verified against MongoDB 6.0.1:
+
+```js
+let document = { a: [ 1 ] };
+jsongin.SetValue( document, 'a.3', 9 );
+// document.a is now [ 1, null, null, 9 ]
+```
+
+The gap used to be left as Javascript array holes.
+A hole is not representable in JSON, and only looked like a `null` because `JSON.stringify`
+  renders it as one.
+
+***Creating a Path Which Is Not There*** :
+Each missing path element is created as a ***document***, whatever the next key looks like.
+A numeric key does not imply an array, because only the array update operators ever create one.
+This matches MongoDB, verified against MongoDB 6.0.1:
+
+```js
+let document = {};
+jsongin.SetValue( document, 'a.0', 9 );
+// document is now { a: { '0': 9 } }, not { a: [ 9 ] }
+```
+
+An array which ***already exists*** is still indexed by a numeric key, so this rule only decides
+  what gets created.
+Pass `true` for `CreateArrays` to get the older behavior, where a numeric key creates an array.
+[`Expand()`](./Expand.md) is the one caller which asks for it: it is rebuilding a hierarchy that
+  [`Flatten()`](./Flatten.md) took apart, so a numeric path element there did come from an array.
 
 
 ## See Also
@@ -103,11 +134,12 @@ document[ 1 ] === 'def'
 ```js
 let document = [ 'one', 'two', 'three' ];
 
-jsongin.SetValue( document, 1, undefined ) === true
-document.length === 3
-document[ 0 ] === 'one'
-document[ 1 ] === undefined
+// The gap is filled with nulls rather than left as holes.
+jsongin.SetValue( document, 4, 'xyz' ) === true
+document.length === 5
 document[ 2 ] === 'three'
+document[ 3 ] === null
+document[ 4 ] === 'xyz'
 ```
 
 ### It performs reverse indexing when an array index is negative

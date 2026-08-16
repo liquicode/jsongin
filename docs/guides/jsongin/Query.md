@@ -37,6 +37,36 @@ You can compose complex queries with logical operators:
 ] }
 ```
 
+
+## Refusing a Query
+
+A criteria which ***cannot mean anything*** throws, rather than returning `false`:
+
+```js
+jsongin.Query( { a: 1 }, { $bogus: 1 } );            // throws: Unknown operator [$bogus]
+jsongin.Query( { a: 1 }, { a: { $bogus: 1 } } );     // throws
+jsongin.Query( { a: 1 }, { $not: { a: 2 } } );       // throws, $not is not a top level operator
+jsongin.Query( { a: 1 }, { a: { $size: 'two' } } );  // throws, $size takes a number
+jsongin.Query( { a: 1 }, { $and: [] } );             // throws, an empty list asks nothing
+```
+
+`false` means ***this document did not match***, which is a legitimate answer.
+Returning it for a malformed query gave the caller no way to tell a typo from an empty result:
+  a misspelled operator was read as a field name, that field was never there, and the query
+  reported, quietly, that nothing matched.
+MongoDB refuses every one of these with an error, verified against MongoDB 6.0.1.
+
+A query which is well formed and simply matches nothing still returns `false`:
+
+```js
+jsongin.Query( { a: 1 }, { a: 99 } );            // false
+jsongin.Query( { a: 1 }, { a: { $gt: null } } ); // false
+```
+
+A `Document` which is not an object also returns `false` rather than throwing, because that is
+  a statement about the data being filtered and not about the query.
+
+
 ## Operator Summary
 
 |          **Comparison**          |  **Logical**  |       **Element**       |         **Array**         |      **Evaluation**       |

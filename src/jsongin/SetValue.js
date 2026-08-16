@@ -2,7 +2,24 @@
 
 module.exports = function ( jsongin )
 {
-	function SetValue( Document, Path, Value )
+	//---------------------------------------------------------------------
+	// Writes Value at Path within Document.
+	//
+	// CreateArrays decides what a path element which is not there becomes. It defaults to
+	// false, which creates a document, whatever the next key looks like — the rule MongoDB
+	// follows, and the one every update operator needs. Pass true to create an array when the
+	// next key is numeric, which is what Expand() wants: it is turning a flattened document
+	// back into a hierarchy and a numeric key there did come from an array.
+	// Decides what to create for a path element which is not there.
+	function new_container( NextKey, CreateArrays )
+	{
+		if ( CreateArrays !== true ) { return {}; }
+		if ( jsongin.ShortType( NextKey ) === 'n' ) { return []; }
+		return {};
+	}
+
+
+	function SetValue( Document, Path, Value, CreateArrays = false )
 	{
 		try
 		{
@@ -56,6 +73,13 @@ module.exports = function ( jsongin )
 							if ( jsongin.OpLog ) { jsongin.OpLog( `SetValue: Disallowed negative array index [${key}] in path [${Path}].` ); }
 							return false;
 						}
+						// A write past the end of an array fills the gap with nulls rather than
+						// leaving holes. Verified against MongoDB 6.0.1, where { a: [ 1 ] }
+						// with { $set: { 'a.4': 9 } } gives [ 1, null, null, null, 9 ].
+						// A hole is not representable in JSON, and it only ever looked like a
+						// null because JSON.stringify renders it as one.
+						while ( node.length < key ) { node.push( null ); }
+
 						// Get the array element and continue down the path.
 						if ( path_index === ( path_elements.length - 1 ) )
 						{
@@ -64,17 +88,11 @@ module.exports = function ( jsongin )
 						}
 						else
 						{
-							if ( typeof node[ key ] === 'undefined' )
+							// A path element which is not there is created as a document, unless
+							// CreateArrays asks otherwise. See the note in the object branch.
+							if ( ( typeof node[ key ] === 'undefined' ) || ( node[ key ] === null ) )
 							{
-								let st_next_key = jsongin.ShortType( path_elements[ path_index + 1 ] );
-								if ( st_next_key === 'n' )
-								{
-									node[ key ] = [];
-								}
-								else
-								{
-									node[ key ] = {};
-								}
+								node[ key ] = new_container( path_elements[ path_index + 1 ], CreateArrays );
 							}
 							node = node[ key ];
 							continue;
@@ -98,7 +116,7 @@ module.exports = function ( jsongin )
 						let sub_path = path_elements.slice( path_index ).join( '.' );
 						for ( let index = 0; index < node.length; index++ )
 						{
-							let result = SetValue( node[ index ], sub_path, Value );
+							let result = SetValue( node[ index ], sub_path, Value, CreateArrays );
 							if ( result === false ) { return false; }
 						}
 						return true;
@@ -113,15 +131,15 @@ module.exports = function ( jsongin )
 					}
 					else if ( typeof node[ key ] === 'undefined' )
 					{
-						let st_next_key = jsongin.ShortType( path_elements[ path_index + 1 ] );
-						if ( st_next_key === 'n' )
-						{
-							node[ key ] = [];
-						}
-						else
-						{
-							node[ key ] = {};
-						}
+						// A path element which is not there is created as a ***document***,
+						// whatever the next key looks like. A numeric key does not imply an
+						// array: MongoDB creates { a: { '0': 9 } } for { $set: { 'a.0': 9 } }
+						// against a document which has no 'a', and only the array update
+						// operators ever create an array. Verified against MongoDB 6.0.1.
+						// This used to create an array whenever the next key was numeric, which
+						// produced { a: [ 9 ] } instead, and it is still what CreateArrays asks
+						// for on behalf of Expand().
+						node[ key ] = new_container( path_elements[ path_index + 1 ], CreateArrays );
 						node = node[ key ];
 						continue;
 					}
