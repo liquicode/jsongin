@@ -7,6 +7,42 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
+- A second code review was run, and is kept at `.reviews/2026-08-15-04-12/review.md`. Its parity
+  findings were first written as tests against a live MongoDB 6.0.1 server, so that each one is
+  measured rather than asserted. `npm run parity-report` prints the number and names every
+  remaining gap. The update operators were the first group fixed:
+
+  - ***`$inc` and `$mul` on a field which is not there no longer write a `NaN`.*** The field
+    counts as a zero, so `$inc` stores the operand and `$mul` stores `0`, and the path to the
+    field is created. Both operators applied their arithmetic to the `undefined` which
+    `GetValue()` returned, and a `NaN` serializes to `null` through `JSON.stringify`, so
+    starting a counter — the most common use of `$inc` — quietly ruined the document.
+
+  - ***Breaking: `$inc` and `$mul` now check the stored value, not just the operand.*** Both are
+    strictly numeric on both sides. A field holding a string, a boolean, a date, or a `null` is
+    refused rather than coerced, so `{ n: 'abc' }` incremented by 1 is no longer the string
+    `'abc1'` and `{ n: true }` is no longer `2`. A numeric string operand is refused as well:
+    `AsNumber()` converts it, which is right for `AsNumber` and wrong here, because MongoDB
+    rejects `{ $inc: { n: '5' } }` rather than adding 5. Every field is checked before any field
+    is written, so a refused update leaves the whole document untouched.
+    The two operators now share `_arith.js`, the way `$min` and `$max` share `_minmax.js`.
+
+  - ***Breaking: `$rename` removes the source key*** rather than setting it to `undefined`.
+    The key stayed in the document, so a renamed field still answered `{ $exists: true }` and
+    still appeared in `Object.keys()`. A source field which is not there is now left alone and
+    no longer creates the target field holding `undefined`.
+
+  - ***Breaking: `$unset` sets an array element to `null`*** rather than leaving a sparse hole,
+    which keeps the array's length and the positions of the elements after it. `DeleteValue()`
+    is unchanged and still mirrors the Javascript `delete` operator, which is its documented
+    contract; `$unset` no longer routes that one case through it.
+
+  - ***`$push` creates the array*** when the field is not there, rather than refusing the
+    update. Starting a list was a two step operation.
+
+  All five were invisible to the test suite because it compared documents with
+  `JSON.stringify`, which renders a hole as `null` and drops a member holding `undefined`.
+
 - A code review of the whole library was run and its findings worked through. The review is kept
   at `.reviews/2026-08-14-03-35/review.md`. What it turned up, and what was done about it:
 

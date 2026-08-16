@@ -1,7 +1,32 @@
 'use strict';
+/*md
+
+## Operators > Update > $mul
+
+Usage: `$mul: { field: value, ... }`
+
+Multiplies a field by a number.
+
+A field which is ***not there*** is treated as a zero, so `$mul` creates it and sets it to `0`,
+  whatever the multiplier is.
+
+The stored value and the multiplier must both be ***numbers***. A field holding a string, a
+  boolean, a date, or a null is refused rather than coerced, and so is a non numeric multiplier.
+A refused update leaves the whole document untouched.
+
+*/
 
 module.exports = function ( jsongin )
 {
+	const arith = require( './_arith' )( jsongin );
+
+	//---------------------------------------------------------------------
+	// Multiplies the stored value by the operand.
+	function multiply( Value, Operand )
+	{
+		return ( Value * Operand );
+	}
+
 	let operator =
 	{
 
@@ -16,30 +41,8 @@ module.exports = function ( jsongin )
 		{
 			try
 			{
-				if ( jsongin.ShortType( UpdateFields ) !== 'o' ) { throw new Error( `The UpdateFields parameter must be an object.` ); }
-
-				let operation_result = true;
-				for ( let field in UpdateFields )
-				{
-					let value = jsongin.GetValue( Document, field );
-					let mul = jsongin.AsNumber( UpdateFields[ field ] );
-					if ( mul === null )
-					{
-						if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$mul: This operator requires a numeric value but found [${UpdateFields[ field ]}] instead at [${field}].` ); }
-						operation_result = false;
-						continue;
-					}
-					value *= mul;
-					let result = jsongin.SetValue( Document, field, value );
-					if ( result === false )
-					{
-						if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$mul: Setting the value of [${field}] to [${JSON.stringify( value )}] failed.` ); }
-						operation_result = false;
-						continue;
-					}
-				}
-
-				return operation_result;
+				// See _arith.js for the MongoDB semantics this follows.
+				return arith.Apply( Document, UpdateFields, '$mul', multiply );
 			}
 			catch ( error )
 			{

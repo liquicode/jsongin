@@ -23,11 +23,28 @@ module.exports = function ( jsongin )
 				{
 					let new_name = UpdateFields[ field ];
 					let value = jsongin.GetValue( Document, field );
+
+					// A source field which is not there is left alone, and the target is not
+					// created. MongoDB reports a successful update with modifiedCount 0 in that
+					// case, verified against MongoDB 6.0.1.
+					// This is checked here rather than being read from DeleteValue's result,
+					// which reports a field that was never there and a removal that failed the
+					// same way, and only one of those is a no-op.
+					if ( jsongin.ShortType( value ) === 'u' )
+					{
+						if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$rename: The field [${field}] was not present and was left alone.` ); }
+						continue;
+					}
+
+					// The source key is removed, rather than being set to undefined, so that
+					// Object.keys() and the document's contents agree with each other.
+					// Setting it to undefined left the key in place, so a renamed field still
+					// answered { $exists: true } and still appeared in Object.keys().
 					let result = null;
-					result = jsongin.SetValue( Document, field, undefined );
+					result = jsongin.DeleteValue( Document, field );
 					if ( result === false )
 					{
-						if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$rename: Unsetting the value of [${field}] failed.` ); }
+						if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$rename: Removing the field [${field}] failed.` ); }
 						operation_result = false;
 						continue;
 					}

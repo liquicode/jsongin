@@ -85,7 +85,7 @@ describe( '250) Update Operator Tests', () =>
 				assert.ok( typeof document.c === 'undefined' );
 			} );
 
-			it( 'should set nested values', () => 
+			it( 'should set nested values', () =>
 			{
 				let document = { nest: { a: 1, b: 2, c: 3 } };
 				let result = jsongin.UpdateOperators.$unset.Update( document, { 'nest.a': 1, 'nest.c': 1 } );
@@ -95,12 +95,106 @@ describe( '250) Update Operator Tests', () =>
 				assert.ok( typeof document.nest.c === 'undefined' );
 			} );
 
+			/*
+				Deciding whether a path addresses an array element is a jsongin path question,
+				not a MongoDB one, so it is pinned here rather than in the parity suite.
+				The array element case is the one which writes a null instead of removing a key,
+				and everything below is a path which only looks like it.
+			*/
+
+			it( 'should null an array element rather than leaving a hole', () =>
+			{
+				// The array keeps its length and the elements after the removed one keep their
+				// positions. Verified against MongoDB 6.0.1.
+				let document = { a: [ 1, 2, 3 ] };
+				assert.ok( jsongin.UpdateOperators.$unset.Update( document, { 'a.1': '' } ) );
+				assert.deepStrictEqual( document.a, [ 1, null, 3 ] );
+			} );
+
+			it( 'should null an array element addressed by a negative index', () =>
+			{
+				let document = { a: [ 1, 2, 3 ] };
+				assert.ok( jsongin.UpdateOperators.$unset.Update( document, { 'a.-1': '' } ) );
+				assert.deepStrictEqual( document.a, [ 1, 2, null ] );
+			} );
+
+			it( 'should null an element of an array reached through an index', () =>
+			{
+				let document = { a: [ [ 1, 2 ], [ 3, 4 ] ] };
+				assert.ok( jsongin.UpdateOperators.$unset.Update( document, { 'a.1.0': '' } ) );
+				assert.deepStrictEqual( document.a, [ [ 1, 2 ], [ null, 4 ] ] );
+			} );
+
+			it( 'should remove a numeric key from an object rather than nulling it', () =>
+			{
+				// A document field may legitimately be named '1'. Only an array element becomes
+				// a null, so the parent has to be an array and not merely the key numeric.
+				let document = { a: { 1: 'x', 2: 'y' } };
+				assert.ok( jsongin.UpdateOperators.$unset.Update( document, { 'a.1': '' } ) );
+				assert.deepStrictEqual( document.a, { 2: 'y' } );
+			} );
+
+			it( 'should leave an array alone for an index which is out of range', () =>
+			{
+				let document = { a: [ 1, 2, 3 ] };
+				assert.ok( jsongin.UpdateOperators.$unset.Update( document, { 'a.9': '', 'a.-9': '' } ) );
+				assert.deepStrictEqual( document.a, [ 1, 2, 3 ] );
+			} );
+
+			it( 'should leave the document alone for a path which runs below a scalar', () =>
+			{
+				let document = { a: 5 };
+				assert.ok( jsongin.UpdateOperators.$unset.Update( document, { 'a.0': '' } ) );
+				assert.deepStrictEqual( document, { a: 5 } );
+			} );
+
+			it( 'should not reach into an array by field name to find an element', () =>
+			{
+				// 'a.x.0' crosses the array by the field name x, which DeleteValue refuses by
+				// default. The element case must refuse it too rather than writing into the
+				// array GetValue would have gathered.
+				let document = { a: [ { x: [ 1, 2 ] } ] };
+				jsongin.UpdateOperators.$unset.Update( document, { 'a.x.0': '' } );
+				assert.deepStrictEqual( document, { a: [ { x: [ 1, 2 ] } ] } );
+			} );
+
+
+			it( 'should null an element of an array reached through a negative index', () =>
+			{
+				let document = { a: [ [ 1, 2 ], [ 3, 4 ] ] };
+				assert.ok( jsongin.UpdateOperators.$unset.Update( document, { 'a.-1.0': '' } ) );
+				assert.deepStrictEqual( document.a, [ [ 1, 2 ], [ null, 4 ] ] );
+			} );
+
+			it( 'should leave the document alone for an empty path', () =>
+			{
+				let document = { a: 1 };
+				assert.ok( jsongin.UpdateOperators.$unset.Update( document, { '': '' } ) );
+				assert.deepStrictEqual( document, { a: 1 } );
+			} );
+
 
 		} );
 
 
 		describe( '$rename Tests', () =>
 		{
+
+			it( 'should leave a source field which is not there alone', () =>
+			{
+				// The target field is not created, and the update is a successful no-op rather
+				// than a failure. Verified against MongoDB 6.0.1.
+				let messages = [];
+				let engine = require( '../../src/jsongin' ).NewJsongin( {
+					OpLog: function ( Message ) { messages.push( Message ); },
+				} );
+
+				let document = { b: 1 };
+				assert.ok( engine.UpdateOperators.$rename.Update( document, { a: 'c' } ) );
+				assert.deepStrictEqual( document, { b: 1 } );
+				assert.ok( messages.length > 0 );
+				assert.ok( messages[ messages.length - 1 ].startsWith( 'Update.$rename: ' ) );
+			} );
 
 			it( 'should rename values', () => 
 			{
@@ -177,6 +271,67 @@ describe( '250) Update Operator Tests', () =>
 				assert.ok( document.c === 0 );
 			} );
 
+
+		} );
+
+
+		describe( '$inc and $mul Refusal Tests', () =>
+		{
+
+			/*
+				That these updates are refused at all is a MongoDB behavior, and it is asserted
+				in the parity suite. How jsongin reports the refusal is a jsongin behavior, and
+				it is asserted here: the document is returned untouched and the reason is
+				written to the OpLog.
+			*/
+
+			const NewJsongin = require( '../../src/jsongin' ).NewJsongin;
+
+			function logging_engine( Messages )
+			{
+				return NewJsongin( {
+					OpLog: function ( Message ) { Messages.push( Message ); },
+				} );
+			}
+
+			function assert_refused( Operator, Document, UpdateFields )
+			{
+				let messages = [];
+				let engine = logging_engine( messages );
+				let before = JSON.stringify( Document );
+
+				let result = engine.UpdateOperators[ Operator ].Update( Document, UpdateFields );
+
+				assert.strictEqual( result, false );
+				assert.strictEqual( JSON.stringify( Document ), before );
+				assert.ok( messages.length > 0, `${Operator} logged nothing.` );
+				assert.ok( messages[ messages.length - 1 ].startsWith( `Update.${Operator}: ` ),
+					`${Operator} logged [${messages[ messages.length - 1 ]}].` );
+			}
+
+			it( 'should refuse a field which is not numeric', () =>
+			{
+				assert_refused( '$inc', { n: 'abc' }, { n: 1 } );
+				assert_refused( '$inc', { n: true }, { n: 1 } );
+				assert_refused( '$inc', { n: null }, { n: 1 } );
+				assert_refused( '$mul', { n: 'abc' }, { n: 2 } );
+			} );
+
+			it( 'should refuse an operand which is not numeric', () =>
+			{
+				// AsNumber would convert the string, which is the right contract for AsNumber
+				// and the wrong one here.
+				assert_refused( '$inc', { n: 1 }, { n: '5' } );
+				assert_refused( '$inc', { n: 1 }, { n: true } );
+				assert_refused( '$mul', { n: 1 }, { n: '5' } );
+			} );
+
+			it( 'should refuse the whole update when one field of several is bad', () =>
+			{
+				// The document is checked before it is written, so a good field named ahead of
+				// a bad one is not applied and then abandoned.
+				assert_refused( '$inc', { a: 1, b: 'abc' }, { a: 1, b: 1 } );
+			} );
 
 		} );
 

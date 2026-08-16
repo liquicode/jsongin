@@ -438,17 +438,17 @@ Use the `jsongin.Update( Document, Updates )` function to apply updates to a doc
 | Category | Supported | Operator         | Description                                                                                                                                   |
 |----------|:---------:|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
 | Field    |    Yes    | $set             | Sets the value of a field in a document.                                                                                                      |
-| Field    |    Yes    | $unset           | Removes the specified field from a document.                                                                                                  |
-| Field    |    Yes    | $rename          | Renames a field.                                                                                                                              |
-| Field    |    Yes    | $inc             | Increments the value of the field by the specified amount.                                                                                    |
+| Field    |    Yes    | $unset           | Removes the specified field from a document. An array element is set to `null` rather than being removed, which keeps the array's length.     |
+| Field    |    Yes    | $rename          | Renames a field. A source field which is not present is left alone, and the target field is not created.                                      |
+| Field    |    Yes    | $inc             | Increments the value of the field by the specified amount. A field which is not present is created. See the note below.                       |
 | Field    |    Yes    | $min             | Only updates the field if the specified value is less than the existing field value. Compares by BSON order, not just numerically. See the note below. |
 | Field    |    Yes    | $max             | Only updates the field if the specified value is greater than the existing field value. Compares by BSON order, not just numerically. See the note below. |
-| Field    |    Yes    | $mul             | Multiplies the value of the field by the specified amount.                                                                                    |
+| Field    |    Yes    | $mul             | Multiplies the value of the field by the specified amount. A field which is not present is set to `0`. See the note below.                    |
 | Field    |    Yes    | $currentDate     | Sets the value of a field to the current date, as a `Date` or as a numeric timestamp. Takes `true` or `{ $type: '...' }`, never a bare string. |
 | Field    |     -     | $setOnInsert     | Sets the value of a field if an update results in an insert of a document. Has no effect on update operations that modify existing documents. |
 | Array    |    Yes    | $addToSet        | Adds elements to an array only if they do not already exist in the set. Supports the `$each` modifier.                                        |
 | Array    |    Yes    | $pop             | Removes the first or last item of an array.                                                                                                   |
-| Array    |    Yes    | $push            | Adds items to an array. Supports the `$each`, `$position`, `$sort`, and `$slice` modifiers.                                                   |
+| Array    |    Yes    | $push            | Adds items to an array. Supports the `$each`, `$position`, `$sort`, and `$slice` modifiers. Creates the array when the field is not present.   |
 | Array    |    Yes    | $pullAll         | Removes all matching values from an array.                                                                                                    |
 | Array    |     -     | $pull            | Removes all array elements that match a specified query.                                                                                      |
 | Array    |     -     | $                | Acts as a placeholder to update the first element that matches the query condition.                                                           |
@@ -478,4 +478,35 @@ jsongin.Update( {}, { $min: { n: 5 } } );  // { n: 5 }
 
 A field holding `null` is compared rather than treated as missing.
 Both behaviors match MongoDB, verified against MongoDB 6.0.1.
+
+
+***Note on `$inc` and `$mul`*** :
+A field which is ***not present*** counts as a zero, and the path to it is created.
+One rule covers both operators: `$inc` stores the operand and `$mul` stores `0`.
+
+```js
+jsongin.Update( {}, { $inc: { n: 5 } } );        // { n: 5 }
+jsongin.Update( {}, { $mul: { n: 5 } } );        // { n: 0 }
+jsongin.Update( {}, { $inc: { 'x.y': 5 } } );    // { x: { y: 5 } }
+```
+
+Both operators are ***strictly numeric***, on the stored value as well as on the operand.
+A field holding a string, a boolean, a date, or a `null` is refused rather than coerced,
+  and so is a non numeric operand — including a numeric string, which
+  [`AsNumber`](./jsongin/AsNumber.md) would convert but MongoDB rejects:
+
+```js
+jsongin.Update( { n: 'abc' }, { $inc: { n: 1 } } );   // { n: 'abc' }  refused
+jsongin.Update( { n: true }, { $inc: { n: 1 } } );    // { n: true }   refused
+jsongin.Update( { n: 1 }, { $inc: { n: '5' } } );     // { n: 1 }      refused
+```
+
+A refused update leaves the ***whole document*** untouched.
+Every field is checked before any field is written, so an update naming several fields never
+  applies some of them and refuses the rest.
+
+The missing field rules and the numeric rules were verified against MongoDB 6.0.1.
+***How the refusal is reported differs***: MongoDB raises an error, while `jsongin` returns the
+  document unchanged and writes the reason to the [OpLog](./OpLog.md).
+Both refuse the update; only MongoDB tells the caller so through the return path.
 

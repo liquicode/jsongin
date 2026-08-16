@@ -198,7 +198,17 @@ module.exports = function ( jsongin )
 				for ( let field in UpdateFields )
 				{
 					let array = jsongin.GetValue( Document, field );
-					if ( jsongin.ShortType( array ) !== 'a' )
+					let array_type = jsongin.ShortType( array );
+					if ( array_type === 'u' )
+					{
+						// A field which is not there is created as an array holding what is
+						// pushed, and the path to it is created with it. Verified against
+						// MongoDB 6.0.1. This used to refuse the update, which made starting a
+						// list a two step operation.
+						array = [];
+						array_type = 'a';
+					}
+					if ( array_type !== 'a' )
 					{
 						if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$push: The field [${field}] must be an array.` ); }
 						operation_result = false;

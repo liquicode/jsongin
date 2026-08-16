@@ -702,20 +702,24 @@ The ***Current Status*** block is rewritten in place each session. The ***Log***
 
 | Check | Command | Result |
 |-------|---------|--------|
-| Unit tests | `npm test` | 1084 passing, ***green*** |
+| Unit tests | `npm test` | 1097 passing, ***green*** |
 | Parity baseline | `npm run parity-test-mongodb` | 248 passing (needs a server) |
-| Parity under test | `npm run parity-test-jsongin` | 224 passing, 24 failing |
-| Parity measurement | `npm run parity-report` | ***90.3%*** — 224 of 248 agree |
-| Coverage | `npm run coverage` | 161 uncovered blocks, 46 files fully covered |
-| Docs | `npm run check-docs` | 317 fences, 271 links, 53 pages — passed |
+| Parity under test | `npm run parity-test-jsongin` | 235 passing, 13 failing |
+| Parity measurement | `npm run parity-report` | ***94.8%*** — 235 of 248 agree |
+| Coverage | `npm run coverage` | 158 uncovered blocks, 49 files fully covered |
+| Docs | `npm run check-docs` | 319 fences, 273 links, 53 pages — passed |
 
-***No review finding has been fixed yet.*** Everything so far has been building the means to
-  measure them. The 24 gaps are the findings below, now expressed as tests.
+***The update operator group is fixed.*** P1 and the three findings the tests turned up are
+  closed, which took parity from 90.3% to 94.8% and the Update area from 33/45 to 44/45.
 
-Parity by area: Query 154/165, Update 33/45, Projection 16/17, Aggregate 21/21.
+Parity by area: Query 154/165, Update 44/45, Projection 16/17, Aggregate 21/21.
 
-***Uncommitted.*** The whole of the 2026-08-16 work is in the working tree on `main`. Last
-  commit is `fcffbc5 created Parity Tests`.
+The 13 remaining gaps are 11 in Query (P2 `$in`/`$nin`, P3 and P4 `$regex`, P7 `$exists`,
+  P8 `$elemMatch`, P10 deep equality, P6 `$not` at the top level), 1 in Update (P9's conflicting
+  paths, which is the only Update gap left), and 1 in Projection (P5's empty projection).
+
+***Uncommitted.*** The 2026-08-16 test work is committed as `e029586 Updated testing framework`.
+  This session's source, test, and documentation changes are in the working tree on `main`.
 
 
 ### Standing Decisions
@@ -743,25 +747,66 @@ Decisions made in session, which later work should not silently reverse:
 
 | Group | Open | Notes |
 |-------|-----:|-------|
-| P1–P10 parity | 10 | All now have parity tests. None fixed. |
+| P1–P10 parity | 9 | ***P1 fixed.*** The other nine have parity tests and are open. |
 | S1–S8 consistency | 8 | Not started. Internal; mostly not expressible as parity tests. |
-| R1–R4 conciseness | 4 | Not started. R2 should be done together with P1. |
+| R1–R4 conciseness | 3 | ***R2 fixed*** with P1, as `_arith.js`. R1, R3, R4 not started. |
 | T1–T5 test coverage | 2 | T1, T2, T5 addressed 2026-08-16. T3, T4 open. |
-| D1–D3 documentation | 3 | Not started. D2 grows as P items are fixed. |
+| D1–D3 documentation | 3 | D1 and D2 partly done for `$inc`/`$mul`. D2 shrinks as P items are fixed. |
 
-Three findings were discovered by the tests and are ***not*** written up in the sections above:
+Three findings were discovered by the tests and were ***not*** written up in the sections above.
+***All three are now fixed***, together with P1:
 
-- `$rename` leaves the source key behind holding `undefined`, so a renamed field still
-  satisfies `{ $exists: true }`.
-- `$unset` on an array element leaves a sparse hole rather than a `null`.
-- `$push` on a missing field creates nothing, where MongoDB creates the array.
+- `$rename` left the source key behind holding `undefined`, so a renamed field still
+  satisfied `{ $exists: true }`.
+- `$unset` on an array element left a sparse hole rather than a `null`.
+- `$push` on a missing field created nothing, where MongoDB creates the array.
 
 All three were invisible to the unit tests because those compare with `JSON.stringify`, which
-  renders a hole as `null` and drops an `undefined` member. Treat them as part of P1's group
-  when fixing.
+  renders a hole as `null` and drops an `undefined` member.
 
 
 ### Log
+
+#### 2026-08-16 — P1 and the update operator group fixed
+
+The first findings actually fixed. Parity 90.3% → ***94.8%***, Update 33/45 → 44/45, with 11
+  gaps closed and no unit regression.
+
+- **R2 first, so P1 is fixed once.** `Update/Field/_arith.js`, following `_minmax.js`, takes the
+  operator name and a `( Value, Operand )` function. `$inc` and `$mul` are now 50 lines each of
+  wiring and documentation instead of 40 lines of duplicated body.
+- **P1.** A missing field counts as a zero, which gives `$inc` the operand and `$mul` a `0` from
+  one rule, and the path is created. The stored value is type checked, not just the operand,
+  so `{ a: 'str' }` is refused rather than becoming `'str1'`. The operand must be a real number:
+  `AsNumber` is deliberately not used to read it, because it converts `'5'` and MongoDB does
+  not. Every field is checked before any field is written, so a refusal leaves the whole
+  document untouched — the rule `push.js` already followed.
+- **`$rename`** removes the source key with `DeleteValue` instead of `SetValue( ..., undefined )`,
+  and leaves a missing source alone rather than creating the target. Absence is checked with
+  `GetValue` rather than read from `DeleteValue`'s result, because that result reports "was
+  never there" and "removal failed" identically and only one of them is a no-op — which the
+  failing-engine test at `250)` would have caught either way.
+- **`$unset`** writes `null` into an array element. ***Decided in session:*** this is
+  special-cased in `unset.js` rather than changed in `DeleteValue`, which keeps its documented
+  contract of mirroring the Javascript `delete` operator. The cost is a parent walk inside the
+  operator; it walks rather than calling `GetValue` because `GetValue` gathers an
+  array-by-field-name descent into a new array, and a write into that copy would vanish
+  silently.
+- **`$push`** creates the array when the field is not there.
+
+Coverage went 161 → 167 uncovered blocks on the first pass, all of it the new branches, and
+  then to ***158*** once tested — below the starting point despite a new source file. The new
+  unit tests are the ones MongoDB has no opinion about: which paths count as an array element
+  (a field named `'1'` is not one), and how a refusal is reported through the OpLog.
+
+***Deferred, deliberately:*** P9's conflicting-path rejection, the last Update gap. It needs a
+  pre-pass in `Update.js` and settles whether a bad update throws or returns a no-op, which
+  touches every operator's refusal path. That decision should be made once, on its own.
+
+`Operator-Reference.md` gained an `$inc`/`$mul` note in the shape of the `$min`/`$max` one, and
+  the `$unset`, `$rename`, and `$push` rows now state the behaviors above. The note says plainly
+  that MongoDB raises an error where `jsongin` returns the document unchanged and logs, rather
+  than claiming the two match — which is the S6 habit this review is trying to break.
 
 #### 2026-08-16 — Parity findings expressed as tests
 
