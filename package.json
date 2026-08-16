@@ -25,7 +25,7 @@
         "history.md"
     ],
     "scripts": {
-        "test": "mocha -u bdd \"test/Unit Tests/*.js\" \"test/Parity Tests/jsongin-Tests.js\" --timeout 0 --slow 10 --colors",
+        "test": "mocha -u bdd \"test/Unit Tests/*.js\" --timeout 0 --slow 10 --colors",
         "parity-test-jsongin": "mocha -u bdd \"test/Parity Tests/jsongin-Tests.js\" --timeout 0 --slow 10 --colors",
         "parity-test-mongodb": "mocha -u bdd \"test/Parity Tests/MongoDB-Tests.js\" --timeout 0 --slow 10 --colors",
         "parity-report": "node build/parity.js",

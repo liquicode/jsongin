@@ -14,13 +14,12 @@
 	describe() runs its callback while this file is being required, so the suites below take
 	their Driver at that moment. Passing it in as a parameter is what makes the timing work.
 
-	Options.Extensions includes the suites which exercise jsongin extensions. Those have no
-	MongoDB counterpart and so no baseline to be measured against, so they run only under the
-	jsongin driver. There are none in this area today; the parameter is here so that every
-	area file has the same shape.
+	Every suite here asserts behavior MongoDB also implements. A jsongin extension has no
+	baseline to be measured against, so it is a unit test rather than a parity test:
+	see test/Unit Tests/260) Extension Operator Tests.js.
 */
 
-module.exports = function ( Driver, Options = {} )
+module.exports = function ( Driver )
 {
 
 	//---------------------------------------------------------------------

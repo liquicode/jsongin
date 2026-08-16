@@ -54,9 +54,6 @@ const AREAS = [
 //
 // Neither runner names its engine in a describe(), so a test has the same full title under
 // both. That is what lets the two reports be matched test by test below.
-//
-// Extensions are left off for both. A suite with no MongoDB counterpart has no baseline to be
-// measured against, so including it would only ever add tests which cannot be compared.
 function write_runner( Area, DriverName )
 {
 	let lines = [];
@@ -178,44 +175,6 @@ function compare_area( Area, Verbose )
 
 
 //---------------------------------------------------------------------
-// How many tests the jsongin runner has which the comparison does not cover.
-// That difference is the extension suites, which is the honest way to report them: they are
-// counted from the same run rather than from a second list which could go stale.
-function count_extension_tests()
-{
-	let filename = LIB_PATH.join( PARITY, '~parity-extensions.js' );
-	let lines = [];
-	lines.push( `'use strict';` );
-	lines.push( `const Driver = require( './Drivers/jsongin-Driver.js' )();` );
-	for ( let index = 0; index < AREAS.length; index++ )
-	{
-		lines.push( `require( './${AREAS[ index ].Folder}/${AREAS[ index ].File}' )( Driver, { Extensions: true } );` );
-	}
-	LIB_FS.writeFileSync( filename, lines.join( NEWLINE ) + NEWLINE );
-
-	try
-	{
-		let results = run_suite( filename );
-		let total = Object.keys( results ).length;
-
-		let compared = 0;
-		for ( let index = 0; index < AREAS.length; index++ )
-		{
-			let plain = write_runner( AREAS[ index ], 'jsongin' );
-			try { compared += Object.keys( run_suite( plain ) ).length; }
-			finally { LIB_FS.unlinkSync( plain ); }
-		}
-
-		return ( total - compared );
-	}
-	finally
-	{
-		LIB_FS.unlinkSync( filename );
-	}
-}
-
-
-//---------------------------------------------------------------------
 function main()
 {
 	let verbose = process.argv.includes( '--verbose' );
@@ -266,15 +225,9 @@ function main()
 	console.log( `   parity   ${parity.toFixed( 1 )}%   (${totals.Agree} of ${totals.Compared} compared behaviors agree)` );
 	console.log( '' );
 
-	// The extension suites are excluded by construction: both runners above are built without
-	// Options.Extensions, so a suite with no MongoDB counterpart never enters the comparison.
-	// Report the difference rather than leaving it to be inferred from the totals.
-	let extension_tests = count_extension_tests();
-	if ( extension_tests > 0 )
-	{
-		console.log( `   not compared   ${extension_tests} extension tests, which have no MongoDB behavior to be measured against` );
-		console.log( '' );
-	}
+	// Nothing is excluded from the comparison. Every parity suite asserts behavior MongoDB
+	// also implements, so every one of them has a baseline. A jsongin extension is a unit
+	// test, which is why this report no longer has a category for what it could not measure.
 
 	for ( let index = 0; index < summaries.length; index++ )
 	{

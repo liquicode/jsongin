@@ -7,7 +7,9 @@
 	test passes here and passes there, the behavior is verified identical. Where it passes
 	there and fails here, jsongin is wrong.
 
-	Extensions are on, so this also runs the suites which have no MongoDB counterpart.
+	Every suite it runs is a suite MongoDB-Tests.js also runs. The jsongin extensions are not
+	here: they have no baseline to be measured against, so they are unit tests instead.
+	See test/Unit Tests/260) Extension Operator Tests.js.
 
 	Needs no server. Run it directly, or measure it against the baseline:
 
@@ -26,14 +28,11 @@
 // what those defaults are.
 const Driver = require( './Drivers/jsongin-Driver.js' )();
 
-const OPTIONS = { Extensions: true };
-
-
 //---------------------------------------------------------------------
 describe( 'jsongin Parity Tests', function ()
 {
-	require( './Query Tests/Query Tests.js' )( Driver, OPTIONS );
-	require( './Update Tests/Update Tests.js' )( Driver, OPTIONS );
-	require( './Projection Tests/Projection Tests.js' )( Driver, OPTIONS );
-	require( './Aggregate Tests/Aggregate Tests.js' )( Driver, OPTIONS );
+	require( './Query Tests/Query Tests.js' )( Driver );
+	require( './Update Tests/Update Tests.js' )( Driver );
+	require( './Projection Tests/Projection Tests.js' )( Driver );
+	require( './Aggregate Tests/Aggregate Tests.js' )( Driver );
 } );

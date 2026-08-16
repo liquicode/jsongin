@@ -55,7 +55,9 @@ module.exports = function ( Settings )
 				}
 				catch ( error )
 				{
-					console.error( error );
+					// Rethrown rather than logged. An engine which rejects an operation is
+					// stating a behavior, and a parity test has to be able to see it.
+					throw error;
 				}
 			},
 
@@ -81,7 +83,9 @@ module.exports = function ( Settings )
 				}
 				catch ( error )
 				{
-					console.error( error );
+					// Rethrown rather than logged. An engine which rejects an operation is
+					// stating a behavior, and a parity test has to be able to see it.
+					throw error;
 				}
 			},
 
@@ -95,7 +99,9 @@ module.exports = function ( Settings )
 				}
 				catch ( error )
 				{
-					console.error( error );
+					// Rethrown rather than logged. An engine which rejects an operation is
+					// stating a behavior, and a parity test has to be able to see it.
+					throw error;
 				}
 			},
 

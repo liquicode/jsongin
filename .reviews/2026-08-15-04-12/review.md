@@ -35,6 +35,45 @@ The `ResolveCandidates` migration is the substantial piece of work since that re
 
 ---
 
+## Parity findings are now measured
+
+> Added 2026-08-16.
+
+Every parity finding below is now a ***test***, in the shared parity suites, verified against a
+  live MongoDB 6.0.1 server before being trusted. Each one passes under MongoDB and fails under
+  `jsongin`, which is what makes it a finding rather than an opinion.
+
+```
+npm run parity-report      =>  parity 90.3%   (224 of 248 compared behaviors agree)
+```
+
+| Finding | Where it is tested | Tests |
+|---------|--------------------|------:|
+| P1 `$inc`/`$mul` on a missing field | `Update Tests/test-suite/Update Operator Tests.js` | 3 |
+| P1 `$inc`/`$mul` type validation | `Update Tests/test-suite/Update Rejection Tests.js` | 3 |
+| P2 `$in`/`$nin` | `Query Tests/test-suite/Comparison Operator Tests.js` | 5 |
+| P3 `$regex` `$options` | `Query Tests/test-suite/Comparison Operator Tests.js` | 1 |
+| P4 `$regex` global flag statefulness | `Query Tests/test-suite/Comparison Operator Tests.js` | 1 |
+| P5 empty projection | `Projection Tests/test-suite/Projection Shape Tests.js` | 1 |
+| P6 `$not` at the top level | `Query Tests/test-suite/Query Rejection Tests.js` | 1 |
+| P7 `$exists` non-boolean value | `Query Tests/test-suite/Comparison Operator Tests.js` | 1 |
+| P8 `$elemMatch` through an array | `Query Tests/test-suite/Comparison Operator Tests.js` | 1 |
+| P9 update documents which cannot apply | `Update Tests/test-suite/Update Rejection Tests.js` | 2 |
+| P10 lossy deep equality | `Query Tests/test-suite/Comparison Operator Tests.js` | 1 |
+
+Two notes on what the tests found that this review did not:
+
+- ***`$rename` leaves the source key behind***, holding `undefined`, so a renamed field still
+  satisfies `{ $exists: true }`. ***`$unset` on an array element leaves a sparse hole*** rather
+  than a `null`. Both were invisible to the unit tests because those compare with
+  `JSON.stringify`, which renders a hole as `null` and drops an `undefined` member. Neither is
+  in the findings below. ***`$push` on a missing field creates nothing*** where MongoDB creates
+  the array, which is a fourth case of P1's shape in an operator P1 does not name.
+- Of P9's two halves, only the conflicting-path half is a gap. An unknown operator leaves the
+  document unchanged, which is a refusal even without an error, so the test passes.
+
+---
+
 ## 1. Parity
 
 ### P1 — `$inc` and `$mul` write `NaN` into a missing field, and never check the field's type
@@ -646,3 +685,144 @@ The reference documents `$slice` as an unsupported *projection* operator, which 
 9. **S2, S3, S5, S6, S8** — the stale `ResolveCandidates` header, `OperatorType`, the dead
    `Path/` modules, the readme claim, the double `module.exports`.
 10. **P9, P10, D1, D2, D3, S4, S7, T3, T4, T5** — the remainder.
+
+
+---
+
+## Work Notes
+
+A running record of what has been done against this review, newest entry first.
+The ***Current Status*** block is rewritten in place each session. The ***Log*** below it is
+  append-only: entries are never edited after the fact, so that a wrong turn stays visible.
+
+
+### Current Status
+
+> As of 2026-08-16.
+
+| Check | Command | Result |
+|-------|---------|--------|
+| Unit tests | `npm test` | 1084 passing, ***green*** |
+| Parity baseline | `npm run parity-test-mongodb` | 248 passing (needs a server) |
+| Parity under test | `npm run parity-test-jsongin` | 224 passing, 24 failing |
+| Parity measurement | `npm run parity-report` | ***90.3%*** — 224 of 248 agree |
+| Coverage | `npm run coverage` | 161 uncovered blocks, 46 files fully covered |
+| Docs | `npm run check-docs` | 317 fences, 271 links, 53 pages — passed |
+
+***No review finding has been fixed yet.*** Everything so far has been building the means to
+  measure them. The 24 gaps are the findings below, now expressed as tests.
+
+Parity by area: Query 154/165, Update 33/45, Projection 16/17, Aggregate 21/21.
+
+***Uncommitted.*** The whole of the 2026-08-16 work is in the working tree on `main`. Last
+  commit is `fcffbc5 created Parity Tests`.
+
+
+### Standing Decisions
+
+Decisions made in session, which later work should not silently reverse:
+
+1. ***`npm test` runs unit tests only, and is expected to be green.*** Parity gaps are a state
+   this project expects to be in while they are being closed, so a red `npm test` always means
+   a regression in `jsongin` itself. Parity is measured by `parity-report`, which exits
+   non-zero and can gate a release when that is wanted. *(User decision, 2026-08-16.)*
+2. ***The parity run uses an unconfigured engine.*** `jsongin-Tests.js` calls the driver with
+   no settings, so it takes the instance the package exports. Parity is a claim about the
+   defaults. `Default Settings Tests` in `130)` pins those defaults.
+3. ***A test belongs in Parity Tests only if MongoDB has an opinion about it.*** Extensions,
+   engine functions with no MongoDB counterpart, and statements about the `jsongin` API are
+   unit tests. There is no "not compared" category in the parity report.
+4. ***Parity tests are written against MongoDB first.*** Every assertion is run against the
+   server before it is trusted. A test which fails under MongoDB is a test bug, not a finding.
+5. ***Rejection is behavior.*** The drivers rethrow rather than logging. Rejection tests assert
+   only *that* an operation was refused, never the wording, and an update counts as refused if
+   it throws ***or*** leaves the document unchanged.
+
+
+### Finding Status
+
+| Group | Open | Notes |
+|-------|-----:|-------|
+| P1–P10 parity | 10 | All now have parity tests. None fixed. |
+| S1–S8 consistency | 8 | Not started. Internal; mostly not expressible as parity tests. |
+| R1–R4 conciseness | 4 | Not started. R2 should be done together with P1. |
+| T1–T5 test coverage | 2 | T1, T2, T5 addressed 2026-08-16. T3, T4 open. |
+| D1–D3 documentation | 3 | Not started. D2 grows as P items are fixed. |
+
+Three findings were discovered by the tests and are ***not*** written up in the sections above:
+
+- `$rename` leaves the source key behind holding `undefined`, so a renamed field still
+  satisfies `{ $exists: true }`.
+- `$unset` on an array element leaves a sparse hole rather than a `null`.
+- `$push` on a missing field creates nothing, where MongoDB creates the array.
+
+All three were invisible to the unit tests because those compare with `JSON.stringify`, which
+  renders a hole as `null` and drops an `undefined` member. Treat them as part of P1's group
+  when fixing.
+
+
+### Log
+
+#### 2026-08-16 — Parity findings expressed as tests
+
+Every P item is now a test in the shared parity suites. 7 were directly expressible; 3 (P1's
+  type validation, P6, P9) needed the drivers to stop swallowing errors, which is T5.
+
+- Added `Query Tests/test-suite/Comparison Operator Tests.js`, migrated from `200)`.
+- Added `Update Tests/test-suite/Update Operator Tests.js`, migrated from `250)`.
+- Added `Query Tests/test-suite/Query Rejection Tests.js` and
+  `Update Tests/test-suite/Update Rejection Tests.js`.
+- Added `Projection Tests/test-suite/Projection Shape Tests.js`.
+- `jsongin-Driver.js` and `MongoDB-Driver.js` now rethrow instead of `console.error` — **T5**.
+- `build/coverage.js` no longer crashes when a test fails. `execSync` throws on a non-zero
+  exit, so a single failing test took the whole coverage report with it.
+
+Parity 100% → 96.0% → 90.3% as the suites grew. Nothing regressed; the measurement sharpened.
+
+Not migrated, deliberately: `$eqx`/`$nex`, cases built on `undefined`/functions/symbols (no
+  BSON counterpart, so they do not survive a round trip), and assertions about aliasing or
+  about calling an operator directly.
+
+#### 2026-08-16 — Parity Tests as a first class citizen
+
+Restructured `test/` into `Unit Tests/`, `Parity Tests/`, `Browser Tests/` and made the parity
+  run measurable.
+
+- Fixed the fallout from the folder move: `npm test` matched nothing, `300`–`500` pointed at
+  paths that no longer existed, `130):35` kept an old `require.resolve`.
+- Fixed a real bug in `MongoDB-Driver.js`: `Update` called `.toArray()` on `updateMany()`,
+  which returns counts. The entire MongoDB update baseline was failing.
+- Consolidated the runners: `<Engine>-Tests.js` names the driver and the areas,
+  `<Area>/<Area> Tests.js` names the suites, `test-suite/*.js` holds the tests. An area file
+  takes its `Driver` as a parameter because `describe()` runs at require time — a driver
+  assigned to the module afterwards can never reach the suites.
+- Deleted `Unit Tests/300`–`600`, which were exact duplicates of `jsongin-Tests.js`.
+- Added `build/parity.js` and `npm run parity-report`.
+- Wired `Expr Tests.js` into the MongoDB runner. `$expr` is real MongoDB and had a baseline all
+  along; it was simply never listed. **T1** and **T2** are addressed by this and the entry
+  above.
+- Moved `$exprx` to `Unit Tests/260) Extension Operator Tests.js` and removed the
+  `Options.Extensions` machinery it required across six files.
+- Made the parity run use the unconfigured engine, and added `Default Settings Tests` to
+  `130)`. Verified by flipping `PathExtensions` to `true`: `npm test` caught it, and
+  `parity-report` did ***not*** — the parity suites have no coverage of PathExtensions
+  sensitive behavior, which is why the guard test is needed.
+
+#### 2026-08-15 — Review written
+
+`.reviews/2026-08-15-04-12/review.md`. Baseline at the time: 1212 passing, 161 uncovered
+  blocks, docs clean, 75 registered operators.
+
+
+### Re-establishing Context
+
+```bash
+npm test                        # unit tests, must be green
+npm run parity-report           # the gap list, and the number
+npm run coverage                # where the untested code is
+npm run check-docs              # fences, links, orphans
+```
+
+`parity-report` prints every gap by name, so it is the fastest way back into what is wrong.
+  It needs a MongoDB server at `localhost:27017`; the project has one running locally, and it
+  is version 6.0.1, which is the version the source comments cite.

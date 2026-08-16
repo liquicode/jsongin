@@ -14,7 +14,11 @@ That claim is only worth as much as the tests behind it, so the suite is organiz
 npm test
 ```
 
-This runs the unit tests and the parity suites under `jsongin`. It needs nothing but Node.
+This runs the unit tests. It needs nothing but Node, and it is expected to be ***green***.
+
+`npm test` does not run the parity suites. Those measure agreement with MongoDB, and a known
+  gap is a state this project expects to be in while it is being closed. Keeping it out of the
+  default run means a red `npm test` always means a regression in `jsongin` itself.
 
 ```bash
 npm run parity-test-mongodb
@@ -51,6 +55,20 @@ This reports the parts of `src/` which the test suite never executes.
 | `Unit Tests/` | Is `jsongin` correct and stable? |
 | `Parity Tests/` | Does `jsongin` agree with MongoDB? |
 | `Browser Tests/` | Do the engine functions work in a browser? |
+
+***Which folder does a test belong in?*** Ask whether MongoDB has an opinion about it.
+
+- Behavior MongoDB also implements is a ***parity*** test. Write it through the `Driver`, so it
+  can be run against a server and against `jsongin`.
+- A `jsongin` extension, an engine function with no MongoDB counterpart, or a statement about
+  the `jsongin` API is a ***unit*** test.
+
+`$eq` through an array is parity. `$eqx`, `Flatten`, `Hybridize`, `Text`, `Diff`, and "this
+  function does not alias its argument" are unit tests.
+
+A parity test is worth more than a unit test for the same behavior, because only the parity
+  test can be checked against the thing it claims to match. When a unit test turns out to cover
+  behavior MongoDB shares, move it.
 
 
 ### Unit Tests
@@ -143,10 +161,25 @@ That gives each test outcome a meaning:
 | pass | fail | A ***parity gap***. `jsongin` is wrong. |
 | fail | — | A ***test bug***. The test asserts something MongoDB does not do. |
 
-A suite which exercises a `jsongin` extension has no MongoDB counterpart and so has no
-  baseline. Those are guarded by `Options.Extensions`, which only `jsongin-Tests.js` turns on.
-  `Exprx Tests.js` is the only one today. `build/parity.js` reports how many tests that
-  excludes rather than silently skipping them.
+***Rejection is behavior too.*** An engine which refuses a malformed query or an update it
+  cannot apply is stating something, and answering anyway is worse than refusing, because the
+  caller gets a result they have no reason to distrust. The drivers therefore ***rethrow***
+  rather than logging, so a suite can see a refusal. `Query Rejection Tests.js` and
+  `Update Rejection Tests.js` cover those cases.
+
+They assert only that an operation was refused, never the wording of the message: two engines
+  can agree that something is invalid while describing it differently. An update counts as
+  refused if it throws ***or*** leaves the document unchanged, since both tell the caller it
+  did not happen. What fails is applying some other update instead.
+
+***Every suite here has a baseline.*** A `jsongin` extension has no MongoDB counterpart, so
+  there is nothing to measure it against and it does not belong in this folder. `$exprx` is
+  tested in `test/Unit Tests/260) Extension Operator Tests.js`, and `$eqx`, `$nex`, and `$noop`
+  beside the operators they resemble in the `2xx` files.
+
+This is why the parity report has no category for what it could not compare. Everything a
+  parity run executes is something both engines are expected to agree on, so the percentage is
+  a measurement rather than a measurement with an asterisk.
 
 The `NeDB` and `Seald-NeDB` runners are informational. Those engines diverge from MongoDB on
   their own account, and their failures are facts about them, not about `jsongin`. They list
@@ -166,15 +199,19 @@ This generates a runner for each engine over the same suite list, runs both, and
 ```
    area          compared   agree   gaps   test bugs
    ----------------------------------------------------
-   Query              102     102      0           0
-   Update               1       1      0           0
-   Projection           8       8      0           0
+   Query              165     154     11           0
+   Update              45      33     12           0
+   Projection          17      16      1           0
    Aggregate           21      21      0           0
    ----------------------------------------------------
-   total              132     132      0           0
+   total              248     224     24           0
 
-   parity   100.0%   (132 of 132 compared behaviors agree)
+   parity   90.3%   (224 of 248 compared behaviors agree)
 ```
+
+The number went ***down*** as the suites grew, which is the point. A parity gap does not
+  appear when it is introduced; it appears when a test finally asks about it. Falling from
+  100% to 90.3% is a measurement getting sharper, not an engine getting worse.
 
 It exits non-zero when there is a gap, so it can gate a build.
 

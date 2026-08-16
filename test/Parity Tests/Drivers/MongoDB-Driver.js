@@ -79,24 +79,17 @@ module.exports = function ()
 						mongodb_settings,
 						async function ( Collection )
 						{
-							try
-							{
-								let result = null;
-								result = await Collection.deleteMany( {} );
-								result = await Collection.insertMany( Data );
-								return true;
-							}
-							catch ( error )
-							{
-								console.error( error );
-								return false;
-							}
+							await Collection.deleteMany( {} );
+							await Collection.insertMany( Data );
+							return true;
 						} );
 					return result;
 				}
 				catch ( error )
 				{
-					console.error( error );
+					// Rethrown rather than logged. A server which rejects an operation is
+					// stating a behavior, and a parity test has to be able to see it.
+					throw error;
 				}
 			},
 
@@ -118,7 +111,9 @@ module.exports = function ()
 				}
 				catch ( error )
 				{
-					console.error( error );
+					// Rethrown rather than logged. A server which rejects an operation is
+					// stating a behavior, and a parity test has to be able to see it.
+					throw error;
 				}
 			},
 
@@ -148,7 +143,9 @@ module.exports = function ()
 				}
 				catch ( error )
 				{
-					console.error( error );
+					// Rethrown rather than logged. A server which rejects an operation is
+					// stating a behavior, and a parity test has to be able to see it.
+					throw error;
 				}
 			},
 
@@ -169,7 +166,9 @@ module.exports = function ()
 				}
 				catch ( error )
 				{
-					console.error( error );
+					// Rethrown rather than logged. A server which rejects an operation is
+					// stating a behavior, and a parity test has to be able to see it.
+					throw error;
 				}
 			},
 

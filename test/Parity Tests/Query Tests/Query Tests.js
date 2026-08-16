@@ -10,12 +10,12 @@
 		test/Parity Tests/MongoDB-Tests.js      the baseline, requires a live server
 		test/Parity Tests/jsongin-Tests.js      the engine under test
 
-	Options.Extensions includes the suites which exercise jsongin extensions. Those have no
-	MongoDB counterpart and so no baseline to be measured against, so they run only under the
-	jsongin driver.
+	Every suite here asserts behavior MongoDB also implements. A jsongin extension has no
+	baseline to be measured against, so it is a unit test rather than a parity test:
+	see test/Unit Tests/260) Extension Operator Tests.js.
 */
 
-module.exports = function ( Driver, Options = {} )
+module.exports = function ( Driver )
 {
 
 	//---------------------------------------------------------------------
@@ -26,12 +26,8 @@ module.exports = function ( Driver, Options = {} )
 		require( './test-suite/MongoDB Reference.js' )( Driver );
 		require( './test-suite/MongoDB Tutorials.js' )( Driver );
 		require( './test-suite/Expr Tests.js' )( Driver );
-
-		// $exprx is a jsongin extension. There is no MongoDB behavior to compare it against.
-		if ( Options.Extensions === true )
-		{
-			require( './test-suite/Exprx Tests.js' )( Driver );
-		}
+		require( './test-suite/Comparison Operator Tests.js' )( Driver );
+		require( './test-suite/Query Rejection Tests.js' )( Driver );
 	} );
 
 };

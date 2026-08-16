@@ -46,11 +46,21 @@ function collect_coverage()
 	let folder = LIB_FS.mkdtempSync( LIB_PATH.join( LIB_OS.tmpdir(), 'jsongin-coverage-' ) );
 	let environment = Object.assign( {}, process.env, { NODE_V8_COVERAGE: folder } );
 
-	LIB_CHILD_PROCESS.execSync(
+	try
+	{
 		// The same set `npm test` runs, so that the coverage report describes the default run
 		// rather than a subset of it.
-		'npx mocha -u bdd "test/Unit Tests/*.js" "test/Parity Tests/jsongin-Tests.js" --timeout 0 --reporter dot',
-		{ cwd: REPO, env: environment, stdio: 'ignore' } );
+		LIB_CHILD_PROCESS.execSync(
+			'npx mocha -u bdd "test/Unit Tests/*.js" "test/Parity Tests/jsongin-Tests.js" --timeout 0 --reporter dot',
+			{ cwd: REPO, env: environment, stdio: 'ignore' } );
+	}
+	catch ( error )
+	{
+		// A failing test still executed the code it reached, so its coverage counts.
+		// Reporting coverage is not conditional on the suite being green, and a parity gap is
+		// a state this project expects to be in while it is being closed.
+		console.log( 'Note: some tests failed. The coverage below is still what the run reached.' );
+	}
 
 	return folder;
 }

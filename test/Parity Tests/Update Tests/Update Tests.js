@@ -10,19 +10,20 @@
 		test/Parity Tests/MongoDB-Tests.js      the baseline, requires a live server
 		test/Parity Tests/jsongin-Tests.js      the engine under test
 
-	Options.Extensions includes the suites which exercise jsongin extensions. Those have no
-	MongoDB counterpart and so no baseline to be measured against, so they run only under the
-	jsongin driver. There are none in this area today; the parameter is here so that every
-	area file has the same shape.
+	Every suite here asserts behavior MongoDB also implements. A jsongin extension has no
+	baseline to be measured against, so it is a unit test rather than a parity test:
+	see test/Unit Tests/260) Extension Operator Tests.js.
 */
 
-module.exports = function ( Driver, Options = {} )
+module.exports = function ( Driver )
 {
 
 	//---------------------------------------------------------------------
 	describe( 'Update Tests', function ()
 	{
 		require( './test-suite/Ad-Hoc Tests.js' )( Driver );
+		require( './test-suite/Update Operator Tests.js' )( Driver );
+		require( './test-suite/Update Rejection Tests.js' )( Driver );
 	} );
 
 };
