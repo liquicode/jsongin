@@ -3,7 +3,16 @@
 module.exports = function ( Settings )
 {
 
-	const jsongin = require( '../../src/jsongin' ).NewJsongin( Settings );
+	// Called with no Settings, this is the engine the package exports: the very instance a
+	// caller gets from require( '@liquicode/jsongin' ), with nothing configured.
+	//
+	// That is what the parity run wants. Parity is a claim about jsongin ***as it ships***,
+	// so pinning settings here would let a change to a default pass unnoticed by the one
+	// suite whose job is to catch it.
+	//
+	// Pass Settings only to test a non default configuration deliberately.
+	const LIB_JSONGIN = require( '../../../src/jsongin' );
+	const jsongin = ( typeof Settings === 'undefined' ) ? LIB_JSONGIN : LIB_JSONGIN.NewJsongin( Settings );
 
 	let driver =
 	{

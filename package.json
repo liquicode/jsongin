@@ -25,7 +25,10 @@
         "history.md"
     ],
     "scripts": {
-        "test": "mocha -u bdd test/*.js --timeout 0 --slow 10 --colors",
+        "test": "mocha -u bdd \"test/Unit Tests/*.js\" \"test/Parity Tests/jsongin-Tests.js\" --timeout 0 --slow 10 --colors",
+        "parity-test-jsongin": "mocha -u bdd \"test/Parity Tests/jsongin-Tests.js\" --timeout 0 --slow 10 --colors",
+        "parity-test-mongodb": "mocha -u bdd \"test/Parity Tests/MongoDB-Tests.js\" --timeout 0 --slow 10 --colors",
+        "parity-report": "node build/parity.js",
         "coverage": "node build/coverage.js",
         "check-docs": "node build/docs-check.js",
         "run tests": "npx @liquicode/devops --tasks .\\build\\build.tasks.js run_tests",

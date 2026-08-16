@@ -1,8 +1,8 @@
 'use strict';
 
 const assert = require( 'assert' );
-const NewJsongin = require( '../src/jsongin' ).NewJsongin;
-const jsongin = require( '../src/jsongin' );
+const NewJsongin = require( '../../src/jsongin' ).NewJsongin;
+const jsongin = require( '../../src/jsongin' );
 
 /*
 	Covers the error and validation paths, which the rest of the suite never reaches.

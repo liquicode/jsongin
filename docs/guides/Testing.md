@@ -14,7 +14,26 @@ That claim is only worth as much as the tests behind it, so the suite is organiz
 npm test
 ```
 
-This runs every test file at the top level of `test/`.
+This runs the unit tests and the parity suites under `jsongin`. It needs nothing but Node.
+
+```bash
+npm run parity-test-mongodb
+```
+
+This runs the shared suites against a real MongoDB server, establishing the baseline of what
+  MongoDB actually does. It needs a server at `localhost:27017`.
+
+```bash
+npm run parity-test-jsongin
+```
+
+This runs the same suites against `jsongin`, extensions included.
+
+```bash
+npm run parity-report
+```
+
+This runs the shared suites against ***both*** engines and reports where they disagree.
 
 ```bash
 npm run coverage
@@ -25,8 +44,19 @@ This reports the parts of `src/` which the test suite never executes.
 
 ## How the Tests are Organized
 
-The top-level test files are numbered, and the number is the point: the suite runs from the
-  foundations upward, so the first failure you see is the most fundamental one.
+`test/` has three folders, and they answer three different questions.
+
+| **Folder** | **Question it answers** |
+|------------|--------------------------|
+| `Unit Tests/` | Is `jsongin` correct and stable? |
+| `Parity Tests/` | Does `jsongin` agree with MongoDB? |
+| `Browser Tests/` | Do the engine functions work in a browser? |
+
+
+### Unit Tests
+
+The files are numbered, and the number is the point: the suite runs from the foundations
+  upward, so the first failure you see is the most fundamental one.
 
 | **Range** | **Covers**                                                                  |
 |-----------|------------------------------------------------------------------------------|
@@ -38,34 +68,121 @@ The top-level test files are numbered, and the number is the point: the suite ru
 A failure in a `2xx` file usually explains several failures in the `5xx` files, which is why
   the order matters.
 
+`npm test` also runs `test/Parity Tests/jsongin-Tests.js`, which is the whole parity inventory
+  under the `jsongin` driver. Those suites are the definition of correct behavior, so the
+  default run should not be allowed to drift from them.
 
-## The Drivers
 
-`test/Drivers/` holds a small adapter for each engine the suite can run a test against:
+### Parity Tests
 
-- `jsongin-Driver.js`
-- `MongoDB-Driver.js`
-- `NeDB-Driver.js`
-- `Seald-NeDB-Driver.js`
-- `Json-Criteria-Driver.js`
+`test/Parity Tests/` is driver switchable. One shared suite, several engines.
 
-Each driver exposes the same interface — `SetData`, `Find`, `Update`, `Aggregate`, and so on —
+```
+Parity Tests/
+	Drivers/                    one adapter per engine
+	MongoDB-Tests.js            the baseline: which engine, and which areas
+	jsongin-Tests.js            the engine under test
+	NeDB-Tests.js               informational
+	Seald-NeDB-Tests.js         informational
+	Query Tests/
+		Query Tests.js          which suites this area runs
+		test-suite/             the shared suites themselves
+	Update Tests/
+	Projection Tests/
+	Aggregate Tests/
+```
+
+There are three levels, and each has exactly one job:
+
+| **Level** | **Names** |
+|-----------|-----------|
+| `<Engine>-Tests.js` | the driver, and which areas to run |
+| `<Area>/<Area> Tests.js` | which suites the area runs |
+| `<Area>/test-suite/*.js` | the tests |
+
+Nothing below the top level names an engine, so ***adding a suite is a one line change in one
+  place*** and every engine picks it up.
+
+Every driver exposes the same interface — `SetData`, `Find`, `Update`, `Aggregate`, and so on —
   so the ***same test suite*** can be pointed at `jsongin` or at a real database.
 
-This is how compatibility is established rather than assumed.
-When the v0.1.0 date handling, sort ordering, and projection behavior were reworked, each case
-  was run against a MongoDB 8.0 server through this harness and the results compared.
+> ***Note*** : an area file takes its `Driver` as a parameter, and it has to. `describe()` runs
+  its callback while the file is being required, so the suites capture whatever `Driver` holds
+  at that moment. Assigning a driver to the module afterwards cannot reach them — the suites
+  have already run with what they were given.
 
-The shared suites live under `test/Query Tests/test-suite/`, `test/Update Tests/`,
-  `test/Projection Tests/`, and `test/Aggregate Tests/`.
+***MongoDB is the source of truth.*** A shared suite asserts what MongoDB does, and the way to
+  establish that is to run it against a server rather than to reason about it. When a new
+  behavior is added or an existing one is questioned, the test is written against MongoDB
+  first and only then run under `jsongin`.
 
-> ***Note*** : `npm test` matches `test/*.js` and therefore runs only the top level.
-  The comparison suites in the subfolders are ***not*** part of the default run, because most
-  of them need a database that is not there. Run one deliberately:
->
-> ```bash
-> npx mocha -u bdd "test/Query Tests/Query Tests - MongoDB.js" --timeout 0
-> ```
+***The parity run uses an unconfigured engine.*** `jsongin-Tests.js` calls the driver with no
+  settings, so it takes the instance the package exports — the one a caller gets from
+  `require( '@liquicode/jsongin' )`.
+
+That is the claim being tested. Parity is a property of the ***defaults***: MongoDB behavior is
+  what `jsongin` does when it is told nothing. Passing settings to the parity driver, even
+  settings which only restate a default, would let a change to that default pass the one suite
+  whose job is to catch it.
+
+The defaults themselves are pinned by `Default Settings Tests` in
+  `test/Unit Tests/130) Engine Function Tests.js`. Changing a default is allowed; changing one
+  without noticing that it moves the parity claim is what those tests prevent.
+
+To test a non-default configuration, pass settings to the driver deliberately:
+
+```js
+const Driver = require( './Drivers/jsongin-Driver.js' )( { PathExtensions: true } );
+```
+
+That gives each test outcome a meaning:
+
+| **MongoDB** | **jsongin** | **What it means** |
+|:-----------:|:-----------:|--------------------|
+| pass | pass | The behavior is verified identical. |
+| pass | fail | A ***parity gap***. `jsongin` is wrong. |
+| fail | — | A ***test bug***. The test asserts something MongoDB does not do. |
+
+A suite which exercises a `jsongin` extension has no MongoDB counterpart and so has no
+  baseline. Those are guarded by `Options.Extensions`, which only `jsongin-Tests.js` turns on.
+  `Exprx Tests.js` is the only one today. `build/parity.js` reports how many tests that
+  excludes rather than silently skipping them.
+
+The `NeDB` and `Seald-NeDB` runners are informational. Those engines diverge from MongoDB on
+  their own account, and their failures are facts about them, not about `jsongin`. They list
+  only the query area, because their drivers implement `Find` and not `Update` or `Aggregate`.
+
+
+## Measuring Parity
+
+```bash
+npm run parity-report
+npm run parity-report -- --verbose
+```
+
+This generates a runner for each engine over the same suite list, runs both, and matches the
+  results test by test:
+
+```
+   area          compared   agree   gaps   test bugs
+   ----------------------------------------------------
+   Query              102     102      0           0
+   Update               1       1      0           0
+   Projection           8       8      0           0
+   Aggregate           21      21      0           0
+   ----------------------------------------------------
+   total              132     132      0           0
+
+   parity   100.0%   (132 of 132 compared behaviors agree)
+```
+
+It exits non-zero when there is a gap, so it can gate a build.
+
+Read the number for what it is. It is the share of ***shared-suite assertions*** the two
+  engines agree on, so it cannot speak for behavior no shared suite exercises yet. A high score
+  means "nothing known is broken", not "nothing is broken". Growing the shared suites is what
+  makes the number mean more, which is why a new parity test is worth more than a new unit
+  test for the same behavior.
 
 
 ## Coverage

@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require( 'assert' );
-const jsongin = require( '../src/jsongin' );
+const jsongin = require( '../../src/jsongin' );
 
 /*
 	Runs a date through every public function and asserts that it survives.

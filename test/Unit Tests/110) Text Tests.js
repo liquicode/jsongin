@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require( 'assert' );
-const jsongin = require( '../src/jsongin' );
+const jsongin = require( '../../src/jsongin' );
 
 
 describe( '110) Text Tests', () =>

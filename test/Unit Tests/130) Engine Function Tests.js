@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require( 'assert' );
-const jsongin = require( '../src/jsongin' );
+const jsongin = require( '../../src/jsongin' );
 
 /*
 	Covers the engine functions which had no direct test coverage.
@@ -14,6 +14,54 @@ const jsongin = require( '../src/jsongin' );
 
 describe( '130) Engine Function Tests', () =>
 {
+
+
+	//---------------------------------------------------------------------
+	describe( 'Default Settings Tests', () =>
+	{
+		/*
+			The parity suites run against an unconfigured engine, on the grounds that MongoDB
+			behavior is what jsongin does when it is told nothing. That only holds while the
+			defaults stay where they are, and nothing else pins them.
+
+			Changing a default is allowed. Changing one without noticing that it moves the
+			whole parity claim is not, which is what these tests are here to prevent.
+
+			See test/Parity Tests/jsongin-Tests.js.
+		*/
+
+		it( 'should default PathExtensions to false', () =>
+		{
+			// MongoDB does not run the implicit iterator on the write side: $set and the
+			// arithmetic update operators reject such a path, and $unset treats it as a no-op.
+			assert.strictEqual( jsongin.Settings.PathExtensions, false );
+			assert.strictEqual( jsongin.NewJsongin().Settings.PathExtensions, false );
+		} );
+
+		it( 'should default the OpLog and OpError hooks to null', () =>
+		{
+			assert.strictEqual( jsongin.OpLog, null );
+			assert.strictEqual( jsongin.OpError, null );
+		} );
+
+		it( 'should export a configured engine, not a factory', () =>
+		{
+			// require( '@liquicode/jsongin' ) is a ready to use engine. The parity driver
+			// takes this same instance when it is given no settings.
+			assert.strictEqual( typeof jsongin.Query, 'function' );
+			assert.strictEqual( typeof jsongin.NewJsongin, 'function' );
+		} );
+
+		it( 'should give a new engine its own operator registry', () =>
+		{
+			// Registries belong to an instance, which is why the parity driver must not build
+			// a second engine when it means to test the one the package exports.
+			let engine = jsongin.NewJsongin();
+			assert.notStrictEqual( engine, jsongin );
+			assert.notStrictEqual( engine.QueryOperators, jsongin.QueryOperators );
+		} );
+
+	} );
 
 
 	//---------------------------------------------------------------------
@@ -32,13 +80,13 @@ describe( '130) Engine Function Tests', () =>
 
 		function load_with_window()
 		{
-			let path = require.resolve( '../src/jsongin' );
+			let path = require.resolve( '../../src/jsongin' );
 			let saved_window = global.window;
 			let saved_module = require.cache[ path ];
 
 			delete require.cache[ path ];
 			global.window = {};
-			let engine = require( '../src/jsongin' );
+			let engine = require( '../../src/jsongin' );
 			let published = global.window.liquicode;
 
 			// Put the environment back the way it was found.

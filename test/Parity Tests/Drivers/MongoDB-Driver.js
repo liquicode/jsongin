@@ -132,8 +132,17 @@ module.exports = function ()
 						mongodb_settings,
 						async function ( Collection )
 						{
-							let cursor = await Collection.updateMany( Query, Update );
-							return await cursor.toArray();
+							// updateMany() reports counts, not documents, so the documents it
+							// touched have to be read back separately.
+							// The ids are taken before the update because an update can change
+							// the very fields the query selected on, which would make the same
+							// query select a different set afterwards.
+							let matched = await Collection.find( Query ).project( { _id: 1 } ).toArray();
+							let ids = matched.map( function ( Document ) { return Document._id; } );
+
+							await Collection.updateMany( Query, Update );
+
+							return await Collection.find( { _id: { $in: ids } } ).toArray();
 						} );
 					return result;
 				}

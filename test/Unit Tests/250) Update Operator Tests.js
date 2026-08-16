@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require( 'assert' );
-const jsongin = require( '../src/jsongin' )
+const jsongin = require( '../../src/jsongin' )
 	.NewJsongin( {
 		PathExtensions: false,
 		Explain: false,
@@ -418,7 +418,7 @@ describe( '250) Update Operator Tests', () =>
 				for ( let index = 0; index < cases.length; index++ )
 				{
 					let messages = [];
-					let engine = require( '../src/jsongin' ).NewJsongin( {
+					let engine = require( '../../src/jsongin' ).NewJsongin( {
 						OpLog: function ( Message ) { messages.push( Message ); },
 					} );
 
@@ -852,7 +852,7 @@ describe( '250) Update Operator Tests', () =>
 			operators resolve through the engine when they call it rather than capturing.
 		*/
 
-		const NewJsongin = require( '../src/jsongin' ).NewJsongin;
+		const NewJsongin = require( '../../src/jsongin' ).NewJsongin;
 
 		let cases = [
 			{ Operator: '$set', Document: { a: 1 }, Args: { a: 2 } },

@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require( 'assert' );
-const jsongin = require( '../src/jsongin' );
+const jsongin = require( '../../src/jsongin' );
 
 
 describe( '100) Core Tests', () =>
@@ -784,7 +784,7 @@ describe( '100) Core Tests', () =>
 		// Every rule below was measured against MongoDB 6.0.1. See
 		// .plans/2026-08-14/parity-explicit-operators-through-arrays.md
 
-		const ResolveCandidates = require( '../src/jsongin/ResolveCandidates' )( jsongin );
+		const ResolveCandidates = require( '../../src/jsongin/ResolveCandidates' )( jsongin );
 
 		it( 'It returns the value itself for an ordinary path', () =>
 		{

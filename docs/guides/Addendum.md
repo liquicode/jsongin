@@ -35,8 +35,8 @@ The rest are ***databases***, which own the storage and offer querying as one pa
 `jsongin` belongs to the first group, and does not store anything.
 
 Where a project is marked as having been ***measured***, it was run against the `jsongin` test
-  suite through a driver in `test/Drivers`, so the compatibility note is an observation rather
-  than an impression.
+  suite through a driver in `test/Parity Tests/Drivers`, so the compatibility note is an
+  observation rather than an impression.
 
 **Query engines**
 

@@ -47,7 +47,9 @@ function collect_coverage()
 	let environment = Object.assign( {}, process.env, { NODE_V8_COVERAGE: folder } );
 
 	LIB_CHILD_PROCESS.execSync(
-		'npx mocha -u bdd "test/*.js" --timeout 0 --reporter dot',
+		// The same set `npm test` runs, so that the coverage report describes the default run
+		// rather than a subset of it.
+		'npx mocha -u bdd "test/Unit Tests/*.js" "test/Parity Tests/jsongin-Tests.js" --timeout 0 --reporter dot',
 		{ cwd: REPO, env: environment, stdio: 'ignore' } );
 
 	return folder;
