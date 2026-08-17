@@ -21,6 +21,15 @@ module.exports = function ( jsongin )
 				for ( let field in UpdateFields )
 				{
 					let array = jsongin.GetValue( Document, field );
+					if ( jsongin.ShortType( array ) === 'u' )
+					{
+						// A field which is not there is nothing to pop from, and MongoDB
+						// reports a successful update with modifiedCount 0 rather than an
+						// error. Verified against MongoDB 6.0.1. This is a no-op and not a
+						// refusal: the two used to share a branch, so once Update() began
+						// raising a refusal, popping a field which was not there raised too.
+						continue;
+					}
 					if ( jsongin.ShortType( array ) !== 'a' )
 					{
 						if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$pop: The field [${field}] must be an array.` ); }

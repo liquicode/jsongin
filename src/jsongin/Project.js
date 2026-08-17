@@ -24,10 +24,10 @@ module.exports = function ( jsongin )
 	//   { a: [ { x: 1, y: 2 } ] } excluding 'a.x'  =>  { a: [ { y: 2 } ] }
 	//
 	// This is deliberately not DeleteValue. DeleteValue follows the $unset update operator,
-	// which refuses a path reaching into an array by field name unless the PathExtensions
-	// setting is enabled, because that is what MongoDB's $unset does. Projection is not
-	// $unset and does not share that rule. Routing exclusion through the gated DeleteValue
-	// made an exclusion through an array silently remove nothing.
+	// which refuses a path reaching into an array by field name, because that is what
+	// MongoDB's $unset does. Projection is not $unset and does not share that rule.
+	// Routing exclusion through DeleteValue made an exclusion through an array silently
+	// remove nothing.
 	function exclude_path( Node, PathElements, Index )
 	{
 		let st_node = jsongin.ShortType( Node );
@@ -38,23 +38,16 @@ module.exports = function ( jsongin )
 
 		if ( st_node === 'a' )
 		{
-			if ( jsongin.ShortType( key ) === 'n' )
-			{
-				// A numeric key indexes the array, counting from the end when negative.
-				let element_index = key;
-				if ( element_index < 0 ) { element_index = Node.length + element_index; }
-				if ( element_index < 0 ) { return; }
-				if ( element_index >= Node.length ) { return; }
-				if ( is_last )
-				{
-					delete Node[ element_index ];
-					return;
-				}
-				exclude_path( Node[ element_index ], PathElements, Index + 1 );
-				return;
-			}
-
-			// A non numeric key applies to every element, and the key is not used up here.
+			// A projection exclusion does NOT index an array, not even with a numeric key.
+			// MongoDB applies every key to the elements, so { 'a.2': 0 } against
+			// { a: [ 1, 2, 3 ] } removes nothing and { 'a.0.x': 0 } against an array of
+			// documents removes nothing either. Verified against MongoDB 6.0.1.
+			//
+			// This used to index the array here, counting from the end when the key was
+			// negative, and then `delete` the element — which both disagreed with MongoDB
+			// and left a sparse hole that is not representable in JSON.
+			//
+			// A key applies to every element, and the key is not used up here.
 			for ( let index = 0; index < Node.length; index++ )
 			{
 				exclude_path( Node[ index ], PathElements, Index );

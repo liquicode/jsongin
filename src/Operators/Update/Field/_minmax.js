@@ -72,12 +72,7 @@ module.exports = function ( jsongin )
 			// the comparison would have replaced anything, and SetValue is what raises that.
 			// Rewriting the value which is already there is a no-op on every path SetValue
 			// accepts.
-			// Skipped when the path extension is enabled, because there the write would push
-			// the gathered value into every element of the array.
-			if ( jsongin.Settings.PathExtensions !== true )
-			{
-				jsongin.SetValue( Document, field, value );
-			}
+			jsongin.SetValue( Document, field, value );
 		}
 
 		return operation_result;

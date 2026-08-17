@@ -8,6 +8,56 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
+- ***Breaking: jsongin's path syntax is now MongoDB's path syntax, with no extensions and no
+  settings.*** Two path extensions were removed outright rather than gated, which closes the
+  last three behavioral disagreements with MongoDB. Every remaining parity gap is an operator
+  which is not implemented at all.
+
+  - ***Reverse indexing is gone.*** A negative array index used to count back from the end, so
+    `'a.-1'` addressed the last element. MongoDB has no such thing: it reads `-1` as a field
+    name, an array has no such field, and a field cannot be created on an array. The extension
+    was removed everywhere it appeared — `GetValue`, `SetValue`, `DeleteValue`, `Sort`,
+    `Evaluate`, `Project`, `ResolveCandidates`, and `$unset` — so a path means the same thing
+    wherever it is written.
+
+        jsongin.GetValue( { a: [ 1, 2, 3 ] }, 'a.-1' );          // undefined, was 3
+        jsongin.Query( { a: [ 1, 2, 3 ] }, { 'a.-1': 3 } );      // false, was true
+        jsongin.Update( { a: [ 1, 2, 3 ] }, { $set: { 'a.-1': 9 } } );   // throws
+        jsongin.Update( { a: [ 1, 2, 3 ] }, { $unset: { 'a.-1': '' } } ); // no-op, was [ 1, 2, null ]
+
+    Against a ***document*** a negative key is an ordinary field name and still resolves:
+    `{ a: { '-1': 5 } }` is reached by `'a.-1'`, and MongoDB agrees.
+
+  - ***The `PathExtensions` setting is gone.*** It gated the implicit iterator on the write
+    side, and defaulted to off, so removing it changes nothing for a caller who did not set
+    it. No released version of the package ever responded to the setting: it was declared and
+    never read before this version, and activated and removed within it.
+
+- ***Breaking: an update operator which cannot apply itself now raises an error.*** `$inc`
+  against a string, `$push` against a scalar, and a malformed `$currentDate` or `$push` modifier
+  used to report to the `OpLog` and leave the field alone, which a caller could not tell from an
+  update that had nothing to do. MongoDB errors on all of them.
+
+  The operators themselves are unchanged and still do not throw: an operator reports that it
+  could not apply, and `Update()` decides how loudly to say so. Nothing is half written, because
+  `Update()` works on a clone and discards it.
+
+  A field which is ***not there*** is a no-op and not a refusal, and the two used to share a
+  branch. `$pop` and `$pullAll` against a missing field now say so separately, because they
+  began raising once `Update()` began raising.
+
+- ***Breaking: aggregation expressions and projections no longer index arrays.*** A field path
+  in an aggregation expression applies every key to the array's elements, so `'$a.2'` gathers
+  the field `2` from each element and finds none. Positional access is `$arrayElemAt`. A
+  projection follows the same rule, so `{ 'a.1': 0 }` excludes nothing.
+
+      jsongin.Evaluate( { a: [ 1, 2, 3 ] }, '$a.2' );          // [], was 3
+      jsongin.Project( { a: [ 1, 2, 3 ] }, { 'a.1': 0 } );     // { a: [ 1, 2, 3 ] }
+
+  ***Query*** paths are unchanged and still index: `{ 'a.2': 3 }` matches. The three languages
+  resolve a path differently and MongoDB is followed in each. The projection case also used to
+  leave a sparse array hole, which JSON cannot represent.
+
 - A second code review was run, and is kept at `.reviews/2026-08-15-04-12/review.md`. Its parity
   findings were first written as tests against a live MongoDB 6.0.1 server, so that each one is
   measured rather than asserted. `npm run parity-report` prints the number and names every
@@ -449,12 +499,16 @@ v0.1.0 (current)
     outright, and `{ $unset: { 'a.x': '' } }` modifies nothing. Reaching through an array there
     requires the all positional operator, `'a.$[].x'`.
 
-    The write side is now off by default, behind the `PathExtensions` engine setting, which
-    until now was declared and never read. `SetValue` throws and `DeleteValue` returns `false`,
-    which is what makes `$set`, `$inc`, `$mul`, `$rename`, and `$unset` agree with MongoDB.
-    Passing `{ PathExtensions: true }` to `NewJsongin()` restores the previous behavior.
+    `SetValue` throws and `DeleteValue` returns `false`, which is what makes `$set`, `$inc`,
+    `$mul`, `$rename`, and `$unset` agree with MongoDB.
 
-    Reading is deliberately ***not*** gated, because MongoDB does traverse arrays when it
+    This was first done behind a `PathExtensions` engine setting, off by default, which could
+    be turned on to restore the previous behavior. ***That setting no longer exists*** — see
+    the path syntax entry above. It was introduced and removed within this same version, and
+    was declared but never read in every version before it, so no released version of the
+    package ever responded to it.
+
+    Reading is deliberately ***not*** changed, because MongoDB does traverse arrays when it
     resolves a query path. `GetValue( doc, 'users.id' )` and `{ 'users.id': 101 }` are
     unchanged.
 

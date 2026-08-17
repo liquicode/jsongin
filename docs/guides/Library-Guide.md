@@ -209,20 +209,19 @@ The `Text` module is reachable at `jsongin.Text`.
 
 Settings are given to the `NewJsongin( Settings )` factory method.
 
-- `PathExtensions`
-  : Defaults to `false`. Enables the ***implicit iterator*** on the write side, where a non
-  numeric key against an array applies to every element of that array.
+There is ***no path extension setting***. jsongin's path syntax is MongoDB's path syntax, so
+  there is nothing to turn on:
 
-  It is off by default because MongoDB does not do this. `$set` and the arithmetic update
-    operators reject such a path outright, and `$unset` treats it as a no-op which modifies
-    nothing.
-  With the setting off, [`SetValue`](./jsongin/SetValue.md) throws and
-    [`DeleteValue`](./jsongin/DeleteValue.md) returns `false`, which is what makes the update
-    operators agree with MongoDB.
+- A ***non numeric key against an array*** is not a write target.
+  [`SetValue`](./jsongin/SetValue.md) throws and [`DeleteValue`](./jsongin/DeleteValue.md)
+    returns `false`, which is what makes the update operators agree with MongoDB.
+  Reaching through an array on the write side requires the all positional operator,
+    `'a.$[].x'`.
+- A ***negative index*** is not an index. There is no reverse indexing anywhere in the engine.
 
-  Reading is ***not*** gated by this setting. MongoDB does traverse arrays when it resolves a
-    query path, so [`GetValue`](./jsongin/GetValue.md) reads through one regardless, and a
-    query like `{ 'users.id': 101 }` matches an array of objects the way it does in MongoDB.
+  Reading through an array by field name still works, because MongoDB does traverse arrays
+    when it resolves a query path: [`GetValue`](./jsongin/GetValue.md) reads through one, and
+    a query like `{ 'users.id': 101 }` matches an array of objects the way it does in MongoDB.
 
 - `OpLog` and `OpError`
   : See Diagnostics above.

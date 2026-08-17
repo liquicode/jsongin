@@ -113,9 +113,19 @@ module.exports = function ( jsongin )
 			let result = operator.Update( Document, Updates[ key ] );
 			if ( result === false )
 			{
-				// The operator could not apply itself to this document. That is the operator's
-				// own refusal, reported through the OpLog, and it leaves its field alone.
-				if ( jsongin.OpLog ) { jsongin.OpLog( `Update: The update operator [${key}] failed.` ); }
+				// The operator could not apply itself to this document — $inc against a
+				// string, $push against a scalar. MongoDB raises an error for this, the same
+				// way it does for a malformed update document, so this raises one too.
+				//
+				// The operator reports; the engine decides how loudly. An operator says only
+				// that it could not apply, by returning false and writing the reason to the
+				// OpLog, and never throws on its own. Raising it here is what a caller needs:
+				// an unchanged document is indistinguishable from a legitimate no-op, so a
+				// declined $inc used to look exactly like an $inc which had nothing to do.
+				//
+				// Nothing written before this point survives. Document is a clone made above,
+				// and throwing discards it, so the caller's document is untouched.
+				refuse( `The operator [${key}] could not be applied to this document. See the OpLog for the reason.` );
 			}
 		}
 

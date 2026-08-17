@@ -30,12 +30,13 @@ describe( '130) Engine Function Tests', () =>
 			See test/Parity Tests/jsongin-Tests.js.
 		*/
 
-		it( 'should default PathExtensions to false', () =>
+		it( 'should not carry a PathExtensions setting', () =>
 		{
-			// MongoDB does not run the implicit iterator on the write side: $set and the
-			// arithmetic update operators reject such a path, and $unset treats it as a no-op.
-			assert.strictEqual( jsongin.Settings.PathExtensions, false );
-			assert.strictEqual( jsongin.NewJsongin().Settings.PathExtensions, false );
+			// There is nothing to turn on. jsongin's path syntax is MongoDB's path syntax:
+			// the implicit iterator is not a write target on either engine, so the setting
+			// which used to relax that was removed rather than defaulted.
+			assert.strictEqual( 'PathExtensions' in jsongin.Settings, false );
+			assert.strictEqual( 'PathExtensions' in jsongin.NewJsongin().Settings, false );
 		} );
 
 		it( 'should default the OpLog and OpError hooks to null', () =>
@@ -819,49 +820,28 @@ describe( '130) Engine Function Tests', () =>
 			assert.deepStrictEqual( Object.keys( document ), [] );
 		} );
 
-		it( 'should not reach into an array by field name by default', () =>
+		it( 'should not reach into an array by field name', () =>
 		{
 			// MongoDB's $unset does nothing here and reports modifiedCount 0. Verified
-			// against MongoDB 6.0.1. Deleting from every element is a jsongin path
-			// extension, off unless PathExtensions is enabled.
+			// against MongoDB 6.0.1. Reaching through an array on the write side requires
+			// the all positional operator, 'a.$[].x'.
 			let document = { a: [ { x: 1 }, { x: 2 } ] };
 			assert.strictEqual( jsongin.DeleteValue( document, 'a.x' ), false );
 			assert.deepStrictEqual( document, { a: [ { x: 1 }, { x: 2 } ] } );
+
+			// The same at depth, and through elements which cannot hold the field.
+			assert.strictEqual( jsongin.DeleteValue( { a: [ { b: { c: 1 } } ] }, 'a.b.c' ), false );
+			assert.strictEqual( jsongin.DeleteValue( { a: [ { x: 1 }, 'scalar' ] }, 'a.x' ), false );
 		} );
 
-		it( 'should run the implicit iterator against an array when PathExtensions is enabled', () =>
+		it( 'should refuse a negative array index', () =>
 		{
-			let engine = jsongin.NewJsongin( { PathExtensions: true } );
-			let document = { a: [ { x: 1 }, { x: 2 } ] };
-			assert.strictEqual( engine.DeleteValue( document, 'a.x' ), true );
-			assert.deepStrictEqual( document, { a: [ {}, {} ] } );
-		} );
-
-		it( 'should iterate partially and skip non containers when PathExtensions is enabled', () =>
-		{
-			let engine = jsongin.NewJsongin( { PathExtensions: true } );
-			let document = { a: [ { x: 1 }, { y: 2 }, 'scalar' ] };
-			assert.strictEqual( engine.DeleteValue( document, 'a.x' ), true );
-			assert.deepStrictEqual( document, { a: [ {}, { y: 2 }, 'scalar' ] } );
-
-			// Nothing matched, so nothing was removed.
-			assert.strictEqual( engine.DeleteValue( { a: [ { y: 1 } ] }, 'a.x' ), false );
-		} );
-
-		it( 'should run the implicit iterator at depth when PathExtensions is enabled', () =>
-		{
-			let engine = jsongin.NewJsongin( { PathExtensions: true } );
-			let document = { a: [ { b: { c: 1 } }, { b: { c: 2 } } ] };
-			assert.strictEqual( engine.DeleteValue( document, 'a.b.c' ), true );
-			assert.deepStrictEqual( document, { a: [ { b: {} }, { b: {} } ] } );
-		} );
-
-		it( 'should accept a negative array index', () =>
-		{
+			// A negative index is not an index. MongoDB reads '-1' as a field name, which an
+			// array does not have, so $unset of 'a.-1' is a no-op that changes nothing.
+			// Verified against MongoDB 6.0.1.
 			let document = { a: [ 1, 2, 3 ] };
-			assert.strictEqual( jsongin.DeleteValue( document, 'a.-1' ), true );
-			assert.strictEqual( document.a.length, 3 );
-			assert.strictEqual( Object.prototype.hasOwnProperty.call( document.a, 2 ), false );
+			assert.strictEqual( jsongin.DeleteValue( document, 'a.-1' ), false );
+			assert.deepStrictEqual( document, { a: [ 1, 2, 3 ] } );
 		} );
 
 		it( 'should accept a numeric path', () =>

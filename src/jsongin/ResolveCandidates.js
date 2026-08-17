@@ -116,9 +116,12 @@ module.exports = function ( jsongin )
 		{
 			if ( st_key === 'n' )
 			{
-				// A numeric key indexes the array, counting from the end when negative.
+				// A numeric key indexes the array, as MongoDB does when it resolves a query
+				// path: { 'a.2': 3 } matches { a: [ 1, 2, 3 ] }.
+				// A negative index addresses nothing. MongoDB has no reverse indexing: it
+				// reads '-1' as a field name, and an array has no such field, so
+				// { 'a.-1': 3 } matches nothing. Verified against MongoDB 6.0.1.
 				let element_index = key;
-				if ( element_index < 0 ) { element_index = Node.length + element_index; }
 				if ( element_index < 0 ) { return; }
 				if ( element_index >= Node.length ) { return; }
 				resolve_node( Node[ element_index ], PathElements, Index + 1, Candidates, ExpandArrays );

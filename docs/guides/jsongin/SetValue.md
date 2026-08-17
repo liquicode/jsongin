@@ -37,9 +37,18 @@ To specify a field in an embedded object, use dot notation (e.g. `"user.name"`) 
 
 ***Specifying Array Elements*** : 
 To specify an element of an array, use the numeric (zero-based) index of that element within the `Path`.
-You can use negative index numbers to select from the end of an array.
-Use `-1` to set the last element of an array, `-2` to set the next to last element, and so on.
-If you have an array of objects, you can omit the array index to set the value into each of those objects.
+
+***There is no reverse indexing*** :
+A negative number is read as a field name like any other, and a field cannot be created on an
+  array, so `SetValue( document, 'a.-1', 9 )` ***throws***.
+MongoDB refuses the same write with `Cannot create field '-1' in element {a: [ 1, 2, 3 ]}`,
+  verified against MongoDB 6.0.1.
+Against a ***document***, `-1` is an ordinary field name and is set normally.
+
+***A path may not reach into an array by field name*** :
+`SetValue( document, 'users.status', 42 )` ***throws*** when `users` is an array.
+MongoDB refuses this too, and reaching through an array on the write side requires the all
+  positional operator, `'users.$[].status'`.
 
 ***Writing Past the End of an Array*** :
 The gap is filled with `null`, which is what MongoDB does, verified against MongoDB 6.0.1:
@@ -142,16 +151,31 @@ document[ 3 ] === null
 document[ 4 ] === 'xyz'
 ```
 
-### It performs reverse indexing when an array index is negative
+### It refuses a negative array index
 ```js
 let document = [ 'one', 'two', 'three' ];
 
-jsongin.SetValue( document, -1, 'xyz' ) === true
-document.length === 3
-document[ 0 ] === 'one'
-document[ 1 ] === 'two'
-document[ 2 ] === 'xyz'
+jsongin.SetValue( document, -1, 'xyz' );
+// throws: Cannot create field [-1] in the array at [].
 ```
+
+A negative number is a field name, not an index, and a field cannot be created on an array.
+MongoDB refuses the same update with `Cannot create field '-1' in element {a: [ ... ]}`.
+
+Reverse indexing used to be a ***path extension*** here, writing the last element.
+It has been removed from the engine entirely, on the read side as well as the write side, so
+  that a path means the same thing everywhere it appears.
+
+### It sets a document field which is literally named -1
+```js
+let document = { a: { x: 1 } };
+
+jsongin.SetValue( document, 'a.-1', 9 ) === true
+document.a[ '-1' ] === 9
+```
+
+Against a document the key is a field name rather than an index, so this is legal.
+MongoDB does the same: `{ $set: { 'a.-1': 9 } }` gives `{ a: { '-1': 9 } }`.
 
 ### Array elements can be set to undefined, but they are not removed
 ```js
@@ -180,7 +204,7 @@ jsongin.SetValue( document, 'users.1.id', 'abc' ) === true
 document.users[ 1 ].id === 'abc'
 ```
 
-### It rejects a field name against an array by default
+### It rejects a field name against an array
 ```js
 let document = {
 	users: [
@@ -195,30 +219,15 @@ jsongin.SetValue( document, 'users.status', 42 );
 
 MongoDB rejects the same update, with
   `Cannot create field 'status' in element {users: [ ... ]}`.
-Writing into every element of the array instead is a ***path extension***, and it is off unless
-  the `PathExtensions` setting is enabled.
+Reaching through an array on the write side requires the all positional operator,
+  `'users.$[].status'`.
 
+Writing into every element instead used to be a ***path extension***, enabled with a
+  `PathExtensions` engine setting.
+There is no such setting: jsongin's path syntax is MongoDB's path syntax, so there is nothing
+  to turn on.
 
-### It sets fields inside all elements of an array of objects, with PathExtensions
-```js
-let engine = jsongin.NewJsongin( { PathExtensions: true } );
-
-let document = {
-	users: [
-		{ id: 101, name: 'Alice' },
-		{ id: 102, name: 'Bob' },
-		{ id: 103, name: 'Eve' },
-	]
-};
-
-// Omit the array index to set into each array element.
-engine.SetValue( document, 'users.status', 42 ) === true
-document.users[ 0 ].status === 42
-document.users[ 1 ].status === 42
-document.users[ 2 ].status === 42
-```
-
-Note that ***reading*** through an array by field name is not gated, because MongoDB does
+Note that ***reading*** through an array by field name still works, because MongoDB does
   traverse arrays when it resolves a query path.
 See [`GetValue( Document, Path )`](./GetValue.md).
 
@@ -228,10 +237,11 @@ let document = { user: { name: 'Alice' } };
 jsongin.SetValue( document, '', 42 ) === false
 ```
 
-### It returns false when an array index is negative
+### It throws when an array index is negative
 ```js
 let document = [ 'one', 'two', 'three' ];
-jsongin.SetValue( document, -1, 'four' ) === false
+jsongin.SetValue( document, -1, 'four' );
+// throws: Cannot create field [-1] in the array at [].
 ```
 
 ### It returns false when an array index is out of bounds

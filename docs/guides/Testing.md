@@ -150,7 +150,7 @@ The defaults themselves are pinned by `Default Settings Tests` in
 To test a non-default configuration, pass settings to the driver deliberately:
 
 ```js
-const Driver = require( './Drivers/jsongin-Driver.js' )( { PathExtensions: true } );
+const Driver = require( './Drivers/jsongin-Driver.js' )( { Explain: true } );
 ```
 
 That gives each test outcome a meaning:

@@ -29,9 +29,15 @@ To specify a field in an embedded object, use dot notation (e.g. `"user.name"`) 
 
 ***Specifying Array Elements*** : 
 To specify an element of an array, use the numeric (zero-based) index of that element within the `Path`.
-You can use negative index numbers to select from the end of an array.
-Use `-1` to retrieve the last element of an array, `-2` to select the next to last element, and so on.
 If you have an array of objects, you can omit the array index to retrieve values inside those objects.
+
+***There is no reverse indexing*** :
+A negative number is read as a field name like any other, and an array has no field called
+  `-1`, so `GetValue( document, 'a.-1' )` returns `undefined` rather than the last element.
+This matches MongoDB, which reads every path element the same way and has no counterpart to
+  reverse indexing on either side of the engine, verified against MongoDB 6.0.1.
+Against a ***document***, `-1` is an ordinary field name and resolves normally: a field may
+  legitimately be called that.
 
 
 ## See Also

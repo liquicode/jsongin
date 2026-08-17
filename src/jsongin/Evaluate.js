@@ -37,16 +37,17 @@ module.exports = function ( jsongin )
 
 		if ( st_node === 'a' )
 		{
-			if ( jsongin.ShortType( key ) === 'n' )
-			{
-				// A numeric key indexes the array, counting from the end when negative.
-				let element_index = key;
-				if ( element_index < 0 ) { element_index = Node.length + element_index; }
-				if ( element_index < 0 ) { return { Found: false }; }
-				if ( element_index >= Node.length ) { return { Found: false }; }
-				return resolve_field_path( Node[ element_index ], PathElements, Index + 1 );
-			}
-
+			// An aggregation field path does NOT index an array, not even with a numeric key.
+			// MongoDB applies every key to the elements, so '$a.2' against { a: [ 1, 2, 3 ] }
+			// gathers the field '2' from each element and finds none, giving []. Positional
+			// access is $arrayElemAt, which is a different thing entirely.
+			// Verified against MongoDB 6.0.1, where '$a.2' and '$a.-1' both give [].
+			//
+			// This used to index the array here, counting from the end when the key was
+			// negative, so '$a.2' gave 3 and '$a.-1' gave 3. Both disagreed with MongoDB.
+			// Query paths are the ones which index: { 'a.2': 3 } does match, which is why
+			// ResolveCandidates keeps a numeric branch and this does not.
+			//
 			// The key applies to the elements rather than to the array, and is not used up.
 			let values = [];
 			for ( let index = 0; index < Node.length; index++ )

@@ -3,7 +3,6 @@
 const assert = require( 'assert' );
 const jsongin = require( '../../src/jsongin' )
 	.NewJsongin( {
-		PathExtensions: false,
 		Explain: false,
 	} );
 
@@ -111,11 +110,14 @@ describe( '250) Update Operator Tests', () =>
 				assert.deepStrictEqual( document.a, [ 1, null, 3 ] );
 			} );
 
-			it( 'should null an array element addressed by a negative index', () =>
+			it( 'should leave an array alone for a negative index', () =>
 			{
+				// A negative index is not an index. MongoDB reads '-1' as a field name, which
+				// an array does not have, so $unset of 'a.-1' changes nothing and still
+				// reports a successful update. Verified against MongoDB 6.0.1.
 				let document = { a: [ 1, 2, 3 ] };
 				assert.ok( jsongin.UpdateOperators.$unset.Update( document, { 'a.-1': '' } ) );
-				assert.deepStrictEqual( document.a, [ 1, 2, null ] );
+				assert.deepStrictEqual( document.a, [ 1, 2, 3 ] );
 			} );
 
 			it( 'should null an element of an array reached through an index', () =>
@@ -159,11 +161,12 @@ describe( '250) Update Operator Tests', () =>
 			} );
 
 
-			it( 'should null an element of an array reached through a negative index', () =>
+			it( 'should leave an array alone for a negative index part way along the path', () =>
 			{
+				// The rule holds wherever the negative index appears, not only at the end.
 				let document = { a: [ [ 1, 2 ], [ 3, 4 ] ] };
 				assert.ok( jsongin.UpdateOperators.$unset.Update( document, { 'a.-1.0': '' } ) );
-				assert.deepStrictEqual( document.a, [ [ 1, 2 ], [ null, 4 ] ] );
+				assert.deepStrictEqual( document.a, [ [ 1, 2 ], [ 3, 4 ] ] );
 			} );
 
 			it( 'should leave the document alone for an empty path', () =>
@@ -1040,8 +1043,7 @@ describe( '250) Update Operator Tests', () =>
 		function failing_engine( Messages )
 		{
 			let engine = NewJsongin( {
-				PathExtensions: false,
-				OpLog: function ( Message ) { Messages.push( Message ); },
+					OpLog: function ( Message ) { Messages.push( Message ); },
 			} );
 			// Every way an operator has of storing a value now fails.
 			engine.SetValue = function () { return false; };

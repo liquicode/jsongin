@@ -3,7 +3,6 @@
 const assert = require( 'assert' );
 const jsongin = require( '../../src/jsongin' )
 	.NewJsongin( {
-		PathExtensions: false,
 		Explain: false,
 	} );
 
@@ -102,10 +101,24 @@ describe( '220) Expression Operator Tests', () =>
 			assert.deepStrictEqual( jsongin.Evaluate( { a: [ { b: [ { c: 1 } ] } ] }, '$a.b.c' ), [ [ 1 ] ] );
 		} );
 
-		it( 'should index an array by number', () =>
+		it( 'should not index an array by number', () =>
 		{
-			assert.strictEqual( jsongin.Evaluate( { a: [ { x: 1 }, { x: 2 } ] }, '$a.1.x' ), 2 );
-			assert.strictEqual( jsongin.Evaluate( { a: [ { x: 1 } ] }, '$a.9.x' ), undefined );
+			// An aggregation field path never indexes an array, not even with a numeric key.
+			// MongoDB applies every key to the elements, so '$a.1.x' gathers the field '1'
+			// from each element and finds none. Positional access is $arrayElemAt, which is
+			// a different thing. Verified against MongoDB 6.0.1.
+			//
+			// Query paths are the ones which index: { 'a.1.x': 2 } does match. The two
+			// languages resolve a path differently and jsongin now follows each of them.
+			assert.deepStrictEqual( jsongin.Evaluate( { a: [ { x: 1 }, { x: 2 } ] }, '$a.1.x' ), [] );
+			assert.deepStrictEqual( jsongin.Evaluate( { a: [ { x: 1 } ] }, '$a.9.x' ), [] );
+			assert.deepStrictEqual( jsongin.Evaluate( { a: [ 1, 2, 3 ] }, '$a.-1' ), [] );
+		} );
+
+		it( 'should read a document field which is literally named with a number', () =>
+		{
+			// Against an object the key is a field name rather than an index, so it resolves.
+			assert.strictEqual( jsongin.Evaluate( { a: { '1': { x: 7 } } }, '$a.1.x' ), 7 );
 		} );
 
 		it( 'should leave GetValue reading the same way it always has', () =>

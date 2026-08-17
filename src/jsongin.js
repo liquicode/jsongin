@@ -9,14 +9,11 @@ module.exports = DEFAULT_ENGINE;
 
 function NewJsongin( EngineSettings = {} )
 {
-	// PathExtensions enables the implicit iterator on the write side, where a non numeric key
-	// against an array applies to every element of that array.
-	// It defaults to false because MongoDB does not do this: $set and the arithmetic update
-	// operators reject such a path outright, and $unset treats it as a no-op. Verified against
-	// MongoDB 6.0.1.
-	// The read side is not gated. MongoDB does traverse arrays when resolving a query path, so
-	// GetValue must keep doing so for { 'a.x': 1 } to match.
-	if ( typeof EngineSettings.PathExtensions === 'undefined' ) { EngineSettings.PathExtensions = false; }
+	// There is no PathExtensions setting. jsongin's path syntax is MongoDB's path syntax, so
+	// there is nothing to turn on: a non numeric key against an array is not a write target
+	// (use the all positional operator, 'a.$[].x'), and a negative index is not an index.
+	// The read side still traverses arrays, because MongoDB does when it resolves a query
+	// path: GetValue( doc, 'users.id' ) and { 'users.id': 101 } both work.
 	if ( typeof EngineSettings.OpLog === 'undefined' ) { EngineSettings.OpLog = null; }
 	if ( typeof EngineSettings.OpError === 'undefined' ) { EngineSettings.OpError = null; }
 

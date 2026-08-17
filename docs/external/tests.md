@@ -160,7 +160,8 @@
       ✔ It keeps a gathered value distinct from a real array
       ✔ It traverses an array at every path element
       ✔ It does not descend into an array inside an array without an index
-      ✔ It indexes an array by number, including from the end
+      ✔ It indexes an array by number
+      ✔ It does not index an array from the end
       ✔ It skips elements which cannot hold the field
       ✔ It resolves a path against an array document
       ✔ It rejects an invalid path
@@ -182,6 +183,7 @@
     GetValue Tests
       ✔ It returns fields from a document
       ✔ It returns elements of an array
+      ✔ It does not index an array from the end
       ✔ It returns fields from inside an array of objects
       ✔ It might return undefined array elements when missing data is encountered
       ✔ If the path is undefined, null, or empty "", then it returns the entire document
@@ -193,11 +195,11 @@
       ✔ It removes document fields when set to undefined
       ✔ It sets elements of an array
       ✔ It creates array elements and grows the array if the elements don't exist
-      ✔ It performs reverse indexing when an array index is negative
+      ✔ It refuses a negative array index
+      ✔ It sets a document field which is literally named -1
       ✔ Array elements can be set to undefined, but they are not removed
       ✔ It sets fields inside an array of objects
-      ✔ It rejects a field name against an array by default
-      ✔ It sets fields inside all elements of an array of objects when PathExtensions is enabled
+      ✔ It rejects a field name against an array
       ✔ It still reads through an array by field name, which MongoDB does too
       ✔ It returns false when an empty path is given
       ✔ It throws an error when an invalid document is given
@@ -244,6 +246,7 @@
       ✔ It round trips an undefined value, keeping the field
       ✔ It reports a function which cannot be rebuilt from its source
     Sort Tests
+      ✔ It sorts the caller's array in place and returns that same array
       ✔ It sorts an array of objects
       ✔ It sorts across multiple keys
       ✔ It sorts in reverse order
@@ -419,6 +422,11 @@
       ✔ should format a date as an ISO string, which Parse reads back as a string
 
   130) Engine Function Tests
+    Default Settings Tests
+      ✔ should not carry a PathExtensions setting
+      ✔ should default the OpLog and OpError hooks to null
+      ✔ should export a configured engine, not a factory
+      ✔ should give a new engine its own operator registry
     Browser Globals
       ✔ should publish the module export rather than a second engine
       ✔ should publish the factory as well
@@ -435,6 +443,8 @@
       ✔ should filter an empty array
       ✔ should support query operators
       ✔ should return the original document objects, not copies
+      ✔ should let a write through the result reach the source document
+      ✔ should return a new array, so the result can be reordered safely
       ✔ should not modify the array it was given
       ✔ should throw when the parameters are wrong
     Distinct Tests
@@ -455,7 +465,11 @@
       ✔ should apply several update operators in one call
       ✔ should return a copy and leave the original document unchanged
       ✔ should return the document unchanged when there are no updates
-      ✔ should ignore an unknown update operator
+      ✔ should refuse an unknown update operator
+      ✔ should refuse an update document which is not made of operators
+      ✔ should refuse two operators which write to conflicting paths
+      ✔ should allow two operators which write to different paths
+      ✔ should leave the document untouched when it refuses
       ✔ should return null when the parameters are wrong
     StrictEquals and LooseEquals Tests
       ✔ should compare primitives strictly
@@ -464,6 +478,12 @@
       ✔ should compare objects by value
       ✔ should require key order to match strictly, but not loosely
       ✔ should compare arrays by value
+      ✔ should not equate an object with one which has more keys
+      ✔ should answer the same in either order
+      ✔ should equate a null member with a missing member, unlike StrictEquals
+      ✔ should not match an array by one of its elements, unlike the $eqx operator
+      ✔ should ignore element order loosely
+      ✔ should compare dates and regular expressions by value
     BsonType Tests
       ✔ should return the BSON type number and alias
       ✔ should distinguish integers from doubles
@@ -497,11 +517,8 @@
       ✔ should leave a hole rather than shortening an array
       ✔ should return false for a field which was not there
       ✔ should report a field holding undefined as present
-      ✔ should not reach into an array by field name by default
-      ✔ should run the implicit iterator against an array when PathExtensions is enabled
-      ✔ should iterate partially and skip non containers when PathExtensions is enabled
-      ✔ should run the implicit iterator at depth when PathExtensions is enabled
-      ✔ should accept a negative array index
+      ✔ should not reach into an array by field name
+      ✔ should refuse a negative array index
       ✔ should accept a numeric path
       ✔ should return false for an empty path
       ✔ should return false when the parent path does not resolve
@@ -614,7 +631,7 @@
       ✔ should declare types which every operator actually accepts
       ✔ should give every operator a declaration to check against
       ✔ should reject a query value the operator does not take
-      ✔ should skip an update operator whose value it does not take
+      ✔ should refuse an update operator whose value it does not take
       ✔ should throw for a stage argument it does not take
       ✔ should throw for an expression argument it does not take
       ✔ should throw for an accumulator argument it does not take
@@ -657,7 +674,7 @@
       ✔ should report from every update operator which rejects its argument
       ✔ should report from every accumulator which rejects its argument
       ✔ should report from every stage which rejects its argument
-      ✔ should report from the query operators which reject their argument
+      ✔ should report from the query operators which reject their argument (6ms)
     Aggregation Argument Validation
       ✔ should reject a non-array Documents to every accumulator
       ✔ should reject a malformed argument to every stage
@@ -711,6 +728,11 @@
       ✔ should not equate function values
       ✔ should equate undefined values
       ✔ should equate null and undefined values
+      ✔ should match an element of an array field, as $eq does
+      ✔ should follow a path which crosses an array, as $eq does
+      ✔ should match a missing field against null, as $eq does
+      ✔ should coerce where $eq does not
+      ✔ should take ExpandArrays, as $eq does
     $ne Tests
       ✔ should equate boolean values
       ✔ should not equate boolean values and numeric values
@@ -754,8 +776,8 @@
       ✔ should compare two strings
       ✔ should compare two nulls
       ✔ should not compare null to other types (bns)
-      ✔ should not compare objects
-      ✔ should not compare arrays
+      ✔ should compare objects
+      ✔ should compare arrays
       ✔ should not compare functions
       ✔ should compare undefined values
       ✔ should compare null and undefined values
@@ -771,8 +793,8 @@
       ✔ should compare two strings
       ✔ should not compare two nulls
       ✔ should not compare null to other types (bns)
-      ✔ should not compare objects
-      ✔ should not compare arrays
+      ✔ should compare objects
+      ✔ should compare arrays
       ✔ should not compare functions
       ✔ should not compare undefined values
       ✔ should not compare null and undefined values
@@ -789,8 +811,8 @@
       ✔ should compare two strings
       ✔ should compare two nulls
       ✔ should not compare null to other types (bns)
-      ✔ should not compare objects
-      ✔ should not compare arrays
+      ✔ should compare objects
+      ✔ should compare arrays
       ✔ should not compare functions
       ✔ should compare undefined values
       ✔ should compare null and undefined values
@@ -806,8 +828,8 @@
       ✔ should compare two strings
       ✔ should not compare two nulls
       ✔ should not compare null to other types (bns)
-      ✔ should not compare objects
-      ✔ should not compare arrays
+      ✔ should compare objects
+      ✔ should compare arrays
       ✔ should not compare functions
       ✔ should not compare undefined values
       ✔ should not compare null and undefined values
@@ -824,11 +846,11 @@
       ✔ should compare two strings
       ✔ should compare two nulls
       ✔ should not compare null to other types (bns)
-      ✔ should not compare objects
-      ✔ should not compare arrays
+      ✔ should compare objects
+      ✔ should compare arrays
       ✔ should not compare functions
-      ✔ should not compare undefined values
-      ✔ should not compare null and undefined values
+      ✔ should compare undefined values
+      ✔ should treat null and undefined as equivalent
     Implicit Equality Tests
       ✔ should match through two levels of array
       ✔ should agree with the explicit form
@@ -836,6 +858,12 @@
     $regex Tests
       ✔ should pattern match a string field
       ✔ should pattern match the elements of an array field
+      ✔ should apply the flags given by $options
+      ✔ should refuse $options without a $regex beside it
+      ✔ should refuse $options which is not a string
+      ✔ should refuse $options beside a regexp which carries its own flags
+      ✔ should refuse a flag which is not valid
+      ✔ should test each document independently of the last
       ✔ should match a regexp field only when it is the same regexp
       ✔ should not pattern match a non string value
     $type Tests
@@ -870,7 +898,7 @@
       ✔ should not find a field which no array element holds
       ✔ should not find a field below an array inside an array
       ✔ should treat a field holding undefined as present
-      ✔ should reject a non boolean match value
+      ✔ should coerce a non boolean match value rather than rejecting it
     Date Comparison Tests
       ✔ should equate dates with $eq
       ✔ should equate dates with $eqx
@@ -898,15 +926,15 @@
 
   210) Logical Operator Tests
     $and Tests
-      ✔ should default to true when no conditions are specified
+      ✔ should refuse an empty list of conditions
       ✔ should be true when all of its conditions are true
       ✔ should be false when one of its conditions is false
     $or Tests
-      ✔ should default to false when no conditions are specified
+      ✔ should refuse an empty list of conditions
       ✔ should be true when one of its conditions are true
       ✔ should be false when all of its conditions are false
     $nor Tests
-      ✔ should default to true when no conditions are specified
+      ✔ should refuse an empty list of conditions
       ✔ should be true when none of its conditions are true
       ✔ should be false when one of its conditions is true
     $noop Tests
@@ -932,7 +960,8 @@
       ✔ should evaluate a reference to a missing field as undefined
       ✔ should keep a field which really holds an array whole
       ✔ should gather through two levels of array
-      ✔ should index an array by number
+      ✔ should not index an array by number
+      ✔ should read a document field which is literally named with a number
       ✔ should leave GetValue reading the same way it always has
     $add Tests
       ✔ should add numbers
@@ -1122,6 +1151,8 @@
       ✔ should throw when the count is not a non-negative integer
     Input Immutability
       ✔ should not modify the input array or its documents
+      ✔ should not reorder the input array when sorting it
+      ✔ should not reorder the array given to the $sort stage directly
       ✔ should carry dates through the pipeline as dates
 
   250) Update Operator Tests
@@ -1135,7 +1166,17 @@
       $unset Tests
         ✔ should unset values
         ✔ should set nested values
+        ✔ should null an array element rather than leaving a hole
+        ✔ should leave an array alone for a negative index
+        ✔ should null an element of an array reached through an index
+        ✔ should remove a numeric key from an object rather than nulling it
+        ✔ should leave an array alone for an index which is out of range
+        ✔ should leave the document alone for a path which runs below a scalar
+        ✔ should not reach into an array by field name to find an element
+        ✔ should leave an array alone for a negative index part way along the path
+        ✔ should leave the document alone for an empty path
       $rename Tests
+        ✔ should leave a source field which is not there alone
         ✔ should rename values
         ✔ should rename nested values
         ✔ should move values and create topography
@@ -1143,6 +1184,10 @@
         ✔ should increment values
         ✔ should increment nested values
         ✔ should decrement values
+      $inc and $mul Refusal Tests
+        ✔ should refuse a field which is not numeric
+        ✔ should refuse an operand which is not numeric
+        ✔ should refuse the whole update when one field of several is bad
       $min Tests
         ✔ should set min values
         ✔ should set min nested values
@@ -1201,6 +1246,7 @@
         ✔ should sort with $sort
         ✔ should trim with $slice
         ✔ should apply $sort before $slice
+        ✔ should store a modifier written without $each as a value
         ✔ should reject a malformed modifier rather than storing it
         ✔ should not alias the update document through $each
         ✔ should keep a date pushed through $each
@@ -1227,167 +1273,7 @@
       ✔ should log rather than throw when $pullAll cannot store its value
       ✔ should log rather than throw when $push cannot store its value
 
-  jsongin Query Tests
-    Ad-Hoc Query Tests
-      ✔ should not match explicit nested fields
-    Rainbow Tests
-      Nested Fields (explicit)
-        ✔ should not perform matching on nested fields using implicit $eq
-        ✔ should not perform matching on nested fields using explicit $eq
-      Nested Fields (dot notation)
-        ✔ should perform matching on nested fields using implicit $eq and dot notation
-        ✔ should perform matching on nested fields using explicit $eq and dot notation
-      Operator $eq (===)
-        ✔ should perform strict equality (===) on 'bns'
-        ✔ should perform strict equality (===) on 'o'
-        ✔ should perform strict equality (===) on 'a'
-        ✔ should not perform loose equality (==) on 'bns'
-        ✔ should not perform loose equality (==) on 'o'
-        ✔ should not perform loose equality (==) on 'a'
-        ✔ should equate null with an undefined field
-      Operator $ne (!==)
-        ✔ should perform strict inequality (!==) on 'bns'
-        ✔ should perform strict inequality (!==) on 'o'
-        ✔ should perform strict inequality (!==) on 'a'
-        ✔ should not perform loose inequality (!=) on 'bns'
-        ✔ should not perform loose inequality (!=) on 'o'
-        ✔ should not perform loose inequality (!=) on 'a'
-      Operator $gte (>=)
-        ✔ should perform strict comparison (>=) on 'bns'
-        ✔ should not perform loose comparison (>=) on 'bns'
-        ✔ should equate null with an undefined field
-      Operator $gt (>)
-        ✔ should perform strict comparison (>=) on 'bns'
-        ✔ should not perform loose comparison (>=) on 'bns'
-      Operator $lte (<=)
-        ✔ should perform strict comparison (<=) on 'bns'
-        ✔ should not perform loose comparison (<=) on 'bns'
-        ✔ should equate null with an undefined field
-      Operator $lt (<)
-        ✔ should perform strict comparison (<) on 'bns'
-        ✔ should not perform loose comparison (<) on 'bns'
-    MongoDB Reference
-      Comparison Query Operators
-        Comparison Operator: $eq (https://www.mongodb.com/docs/manual/reference/operator/query/eq/)
-          Equals an Array Value
-            ✔ Match an Array Element
-            ✔ Match an Array Element Using Implicit $eq
-          Regex Match Behaviour
-            ✔ $eq match on a string
-            ✔ $eq match on a regular expression
-            ✔ Regular expression matches
-        Comparison Operator: $gt (https://www.mongodb.com/docs/manual/reference/operator/query/gt/)
-          ✔ Match Document Fields
-        Comparison Operator: $gte (https://www.mongodb.com/docs/manual/reference/operator/query/gte/)
-          ✔ Match Document Fields
-        Comparison Operator: $in (https://www.mongodb.com/docs/manual/reference/operator/query/in/)
-          ✔ Use the $in Operator to Match Values
-          ✔ Use the $in Operator to Match Values in an Array
-          ✔ Use the $in Operator with a Regular Expression
-        Comparison Operator: $lt (https://www.mongodb.com/docs/manual/reference/operator/query/lt/)
-          ✔ Match Document Fields
-        Comparison Operator: $lte (https://www.mongodb.com/docs/manual/reference/operator/query/lte/)
-          ✔ Match Document Fields
-        Comparison Operator: $ne (https://www.mongodb.com/docs/manual/reference/operator/query/ne/)
-          ✔ Match Document Fields
-        Comparison Operator: $nin (https://www.mongodb.com/docs/manual/reference/operator/query/nin/)
-          ✔ Select on Unmatching Documents
-          ✔ Select on Elements Not in an Array
-      Logical Query Operators
-        Logical Operator: $and (https://www.mongodb.com/docs/manual/reference/operator/query/and/)
-          ✔ AND Queries With Multiple Expressions Specifying the Same Field
-          ✔ AND Queries With Multiple Expressions Specifying the Same Operator
-        Logical Operator: $not (https://www.mongodb.com/docs/manual/reference/operator/query/not/)
-          ✔ Match Document Fields
-          ✔ $not and Regular Expressions
-        Logical Operator: $nor (https://www.mongodb.com/docs/manual/reference/operator/query/nor/)
-          ✔ $nor Query with Two Expressions
-          ✔ $nor and Additional Comparisons
-          ✔ $nor and $exists
-        Logical Operator: $or (https://www.mongodb.com/docs/manual/reference/operator/query/or/)
-          ✔ Match Document Fields
-          ✔ $or versus $in
-          ✔ Nested $or Clauses
-      Element Query Operators
-        Element Query Operator: $exists (https://www.mongodb.com/docs/manual/reference/operator/query/exists/)
-          ✔ Exists and Not Equal To
-          ✔ Null Values
-        Element Query Operator: $type (https://www.mongodb.com/docs/manual/reference/operator/query/type/)
-          ✔ Querying by Data Type (BSON Code)
-          ✔ Querying by Data Type (BSON Alias)
-          ✔ Querying by Data Type ("number")
-          ✔ Querying by Multiple Data Type (BSON Code)
-          ✔ Querying by Multiple Data Type (BSON Alias)
-      Array Query Operators
-        Array Query Operator: $all (https://www.mongodb.com/docs/manual/reference/operator/query/all/)
-          ✔ Use $all to Match Values
-          ✔ Use $all with $elemMatch
-          ✔ Use $all with Scalar Values
-        Array Query Operator: $elemMatch (https://www.mongodb.com/docs/manual/reference/operator/query/elemMatch/)
-          ✔ Element Match
-          ✔ Array of Embedded Documents
-          ✔ Single Query Condition
-        Array Query Operator: $size (https://www.mongodb.com/docs/manual/reference/operator/query/size/)
-          ✔ Use $size to Match Array Sizes
-    MongoDB Tutorials
-      Query Documents (https://www.mongodb.com/docs/manual/tutorial/query-documents/)
-        Select All Documents in a Collection
-          ✔ Match All Documents with an Empty Object {}
-        Specify Equality Condition
-          ✔ Match Fields with Implicit Equality
-        Specify Conditions Using Query Operators
-          ✔ Match Fields with an Array of Possible Values
-        Specify AND Conditions
-          ✔ Match Fields with an Array of Possible Values
-        Specify OR Conditions
-          ✔ Match Fields against an Array of Possible Values
-        Specify AND as well as OR Conditions
-          ✔ Match Fields Using AND and OR
-      Query on Embedded/Nested Documents (https://www.mongodb.com/docs/manual/tutorial/query-embedded-documents/)
-        Query on Embedded/Nested Documents
-          ✔ Specify Equality Match on a Nested Field
-          ✔ Specify Match using Query Operator
-          ✔ Specify AND Condition
-        Match an Embedded/Nested Document
-          ✔ Specify Equality Match on an Embedded Document
-      Query an Array (https://www.mongodb.com/docs/manual/tutorial/query-arrays/)
-        Match an Array
-          ✔ Match an Array Exactly
-          ✔ Match Array Elements
-        Query an Array for an Element
-          ✔ Match a Single Array Element
-          ✔ Match Array Elements by Comparison
-        Specify Multiple Conditions for Array Elements
-          ✔ Query an Array with Compound Filter Conditions on the Array Elements
-          ✔ Query for an Array Element that Meets Multiple Criteria
-          ✔ Query for an Element by the Array Index Position
-          ✔ Query an Array by Array Length
-      Query an Array of Embedded Documents (https://www.mongodb.com/docs/manual/tutorial/query-array-of-documents/)
-        Query for a Document Nested in an Array
-          ✔ Match a Document Exactly
-        Specify a Query Condition on a Field in an Array of Documents
-          ✔ Specify a Query Condition on a Field Embedded in an Array of Documents
-          ✔ Use the Array Index to Query for a Field in the Embedded Document
-        Specify Multiple Conditions for Array of Documents
-          ✔ A Single Nested Document Meets Multiple Query Conditions on Nested Fields
-          ✔ Combination of Elements Satisfies the Criteria
-      Query for Null or Missing Fields (https://www.mongodb.com/docs/manual/tutorial/query-for-null-fields/)
-        Equality Filter
-          ✔ Match Fields that are Null or Missing
-        Type Check
-          ✔ Match Fields that Exist And are Null
-        Existence Check
-          ✔ Match Fields that are Missing
-    $expr Query Tests
-      ✔ should compare one field to another field
-      ✔ should match documents where two fields are equal
-      ✔ should match computed conditions
-      ✔ should combine field comparisons with arithmetic
-      ✔ should appear within a top level $and
-      ✔ should appear within a top level $or
-      ✔ should combine with the other query operators
-      ✔ should match nothing when the expression is false for every document
-      ✔ should use $cond to select a comparison value
+  260) Extension Operator Tests
     $exprx Query Tests
       ✔ should evaluate against the entire document at the top level
       ✔ should evaluate against a sub-document when used within a field
@@ -1398,21 +1284,6 @@
       ✔ should not allow $expr to appear within a field
       ✔ should give $expr and $exprx the same meaning at the top level
       ✔ should resolve the same field name differently at each level
-
-  jsongin Update Tests
-    Ad-Hoc Update Tests
-      ✔ should do simple updates
-
-  jsongin Projection Tests
-    Ad-Hoc Projection Tests
-      ✔ should do simple projection
-      ✔ should project embedded fields
-      ✔ should supress fields
-      ✔ should supress only the _id field
-      ✔ should supress the _id field and other fields
-      ✔ should supress the _id field but include other fields
-      ✔ should return only the _id field
-      ✔ should supress the _id field while including others
 
   510) Projection Computed Field Tests
     Computed Fields
@@ -1443,7 +1314,7 @@
       ✔ should not alias the document it projected from
       ✔ should exclude a field through an array, keeping the array
       ✔ should exclude through two levels of array
-      ✔ should exclude an array element by index
+      ✔ should not exclude an array element by index
       ✔ should not add an _id to a document which does not have one
       ✔ should omit an included field which is not in the document
       ✔ should keep dates through a projection
@@ -1452,32 +1323,7 @@
       ✔ should not alias an array through a computed field
       ✔ should keep a date through a computed field
 
-  jsongin Aggregate Tests
-    Ad-Hoc Aggregate Tests
-      ✔ should score the living players by team
-      ✔ should reshape documents with a computed projection
-      ✔ should build a leaderboard with $addFields, $sort, and $limit
-      ✔ should tally the tags with $unwind and $group
-      ✔ should number the elements of an unwound array
-      ✔ should page through the documents with $skip and $limit
-      ✔ should summarize every document in a single group
-      ✔ should collect values with $push, $first, and $last
-      ✔ should group the teams and list their members
-      ✔ should return an empty result when nothing matches
-    Sort Through Array Tests
-      ✔ should reduce through every array the path crosses
-      ✔ should expand only one level when the path crosses no array
-      ✔ should expand a level for each array the path crosses
-      ✔ should treat an empty array element as an ordinary array value
-      ✔ should sort a field holding only an empty array with the arrays
-      ✔ should sort the existing empty array cases unchanged
-      ✔ should sort an empty array reached through a path below every value
-      ✔ should sort an empty array crossed by a path as null
-      ✔ should order mixed types among the candidates by value order
-      ✔ should sort an empty array beside a string by the array rank
-      ✔ should honor an explicit array index in the sort path
 
-
-  1212 passing (216ms)
+  1124 passing (279ms)
 
 ```
