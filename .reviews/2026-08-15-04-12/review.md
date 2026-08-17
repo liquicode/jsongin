@@ -706,7 +706,7 @@ The ***Current Status*** block is rewritten in place each session. The ***Log***
 | Parity baseline | `npm run parity-test-mongodb` | 430 passing, ***0 failing*** (needs a server) |
 | Parity under test | `npm run parity-test-jsongin` | 430 passing, ***0 failing*** |
 | Parity measurement | `npm run parity-report` | ***100.0%*** — 430 of 430 agree |
-| Coverage | `npm run coverage` | see the tool; the count moves with each new file |
+| Coverage | `npm run coverage` | 122 files exercised, ***60 fully covered***, 160 uncovered blocks |
 | Docs | `npm run check-docs` | 335 fences, 284 links, 53 pages, ***85 operators*** — passed |
 
 ***Parity is 100%, and there are no gaps left to explain.*** Query 201/201, Update 81/81,
@@ -740,9 +740,18 @@ The migration also closed a real hole. ***Only 3 of the 22 expression operators 
 
 ***Where this lives.*** The 2026-08-16 work landed in two commits: `f10ea6f` for the P1 update
   operator group, and one commit for everything after it. The 2026-08-17 work landed in
-  `2aa6320`, `d8e7138`, `22bf978`, `cdfa748`, and `15d9233`, plus the path syntax commit which
-  closed S6. If `git status` is clean, all of the above is committed and the numbers in the
-  table should reproduce exactly.
+  `2aa6320`, `d8e7138`, `22bf978`, `cdfa748`, and `15d9233`, then the three commits which took
+  parity to 100%:
+
+| Commit | What closed |
+|--------|-------------|
+| `2bd54c9` | S6 — both path extensions removed, and an operator's refusal raised by `Update()`. |
+| `7a92187` | Open Decision 1 — the thirteen missing operators, and D3. First 100%. |
+| `8a60e1c` | S7 — every operator documented, `check-docs` enforcing it, and the `$regex` `x` option. |
+
+If `git status` is clean, all of the above is committed and the numbers in the table above
+  should reproduce exactly. ***Start by running the four checks***; they are the fastest way to
+  confirm the tree is where these notes say it is.
 
 ***S6 was not a documentation task, and it was closed by doing the work.*** The readme claims
   that each implemented MongoDB feature operates in accordance with MongoDB.
