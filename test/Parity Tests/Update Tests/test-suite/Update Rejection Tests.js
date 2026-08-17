@@ -150,6 +150,49 @@ module.exports = function ( Driver )
 			assert.ok( await refused( { a: 1 }, { $set: { 'a.b': 2 } } ) );
 		} );
 
+		it( 'should refuse two operators where one path lies below the other', async () =>
+		{
+			// Not just the identical path: applying both would make the result depend on the
+			// order the operators happened to run in, which is just as true when one path is
+			// inside the other. Both directions, since neither operator is privileged.
+			assert.ok( await refused( { a: { b: 1 } }, { $set: { a: 1 }, $inc: { 'a.b': 1 } } ) );
+			assert.ok( await refused( { a: { b: 1 } }, { $set: { 'a.b': 1 }, $inc: { a: 1 } } ) );
+			assert.ok( await refused( { a: { b: { c: 1 } } }, { $set: { a: 1 }, $unset: { 'a.b.c': '' } } ) );
+		} );
+
+		it( 'should not mistake a shared prefix for a conflict', async () =>
+		{
+			// The counterpart. 'ab' is not below 'a', even though it starts with the same
+			// letter — the boundary is the dot.
+			await Driver.SetData( [ { a: 1, ab: 1 } ] );
+			await Driver.Update( {}, { $set: { a: 2 }, $inc: { ab: 1 } } );
+
+			let found = await Driver.Find( {} );
+			assert.strictEqual( found[ 0 ].a, 2 );
+			assert.strictEqual( found[ 0 ].ab, 2 );
+		} );
+
+		it( 'should refuse a $pullAll whose values are not an array', async () =>
+		{
+			assert.ok( await refused( { a: [ 1, 2 ] }, { $pullAll: { a: 5 } } ) );
+			assert.ok( await refused( { a: [ 1, 2 ] }, { $pullAll: { a: 'x' } } ) );
+		} );
+
+		it( 'should refuse a $rename onto an empty field name', async () =>
+		{
+			// There is no field named by the empty string, so there is nowhere for the value
+			// to go. The field is left where it is rather than being lost.
+			assert.ok( await refused( { a: 1 }, { $rename: { a: '' } } ) );
+		} );
+
+		it( 'should refuse an operator whose value is not a document of fields', async () =>
+		{
+			// Every update operator takes { field: value } pairs. A bare value names no field.
+			assert.ok( await refused( { a: 1 }, { $set: 5 } ) );
+			assert.ok( await refused( { a: 1 }, { $unset: 'a' } ) );
+			assert.ok( await refused( { a: 1 }, { $inc: [ 1 ] } ) );
+		} );
+
 		it( 'should still apply two operators which touch different paths', async () =>
 		{
 			// The counterpart to the conflict tests: a well formed update is applied, so a

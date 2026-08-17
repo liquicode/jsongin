@@ -23,6 +23,8 @@ module.exports = function ( jsongin )
 			// Recursive function.
 			function clone_node( Node, Path )
 			{
+				// Every type ShortType can return has a case below, so the switch needs no
+				// default: an unrecognized value throws in ShortType itself.
 				let short_type = jsongin.ShortType( Node );
 				switch ( short_type )
 				{
@@ -74,7 +76,6 @@ module.exports = function ( jsongin )
 					case 'f': return Node;
 					case 'y': return Node;
 					case 'u': return Node;
-					default: throw new Error( `Unrecognized short type [${short_type}] at [${Path}].` );
 				}
 			}
 

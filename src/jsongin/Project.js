@@ -103,12 +103,13 @@ module.exports = function ( jsongin )
 		{
 			// Every element is projected and the array is kept. An element which cannot carry
 			// a field, such as a number or a null, contributes nothing and is dropped, which
-			// is why a path into an array of scalars yields an empty array.
+			// is why a path into an array of scalars yields an empty array. That element is
+			// dropped by the undefined test below rather than by a type test here: a scalar
+			// cannot carry the rest of the path and so projects to undefined on its own.
 			// The path element is not used up here: it applies to the elements.
 			let projected = [];
 			for ( let index = 0; index < Source.length; index++ )
 			{
-				if ( 'oa'.includes( jsongin.ShortType( Source[ index ] ) ) === false ) { continue; }
 				let result = include_node( Source[ index ], Paths );
 				if ( typeof result === 'undefined' ) { continue; }
 				projected.push( result );
@@ -173,6 +174,70 @@ module.exports = function ( jsongin )
 		if ( PROJECTION_OPERATORS.includes( keys[ 0 ] ) === false ) { return null; }
 
 		return keys[ 0 ];
+	};
+
+
+	//---------------------------------------------------------------------
+	// Rewrites a projection so that every key is a dotted path and no value is a nested
+	// projection specification.
+	//
+	// ***A projection value which is a document is a specification for the field it sits
+	// under***, so { o: { p: 1 } } means { 'o.p': 1 } and { o: { p: 0 } } means { 'o.p': 0 }.
+	// The value comes from the document being projected.
+	//
+	// jsongin used to treat such a value as a computed field and hand it to Evaluate(), which
+	// evaluated the specification as an expression and returned the specification itself. So
+	// { o: { p: 0 } } projected a document containing { o: { p: 0 } } — a value the source
+	// document never held. Flattening here leaves the include, exclude and computed field
+	// machinery below unchanged, because it only ever sees dotted paths.
+	//
+	// A document value is a nested specification unless it is one of three other things:
+	//   - exactly one key naming a projection operator, such as { $slice: 2 }
+	//   - any key beginning with '$', which makes the value an expression
+	//   - empty, which MongoDB refuses with "An empty sub-projection is not a valid value"
+	//
+	// Verified against MongoDB 6.0.1.
+	function flatten_projection( Projection, Prefix, Flattened )
+	{
+		for ( let key in Projection )
+		{
+			// A projection key names a field path, and no field is named by the empty string,
+			// so there is nothing the key could mean. Refusing it here is what lets everything
+			// below assume a path with at least one element.
+			if ( key.length === 0 ) { refuse( `A projection field name cannot be empty.` ); }
+
+			let path = ( Prefix.length === 0 ) ? key : ( Prefix + '.' + key );
+			let value = Projection[ key ];
+
+			if ( jsongin.ShortType( value ) !== 'o' )
+			{
+				Flattened[ path ] = value;
+				continue;
+			}
+
+			let keys = Object.keys( value );
+			if ( keys.length === 0 )
+			{
+				refuse( `An empty sub-projection is not a valid value at [${path}].` );
+			}
+
+			let is_operator = ( ( keys.length === 1 ) && ( PROJECTION_OPERATORS.includes( keys[ 0 ] ) === true ) );
+			let is_expression = false;
+			for ( let index = 0; index < keys.length; index++ )
+			{
+				if ( keys[ index ].startsWith( '$' ) === true ) { is_expression = true; }
+			}
+
+			if ( ( is_operator === true ) || ( is_expression === true ) )
+			{
+				Flattened[ path ] = value;
+				continue;
+			}
+
+			flatten_projection( value, path, Flattened );
+		}
+
+		return Flattened;
 	};
 
 
@@ -254,6 +319,10 @@ module.exports = function ( jsongin )
 			return null;
 		}
 
+		// Rewrite nested specifications into dotted paths, so that everything below deals only
+		// in paths. This also refuses an empty field name and an empty sub-projection.
+		let flat_projection = flatten_projection( Projection, '', {} );
+
 		// Scan the projection.
 		// A field is included when its value is a non-zero number or true, excluded when its
 		// value is zero or false, carries a projection operator when its value is a document
@@ -264,9 +333,9 @@ module.exports = function ( jsongin )
 		let slice_keys = [];
 		let elem_match_keys = [];
 		let include_id = true;
-		for ( let key in Projection )
+		for ( let key in flat_projection )
 		{
-			let value = Projection[ key ];
+			let value = flat_projection[ key ];
 			let value_type = jsongin.ShortType( value );
 			let is_exclusion = ( ( ( value_type === 'n' ) && ( value === 0 ) ) || ( ( value_type === 'b' ) && ( value === false ) ) );
 			let is_inclusion = ( ( ( value_type === 'n' ) && ( value !== 0 ) ) || ( ( value_type === 'b' ) && ( value === true ) ) );
@@ -316,22 +385,24 @@ module.exports = function ( jsongin )
 			// A computed field is an inclusion, so this is the case above in disguise.
 			refuse( `Cannot use an expression within an exclusion projection.` );
 		}
-		if ( ( exclude_keys.length > 0 ) && ( elem_match_keys.length > 0 ) )
-		{
-			// $elemMatch is an inclusion, so this is the same case again.
-			refuse( `Cannot use the projection operator [$elemMatch] within an exclusion projection.` );
-		}
 
 		// Determine the type of projection.
 		// A computed field implies an inclusion projection, which is what MongoDB does, and
-		// so does $elemMatch.
+		// so does $elemMatch when nothing else has decided.
 		//
-		// ***$slice is deliberately absent from this decision.*** It does not make a
-		// projection an inclusion, which is what lets it sit beside exclusions and what makes
-		// { t: { $slice: 2 } } on its own return the whole document with t sliced. Once
-		// something else has decided the projection is an inclusion, a sliced field is one of
-		// the fields included, which is handled below rather than here.
-		// Verified against MongoDB 6.0.1.
+		// ***Neither $slice nor $elemMatch conflicts with an exclusion.*** Both only decide
+		// the type of projection when nothing else has, so both sit beside an exclusion quite
+		// happily and are applied within it. jsongin used to refuse $elemMatch beside an
+		// exclusion, which MongoDB accepts. Verified against MongoDB 6.0.1:
+		//
+		//   { n: 5, s: 'x', a: [ { x:1 }, { x:2 } ] }
+		//     { n: 0, a: { $elemMatch: { x: 2 } } }  =>  { s: 'x', a: [ { x: 2 } ] }
+		//     { n: 1, a: { $elemMatch: { x: 2 } } }  =>  { n: 5, a: [ { x: 2 } ] }
+		//     {       a: { $elemMatch: { x: 2 } } }  =>  { a: [ { x: 2 } ] }
+		//
+		// The difference between them is only what they do on their own: $elemMatch alone is
+		// an inclusion, while $slice alone returns the whole document with the slice applied.
+		// That is why $slice is absent from the test below and $elemMatch is present.
 		let projection_type = 'include';
 		if ( exclude_keys.length > 0 )
 		{
@@ -351,7 +422,7 @@ module.exports = function ( jsongin )
 			// specification. That is enforced in the stage, which is the only caller that can
 			// tell it is one.
 			if ( include_id === false ) { projection_type = 'exclude'; }
-			else if ( Object.keys( Projection ).length === 0 ) { projection_type = 'exclude'; }
+			else if ( Object.keys( flat_projection ).length === 0 ) { projection_type = 'exclude'; }
 			else if ( slice_keys.length > 0 )
 			{
 				// Nothing but $slice was given. Since $slice does not make a projection an
@@ -369,13 +440,25 @@ module.exports = function ( jsongin )
 			for ( let index = 0; index < exclude_keys.length; index++ )
 			{
 				// Excluding a field which is not there is not a failure. MongoDB ignores it.
-				let path_elements = jsongin.SplitPath( exclude_keys[ index ] );
-				if ( path_elements.length === 0 ) { continue; }
-				exclude_path( projected, path_elements, 0 );
+				exclude_path( projected, jsongin.SplitPath( exclude_keys[ index ] ), 0 );
 			}
 			for ( let index = 0; index < slice_keys.length; index++ )
 			{
 				apply_slice( projected, slice_keys[ index ].Path, slice_keys[ index ].Argument );
+			}
+			for ( let index = 0; index < elem_match_keys.length; index++ )
+			{
+				let elem_match = elem_match_keys[ index ];
+				let matched = apply_elem_match( Document, elem_match.Path, elem_match.Argument );
+				if ( typeof matched === 'undefined' )
+				{
+					// Nothing matched, or the field is not an array. The field is dropped, the
+					// same way it is omitted from an inclusion projection.
+					// Verified against MongoDB 6.0.1.
+					exclude_path( projected, jsongin.SplitPath( elem_match.Path ), 0 );
+					continue;
+				}
+				jsongin.SetValue( projected, elem_match.Path, matched );
 			}
 			if ( include_id === false ) { delete projected._id; }
 		}
@@ -412,9 +495,7 @@ module.exports = function ( jsongin )
 				let include_paths = [];
 				for ( let index = 0; index < sliced_include_keys.length; index++ )
 				{
-					let path_elements = jsongin.SplitPath( sliced_include_keys[ index ] );
-					if ( path_elements.length === 0 ) { continue; }
-					include_paths.push( path_elements );
+					include_paths.push( jsongin.SplitPath( sliced_include_keys[ index ] ) );
 				}
 
 				let included = include_node( Document, include_paths );
@@ -445,19 +526,14 @@ module.exports = function ( jsongin )
 			for ( let index = 0; index < computed_keys.length; index++ )
 			{
 				let key = computed_keys[ index ];
-				let value = jsongin.Evaluate( Document, Projection[ key ] );
+				let value = jsongin.Evaluate( Document, flat_projection[ key ] );
 				// An expression which evaluates to a missing value omits the field.
 				// An expression which evaluates to null sets the field to null.
 				if ( typeof value === 'undefined' ) { continue; }
 				// Cloned, because a field reference such as '$user' evaluates to the value
 				// inside the given document rather than to a copy of it. Storing it as-is made
 				// the projection share structure with the document it was projected from.
-				let result = jsongin.SetValue( projected, key, jsongin.SafeClone( value ) );
-				if ( result === false )
-				{
-					if ( jsongin.OpLog ) { jsongin.OpLog( `Projection: Failed to set the computed field [${key}] in the projection.` ); }
-					continue;
-				}
+				jsongin.SetValue( projected, key, jsongin.SafeClone( value ) );
 			}
 		}
 

@@ -52,7 +52,6 @@ module.exports = function ( jsongin )
 				if ( jsongin.OpError ) { jsongin.OpError( `Update.$set: ${error.message}` ); }
 				throw error;
 			}
-			return; // Code should be inaccessible.
 		},
 
 	};

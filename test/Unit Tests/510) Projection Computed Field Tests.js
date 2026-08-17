@@ -153,6 +153,65 @@ describe( '510) Projection Computed Field Tests', () =>
 			assert.strictEqual( projected.n, 7 );
 		} );
 
+		it( 'should not treat a document of several $ keys as a projection operator', () =>
+		{
+			// Exactly one key is what makes a projection operator, so a document naming two is
+			// an expression, and an expression may only name one operator either. It is
+			// reported as an expression because that is what it is being read as.
+			assert.throws(
+				function () { jsongin.Project( { a: [ 1, 2 ] }, { a: { $slice: 2, $meta: 1 } } ); },
+				/Unrecognized expression operator/ );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'Projection Parameters', () =>
+	{
+
+		/*
+			Statements about the jsongin API rather than about MongoDB, which is why they are
+			here rather than in the Parity Tests. A driver never gets to ask MongoDB what a
+			non-object projection means, because the parameter never reaches the server.
+
+			A parameter of the wrong type returns null and writes to the OpLog, because that is
+			a statement about the data. A projection which cannot mean anything throws, which
+			is the group of tests above.
+		*/
+
+		it( 'should return null when the document is not an object', () =>
+		{
+			assert.strictEqual( jsongin.Project( 5, { a: 1 } ), null );
+			assert.strictEqual( jsongin.Project( 'text', { a: 1 } ), null );
+			assert.strictEqual( jsongin.Project( [ { a: 1 } ], { a: 1 } ), null );
+			assert.strictEqual( jsongin.Project( null, { a: 1 } ), null );
+		} );
+
+		it( 'should return null when the projection is neither an object nor missing', () =>
+		{
+			assert.strictEqual( jsongin.Project( { a: 1 }, 5 ), null );
+			assert.strictEqual( jsongin.Project( { a: 1 }, 'text' ), null );
+			assert.strictEqual( jsongin.Project( { a: 1 }, true ), null );
+		} );
+
+		it( 'should return the whole document when the projection is missing', () =>
+		{
+			// null and undefined both mean "no projection", which selects everything.
+			assert.deepStrictEqual( jsongin.Project( { a: 1, b: 2 }, null ), { a: 1, b: 2 } );
+			assert.deepStrictEqual( jsongin.Project( { a: 1, b: 2 }, undefined ), { a: 1, b: 2 } );
+			assert.deepStrictEqual( jsongin.Project( { a: 1, b: 2 } ), { a: 1, b: 2 } );
+		} );
+
+		it( 'should not alias the document when the projection is missing', () =>
+		{
+			// It is a clone, like every other result Project returns.
+			let document = { a: { n: 1 } };
+			let projected = jsongin.Project( document, null );
+			projected.a.n = 999;
+			assert.strictEqual( document.a.n, 1 );
+		} );
+
 	} );
 
 

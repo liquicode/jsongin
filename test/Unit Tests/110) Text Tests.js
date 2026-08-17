@@ -374,4 +374,50 @@ describe( '110) Text Tests', () =>
 	} );
 
 
+	//---------------------------------------------------------------------
+	describe( 'Text Parameter Validation', () =>
+	{
+
+		/*
+			These take text, and anything which is not text is a mistake at the call site rather
+			than a value to coerce. A number silently stringified would make Compare( 10, 9 )
+			answer that 10 sorts before 9, which is true of the text and not of the numbers.
+		*/
+
+		it( 'should refuse a Compare parameter which is not a string', () =>
+		{
+			assert.throws( function () { jsongin.Text.Compare( 5, 'a' ); }, /\[TextA\] must be a string/ );
+			assert.throws( function () { jsongin.Text.Compare( null, 'a' ); }, /\[TextA\] must be a string/ );
+			assert.throws( function () { jsongin.Text.Compare( 'a', 5 ); }, /\[TextB\] must be a string/ );
+			assert.throws( function () { jsongin.Text.Compare( 'a', undefined ); }, /\[TextB\] must be a string/ );
+		} );
+
+		it( 'should refuse a FindBetween parameter which is not a string', () =>
+		{
+			assert.throws( function () { jsongin.Text.FindBetween( 5, 'a', 'z' ); }, /\[Text\] must be a string/ );
+			assert.throws( function () { jsongin.Text.FindBetween( 'abc', 5, 'z' ); }, /\[StartText\] must be a string/ );
+			assert.throws( function () { jsongin.Text.FindBetween( 'abc', 'a', 5 ); }, /\[EndText\] must be a string/ );
+		} );
+
+		it( 'should treat a missing FindBetween delimiter as an empty one', () =>
+		{
+			// null and undefined mean "no delimiter", which anchors to that end of the text.
+			assert.strictEqual( jsongin.Text.FindBetween( 'abcz', null, 'z' ), 'abc' );
+			assert.strictEqual( jsongin.Text.FindBetween( 'abcz', 'a', null ), 'bcz' );
+			assert.strictEqual( jsongin.Text.FindBetween( 'abcz', undefined, undefined ), 'abcz' );
+		} );
+
+		it( 'should return null when FindBetween cannot find a delimiter', () =>
+		{
+			// The start delimiter is not there at all.
+			assert.strictEqual( jsongin.Text.FindBetween( 'abc', 'q', 'c' ), null );
+
+			// The end delimiter is not there ***after*** the start, which is the case the
+			// search has to look for rather than searching the whole text again.
+			assert.strictEqual( jsongin.Text.FindBetween( 'zabc', 'a', 'z' ), null );
+		} );
+
+	} );
+
+
 } );

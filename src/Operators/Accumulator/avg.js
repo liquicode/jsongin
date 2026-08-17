@@ -38,9 +38,13 @@ module.exports = function ( jsongin )
 				let count = 0;
 				for ( let index = 0; index < values.length; index++ )
 				{
-					// Non-numeric values are ignored.
+					// Non-numeric values are ignored, and are left out of the count as well as
+					// the total, so the average is taken over the numbers alone.
+					//
+					// ***A NaN is a number and is not ignored.*** It is averaged like any
+					// other double and takes the result with it, which is what MongoDB does.
+					// Verified against MongoDB 6.0.1. See $sum for the same rule.
 					if ( jsongin.ShortType( values[ index ] ) !== 'n' ) { continue; }
-					if ( isNaN( values[ index ] ) ) { continue; }
 					total += values[ index ];
 					count++;
 				}

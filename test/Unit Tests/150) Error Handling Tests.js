@@ -391,6 +391,18 @@ describe( '150) Error Handling Tests', () =>
 			}
 		} );
 
+		it( 'should reject a document in the pipeline which is not an object', () =>
+		{
+			// Every stage emits documents, so this can only come from the caller's own input.
+			// The index is named so that the one bad document can be found in a long list.
+			assert.throws(
+				function () { jsongin.Aggregate( [ 5 ], [ { $project: { a: 1 } } ] ); },
+				/Unable to project the document at index \[0\]/ );
+			assert.throws(
+				function () { jsongin.Aggregate( [ { a: 1 }, 7 ], [ { $project: { a: 1 } } ] ); },
+				/Unable to project the document at index \[1\]/ );
+		} );
+
 		it( 'should reject a malformed argument to every stage', () =>
 		{
 			// Each stage rejects a string where its own argument type is required. $unwind and
@@ -406,6 +418,98 @@ describe( '150) Error Handling Tests', () =>
 					function () { jsongin.StageOperators[ name ].Stage( [], bad ); },
 					`${name} accepted a malformed argument.` );
 			}
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'Operators Called Directly', () =>
+	{
+
+		/*
+			`Query()` checks a value against the operator's declared ValueTypes before
+			dispatching, so an operator reached through a query never sees a value of the wrong
+			type. An operator called ***directly*** has no such dispatcher in front of it, and
+			validates its own value instead — the convention `Query.js` records as "an operator
+			is still free to validate its own value, and does when it is called directly rather
+			than through here".
+
+			These are statements about the jsongin API, not about MongoDB, which is why they are
+			unit tests: there is no way to ask a MongoDB server what a single operator does with
+			a value the query language would have rejected before it got there.
+
+			A direct call answers false rather than throwing. The refusal belongs to the query
+			language, and one operator asked about one value has no query to refuse.
+		*/
+
+		it( 'should answer false for a $type value which is not a number, string or array', () =>
+		{
+			assert.strictEqual( jsongin.QueryOperators.$type.Query( { a: 1 }, true, 'a' ), false );
+			assert.strictEqual( jsongin.QueryOperators.$type.Query( { a: 1 }, null, 'a' ), false );
+			assert.strictEqual( jsongin.QueryOperators.$type.Query( { a: 1 }, { x: 1 }, 'a' ), false );
+		} );
+
+		it( 'should answer false for a $regex value which is not a string or regexp', () =>
+		{
+			assert.strictEqual( jsongin.QueryOperators.$regex.Query( { a: 'x' }, 5, 'a' ), false );
+			assert.strictEqual( jsongin.QueryOperators.$regex.Query( { a: 'x' }, null, 'a' ), false );
+			assert.strictEqual( jsongin.QueryOperators.$regex.Query( { a: 'x' }, [ 'x' ], 'a' ), false );
+		} );
+
+		it( 'should run a query handed directly to $ImplicitEq', () =>
+		{
+			// The dispatcher routes a query away from $ImplicitEq, so this branch is for
+			// callers which reach the operator themselves. An object holding an operator is a
+			// query to evaluate against the field, not a value to compare it against.
+			assert.strictEqual( jsongin.QueryOperators.$ImplicitEq.Query( { a: 9 }, { $gt: 5 }, 'a' ), true );
+			assert.strictEqual( jsongin.QueryOperators.$ImplicitEq.Query( { a: 1 }, { $gt: 5 }, 'a' ), false );
+
+			// A document which holds no operator is still an ordinary value to compare.
+			assert.strictEqual( jsongin.QueryOperators.$ImplicitEq.Query( { a: { x: 1 } }, { x: 1 }, 'a' ), true );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'Query Parameters', () =>
+	{
+
+		/*
+			Statements about the jsongin API rather than about MongoDB, which is why they are
+			here rather than in the Parity Tests. A driver never gets to ask MongoDB what a
+			non-object criteria means, because the parameter never reaches the server.
+
+			The split is the one `Query()` documents: a malformed ***criteria*** throws, because
+			the caller could not have meant it, while a ***document*** which is not an object
+			returns false, because that is a statement about the data and "no match" is a
+			truthful answer for it.
+		*/
+
+		it( 'should return false when the document is not an object', () =>
+		{
+			assert.strictEqual( jsongin.Query( 5, { a: 1 } ), false );
+			assert.strictEqual( jsongin.Query( 'text', { a: 1 } ), false );
+			assert.strictEqual( jsongin.Query( null, { a: 1 } ), false );
+			assert.strictEqual( jsongin.Query( [ { a: 1 } ], { a: 1 } ), false );
+		} );
+
+		it( 'should refuse a criteria which is not an object', () =>
+		{
+			assert.throws( function () { jsongin.Query( { a: 1 }, 5 ); }, /The Criteria parameter must be an object/ );
+			assert.throws( function () { jsongin.Query( { a: 1 }, 'text' ); }, /The Criteria parameter must be an object/ );
+			assert.throws( function () { jsongin.Query( { a: 1 }, null ); }, /The Criteria parameter must be an object/ );
+		} );
+
+		it( 'should refuse an implicit $eq against undefined', () =>
+		{
+			// undefined is not a value to compare against, and the mistake it usually is — a
+			// missing variable — should not quietly become "no match". $exists is the operator
+			// for asking whether a field is there.
+			assert.throws(
+				function () { jsongin.Query( { a: 1 }, { a: undefined } ); },
+				/The implicit \$eq operator cannot be set to undefined/ );
 		} );
 
 	} );

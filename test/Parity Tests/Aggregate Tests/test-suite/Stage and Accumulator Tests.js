@@ -140,6 +140,69 @@ module.exports = function ( Driver )
 				assert.deepStrictEqual( result.map( function ( D ) { return D.i; } ), [ 0, 1 ] );
 			} );
 
+			it( 'should index a preserved document as null', async () =>
+			{
+				// The two options together. A document kept only because it was preserved has
+				// no element to number, so its index is null rather than 0 or missing.
+				// _id 2 holds an empty array and _id 4 has no field at all.
+				let result = await piped( [
+					{ $sort: { _id: 1 } },
+					{ $unwind: { path: '$t', preserveNullAndEmptyArrays: true, includeArrayIndex: 'i' } },
+				] );
+				assert.deepStrictEqual( result.map( function ( D ) { return D.i; } ), [ 0, 1, null, 0, null ] );
+
+				// The empty array is removed from the preserved document rather than kept.
+				let preserved = result[ 2 ];
+				assert.strictEqual( preserved._id, 2 );
+				assert.ok( !( 't' in preserved ) );
+			} );
+
+		} );
+
+
+		//---------------------------------------------------------------------
+		describe( 'Refused Stages', () =>
+		{
+
+			/*
+				A stage which cannot mean anything is refused, the same way a malformed query,
+				update or projection is. These assert only that it was refused.
+			*/
+
+			async function refused( Pipeline )
+			{
+				await Driver.SetData( documents );
+				try
+				{
+					await Driver.Aggregate( Pipeline );
+					return false;
+				}
+				catch ( error )
+				{
+					return true;
+				}
+			}
+
+			it( 'should refuse a $count field name which cannot be a field name', async () =>
+			{
+				assert.ok( await refused( [ { $count: '' } ] ), 'empty' );
+				assert.ok( await refused( [ { $count: '$n' } ] ), 'begins with a $' );
+				assert.ok( await refused( [ { $count: 'a.b' } ] ), 'contains a dot' );
+			} );
+
+			it( 'should refuse an empty $project specification', async () =>
+			{
+				// ***The opposite of the Project() rule***, where {} returns the whole document.
+				// The stage states this itself because Project() cannot tell which of its
+				// callers it is serving.
+				assert.ok( await refused( [ { $project: {} } ] ) );
+			} );
+
+			it( 'should refuse an $unwind with no path after the $', async () =>
+			{
+				assert.ok( await refused( [ { $unwind: '$' } ] ) );
+			} );
+
 		} );
 
 
@@ -252,6 +315,29 @@ module.exports = function ( Driver )
 				assert.strictEqual( await accumulated( { $sum: '$nope' } ), 0 );
 				assert.strictEqual( await accumulated( { $avg: '$nope' } ), null );
 				assert.strictEqual( await accumulated( { $min: '$nope' } ), null );
+			} );
+
+			it( 'should take a NaN into the total rather than skipping it', async () =>
+			{
+				// A NaN is a number, so it is accumulated like one and takes the whole result
+				// with it. It is not the same case as a non-numeric value, which is skipped —
+				// the test below is the counterpart.
+				await Driver.SetData( [ { _id: 1, n: 1 }, { _id: 2, n: NaN }, { _id: 3, n: 3 } ] );
+				let result = await Driver.Aggregate( [ { $group: { _id: null, r: { $sum: '$n' } } } ] );
+				assert.ok( Number.isNaN( result[ 0 ].r ) );
+
+				let averaged = await Driver.Aggregate( [ { $group: { _id: null, r: { $avg: '$n' } } } ] );
+				assert.ok( Number.isNaN( averaged[ 0 ].r ) );
+			} );
+
+			it( 'should skip a value which is not a number', async () =>
+			{
+				await Driver.SetData( [ { _id: 1, n: 1 }, { _id: 2, n: 'text' }, { _id: 3, n: 3 } ] );
+				let result = await Driver.Aggregate( [ { $group: { _id: null, r: { $sum: '$n' } } } ] );
+				assert.strictEqual( result[ 0 ].r, 4 );
+
+				let averaged = await Driver.Aggregate( [ { $group: { _id: null, r: { $avg: '$n' } } } ] );
+				assert.strictEqual( averaged[ 0 ].r, 2 );
 			} );
 
 		} );

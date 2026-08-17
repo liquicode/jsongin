@@ -90,47 +90,90 @@ module.exports = function ( jsongin )
 
 
 	//---------------------------------------------------------------------
+	// Refuses a criteria which cannot mean anything, before any element is examined.
+	//
+	// The criteria inside $elemMatch is a criteria in its own right, so a malformed one is
+	// refused exactly as it would be at the top of a query: it throws rather than reporting
+	// that nothing matched. Reporting false gives the caller no way to tell a typo from an
+	// empty result, which is the reasoning Query.js records for the same decision.
+	//
+	// ***This runs once, against the criteria alone.*** It used to be checked while matching,
+	// which meant the refusal depended on there being an element to reach it: { v: [] }, a
+	// field which is not an array, and a field which is not there all quietly returned false
+	// for a criteria MongoDB refuses to run at all.
+	// Verified against MongoDB 6.0.1.
+	function validate_criteria( Criteria )
+	{
+		for ( let key in Criteria )
+		{
+			if ( LOGICAL.includes( key ) === false ) { continue; }
+
+			let value = Criteria[ key ];
+			let value_type = jsongin.ShortType( value );
+
+			if ( key === '$not' )
+			{
+				// A regexp is the one non-document $not takes.
+				if ( value_type === 'r' ) { continue; }
+				if ( value_type !== 'o' )
+				{
+					throw new Error( `$elemMatch: $not requires an object or regexp but found type [${value_type}].` );
+				}
+				validate_criteria( value );
+				continue;
+			}
+
+			if ( value_type !== 'a' )
+			{
+				throw new Error( `$elemMatch: ${key} requires an array of criteria but found type [${value_type}].` );
+			}
+			if ( value.length === 0 )
+			{
+				// An empty list asks nothing, the same way { $and: [] } does at the top level.
+				throw new Error( `$elemMatch: ${key} requires at least one criteria.` );
+			}
+
+			// A branch of a logical operator is a criteria in its own right, so an operator
+			// which cannot stand at the top of one is refused here as it would be there. A bare
+			// { $gt: 1 } is a legitimate $elemMatch criteria and is not a legitimate $or branch.
+			// Verified against MongoDB 6.0.1.
+			for ( let index = 0; index < value.length; index++ )
+			{
+				let branch = value[ index ];
+				let branch_type = jsongin.ShortType( branch );
+				if ( branch_type !== 'o' )
+				{
+					throw new Error( `$elemMatch: A ${key} branch must be a document but found type [${branch_type}].` );
+				}
+				for ( let branch_key in branch )
+				{
+					let branch_operator = jsongin.QueryOperators[ branch_key ];
+					if ( typeof branch_operator === 'undefined' ) { continue; }
+					if ( branch_operator.TopLevel === true ) { continue; }
+					throw new Error( `$elemMatch: Operator [${branch_key}] cannot appear at the top level of a ${key} branch.` );
+				}
+				validate_criteria( branch );
+			}
+		}
+	};
+
+
+	//---------------------------------------------------------------------
 	// Applies a logical operator to one element, keeping the element level rule across its
 	// branches. Each branch is a criteria in its own right, so it comes back through
 	// element_matches rather than going out to Query().
+	//
+	// The shape of Value is already known to be good: validate_criteria checked the whole
+	// criteria before the first element was looked at.
 	function logical_matches( Element, Operator, Value )
 	{
 		if ( Operator === '$not' )
 		{
-			let value_type = jsongin.ShortType( Value );
-			if ( value_type === 'r' )
+			if ( jsongin.ShortType( Value ) === 'r' )
 			{
 				return ( jsongin.QueryOperators.$regex.Query( { value: Element }, Value, 'value', false ) === false );
 			}
-			if ( value_type !== 'o' )
-			{
-				if ( jsongin.OpLog ) { jsongin.OpLog( `$elemMatch: $not requires an object or regexp but found type [${value_type}].` ); }
-				return false;
-			}
 			return ( element_matches( Element, Value ) === false );
-		}
-
-		if ( jsongin.ShortType( Value ) !== 'a' )
-		{
-			if ( jsongin.OpLog ) { jsongin.OpLog( `$elemMatch: ${Operator} requires an array of criteria.` ); }
-			return false;
-		}
-
-		// A branch of a logical operator is a criteria in its own right, so an operator which
-		// cannot stand at the top of one is refused here as it would be there. A bare
-		// { $gt: 1 } is a legitimate $elemMatch criteria and is not a legitimate $or branch.
-		// Verified against MongoDB 6.0.1.
-		for ( let index = 0; index < Value.length; index++ )
-		{
-			let branch = Value[ index ];
-			if ( jsongin.ShortType( branch ) !== 'o' ) { continue; }
-			for ( let key in branch )
-			{
-				let branch_operator = jsongin.QueryOperators[ key ];
-				if ( typeof branch_operator === 'undefined' ) { continue; }
-				if ( branch_operator.TopLevel === true ) { continue; }
-				throw new Error( `$elemMatch: Operator [${key}] cannot appear at the top level of a ${Operator} branch.` );
-			}
 		}
 
 		if ( Operator === '$and' )
@@ -173,6 +216,10 @@ module.exports = function ( jsongin )
 					if ( jsongin.OpLog ) { jsongin.OpLog( `$elemMatch: match requires an object but found type [${match_type}] instead at [${Path}].` ); }
 					return false;
 				}
+
+				// Refuse a malformed criteria before looking at any data, so that the refusal
+				// does not depend on there being an element to reach it.
+				validate_criteria( MatchValue );
 
 				// The arrays the path can mean, taken as the values the path lands on.
 				//

@@ -36,18 +36,10 @@ module.exports = function ( jsongin )
 			refuse( `The Criteria parameter must be an object.` );
 		}
 
-		// Validate the path.
-		{
-			let path_elements = jsongin.SplitPath( Path );
-			if ( path_elements === null ) 
-			{
-				Path = '';
-			}
-			else
-			{
-				Path = path_elements.join( '.' );
-			}
-		}
+		// Normalize the path.
+		// SplitPath returns an array or throws; it never returns null, so there is no null case
+		// to handle. This used to branch on one, which no input could produce.
+		Path = jsongin.SplitPath( Path ).join( '.' );
 		if ( ( Path === '' ) && ( Object.keys( Criteria ).length === 0 ) )
 		{
 			if ( jsongin.OpLog ) { jsongin.OpLog( `Query: An empty query object {} matches everything.` ); }
@@ -224,19 +216,17 @@ module.exports = function ( jsongin )
 			refuse( `$options must be a string but found [${options_type}] instead at [${Path}].` );
 		}
 
+		// Pattern is already known to be a string or a regexp: $regex declares ValueTypes 'sr'
+		// and the dispatcher above enforces it before calling this, so a pattern of any other
+		// type never gets here. This used to re-check it, which no input could reach.
 		let source = Pattern;
-		let pattern_type = jsongin.ShortType( Pattern );
-		if ( pattern_type === 'r' )
+		if ( jsongin.ShortType( Pattern ) === 'r' )
 		{
 			if ( Pattern.flags.length > 0 )
 			{
 				refuse( `$options cannot be given beside a regexp which carries its own flags at [${Path}].` );
 			}
 			source = Pattern.source;
-		}
-		else if ( pattern_type !== 's' )
-		{
-			refuse( `$regex requires regexp or string but found [${pattern_type}] instead at [${Path}].` );
 		}
 
 		// 'x' is MongoDB's, not Javascript's, so it is applied to the pattern and then removed

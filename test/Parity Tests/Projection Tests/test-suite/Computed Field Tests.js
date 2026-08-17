@@ -135,6 +135,33 @@ module.exports = function ( Driver )
 				assert.ok( await refused( document, { n: 0, doubled: { $multiply: [ '$n', 2 ] } } ) );
 			} );
 
+			it( 'should refuse an empty sub-projection', async () =>
+			{
+				// A nested document is a projection specification for the field it sits under,
+				// and an empty one names nothing. MongoDB: "An empty sub-projection is not a
+				// valid value." Note that an empty projection at the ***top*** level is legal
+				// and returns the whole document, which Projection Shape Tests asserts.
+				assert.ok( await refused( { o: { p: 1 }, n: 5 }, { o: {} } ) );
+			} );
+
+			it( 'should refuse a $slice argument which is neither a count nor a skip and a limit', async () =>
+			{
+				let sliceable = { t: [ 1, 2, 3 ] };
+				assert.ok( await refused( sliceable, { t: { $slice: 'two' } } ) );
+				assert.ok( await refused( sliceable, { t: { $slice: [ 1 ] } } ) );
+				assert.ok( await refused( sliceable, { t: { $slice: [ 1, 2, 3 ] } } ) );
+				assert.ok( await refused( sliceable, { t: { $slice: {} } } ) );
+			} );
+
+			it( 'should refuse an empty field name', async () =>
+			{
+				// A projection key names a field path, and there is no field whose name is the
+				// empty string, so there is nothing for the key to mean.
+				assert.ok( await refused( document, { '': 1 } ) );
+				assert.ok( await refused( document, { '': 0 } ) );
+				assert.ok( await refused( document, { '': { $multiply: [ '$n', 2 ] } } ) );
+			} );
+
 		} );
 
 	} );
