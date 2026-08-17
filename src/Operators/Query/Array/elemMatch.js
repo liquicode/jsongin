@@ -132,7 +132,6 @@ module.exports = function ( jsongin )
 
 		//---------------------------------------------------------------------
 		Engine: jsongin,
-		OperatorType: 'Array',
 		TopLevel: false,
 		ValueTypes: 'o',
 

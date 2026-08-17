@@ -2,7 +2,20 @@
 
 module.exports = function ( jsongin )
 {
-	function Filter( Documents, QueryCriteria ) 
+	//---------------------------------------------------------------------
+	// Selects the documents which match, into a new array.
+	//
+	// The array is new and the documents in it are the caller's own objects, which are
+	// deliberately ***not*** cloned: writing into a document of the result writes into the
+	// document the caller passed. Filter is a selection rather than a transformation, and a
+	// filter which selects ten documents out of a hundred thousand should not copy ten
+	// documents the caller already holds.
+	//
+	// This is the convention the pass-through aggregation stages follow, and
+	// docs/guides/jsongin/Aggregate.md names Filter as the thing they follow. A stage which
+	// produces documents rather than selecting them clones with SafeClone before writing.
+	// Filter.md states the same rule for callers.
+	function Filter( Documents, QueryCriteria )
 	{
 		try
 		{

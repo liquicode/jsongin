@@ -211,6 +211,42 @@ v0.1.0 (current)
   comparison in place of the strict one, and nothing else about it differs. Both take the
   `ExpandArrays` parameter which `$elemMatch` passes.
 
+- The seven expression comparison operators — `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, and
+  `$cmp` — now share `_compare.js`, the way the query range operators share `_range.js` and the
+  `$min`/`$max` update operators share `_minmax.js`. Each of the seven was the same body written
+  out again, differing only in what it made of the comparison: `=== 0`, `!== 0`, `> 0`, `>= 0`,
+  `< 0`, `<= 0`, and `$cmp` returning the comparison itself. Argument validation and the
+  comparison now happen in one place. No behavior changed and no error message changed.
+
+- ***`OperatorType` and `ArgCount` were removed from every operator.*** Both were declared
+  everywhere and read nowhere — `OperatorType` on all 75 operators, `ArgCount` on the 22
+  expression operators. Unlike `ValueTypes` and `ArgTypes`, which the dispatchers enforce,
+  neither could make the engine refuse anything. `OperatorType` is a label, and a label cannot
+  constrain what an operator accepts; which kind an operator is was already settled by the
+  registry it is registered in. `ArgCount` was already enforced by the operators themselves:
+  13 of the 22 checked exactly what they declared, 6 were variadic and declared `null`, and the
+  last two were simply wrong — `$literal` declared one argument while correctly accepting an
+  argument of any length, and `$switch` declared one while taking an object.
+
+  ***What an engine refuses is now measured rather than declared.*** MongoDB rejects a wrong
+  operand count, and so does jsongin, but nothing had ever compared the two.
+  `Aggregate Tests/test-suite/Expression Rejection Tests.js` does now, over 41 assertions run
+  against MongoDB 6.0.1 before they were written down. All 41 agree. An operator author checks
+  the operand count in the operator, which is what
+  [`Operator-Authoring.md`](http://jsongin.liquicode.com/#/guides/Operator-Authoring.md) now says: the count means something different for
+  each operator, so no single declared number could have been enforced without carving out
+  exceptions for the operators it does not fit.
+
+- ***`src/jsongin/Path/` no longer ships.*** `Ancestor.js`, `Parent.js`, and `Children.js` were
+  three unfinished sketches of the path navigation functions named in `todo.md`. They were
+  registered on no engine, required from nowhere, tested by nothing, and documented in no guide,
+  but `package.json` publishes `src` whole, so they reached every consumer of the package
+  looking like part of the library. They were also not finishable as written: `Children`
+  returned whole paths while `Parent` returned a bare key, so their results could not be handed
+  to each other, and `Ancestor` and `Parent` demanded a `Document` neither of them read.
+  The sketches, what they did, and the decisions to settle before writing them again are kept
+  in `.plans/2026-08-16/path-navigation-functions.md`.
+
 - A code review of the whole library was run and its findings worked through. The review is kept
   at `.reviews/2026-08-14-03-35/review.md`. What it turned up, and what was done about it:
 

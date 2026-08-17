@@ -702,11 +702,11 @@ The ***Current Status*** block is rewritten in place each session. The ***Log***
 
 | Check | Command | Result |
 |-------|---------|--------|
-| Unit tests | `npm test` | 1119 passing, ***green*** |
-| Parity baseline | `npm run parity-test-mongodb` | 389 passing, ***0 failing*** (needs a server) |
-| Parity under test | `npm run parity-test-jsongin` | 373 passing, 16 failing |
-| Parity measurement | `npm run parity-report` | ***95.9%*** — 373 of 389 agree |
-| Coverage | `npm run coverage` | 163 uncovered blocks, 48 files fully covered |
+| Unit tests | `npm test` | 1124 passing, ***green*** |
+| Parity baseline | `npm run parity-test-mongodb` | 397 passing, ***0 failing*** (needs a server) |
+| Parity under test | `npm run parity-test-jsongin` | 381 passing, 16 failing |
+| Parity measurement | `npm run parity-report` | ***96.0%*** — 381 of 397 agree |
+| Coverage | `npm run coverage` | 161 uncovered blocks, 50 files fully covered |
 | Docs | `npm run check-docs` | 333 fences, 283 links, 53 pages — passed |
 
 ***Every parity finding P1–P10 is fixed, and every defect is closed.*** Parity reached ***100%
@@ -720,7 +720,7 @@ The ***Current Status*** block is rewritten in place each session. The ***Log***
   them instead of letting them fade. All 16 pass against MongoDB — `test bugs` is 0 — so the
   baseline run is green and the failures are the whole of the difference.
 
-Parity by area: Query 197/197, Update 78/81, Projection 30/33, Aggregate 68/78.
+Parity by area: Query 197/197, Update 78/81, Projection 30/33, Aggregate 76/86.
 
 | The 16 | Where | Why it fails |
 |--------|-------|--------------|
@@ -784,21 +784,17 @@ Decisions made in session, which later work should not silently reverse:
 | Group | Open | Notes |
 |-------|-----:|-------|
 | P1–P10 parity | 0 | ***All ten fixed***, and six more defects the review never named: five from the operator sweep, one from migrating it into the suites. |
-| S1–S8 consistency | 5 | ***S1, S2, S8 fixed.*** S3, S4, S5, S6, S7 open. |
-| R1–R4 conciseness | 2 | ***R2 fixed*** as `_arith.js`, ***R3 fixed*** with the refusal work. R1, R4 open. |
-| T1–T5 test coverage | 1 | T1, T2, T5 addressed. ***T4 effectively closed*** — 13 aliasing tests now exist, and the one gap left is `Filter`, which is S4. T3 open. |
+| S1–S8 consistency | 2 | ***S1, S2, S3, S4, S5, S8 fixed.*** S6, S7 open. |
+| R1–R4 conciseness | 0 | ***All four fixed.*** R1 as `_compare.js`, R2 as `_arith.js`, R3 with the refusal work, R4 by deleting `ArgCount` rather than enforcing it. |
+| T1–T5 test coverage | 1 | T1, T2, T5 addressed. ***T4 closed*** — the aliasing tests now cover `Filter` and `Sort` as well, with S4. T3 open. |
 | D1–D3 documentation | 1 | ***D1 and D2 closed.*** Every limitation D2 listed is fixed and documented. D3 open, and now measured by the unimplemented projection tests. |
 
 ***The shortest list of what is actually left***, for a session picking this up cold:
 
-- **S3** `OperatorType` and `ArgCount` are unenforced metadata. **R4** is the same subject.
-- **S4** `Filter()` returns the caller's own documents and nothing says so.
-- **S5** three unregistered modules under `src/jsongin/Path/`.
 - **S6** the blanket accuracy claim in `readme.md`, which is generated from
   `docs/templates/readme.md`. Worth revisiting now that the claim is nearly true and measured.
 - **S7** `/*md` blocks on 41 of 70 operators — decide it is optional, or fill them in.
-- **R1** the seven expression comparison operators are one implementation written seven times.
-- **T3** 165 uncovered blocks; the tool names the files.
+- **T3** 163 uncovered blocks; the tool names the files.
 - **D3** unsupported projection operators report the wrong kind of error.
 - The three **Open Decisions**, each already measured by a failing parity test.
 
@@ -852,6 +848,159 @@ Both of the previous decisions were taken and carried out: `Query()` and `Update
 
 
 ### Log
+
+#### 2026-08-16 — S5 closed: the three `Path/` sketches moved to `.plans/`
+
+`src/jsongin/Path/` is gone. `Ancestor.js`, `Parent.js`, and `Children.js` are preserved in
+  `.plans/2026-08-16/path-navigation-functions.md`, together with what they actually did and
+  the decisions which have to be settled before they are written again.
+
+***Registering them was not an available option***, which is what settled the review's
+  either/or. Running the three showed they are the beginning of a design rather than an
+  implementation with bugs in it:
+
+- `Children( doc, 'a.b' )` returns `[ 'a.b.c' ]`, whole paths, while `Parent( doc, 'a.b.c' )`
+  returns `'b'`, a bare key. The parent of that path is `'a.b'`. A family of navigation
+  functions whose results cannot be handed to each other is not a family.
+- `Ancestor` and `Parent` require a `Document` and throw without one, then never read it. Both
+  are pure path arithmetic.
+- All three split with `Path.split( '.' )` rather than `jsongin.SplitPath()`, so they do not
+  follow the engine's own path rules.
+
+***They were also shipping.*** `package.json` publishes `src` whole, so three files that no
+  engine registered and no guide named reached every consumer of the package looking like part
+  of the library. That is the concrete cost behind the review's "dead code that looks live is
+  worse than no code", and it is why this got a `history.md` entry when S4 did not: what the
+  package contains changed.
+
+`todo.md` keeps the twelve-function item and now points at the plan. Six of the twelve — the
+  ordinal ones, `FirstChild` through `LastDescendant` — turn out to need a decision nobody has
+  made: over an object they depend on key order, which is insertion order in Javascript and
+  which the engine promises nowhere else. That is recorded in the plan rather than discovered
+  again later.
+
+Unit tests 1124, coverage 161/50, docs green — all unchanged, since nothing referenced these
+  files. That is the same evidence the deletion rests on.
+
+#### 2026-08-16 — S4 closed: the aliasing contracts are pinned by tests, not just described
+
+***Most of S4 was already fixed, and the finding as written is stale.*** It says `Filter.md`
+  "does not mention cloning, references, or aliasing anywhere". It does now, in as many words —
+  "a ***new array*** holding the ***original documents***, not copies of them" — and a unit test
+  at `130)` already asserted `filtered[ 0 ] === documents[ 0 ]`. An earlier session fixed the
+  documentation half without the Work Notes recording it, which is why T4's entry still called
+  Filter the one gap left.
+
+What was actually missing was the source and the edges around it:
+
+- ***`Filter.js` said nothing.*** `Aggregate.md` names Filter as the convention the pass-through
+  stages follow, so a maintainer who "helpfully" adds a `SafeClone` to it changes a documented
+  promise while reading a file that never mentions one. It now carries the rule and the reason.
+- ***The consequence was untested.*** Identity implies it, but a caller meets the rule as
+  "writing into the result writes into my document", which is how the review states it and how
+  the test now states it.
+- ***`Sort()`'s contract was only implied.*** It sorts the caller's array in place, which
+  `Sort.md` does say, but the tests only relied on it — they assert against the array they
+  passed in. There is now one test which states it: same array object back, caller's order
+  changed.
+- ***The `$sort` stage's copy was genuinely unpinned.*** It sorts `Documents.slice()` so that a
+  pipeline leaves its input alone.
+
+***Two mistakes made while working, both caught by measuring rather than reasoning.***
+First, `Sort.md` was read as silent about in-place sorting because the grep pattern looked for
+  "copies" and the page says "no copy is made". Second, and more usefully: the new stage test
+  was written believing the bundled Input Immutability test already covered a `$sort` mutation.
+  Removing `Documents.slice()` from the stage broke ***nothing***. The reason is that the
+  protection is doubled and the two halves guard different callers — `Aggregate.js:19` copies
+  the array before the first stage, which is what protects a pipeline caller, and the stage's
+  own slice only protects someone invoking the stage directly. Each is now pinned by the test
+  which names it, verified by removing each slice in turn: one failure each, and the suite
+  green again when restored. The bundled test catches neither on its own, because either copy
+  alone is enough.
+
+Unit tests 1119 → ***1124***. Parity, coverage, and docs unchanged, as expected for a change
+  which alters no behavior — nothing here is user visible, so `history.md` gets no entry.
+
+#### 2026-08-16 — S3 and R4 settled: both fields deleted, and the refusal measured instead
+
+`OperatorType` is gone from all 75 operators and `ArgCount` from all 22 expression operators.
+  The review offered "either enforce both the way `ValueTypes` now is, or delete them"; the
+  measurement said enforcement was not available for either.
+  *(User frame, 2026-08-16: keep them only if they can enforce correctness or parity, and
+  `Operator-Authoring.md` is not a published contract. Analysis was delegated.)*
+
+***`ArgCount` could not be enforced, and was wrong twice.*** An audit of all 22 operators, run
+  before anything was changed, asked what the field catches that the operators do not already
+  catch. The answer was nothing:
+
+| Audit result | Count |
+|--------------|------:|
+| Own check already enforces exactly the declared count | 13 |
+| Variadic — declares `null`, claims nothing | 6 |
+| `$literal` — declares `1`, accepts any length, and ***must*** | 1 |
+| `$switch` — declares `1`, accepts no array length; its `Args` is an object | 1 |
+
+A central check would have been a second check of what the operator already does, could not
+  reach the operators whose `Args` is not an array, and would have needed `$literal` carved
+  out — where the declaration is the false part. MongoDB returns `[ 1, 2 ]` for
+  `{ $literal: [ 1, 2 ] }`, measured, so the behavior is right and the metadata was wrong.
+
+***`OperatorType` could not be enforced at all***, being a label rather than a constraint. There
+  is nothing for a dispatcher to do with it, and nothing in `src`, `test`, or `build` read it.
+  The kind of an operator was already settled by its registry, which the authoring guide has
+  always said. The review's complaint that it mixes two taxonomies is true and is beside the
+  point: a correct label that nothing reads is still dead.
+
+***The lesson was inverted, and that is the real result.*** S3's premise is that unenforced
+  metadata drifts. The answer here is not to declare the count but to ***measure the refusal***.
+  MongoDB rejects a wrong operand count — `Expression $divide takes exactly 2 arguments` — and
+  jsongin rejects the same cases, and ***nothing had ever compared the two***: the aggregate
+  parity suites held no refusal coverage whatsoever. They do now.
+  `Aggregate Tests/test-suite/Expression Rejection Tests.js` covers 41 assertions across 8
+  tests, every one run against the live server first. ***All 41 agree***, which is also what
+  makes the deletion safe: the behavior the field purported to describe is now pinned by tests
+  that fail if it ever changes.
+
+Suite 389 → ***397*** comparisons, parity 95.9% → ***96.0%***, the same 16 deliberate gaps, and
+  `test bugs` still 0. Unit tests 1119, unchanged, which is itself the evidence that 97
+  declarations were read by nothing. Coverage 163 → ***161*** uncovered blocks, fully covered
+  49 → ***50***.
+
+`Operator-Authoring.md` lost both members and gained the rule which replaces `ArgCount`: check
+  the operand count in the operator, because the count means something different for each one.
+
+#### 2026-08-16 — R1 fixed: the seven expression comparison operators share `_compare.js`
+
+`$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, and `$cmp` were the same body seven times, differing
+  only in what they made of the comparison. The shared body is now
+  `Expression/Comparison/_compare.js`, modelled on `_range.js` as the review suggested: the
+  operator passes its name and a `Test` function which receives the `CompareValues` result.
+  Each operator keeps its own `/*md` block, its metadata, and its own `try`/`catch` with its
+  `OpError` prefix, which is exactly what the four existing helpers leave in place.
+
+Nothing changed behaviorally: 1119 unit tests still pass, parity holds at 95.9% with the same 16
+  deliberate gaps and `test bugs: 0`, and the error messages are byte identical — checked
+  directly, including `'$eq: requires an array of two arguments.'`, which is reachable only by
+  calling the operator rather than going through `Evaluate()`, since the dispatcher's `ArgTypes`
+  check refuses a non-array first. Coverage is unchanged at 163 uncovered blocks and the new
+  file arrived fully covered, taking fully covered files from 48 to ***49***.
+
+***The review's estimate was wrong and is worth correcting where a later session will see it.***
+  R1 says the helper "would remove roughly 300 lines". The measured result is ***+10***: the
+  seven files went 359 → 323 and `_compare.js` costs 46. Only about five lines per file were
+  duplicated *logic* — two validation lines, two evaluate lines, and the one-line `compare`
+  wrapper. The rest of each file is the `/*md` block, four metadata fields, the module wrapper,
+  and the try/catch, none of which this pattern removes. The win is that the validation and the
+  comparison exist once, not that the tree got smaller.
+
+***A version which does cut ~150 lines was declined, deliberately.*** Having `_compare.js` build
+  the operator object would centralize the metadata and the try/catch as well, and would make
+  these seven operators' `ArgCount` enforcement central, which overlaps **R4**. It was not done
+  because it is a new pattern: all four existing helpers share only the body, and it would put
+  these seven out of step with the other 15 expression operators. *(User decision, 2026-08-16:
+  keep the shape that matches the existing helpers.)* Worth revisiting only if R4 is settled by
+  centralizing argument enforcement generally, in which case this becomes part of that change
+  rather than a local exception.
 
 #### 2026-08-16 — S1 fixed: `LooseEquals` is symmetric, and `$eqx` is `$eq` with a loose comparison
 

@@ -7,7 +7,6 @@ module.exports = function ( jsongin )
 
 		//---------------------------------------------------------------------
 		Engine: jsongin,
-		OperatorType: 'Update',
 		TopLevel: true,
 		ValueTypes: 'o',
 

@@ -12,30 +12,23 @@ Null and missing values are equivalent.
 
 module.exports = function ( jsongin )
 {
-
-	function compare( ValueA, ValueB ) { return jsongin.CompareValues( ValueA, ValueB ); }
+	const compare = require( './_compare' )( jsongin );
 
 	let operator =
 	{
 
 		//---------------------------------------------------------------------
 		Engine: jsongin,
-		OperatorType: 'Comparison',
 		ArgTypes: 'a',
-		ArgCount: 2,
 
 		//---------------------------------------------------------------------
 		Evaluate: function ( Document, Args )
 		{
 			try
 			{
-				if ( jsongin.ShortType( Args ) !== 'a' ) { throw new Error( `$ne: requires an array of two arguments.` ); }
-				if ( Args.length !== 2 ) { throw new Error( `$ne: requires exactly two arguments but found ${Args.length} instead.` ); }
-
-				let value_a = jsongin.Evaluate( Document, Args[ 0 ] );
-				let value_b = jsongin.Evaluate( Document, Args[ 1 ] );
-
-				return ( compare( value_a, value_b ) !== 0 );
+				// See _compare.js for the argument handling and the comparison.
+				return compare.Evaluate( Document, Args, '$ne',
+					function ( Comparison ) { return ( Comparison !== 0 ); } );
 			}
 			catch ( error )
 			{

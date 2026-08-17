@@ -1857,7 +1857,21 @@ describe( '100) Core Tests', () =>
 	{
 
 
-		it( 'It sorts an array of objects', () => 
+		// Sort is the one engine function which writes into what it was given. Sort.md says so,
+		// and the tests below rely on it by asserting against the array they passed in rather
+		// than against the returned one, so the contract is stated here rather than left to be
+		// inferred from them. Filter, its sibling, returns a new array holding the caller's own
+		// documents; the $sort stage sorts a copy so that a pipeline leaves its input alone.
+		it( 'It sorts the caller\'s array in place and returns that same array', () =>
+		{
+			let documents = [ { n: 3 }, { n: 1 }, { n: 2 } ];
+			let sorted = jsongin.Sort( documents, { n: 1 } );
+			assert.strictEqual( sorted, documents );
+			assert.deepStrictEqual( documents.map( function ( D ) { return D.n; } ), [ 1, 2, 3 ] );
+		} );
+
+
+		it( 'It sorts an array of objects', () =>
 		{
 			let documents = [
 				{ id: 1, type: 'A', title: 'First document' },

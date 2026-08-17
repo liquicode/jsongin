@@ -9,7 +9,6 @@ module.exports = function ( jsongin )
 
 		//---------------------------------------------------------------------
 		Engine: jsongin,
-		OperatorType: 'Comparison',
 		TopLevel: false,
 		ValueTypes: 'bnsdluoa',
 

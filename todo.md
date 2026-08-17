@@ -9,7 +9,10 @@
 	- ex: Documents.Filter( ... ).Sort( ... ).Distinct( ... )
 - Add `ToYaml()` and `FromYaml()` functions.
 - Move the MongoDB compatibility tests to a seperate project `mongodb-compatibility-tests`.
-- Add Path functions:
+- Add Path functions.
+  Designed in `.plans/2026-08-16/path-navigation-functions.md`, which also keeps the three
+  sketches that used to sit unregistered in `src/jsongin/Path/`, and the decisions to settle
+  before writing them again.
 	- `Path.Ancestor( Path )`
 	- `Path.Parent( Path )`
 	- `Path.Children( Document, Path )`

@@ -8,7 +8,6 @@ module.exports = function ( jsongin )
 
 		//---------------------------------------------------------------------
 		Engine: jsongin,
-		OperatorType: 'Comparison',
 		TopLevel: false,
 		// The same set as $eq, which this negates. The two cannot differ.
 		ValueTypes: 'bnsdloaru',

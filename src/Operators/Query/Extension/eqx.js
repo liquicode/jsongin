@@ -8,7 +8,6 @@ module.exports = function ( jsongin )
 
 		//---------------------------------------------------------------------
 		Engine: jsongin,
-		OperatorType: 'Comparison',
 		TopLevel: false,
 		// The same set as $nex, which negates this.
 		ValueTypes: 'bnsdloaru',

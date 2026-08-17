@@ -19,9 +19,7 @@ module.exports = function ( jsongin )
 
 		//---------------------------------------------------------------------
 		Engine: jsongin,
-		OperatorType: 'Arithmetic',
 		ArgTypes: 'bnsdloaru',
-		ArgCount: 1,
 
 		//---------------------------------------------------------------------
 		Evaluate: function ( Document, Args )

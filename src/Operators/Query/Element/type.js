@@ -8,7 +8,6 @@ module.exports = function ( jsongin )
 
 		//---------------------------------------------------------------------
 		Engine: jsongin,
-		OperatorType: 'Meta',
 		TopLevel: false,
 		ValueTypes: 'nsa',
 

@@ -205,6 +205,26 @@ describe( '130) Engine Function Tests', () =>
 			assert.strictEqual( filtered[ 0 ], documents[ 0 ] );
 		} );
 
+		// The consequence of the test above, stated the way a caller meets it. Filter is a
+		// selection and clones nothing, which the pass-through aggregation stages follow and
+		// Filter.md states. A document-producing stage clones instead.
+		it( 'should let a write through the result reach the source document', () =>
+		{
+			let documents = [ { a: { n: 1 } } ];
+			let filtered = jsongin.Filter( documents, { a: { n: 1 } } );
+			filtered[ 0 ].a.n = 999;
+			assert.strictEqual( documents[ 0 ].a.n, 999 );
+		} );
+
+		it( 'should return a new array, so the result can be reordered safely', () =>
+		{
+			let documents = [ { a: 1 }, { a: 1 } ];
+			let filtered = jsongin.Filter( documents, { a: 1 } );
+			assert.notStrictEqual( filtered, documents );
+			filtered.pop();
+			assert.strictEqual( documents.length, 2 );
+		} );
+
 		it( 'should not modify the array it was given', () =>
 		{
 			let documents = [ { a: 1 }, { a: 2 } ];

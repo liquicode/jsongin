@@ -19,10 +19,8 @@ module.exports = function ( jsongin )
 
 		//---------------------------------------------------------------------
 		Engine: jsongin,
-		OperatorType: 'Arithmetic',
 		// A single argument may be given without the enclosing array, so any expression type.
 		ArgTypes: 'bnsdloaru',
-		ArgCount: null,
 
 		//---------------------------------------------------------------------
 		Evaluate: function ( Document, Args )

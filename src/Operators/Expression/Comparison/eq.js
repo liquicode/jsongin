@@ -12,34 +12,24 @@ Null and missing values are equivalent.
 
 module.exports = function ( jsongin )
 {
-
-	function compare( ValueA, ValueB ) { return jsongin.CompareValues( ValueA, ValueB ); }
+	const compare = require( './_compare' )( jsongin );
 
 	let operator =
 	{
 
 		//---------------------------------------------------------------------
 		Engine: jsongin,
-		OperatorType: 'Comparison',
 		ArgTypes: 'a',
-		ArgCount: 2,
 
 		//---------------------------------------------------------------------
 		Evaluate: function ( Document, Args )
 		{
 			try
 			{
-				// Note that this uses the shared comparator rather than jsongin.StrictEquals.
-				// StrictEquals implements query semantics, where a match value can also match
-				// an element of a document array. Within an expression, the operands are plain
-				// values and $eq must agree with $cmp.
-				if ( jsongin.ShortType( Args ) !== 'a' ) { throw new Error( `$eq: requires an array of two arguments.` ); }
-				if ( Args.length !== 2 ) { throw new Error( `$eq: requires exactly two arguments but found ${Args.length} instead.` ); }
-
-				let value_a = jsongin.Evaluate( Document, Args[ 0 ] );
-				let value_b = jsongin.Evaluate( Document, Args[ 1 ] );
-
-				return ( compare( value_a, value_b ) === 0 );
+				// See _compare.js for the argument handling and the comparison, including why
+				// this is not jsongin.StrictEquals.
+				return compare.Evaluate( Document, Args, '$eq',
+					function ( Comparison ) { return ( Comparison === 0 ); } );
 			}
 			catch ( error )
 			{

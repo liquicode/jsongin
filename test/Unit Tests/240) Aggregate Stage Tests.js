@@ -560,6 +560,32 @@ describe( '240) Aggregate Stage Tests', () =>
 			assert.ok( documents[ 0 ].when.getTime() === 0 );
 		} );
 
+		// $sort is the stage which could reorder the caller's array, because jsongin.Sort()
+		// sorts in place. Two separate copies stop it, and they protect different callers:
+		// Aggregate() copies the array before the first stage runs, which is what protects the
+		// caller here, and the $sort stage copies again, which is what protects someone calling
+		// the stage directly. The test below covers the second one, which the pipeline cannot
+		// reach.
+		it( 'should not reorder the input array when sorting it', () =>
+		{
+			let documents = [ { n: 1 }, { n: 2 }, { n: 3 } ];
+			let result = jsongin.Aggregate( documents, [ { $sort: { n: -1 } } ] );
+
+			assert.deepStrictEqual( documents.map( function ( D ) { return D.n; } ), [ 1, 2, 3 ] );
+			assert.deepStrictEqual( result.map( function ( D ) { return D.n; } ), [ 3, 2, 1 ] );
+			// Pass-through, so the documents themselves are still the caller's own.
+			assert.strictEqual( result[ 0 ], documents[ 2 ] );
+		} );
+
+		it( 'should not reorder the array given to the $sort stage directly', () =>
+		{
+			let documents = [ { n: 1 }, { n: 2 }, { n: 3 } ];
+			let result = jsongin.StageOperators.$sort.Stage( documents, { n: -1 } );
+
+			assert.deepStrictEqual( documents.map( function ( D ) { return D.n; } ), [ 1, 2, 3 ] );
+			assert.deepStrictEqual( result.map( function ( D ) { return D.n; } ), [ 3, 2, 1 ] );
+		} );
+
 		it( 'should carry dates through the pipeline as dates', () =>
 		{
 			let documents = [ { t: 'a', when: new Date( 0 ) } ];

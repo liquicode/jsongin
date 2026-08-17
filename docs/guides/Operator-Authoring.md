@@ -24,7 +24,6 @@ module.exports = function ( jsongin )
 	let operator =
 	{
 		Engine: jsongin,
-		OperatorType: 'Comparison',
 		TopLevel: false,
 		ValueTypes: 'n',
 
@@ -45,15 +44,17 @@ This is why two engines with different settings do not share operator state.
 
 ## Common Members
 
-Every operator carries these two:
+Every operator carries one:
 
 | **Member**     | **Type** | **Description**                                                          |
 |----------------|:--------:|---------------------------------------------------------------------------|
 | `Engine`       |    o     | The engine instance this operator belongs to.                            |
-| `OperatorType` |    s     | A category name, used for diagnostics and grouping.                      |
 
-`OperatorType` is one of `Comparison`, `Logical`, `Array`, `Evaluation`, `Extension`, `Meta`,
-  `Arithmetic`, `Conditional`, `Literal`, `Update`, `Stage`, or `Accumulator`.
+> ***Removed in v0.1.0*** : `OperatorType`, a category name which was carried by all 75
+  operators and read by nothing. Unlike `ValueTypes` and `ArgTypes` there was nothing a
+  dispatcher could do with it — a label cannot refuse anything — so it could not make the
+  engine more correct, and the diagnostics and grouping it was said to serve never
+  materialized. Which kind an operator is remains determined by its registry, as below.
 
 
 ## The Five Kinds of Operator
@@ -64,7 +65,7 @@ The kind is determined by which registry you put it in.
 | **Registry**            | **Method**    | **Also needs**             |
 |-------------------------|---------------|----------------------------|
 | `QueryOperators`        | `Query`       | `TopLevel`, `ValueTypes`   |
-| `ExpressionOperators`   | `Evaluate`    | `ArgCount`, `ArgTypes`     |
+| `ExpressionOperators`   | `Evaluate`    | `ArgTypes`                 |
 | `UpdateOperators`       | `Update`      | `TopLevel`, `ValueTypes`   |
 | `StageOperators`        | `Stage`       | `ArgTypes`                 |
 | `AccumulatorOperators`  | `Accumulate`  | `ArgTypes`                 |
@@ -131,15 +132,24 @@ Returns the computed value.
 
 | **Member**  | **Description**                                                             |
 |-------------|------------------------------------------------------------------------------|
-| `ArgCount`  | The number of operands expected. Use `null` for a variable count.           |
 | `ArgTypes`  | The ShortTypes accepted for `Args`. An expression which gives it anything else throws. |
 
 Note that `ArgTypes` describes `Args` itself, not the operands inside it.
 An operator which takes an operand list declares `'a'`, and one which also accepts a single
   operand without the enclosing array — which the arithmetic operators do — declares the
   expression types as well.
-`ArgCount` is not checked by the engine; the operator enforces it, because the count is only
-  known after `Args` has been evaluated.
+
+***Check the operand count yourself***, in the operator, and throw when it is wrong.
+There is no declaration for it: the count means something different for each operator —
+  `$literal` never counts its argument at all, `$cond` takes three operands or one object, and
+  the variadic operators take any number — so a single declared number could not be enforced
+  without carving out exceptions for the operators it does not fit.
+
+> ***Removed in v0.1.0*** : `ArgCount`, which declared that number on 22 operators and was read
+  by nothing. 13 operators already enforced exactly what they declared, 6 were variadic and
+  declared `null`, and the remaining two were wrong. What an engine refuses is now measured
+  rather than declared, by
+  `test/Parity Tests/Aggregate Tests/test-suite/Expression Rejection Tests.js`.
 
 
 ### Update Operators
@@ -249,7 +259,6 @@ module.exports = function ( jsongin )
 	let operator =
 	{
 		Engine: jsongin,
-		OperatorType: 'Comparison',
 		TopLevel: false,
 		ValueTypes: 's',
 

@@ -11,30 +11,23 @@ Returns true when the first value is greater than the second.
 
 module.exports = function ( jsongin )
 {
-
-	function compare( ValueA, ValueB ) { return jsongin.CompareValues( ValueA, ValueB ); }
+	const compare = require( './_compare' )( jsongin );
 
 	let operator =
 	{
 
 		//---------------------------------------------------------------------
 		Engine: jsongin,
-		OperatorType: 'Comparison',
 		ArgTypes: 'a',
-		ArgCount: 2,
 
 		//---------------------------------------------------------------------
 		Evaluate: function ( Document, Args )
 		{
 			try
 			{
-				if ( jsongin.ShortType( Args ) !== 'a' ) { throw new Error( `$gt: requires an array of two arguments.` ); }
-				if ( Args.length !== 2 ) { throw new Error( `$gt: requires exactly two arguments but found ${Args.length} instead.` ); }
-
-				let value_a = jsongin.Evaluate( Document, Args[ 0 ] );
-				let value_b = jsongin.Evaluate( Document, Args[ 1 ] );
-
-				return ( compare( value_a, value_b ) > 0 );
+				// See _compare.js for the argument handling and the comparison.
+				return compare.Evaluate( Document, Args, '$gt',
+					function ( Comparison ) { return ( Comparison > 0 ); } );
 			}
 			catch ( error )
 			{

@@ -9,7 +9,6 @@ module.exports = function ( jsongin )
 
 		//---------------------------------------------------------------------
 		Engine: jsongin,
-		OperatorType: 'Comparison',
 		TopLevel: false,
 		// null and undefined are accepted, and match nothing. They are listed so that
 		// { $gt: null } is a query which selects no document, the way MongoDB treats it,

@@ -8,7 +8,6 @@ module.exports = function ( jsongin )
 
 		//---------------------------------------------------------------------
 		Engine: jsongin,
-		OperatorType: 'Meta',
 		// $noop is used to comment out a portion of a query, which means it has to be
 		// allowed at the top level of one. That is where a commented out clause sits.
 		TopLevel: true,

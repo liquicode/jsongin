@@ -20,9 +20,7 @@ module.exports = function ( jsongin )
 
 		//---------------------------------------------------------------------
 		Engine: jsongin,
-		OperatorType: 'Conditional',
 		ArgTypes: 'a',
-		ArgCount: null,
 
 		//---------------------------------------------------------------------
 		Evaluate: function ( Document, Args )

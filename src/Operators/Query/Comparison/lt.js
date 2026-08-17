@@ -9,7 +9,6 @@ module.exports = function ( jsongin )
 
 		//---------------------------------------------------------------------
 		Engine: jsongin,
-		OperatorType: 'Comparison',
 		TopLevel: false,
 		// null and undefined are accepted, and match nothing. See the note in gt.js.
 		ValueTypes: 'bnsdoalu',
