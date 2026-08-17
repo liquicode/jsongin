@@ -1,4 +1,23 @@
 'use strict';
+/*md
+
+## Operators > Update > $currentDate
+
+Usage: `$currentDate: { field: true, ... }`
+  or `$currentDate: { field: { $type: 'date' }, ... }`
+  or `$currentDate: { field: { $type: 'timestamp' }, ... }`
+
+Sets a field to the current date and time, creating it when it is not there.
+
+`true` and `{ $type: 'date' }` both store a `Date`.
+
+`{ $type: 'timestamp' }` stores the time as a ***number*** of milliseconds. MongoDB stores a
+  BSON `Timestamp` there, which is a type with no JSON representation, so this is a deviation
+  rather than a match — in the same class as jsongin having no `ObjectId`.
+
+A bare string, a number, or an unrecognized `$type` is refused.
+
+*/
 
 module.exports = function ( jsongin )
 {

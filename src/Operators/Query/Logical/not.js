@@ -1,4 +1,19 @@
 'use strict';
+/*md
+
+## Operators > Query > $not
+
+Usage: `$not: { operator-expression }`
+
+Matches a field which does ***not*** satisfy the expression.
+
+`$not` applies to a ***field***, and is not a top level operator: `{ $not: { ... } }` at the top
+  level of a query is refused, as MongoDB refuses it. Use `$nor` to negate a whole query.
+
+A field which is ***not there*** satisfies `$not`, because a missing field cannot meet the
+  condition being negated.
+
+*/
 
 module.exports = function ( jsongin )
 {

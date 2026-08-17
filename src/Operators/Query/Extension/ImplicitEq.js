@@ -1,4 +1,20 @@
 'use strict';
+/*md
+
+## Operators > Query > $ImplicitEq
+
+***An internal operator.*** It is registered so that the engine can dispatch to it, and it is
+  not written in a query by hand.
+
+This is what `{ field: value }` means when no operator is given. It is mostly `$eq`, with two
+  differences MongoDB also has:
+
+- A ***regexp*** value is a pattern to test with rather than a value to compare against, so
+  `{ f: /re/ }` pattern matches while `{ f: { $eq: /re/ } }` does not.
+- A value which is a ***document of operators*** is read as those operators rather than as a
+  value to compare against.
+
+*/
 
 module.exports = function ( jsongin )
 {

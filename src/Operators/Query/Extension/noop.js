@@ -1,4 +1,16 @@
 'use strict';
+/*md
+
+## Operators > Query > $noop
+
+Usage: `$noop: anything`
+
+***A jsongin extension.*** MongoDB has no operator of this name.
+
+Matches every document, whatever it is given. Useful as a placeholder where a query is required
+  but no condition is wanted, and it works at the top level of a query.
+
+*/
 
 module.exports = function ( jsongin )
 {

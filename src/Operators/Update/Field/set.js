@@ -1,4 +1,16 @@
 'use strict';
+/*md
+
+## Operators > Update > $set
+
+Usage: `$set: { field: value, ... }`
+
+Sets a field to a value, creating it and the path to it when it is not there.
+
+The value is ***cloned*** before it is stored, so the updated document does not share structure
+  with the update document it came from.
+
+*/
 
 module.exports = function ( jsongin )
 {

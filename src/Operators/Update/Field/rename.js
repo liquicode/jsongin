@@ -1,4 +1,17 @@
 'use strict';
+/*md
+
+## Operators > Update > $rename
+
+Usage: `$rename: { field: 'new-name', ... }`
+
+Moves a field to a new name, removing the old one.
+
+A source field which is ***not there*** is a successful no-op: the target is not created.
+The source key is removed rather than left holding `undefined`, so a renamed field no longer
+  satisfies `{ $exists: true }` under its old name.
+
+*/
 
 module.exports = function ( jsongin )
 {

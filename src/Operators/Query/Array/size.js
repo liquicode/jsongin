@@ -1,4 +1,19 @@
 'use strict';
+/*md
+
+## Operators > Query > $size
+
+Usage: `$size: count`
+
+Matches an array field which has exactly `count` elements.
+
+The field must actually be an array: a scalar never matches, not even `{ $size: 1 }`.
+The count must be a non-negative integer.
+
+Note that this is the ***query*** `$size`, which selects documents. The ***expression*** `$size`
+  returns the length instead.
+
+*/
 
 module.exports = function ( jsongin )
 {

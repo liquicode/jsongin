@@ -703,13 +703,13 @@ The ***Current Status*** block is rewritten in place each session. The ***Log***
 | Check | Command | Result |
 |-------|---------|--------|
 | Unit tests | `npm test` | 1126 passing, ***green*** |
-| Parity baseline | `npm run parity-test-mongodb` | 428 passing, ***0 failing*** (needs a server) |
-| Parity under test | `npm run parity-test-jsongin` | 428 passing, ***0 failing*** |
-| Parity measurement | `npm run parity-report` | ***100.0%*** — 428 of 428 agree |
-| Coverage | `npm run coverage` | 158 uncovered blocks, 60 files fully covered |
-| Docs | `npm run check-docs` | 335 fences, 283 links, 53 pages — passed |
+| Parity baseline | `npm run parity-test-mongodb` | 430 passing, ***0 failing*** (needs a server) |
+| Parity under test | `npm run parity-test-jsongin` | 430 passing, ***0 failing*** |
+| Parity measurement | `npm run parity-report` | ***100.0%*** — 430 of 430 agree |
+| Coverage | `npm run coverage` | see the tool; the count moves with each new file |
+| Docs | `npm run check-docs` | 335 fences, 284 links, 53 pages, ***85 operators*** — passed |
 
-***Parity is 100%, and there are no gaps left to explain.*** Query 199/199, Update 81/81,
+***Parity is 100%, and there are no gaps left to explain.*** Query 201/201, Update 81/81,
   Projection 40/40, Aggregate 108/108. `test bugs` is 0, so every assertion also passes against
   the live server.
 
@@ -804,19 +804,19 @@ Decisions made in session, which later work should not silently reverse:
 | Group | Open | Notes |
 |-------|-----:|-------|
 | P1–P10 parity | 0 | ***All ten fixed***, and nine more defects the review never named: five from the operator sweep, one from migrating it into the suites, three from the path syntax work. |
-| S1–S8 consistency | 1 | ***S1–S6 and S8 fixed.*** ***S6 closed 2026-08-17*** by removing the last three behavioral deviations, without editing the sentence. S7 open. |
+| S1–S8 consistency | 0 | ***All eight fixed.*** S6 closed 2026-08-17 by removing the last three behavioral deviations, without editing the sentence. ***S7 closed 2026-08-17***: all 85 operators carry an `/*md` block and `check-docs` enforces it. |
 | R1–R4 conciseness | 0 | ***All four fixed.*** R1 as `_compare.js`, R2 as `_arith.js`, R3 with the refusal work, R4 by deleting `ArgCount` rather than enforcing it. |
 | T1–T5 test coverage | 1 | T1, T2, T5 addressed. ***T4 closed*** — the aliasing tests now cover `Filter` and `Sort` as well, with S4. T3 open. |
 | D1–D3 documentation | 0 | ***All three closed.*** D3 closed 2026-08-17: `$` and `$meta` are refused by name as projection operators, and `$slice` and `$elemMatch` are implemented, so nothing reaches the expression evaluator by accident any more. |
 
 ***The shortest list of what is actually left***, for a session picking this up cold:
 
-- **S7** `/*md` blocks on operators — decide it is optional, or fill them in. The eleven
-  operators added on 2026-08-17 all carry one, so the ratio has moved; recount before acting.
-- **T3** 158 uncovered blocks; the tool names the files. The count rose with the eleven new
-  files rather than because anything regressed — 60 files are now fully covered, up from 52.
+- **T3** uncovered blocks; `npm run coverage` names the files. ***This is the only finding of
+  the review still open.*** Note that the count rises whenever operators are added, so compare
+  the ***fully covered*** figure rather than the raw block count.
 
-That is the whole list. ***There are no open Open Decisions and no open parity gaps.***
+***Everything else is closed.*** No open Open Decisions, no parity gaps, and `parity-report`
+  exits zero.
 
 Three findings were discovered by the tests and were ***not*** written up in the sections above.
 ***All three are now fixed***, together with P1:
@@ -866,6 +866,48 @@ Four of the five previous decisions were taken and carried out: `Query()` and `U
 
 
 ### Log
+
+#### 2026-08-17 — S7 closed: every operator documented, and the convention enforced
+
+All 85 operators now carry an `/*md` block, up from 56, and ***`check-docs` fails the build
+  when one is missing***. The review offered "decide it is optional, or fill them in"; filling
+  them in without enforcement would have left the same convention to drift again, which is
+  exactly what `OperatorType` and `ArgCount` did before they were deleted. The check was
+  verified by removing a block and watching it fail, then restoring it.
+
+***Writing the blocks was worth more than the blocks are.*** Every factual claim in the 29 new
+  ones was checked against the engine rather than asserted from memory, and ***five were
+  wrong***:
+
+- ***`$eqx` was described completely wrongly.*** It is a ***loose*** (`==`) value comparison —
+  `1` equals `'1'`, `true` equals `1` — not "compares only the members named in the match
+  value". The draft even had a top level `$eqx` in its example, which the engine refuses.
+- ***`$and`, `$or`, and `$nor` refuse an empty list***, as MongoDB does. The draft said they
+  match everything or nothing.
+- ***`$currentDate: { $type: 'timestamp' }` is supported***, storing a number. The draft said it
+  was refused. It is a real deviation — MongoDB stores a BSON `Timestamp`, which has no JSON
+  representation — and is now written down as one, in the same class as having no `ObjectId`.
+- ***`$options: 'x'` was not supported, and now is.*** See below.
+
+  The verification is a throwaway, and deliberately so: these are statements about the jsongin
+  API and its own behavior, not about MongoDB, so they belong in unit tests rather than the
+  parity suite. What survives is the corrected prose. ***The one claim which turned out to be
+  about MongoDB became a parity test instead.***
+
+***A real feature gap fell out of it.*** `$options` was handed straight to `new RegExp`, so it
+  accepted the ***Javascript*** flag set rather than MongoDB's, and `x` was rejected as an
+  unknown flag. Nothing measured it: `$options` had one parity test, for `m`.
+
+  Written as a parity test first, per Standing Decision 4, and MongoDB passed all four
+  assertions on the first run — the reading of `x` was right, jsongin simply did not have it.
+  Extended mode is now applied by rewriting the pattern, since Javascript has no such flag,
+  leaving escaped whitespace and character classes alone as PCRE does. Parity 428 → ***430***,
+  still 100%.
+
+***What this says about the finding.*** S7 read as the lowest severity item on the list —
+  cosmetic, since nothing reads the blocks. It was the one that found a missing feature and
+  four wrong beliefs about the engine. Writing documentation against the code is a form of
+  measurement.
 
 #### 2026-08-17 — 100% parity: the thirteen missing operators implemented, D3 closed
 

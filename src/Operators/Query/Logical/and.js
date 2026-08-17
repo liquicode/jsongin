@@ -1,4 +1,20 @@
 'use strict';
+/*md
+
+## Operators > Query > $and
+
+Usage: `$and: [ query, ... ]`
+
+Matches a document which satisfies ***every*** one of the queries.
+
+May be used at the top level of a query.
+***An empty list is refused***, as MongoDB refuses it, rather than being read as a condition
+  which every document satisfies.
+
+Note that a query document already means `$and` between its fields, so `$and` is only needed
+  when the same field carries two conditions which cannot share one object.
+
+*/
 
 module.exports = function ( jsongin )
 {

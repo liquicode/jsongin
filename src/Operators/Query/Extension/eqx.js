@@ -1,4 +1,30 @@
 'use strict';
+/*md
+
+## Operators > Query > $eqx
+
+Usage: `$eqx: value`
+
+***A jsongin extension.*** MongoDB has no operator of this name.
+
+Matches a field by ***loose*** equality, the way Javascript's `==` compares, where `$eq`
+  compares strictly:
+
+```js
+jsongin.Query( { a: 1 }, { a: { $eqx: '1' } } );  // true
+jsongin.Query( { a: 1 }, { a: { $eq: '1' } } );   // false
+```
+
+`1` equals `'1'`, `true` equals `1`, `false` equals `'0'`, and `null` equals a missing value.
+
+Documents and arrays are compared member by member under the same loose rule, and must have the
+  ***same members***: `{ a: 1 }` does not equal `{ a: 1, b: 2 }`. The comparison does not depend
+  on the order of its two sides.
+
+This is a ***field*** operator, written as `{ field: { $eqx: value } }`. It is not a top level
+  operator.
+
+*/
 
 module.exports = function ( jsongin )
 {

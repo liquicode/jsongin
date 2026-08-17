@@ -1,4 +1,25 @@
 'use strict';
+/*md
+
+## Operators > Query > $in
+
+Usage: `$in: [ value, ... ]`
+
+Matches a field which equals ***any*** of the listed values.
+
+Each value is matched the way `$eq` matches one, so a sub-document, an array, a date, and a
+  `null` all work, and the match reaches through an array field.
+
+`{ f: { $in: [ null ] } }` is the idiom for "missing or null", and it matches a document which
+  has no `f` at all.
+
+A ***regexp*** in the list is a pattern to test with rather than a value to compare against,
+  which is the opposite of what a regexp means to `$eq`. That asymmetry is MongoDB's.
+
+Note that this is the ***query*** `$in`, which takes the array as its value. The ***expression***
+  `$in` takes `[ value, array ]`, with the array second.
+
+*/
 
 module.exports = function ( jsongin )
 {

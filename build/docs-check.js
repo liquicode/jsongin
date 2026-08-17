@@ -239,6 +239,53 @@ function check_orphans( Files )
 
 
 //---------------------------------------------------------------------
+// Every operator must carry an /*md block describing its usage.
+//
+// Operator-Authoring.md presents this as the convention, and a convention nothing enforces
+// drifts: it stood at 56 of 85 operators before this check existed, with two whole kinds of
+// operator ignoring it entirely. That is the same lesson `OperatorType` and `ArgCount` taught
+// when they were deleted for being declared and never read.
+//
+// Helper modules, whose names begin with an underscore, are not operators and are skipped.
+function check_operator_blocks()
+{
+	let root = LIB_PATH.join( REPO, 'src', 'Operators' );
+
+	function find_operator_files( Folder, Found )
+	{
+		let entries = LIB_FS.readdirSync( Folder, { withFileTypes: true } );
+		for ( let index = 0; index < entries.length; index++ )
+		{
+			let entry = entries[ index ];
+			let full = LIB_PATH.join( Folder, entry.name );
+			if ( entry.isDirectory() ) { find_operator_files( full, Found ); continue; }
+			if ( !entry.name.endsWith( '.js' ) ) { continue; }
+			if ( entry.name.startsWith( '_' ) ) { continue; }
+			Found.push( full );
+		}
+		return Found;
+	}
+
+	let files = find_operator_files( root, [] );
+	let findings = [];
+
+	for ( let index = 0; index < files.length; index++ )
+	{
+		let file = files[ index ];
+		let text = LIB_FS.readFileSync( file, 'utf8' );
+		if ( text.includes( '/*md' ) ) { continue; }
+		findings.push( {
+			Path: LIB_PATH.relative( REPO, file ),
+			Line: 0,
+			Detail: 'operator has no /*md block. See docs/guides/Operator-Authoring.md.',
+		} );
+	}
+
+	return { Checked: files.length, Findings: findings, Unit: 'operators' };
+}
+
+
+//---------------------------------------------------------------------
 function report( Name, Result )
 {
 	let count = Result.Findings.length;
@@ -281,6 +328,7 @@ function main()
 	failures += report( 'fences', check_fences( all_files ) );
 	failures += report( 'links', check_links( all_files ) );
 	failures += report( 'orphans', check_orphans( doc_files ) );
+	failures += report( 'operators', check_operator_blocks() );
 	console.log( '' );
 
 	if ( failures > 0 )

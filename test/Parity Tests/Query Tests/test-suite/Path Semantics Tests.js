@@ -112,6 +112,25 @@ module.exports = function ( Driver )
 			assert.ok( !await matches( { s: 'a\nb' }, { s: { $regex: '^b' } } ) );
 		} );
 
+		it( 'should apply the dotall flag through $options', async () =>
+		{
+			assert.ok( await matches( { s: 'a\nb' }, { s: { $regex: 'a.b', $options: 's' } } ) );
+			assert.ok( !await matches( { s: 'a\nb' }, { s: { $regex: 'a.b' } } ) );
+		} );
+
+		it( 'should apply the extended flag through $options', async () =>
+		{
+			// MongoDB's 'x' ignores unescaped whitespace in the pattern, and everything from an
+			// unescaped '#' to the end of the line. Javascript's RegExp has no such flag, so
+			// this is not simply a flag to pass along.
+			assert.ok( await matches( { s: 'ab' }, { s: { $regex: 'a b', $options: 'x' } } ) );
+			assert.ok( await matches( { s: 'ab' }, { s: { $regex: 'a b # trailing note\n', $options: 'x' } } ) );
+			assert.ok( !await matches( { s: 'a b' }, { s: { $regex: 'a b', $options: 'x' } } ) );
+
+			// An escaped space is still a space.
+			assert.ok( await matches( { s: 'a b' }, { s: { $regex: 'a\\ b', $options: 'x' } } ) );
+		} );
+
 		it( 'should match every document for an empty query', async () =>
 		{
 			assert.ok( await matches( { a: 1 }, {} ) );

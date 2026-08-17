@@ -1,4 +1,17 @@
 'use strict';
+/*md
+
+## Operators > Query > $exists
+
+Usage: `$exists: boolean`
+
+Matches a document by whether the field is ***present***, regardless of its value.
+A field holding `null` exists.
+
+***The value is coerced to a boolean***, as MongoDB does, so `{ $exists: 1 }` behaves like
+  `{ $exists: true }` and `{ $exists: 0 }` like `{ $exists: false }`. Any value is accepted.
+
+*/
 
 module.exports = function ( jsongin )
 {

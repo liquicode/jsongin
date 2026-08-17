@@ -1,4 +1,18 @@
 'use strict';
+/*md
+
+## Operators > Update > $min
+
+Usage: `$min: { field: value, ... }`
+
+Lowers a field to the value, but only when the value is ***smaller*** than what is stored.
+
+***Comparison is by the BSON ordering***, not numeric, so strings, dates, booleans, and
+  comparisons between different types all work. A field which is ***not there*** is set to the
+  value, since there is nothing to compare against. A field holding `null` is compared rather
+  than treated as missing.
+
+*/
 
 module.exports = function ( jsongin )
 {

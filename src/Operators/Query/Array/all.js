@@ -1,4 +1,19 @@
 'use strict';
+/*md
+
+## Operators > Query > $all
+
+Usage: `$all: [ value, ... ]`
+
+Matches a field which contains ***every*** one of the listed values.
+
+Each value is delegated to `$eq`, so the values may be sub-documents, arrays, or dates, and
+  they are compared by content.
+
+`$all` is `$in` with an `AND` between the values rather than an `OR`.
+An empty list matches nothing.
+
+*/
 
 module.exports = function ( jsongin )
 {
