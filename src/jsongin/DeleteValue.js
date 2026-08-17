@@ -55,34 +55,17 @@ module.exports = function ( jsongin )
 					// MongoDB's $unset does nothing here and reports a successful update with
 					// modifiedCount 0. Verified against MongoDB 6.0.1. Returning false is what
 					// produces that: $unset treats it as a no-op rather than a failure.
-					// Deleting from every element instead is a jsongin path extension, and it
-					// is off by default so that $unset matches MongoDB.
-					if ( jsongin.Settings.PathExtensions !== true )
-					{
-						if ( jsongin.OpLog ) { jsongin.OpLog( `DeleteValue: The path [${Path}] reaches into an array by field name. Enable the PathExtensions setting to delete from every element of the array.` ); }
-						return false;
-					}
-
-					// Execute the Implicit Iterator.
-					// Applies to every element, which is what GetValue does on the read side.
-					let sub_path = path_elements.slice( path_index ).join( '.' );
-					let removed = false;
-					for ( let index = 0; index < node.length; index++ )
-					{
-						if ( 'oa'.includes( jsongin.ShortType( node[ index ] ) ) === false ) { continue; }
-						if ( DeleteValue( node[ index ], sub_path ) === true ) { removed = true; }
-					}
-					if ( removed === false )
-					{
-						if ( jsongin.OpLog ) { jsongin.OpLog( `DeleteValue: The path [${Path}] matched no element of the array.` ); }
-					}
-					return removed;
+					// Reaching through an array on the write side requires the all positional
+					// operator, 'a.$[].x'.
+					if ( jsongin.OpLog ) { jsongin.OpLog( `DeleteValue: The path [${Path}] reaches into an array by field name.` ); }
+					return false;
 				}
 
 				if ( ( st_node === 'a' ) && ( st_key === 'n' ) )
 				{
-					// Check for reverse indexing, as GetValue does.
-					if ( key < 0 ) { key = node.length + key; }
+					// A numeric key indexes the array. A negative index addresses nothing:
+					// MongoDB reads '-1' as a field name, and an array has no such field, so
+					// $unset of 'a.-1' is a no-op. Verified against MongoDB 6.0.1.
 					if ( ( key < 0 ) || ( key >= node.length ) )
 					{
 						if ( jsongin.OpLog ) { jsongin.OpLog( `DeleteValue: The index [${path_elements[ path_index ]}] of the path [${Path}] is out of range.` ); }

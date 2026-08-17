@@ -853,13 +853,24 @@ describe( '100) Core Tests', () =>
 			assert.deepStrictEqual( ResolveCandidates( { a: [ [ { c: 1 } ] ] }, 'a.0.0.c' ), [ 1 ] );
 		} );
 
-		it( 'It indexes an array by number, including from the end', () =>
+		it( 'It indexes an array by number', () =>
 		{
 			assert.deepStrictEqual( ResolveCandidates( { a: [ 'p', 'q' ] }, 'a.0' ), [ 'p' ] );
 			assert.deepStrictEqual( ResolveCandidates( { a: [ 'p', 'q' ] }, 'a.1' ), [ 'q' ] );
-			assert.deepStrictEqual( ResolveCandidates( { a: [ 'p', 'q' ] }, 'a.-1' ), [ 'q' ] );
 			assert.deepStrictEqual( ResolveCandidates( { a: [ 'p', 'q' ] }, 'a.9' ), [] );
+		} );
+
+		it( 'It does not index an array from the end', () =>
+		{
+			// MongoDB has no reverse indexing. It reads '-1' as a field name, and an array
+			// has no such field, so { 'a.-1': 'q' } matches nothing.
+			// Verified against MongoDB 6.0.1.
+			assert.deepStrictEqual( ResolveCandidates( { a: [ 'p', 'q' ] }, 'a.-1' ), [] );
 			assert.deepStrictEqual( ResolveCandidates( { a: [ 'p', 'q' ] }, 'a.-9' ), [] );
+
+			// A document field which is literally named '-1' is still reached, because there
+			// the key is a field name rather than an index.
+			assert.deepStrictEqual( ResolveCandidates( { a: { '-1': 5 } }, 'a.-1' ), [ 5 ] );
 		} );
 
 		it( 'It skips elements which cannot hold the field', () =>
@@ -1084,12 +1095,20 @@ describe( '100) Core Tests', () =>
 			assert.strictEqual( jsongin.GetValue( document, 'user.name' ), 'Alice' );
 		} );
 
-		it( 'It returns elements of an array', () => 
+		it( 'It returns elements of an array', () =>
 		{
 			let document = [ 'one', 'two', 'three' ];
 			assert.strictEqual( jsongin.GetValue( document, '0' ), 'one' );
 			assert.strictEqual( jsongin.GetValue( document, '1' ), 'two' );
-			assert.strictEqual( jsongin.GetValue( document, '-1' ), 'three' );
+		} );
+
+		it( 'It does not index an array from the end', () =>
+		{
+			// MongoDB has no reverse indexing, on either side of the engine.
+			// Verified against MongoDB 6.0.1.
+			let document = [ 'one', 'two', 'three' ];
+			assert.strictEqual( jsongin.GetValue( document, '-1' ), undefined );
+			assert.strictEqual( jsongin.GetValue( document, '-9' ), undefined );
 		} );
 
 		it( 'It returns fields from inside an array of objects', () => 
@@ -1222,14 +1241,24 @@ describe( '100) Core Tests', () =>
 			assert.strictEqual( document[ 4 ], 'xyz' );
 		} );
 
-		it( 'It performs reverse indexing when an array index is negative', () => 
+		it( 'It refuses a negative array index', () =>
 		{
+			// A negative index is not an index. MongoDB reads '-1' as a field name, and a
+			// field cannot be created on an array, so it refuses the write with
+			// "Cannot create field '-1' in element {a: [ 1, 2, 3 ]}".
+			// Verified against MongoDB 6.0.1.
 			let document = [ 'one', 'two', 'three' ];
-			assert.ok( jsongin.SetValue( document, -1, 'xyz' ) === true );
-			assert.strictEqual( document.length, 3 );
-			assert.strictEqual( document[ 0 ], 'one' );
-			assert.strictEqual( document[ 1 ], 'two' );
-			assert.strictEqual( document[ 2 ], 'xyz' );
+			assert.throws( function () { jsongin.SetValue( document, -1, 'xyz' ); }, /Cannot create field/ );
+			assert.deepStrictEqual( document, [ 'one', 'two', 'three' ] );
+		} );
+
+		it( 'It sets a document field which is literally named -1', () =>
+		{
+			// Against an object the key is a field name, not an index, so this is legal and
+			// MongoDB does it too: { $set: { 'a.-1': 9 } } gives { a: { '-1': 9 } }.
+			let document = { a: { x: 1 } };
+			assert.ok( jsongin.SetValue( document, 'a.-1', 9 ) === true );
+			assert.deepStrictEqual( document, { a: { x: 1, '-1': 9 } } );
 		} );
 
 		it( 'Array elements can be set to undefined, but they are not removed', () => 
@@ -1257,11 +1286,11 @@ describe( '100) Core Tests', () =>
 			assert.strictEqual( document.users[ 1 ].id, 'abc' );
 		} );
 
-		it( 'It rejects a field name against an array by default', () =>
+		it( 'It rejects a field name against an array', () =>
 		{
 			// MongoDB rejects this outright, with "Cannot create field 'status' in element
-			// {users: [ ... ]}". Verified against MongoDB 6.0.1. Writing into every element
-			// is a jsongin path extension, off unless PathExtensions is enabled.
+			// {users: [ ... ]}". Verified against MongoDB 6.0.1. Reaching through an array
+			// on the write side requires the all positional operator, 'users.$[].status'.
 			let document = {
 				users: [
 					{ id: 101, name: 'Alice' },
@@ -1272,24 +1301,6 @@ describe( '100) Core Tests', () =>
 			assert.throws( function () { jsongin.SetValue( document, 'users.status', 42 ); }, /Cannot create field/ );
 			assert.strictEqual( document.users[ 0 ].status, undefined );
 			assert.strictEqual( document.users[ 1 ].status, undefined );
-		} );
-
-		it( 'It sets fields inside all elements of an array of objects when PathExtensions is enabled', () =>
-		{
-			let engine = jsongin.NewJsongin( { PathExtensions: true } );
-			let document = {
-				users: [
-					{ id: 101, name: 'Alice' },
-					{ id: 102, name: 'Bob' },
-					{ id: 103, name: 'Eve' },
-				]
-			};
-
-			// Omit the array index to set into each array element.
-			assert.ok( engine.SetValue( document, 'users.status', 42 ) );
-			assert.strictEqual( document.users[ 0 ].status, 42 );
-			assert.strictEqual( document.users[ 1 ].status, 42 );
-			assert.strictEqual( document.users[ 2 ].status, 42 );
 		} );
 
 		it( 'It still reads through an array by field name, which MongoDB does too', () =>

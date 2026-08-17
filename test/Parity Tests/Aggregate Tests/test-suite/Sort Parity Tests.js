@@ -221,6 +221,25 @@ module.exports = function ( Driver )
 		} );
 
 
+		//---------------------------------------------------------------------
+		it( 'should not index the sort path from the end of an array', async () =>
+		{
+			// A negative index is read as a field name, which an array does not have, so the
+			// sort key is missing for every document and none of them can be ordered by it.
+			// The engine is left to hold its input order, both ways.
+			//
+			// jsongin used to index from the end here, which ordered these by their last
+			// element: ascending 1, 2, 3 and descending 3, 2, 1.
+			await check(
+				[
+					{ _id: 1, a: [ 9, 1 ] },
+					{ _id: 2, a: [ 4, 2 ] },
+					{ _id: 3, a: [ 6, 3 ] },
+				],
+				'a.-1', [ 1, 2, 3 ], [ 1, 2, 3 ] );
+		} );
+
+
 	} );
 
 

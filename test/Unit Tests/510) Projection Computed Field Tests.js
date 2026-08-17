@@ -233,8 +233,8 @@ describe( '510) Projection Computed Field Tests', () =>
 			// Verified against MongoDB 6.0.1.
 			//
 			// Exclusion used to route through DeleteValue, which follows the $unset update
-			// operator and refuses a path reaching into an array by field name unless the
-			// PathExtensions setting is on. That made this exclusion remove nothing.
+			// operator and refuses a path reaching into an array by field name. That made
+			// this exclusion remove nothing.
 			assert.deepStrictEqual(
 				jsongin.Project( { a: [ { x: 1, y: 2 } ] }, { 'a.x': 0 } ),
 				{ a: [ { y: 2 } ] } );
@@ -256,11 +256,21 @@ describe( '510) Projection Computed Field Tests', () =>
 				{ a: [ { b: [ { d: 2 } ] } ] } );
 		} );
 
-		it( 'should exclude an array element by index', () =>
+		it( 'should not exclude an array element by index', () =>
 		{
-			let projected = jsongin.Project( { a: [ 1, 2, 3 ] }, { 'a.1': 0 } );
-			assert.strictEqual( projected.a.length, 3 );
-			assert.strictEqual( Object.prototype.hasOwnProperty.call( projected.a, 1 ), false );
+			// A projection exclusion does not index an array, not even with a numeric key.
+			// MongoDB applies every key to the elements, so { 'a.1': 0 } removes nothing.
+			// Verified against MongoDB 6.0.1.
+			//
+			// This used to index the array and `delete` the element, which both disagreed
+			// with MongoDB and left a sparse hole that is not representable in JSON.
+			assert.deepStrictEqual( jsongin.Project( { a: [ 1, 2, 3 ] }, { 'a.1': 0 } ), { a: [ 1, 2, 3 ] } );
+			assert.deepStrictEqual( jsongin.Project( { a: [ 1, 2, 3 ] }, { 'a.-1': 0 } ), { a: [ 1, 2, 3 ] } );
+
+			// The same for a numeric key part way along the path.
+			assert.deepStrictEqual(
+				jsongin.Project( { a: [ { x: 1, y: 2 }, { x: 3, y: 4 } ] }, { 'a.0.x': 0 } ),
+				{ a: [ { x: 1, y: 2 }, { x: 3, y: 4 } ] } );
 		} );
 
 		it( 'should not add an _id to a document which does not have one', () =>

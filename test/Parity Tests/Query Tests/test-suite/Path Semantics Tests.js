@@ -42,6 +42,27 @@ module.exports = function ( Driver )
 			assert.ok( await matches( { a: { 0: 'x' } }, { 'a.0': 'x' } ) );
 		} );
 
+		it( 'should not index an array from the end', async () =>
+		{
+			// There is no reverse indexing. A negative number is read as a field name like any
+			// other, and an array has no field called '-1', so the path reaches nothing.
+			//
+			// jsongin used to index from the end here, as a path extension shared by GetValue,
+			// SetValue, DeleteValue, Sort, and the query resolver. The extension has been
+			// removed rather than gated, on both sides of the engine.
+			assert.ok( !await matches( { a: [ 'x', 'y' ] }, { 'a.-1': 'y' } ) );
+			assert.ok( !await matches( { a: [ 'x', 'y' ] }, { 'a.-2': 'x' } ) );
+			assert.ok( !await matches( { a: [ 'x', 'y' ] }, { 'a.-9': 'x' } ) );
+		} );
+
+		it( 'should read a negative path element as a field name on a document', async () =>
+		{
+			// The counterpart: against a document '-1' is an ordinary field name, and a field
+			// may legitimately be called that. Removing reverse indexing must not take this
+			// with it.
+			assert.ok( await matches( { a: { '-1': 5 } }, { 'a.-1': 5 } ) );
+		} );
+
 		it( 'should reach an element of a nested array by index', async () =>
 		{
 			assert.ok( await matches( { a: [ [ { c: 1 } ] ] }, { 'a.0.0.c': 1 } ) );

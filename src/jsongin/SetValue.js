@@ -64,15 +64,19 @@ module.exports = function ( jsongin )
 				// Process the current node.
 				if ( st_node === 'a' )
 				{
+					if ( ( st_key === 'n' ) && ( key < 0 ) )
+					{
+						// A negative index is not an index. MongoDB reads '-1' as a field
+						// name, and a field cannot be created on an array, so it refuses the
+						// write with "Cannot create field '-1' in element {a: [ 1, 2, 3 ]}".
+						// Verified against MongoDB 6.0.1.
+						// This used to index from the end of the array, which was a jsongin
+						// path extension with no MongoDB counterpart on either side.
+						let container_path = path_elements.slice( 0, path_index ).join( '.' );
+						throw new Error( `Cannot create field [${key}] in the array at [${container_path}].` );
+					}
 					if ( st_key === 'n' )
 					{
-						// Check for reverse indexing.
-						if ( key < 0 ) { key = node.length + key; }
-						if ( key < 0 )
-						{
-							if ( jsongin.OpLog ) { jsongin.OpLog( `SetValue: Disallowed negative array index [${key}] in path [${Path}].` ); }
-							return false;
-						}
 						// A write past the end of an array fills the gap with nulls rather than
 						// leaving holes. Verified against MongoDB 6.0.1, where { a: [ 1 ] }
 						// with { $set: { 'a.4': 9 } } gives [ 1, null, null, null, 9 ].
@@ -104,22 +108,10 @@ module.exports = function ( jsongin )
 						// MongoDB rejects this outright, with "Cannot create field 'x' in
 						// element {a: [ ... ]}", for $set and for every arithmetic update
 						// operator. Verified against MongoDB 6.0.1.
-						// Writing into every element instead is a jsongin path extension, and
-						// it is off by default so that the update operators match MongoDB.
-						if ( jsongin.Settings.PathExtensions !== true )
-						{
-							let container_path = path_elements.slice( 0, path_index ).join( '.' );
-							throw new Error( `Cannot create field [${key}] in the array at [${container_path}]. Enable the PathExtensions setting to write into every element of the array.` );
-						}
-
-						// Execute the Implicit Iterator.
-						let sub_path = path_elements.slice( path_index ).join( '.' );
-						for ( let index = 0; index < node.length; index++ )
-						{
-							let result = SetValue( node[ index ], sub_path, Value, CreateArrays );
-							if ( result === false ) { return false; }
-						}
-						return true;
+						// Reaching through an array on the write side requires the all
+						// positional operator, 'a.$[].x'.
+						let container_path = path_elements.slice( 0, path_index ).join( '.' );
+						throw new Error( `Cannot create field [${key}] in the array at [${container_path}].` );
 					}
 				}
 				else if ( st_node === 'o' )

@@ -45,13 +45,24 @@ document.a.length === 3   // still three
 To shorten an array, use the `$pop` or `$pullAll` update operators instead.
 See [`Update()`](./Update.md).
 
-A ***negative index*** counts back from the end of the array, the same extension `GetValue`
-  supports.
+A ***negative index*** addresses nothing and returns `false`:
+
+```js
+let document = { a: [ 1, 2, 3 ] };
+
+jsongin.DeleteValue( document, 'a.-1' ) === false
+// document is unchanged
+```
+
+There is no reverse indexing. A negative number is read as a field name like any other, and an
+  array has no field called `-1`.
+This matches MongoDB, where `$unset: { 'a.-1': '' }` reports a successful update which modified
+  nothing, verified against MongoDB 6.0.1.
 
 
-## Implicit Iterator
+## Reaching Into An Array
 
-A ***non numeric key against an array*** does nothing by default, and returns `false`:
+A ***non numeric key against an array*** does nothing, and returns `false`:
 
 ```js
 let document = { a: [ { x: 1 }, { x: 2 } ] };
@@ -65,21 +76,10 @@ This matches MongoDB, where `$unset: { 'a.x': '' }` reports a successful update 
 Reaching through an array there requires the all positional operator,
   `$unset: { 'a.$[].x': '' }`.
 
-Enabling the `PathExtensions` setting applies the key to ***every element*** of the array
-  instead, the same way `GetValue` reads through one:
-
-```js
-let engine = jsongin.NewJsongin( { PathExtensions: true } );
-
-let document = { a: [ { x: 1 }, { x: 2 } ] };
-
-engine.DeleteValue( document, 'a.x' ) === true
-// document is { a: [ {}, {} ] }
-```
-
-With the extension enabled the result is `true` when at least one element had the field
-  removed, and `false` when none did.
-Elements which are not objects or arrays are skipped rather than treated as an error.
+Deleting from every element instead used to be a ***path extension***, enabled with a
+  `PathExtensions` engine setting.
+There is no such setting: jsongin's path syntax is MongoDB's path syntax, so there is nothing
+  to turn on.
 
 
 ## See Also

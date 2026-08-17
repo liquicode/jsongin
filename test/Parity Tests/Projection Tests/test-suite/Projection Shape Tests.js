@@ -82,6 +82,22 @@ module.exports = function ( Driver )
 			assert.deepStrictEqual( result, { a: [ { x: 1 } ] } );
 		} );
 
+		it( 'should not exclude an array element by index', async () =>
+		{
+			// A projection does not index an array, with any numeric key. Every key applies
+			// to the elements, so there is nothing named '1' to remove and the array comes
+			// back whole. This is the projection rule, not the query rule: { 'a.1': 1 } in a
+			// query does index.
+			//
+			// jsongin used to index and delete the element, which disagreed with MongoDB and
+			// left a sparse hole that JSON cannot represent.
+			assert.deepStrictEqual( await projected( { a: [ 1, 2, 3 ] }, { 'a.1': 0 } ), { a: [ 1, 2, 3 ] } );
+			assert.deepStrictEqual( await projected( { a: [ 1, 2, 3 ] }, { 'a.-1': 0 } ), { a: [ 1, 2, 3 ] } );
+			assert.deepStrictEqual(
+				await projected( { a: [ { x: 1, y: 2 }, { x: 3, y: 4 } ] }, { 'a.0.x': 0 } ),
+				{ a: [ { x: 1, y: 2 }, { x: 3, y: 4 } ] } );
+		} );
+
 		it( 'should take two fields from the same array into one object per element', async () =>
 		{
 			let result = await projected( { a: [ { x: 1, y: 2, w: 3 } ] }, { 'a.x': 1, 'a.y': 1 } );

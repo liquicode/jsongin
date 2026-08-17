@@ -17,40 +17,17 @@ module.exports = function ( Driver )
 {
 
 	//---------------------------------------------------------------------
-	// Answers whether the engine refused the update.
+	// Answers whether the engine refused the update, by raising an error.
 	//
-	// A refusal can be either a thrown error or a document left unchanged: both tell the
-	// caller the update did not happen. What must not happen is the engine applying some other
-	// update of its own devising, which is what this returns false for.
+	// This used to accept an unchanged document as a refusal too, because an operator which
+	// could not apply itself reported through the OpLog and left the field alone. That is no
+	// longer a state the engine can be in: an operator still reports rather than throwing, but
+	// Update() raises the refusal, so every refusal reaches the caller.
+	//
+	// The looser helper is gone with it. An unchanged document is indistinguishable from a
+	// legitimate no-op, so accepting one as a refusal meant the suite could not tell a declined
+	// $inc from an $inc which had nothing to do. MongoDB raises an error for every case here.
 	async function refused( Document, Update )
-	{
-		await Driver.SetData( [ Document ] );
-
-		let before = JSON.stringify( Document );
-		try
-		{
-			await Driver.Update( {}, Update );
-		}
-		catch ( error )
-		{
-			return true;
-		}
-
-		let found = await Driver.Find( {} );
-		let after = found[ 0 ];
-		delete after._id;
-		return ( JSON.stringify( after ) === before );
-	}
-
-
-	//---------------------------------------------------------------------
-	// Answers whether the engine refused the update ***out loud***, by raising an error.
-	//
-	// This is deliberately stricter than refused() above. An unchanged document says the update
-	// did not happen, but it says it in a way the caller cannot distinguish from a legitimate
-	// no-op, so a refusal only reaches the caller when it is raised. MongoDB raises one for
-	// every case measured with this.
-	async function threw( Document, Update )
 	{
 		await Driver.SetData( [ Document ] );
 		try
@@ -116,10 +93,33 @@ module.exports = function ( Driver )
 		it( 'should refuse a path which reaches into an array by field name', async () =>
 		{
 			// MongoDB requires the all positional operator, 'a.$[].x', to write through an
-			// array. jsongin has the same rule by default; the PathExtensions setting relaxes
-			// it, and the parity run uses the unconfigured engine.
+			// array. jsongin has the same rule, and no longer has a setting which relaxes it.
 			assert.ok( await refused( { a: [ { x: 1 } ] }, { $set: { 'a.x': 9 } } ) );
 			assert.ok( await refused( { a: [ { x: 1 } ] }, { $inc: { 'a.x': 1 } } ) );
+		} );
+
+		it( 'should refuse a negative array index in an update', async () =>
+		{
+			// A negative index is not an index. MongoDB reads '-1' as a field name, and a
+			// field cannot be created on an array, so it refuses with "Cannot create field
+			// '-1' in element {a: [ 1, 2, 3 ]}".
+			//
+			// This was a Known Deviation: reverse indexing was a jsongin path extension which
+			// wrote the last element. The extension has been removed from the engine entirely,
+			// on the read side as well as the write side, so the two agree here now.
+			assert.ok( await refused( { a: [ 1, 2, 3 ] }, { $set: { 'a.-1': 9 } } ) );
+			assert.ok( await refused( { a: [ 1, 2, 3 ] }, { $inc: { 'a.-1': 1 } } ) );
+		} );
+
+		it( 'should refuse an array operator against a field which is not an array', async () =>
+		{
+			// This was a Known Deviation too. An operator which could not apply itself used to
+			// report through the OpLog and leave the field alone, which a caller could not tell
+			// from a no-op. Update() now raises the refusal.
+			assert.ok( await refused( { a: 5 }, { $push: { a: 1 } } ) );
+			assert.ok( await refused( { a: 5 }, { $addToSet: { a: 1 } } ) );
+			assert.ok( await refused( { a: 5 }, { $pop: { a: 1 } } ) );
+			assert.ok( await refused( { a: 5 }, { $pullAll: { a: [ 1 ] } } ) );
 		} );
 
 		it( 'should refuse a malformed $currentDate specification', async () =>
@@ -162,56 +162,20 @@ module.exports = function ( Driver )
 			assert.strictEqual( found[ 0 ].b, 2 );
 		} );
 
-
-		/*
-			***The tests below are expected to fail under jsongin.***
-
-			They are not broken, and they are not waiting on a bug. Each one records a place
-			where jsongin has deliberately settled somewhere other than MongoDB, written down
-			so that the parity report keeps asking about it. A deviation nothing measures is a
-			deviation nobody revisits.
-
-			Each passes against MongoDB, so the baseline run stays green and the failures under
-			the jsongin run are the whole of the difference.
-		*/
-
-		describe( 'Known Deviations', () =>
+		it( 'should not refuse an operator which simply has nothing to do', async () =>
 		{
+			// The counterpart to the refusals above. A field which is not there is nothing to
+			// pop from or pull from, and MongoDB reports a successful update with
+			// modifiedCount 0 rather than an error. These share a shape with the refusals —
+			// the operator does not write — so they are the cases most at risk of being
+			// swept up by the refusal, and they were: both raised once Update() began
+			// raising, until the operators told the two apart.
+			await Driver.SetData( [ { a: 1 } ] );
+			await Driver.Update( {}, { $pop: { missing: 1 } } );
+			await Driver.Update( {}, { $pullAll: { missing: [ 1 ] } } );
 
-			it( 'should refuse a negative array index in an update', async () =>
-			{
-				// jsongin writes the last element. Reverse indexing is a documented jsongin
-				// path extension, shared with GetValue and DeleteValue, and MongoDB has no
-				// such thing on the write side: it refuses a negative index outright.
-				// Closing this means deciding the extension does not apply to writes, which is
-				// a decision about the extension rather than a defect in the update operators.
-				assert.ok( await refused( { a: [ 1, 2, 3 ] }, { $set: { 'a.-1': 9 } } ) );
-			} );
-
-			it( 'should raise an error when an operator cannot apply itself', async () =>
-			{
-				// jsongin reports these to the OpLog and leaves the field alone, which the
-				// refused() helper above accepts and this one does not.
-				//
-				// The line jsongin currently draws is between the update document and the
-				// update operation: a malformed document throws, while an operator meeting a
-				// document it does not suit declines quietly. MongoDB raises an error for
-				// both. Until that line moves, a caller cannot tell a declined $inc from an
-				// $inc which had nothing to do.
-				assert.ok( await threw( { a: 'str' }, { $inc: { a: 1 } } ) );
-				assert.ok( await threw( { a: true }, { $inc: { a: 1 } } ) );
-				assert.ok( await threw( { a: 1 }, { $inc: { a: '5' } } ) );
-				assert.ok( await threw( { a: 'str' }, { $mul: { a: 2 } } ) );
-			} );
-
-			it( 'should raise an error when an array operator meets a field which is not an array', async () =>
-			{
-				assert.ok( await threw( { a: 5 }, { $push: { a: 1 } } ) );
-				assert.ok( await threw( { a: 5 }, { $addToSet: { a: 1 } } ) );
-				assert.ok( await threw( { a: 5 }, { $pop: { a: 1 } } ) );
-				assert.ok( await threw( { a: 5 }, { $pullAll: { a: [ 1 ] } } ) );
-			} );
-
+			let found = await Driver.Find( {} );
+			assert.strictEqual( found[ 0 ].a, 1 );
 		} );
 
 	} );

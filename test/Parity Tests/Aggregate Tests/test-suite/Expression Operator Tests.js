@@ -75,6 +75,29 @@ module.exports = function ( Driver )
 				assert.strictEqual( await produced_a_field( '$nope' ), false );
 			} );
 
+			it( 'should not index an array, with any numeric key', async () =>
+			{
+				// An aggregation field path never indexes an array. Every key applies to the
+				// elements, so '$t.0' gathers the field '0' from each element of [ 1, 2 ] and
+				// finds none, giving []. Positional access is $arrayElemAt, which is a
+				// different operator with a different name for a reason.
+				//
+				// This is the opposite of a query path, where { 'a.0': 1 } does index. The two
+				// languages resolve a path differently, and jsongin used to apply the query
+				// rule to both, so '$t.0' returned 1 and '$t.-1' returned 2.
+				assert.deepStrictEqual( await evaluated( '$t.0' ), [] );
+				assert.deepStrictEqual( await evaluated( '$t.1' ), [] );
+				assert.deepStrictEqual( await evaluated( '$t.9' ), [] );
+				assert.deepStrictEqual( await evaluated( '$t.-1' ), [] );
+			} );
+
+			it( 'should read a numeric field name on a document', async () =>
+			{
+				// Against a document the key is a field name, so it resolves. This is what the
+				// rule above must not break.
+				assert.strictEqual( await evaluated( '$o.x' ), 7 );
+			} );
+
 			it( 'should return a field path as text with $literal', async () =>
 			{
 				assert.strictEqual( await evaluated( { $literal: '$n' } ), '$n' );

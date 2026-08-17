@@ -30,16 +30,19 @@ module.exports = function ( jsongin )
 			if ( jsongin.ShortType( node ) === 'a' )
 			{
 				if ( jsongin.ShortType( key ) !== 'n' ) { return null; }
-				// Reverse indexing, as GetValue and DeleteValue both do.
-				if ( key < 0 ) { key = node.length + key; }
+				// A negative index addresses nothing, as GetValue and DeleteValue both agree.
+				if ( key < 0 ) { return null; }
 			}
 			node = node[ key ];
 			if ( 'oa'.includes( jsongin.ShortType( node ) ) === false ) { return null; }
 		}
 		if ( jsongin.ShortType( node ) !== 'a' ) { return null; }
 
+		// A negative index is not an index. MongoDB reads '-1' as a field name, which an
+		// array does not have, so $unset of 'a.-1' leaves the array alone. Returning null
+		// sends it down the DeleteValue path, which reports the same no-op.
+		// Verified against MongoDB 6.0.1.
 		let index = last_key;
-		if ( index < 0 ) { index = node.length + index; }
 		if ( ( index < 0 ) || ( index >= node.length ) ) { return null; }
 
 		return { Array: node, Index: index };

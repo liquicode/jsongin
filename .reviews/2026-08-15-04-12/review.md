@@ -703,34 +703,37 @@ The ***Current Status*** block is rewritten in place each session. The ***Log***
 | Check | Command | Result |
 |-------|---------|--------|
 | Unit tests | `npm test` | 1124 passing, ***green*** |
-| Parity baseline | `npm run parity-test-mongodb` | 397 passing, ***0 failing*** (needs a server) |
-| Parity under test | `npm run parity-test-jsongin` | 381 passing, 16 failing |
-| Parity measurement | `npm run parity-report` | ***96.0%*** — 381 of 397 agree |
-| Coverage | `npm run coverage` | 161 uncovered blocks, 50 files fully covered |
+| Parity baseline | `npm run parity-test-mongodb` | 403 passing, ***0 failing*** (needs a server) |
+| Parity under test | `npm run parity-test-jsongin` | 390 passing, 13 failing |
+| Parity measurement | `npm run parity-report` | ***96.8%*** — 390 of 403 agree |
+| Coverage | `npm run coverage` | 146 uncovered blocks, 52 files fully covered |
 | Docs | `npm run check-docs` | 333 fences, 283 links, 53 pages — passed |
 
-***Every parity finding P1–P10 is fixed, and every defect is closed.*** Parity reached ***100%
-  on a 281-comparison suite*** — up from 90.3% on the 248 comparisons this review started with,
-  so it was measuring more than before, not less. The suite then grew to 389 as the operator
-  sweep was migrated in, and the 16 failures below were added deliberately on top of that.
-  ***No failure in the report is an unexplained one.***
+***Every implemented behavior now agrees with MongoDB.*** There are no behavioral deviations
+  left: all 13 remaining parity gaps are operators which are ***not implemented at all***.
+  Query 199/199, Update 81/81, Projection 31/34, Aggregate 79/89.
 
-***The 16 failures are deliberate.*** They were added ***after*** reaching 100%, to record the
-  things which are not defects but are also not parity, so that the report keeps asking about
-  them instead of letting them fade. All 16 pass against MongoDB — `test bugs` is 0 — so the
-  baseline run is green and the failures are the whole of the difference.
+***That closes S6.*** The readme claims that each implemented MongoDB feature operates in
+  accordance with MongoDB, and the claim is now true as written — nothing was reworded to get
+  there. See the S6 note below, which was the standing instruction, and the Log entry for how
+  it was closed.
 
-Parity by area: Query 197/197, Update 78/81, Projection 30/33, Aggregate 76/86.
+***The 13 failures are deliberate.*** They record features which are not implemented, so that
+  the report keeps asking about them instead of letting them fade. All 13 pass against
+  MongoDB — `test bugs` is 0 — so the baseline run is green and the failures are the whole of
+  the difference.
 
-| The 16 | Where | Why it fails |
+| The 13 | Where | Why it fails |
 |--------|-------|--------------|
 | 10 | `Aggregate Tests/test-suite/Unimplemented Operator Tests.js` | `$ceil`, `$floor`, `$round`, `$trunc`, `$size`, `$arrayElemAt`, `$concatArrays`, `$in` expressions; the `$addToSet` accumulator; the `$count` stage. Feature work, not repair. |
 | 3 | `Projection Tests/test-suite/Unimplemented Projection Tests.js` | The projection `$slice` and `$elemMatch`. Feature work, and **D3** is about the misleading error they raise. |
-| 1 | `Update Rejection Tests` → Known Deviations | A negative array index is written; MongoDB refuses one. Reverse indexing is a documented jsongin extension. |
-| 2 | `Update Rejection Tests` → Known Deviations | An operator which cannot apply itself declines through the OpLog; MongoDB raises an error. |
 
-Deleting one of those tests is only correct when the thing it names has been implemented or
-  decided. See ***Open Decisions***.
+Deleting one of those tests is only correct when the thing it names has been implemented.
+  See ***Open Decisions***, of which only the first remains.
+
+***The suite has only ever grown.*** 248 comparisons at the start of this review, 397 after
+  the operator sweep was migrated in, ***403 now***. Every rise in the percentage was measured
+  against a larger surface than the one before it, never a smaller one.
 
 ***The Parity Tests are the whole of the parity evidence.*** The operator sweep which found
   five of this session's defects was a throwaway harness comparing two engines' output; it has
@@ -746,28 +749,28 @@ The migration also closed a real hole. ***Only 3 of the 22 expression operators 
 
 ***Where this lives.*** The 2026-08-16 work landed in two commits: `f10ea6f` for the P1 update
   operator group, and one commit for everything after it. The 2026-08-17 work landed in
-  `2aa6320`, `d8e7138`, `22bf978`, and `cdfa748`. If `git status` is clean, all of the above is
-  committed and the numbers in the table should reproduce exactly.
+  `2aa6320`, `d8e7138`, `22bf978`, `cdfa748`, and `15d9233`, plus the path syntax commit which
+  closed S6. If `git status` is clean, all of the above is committed and the numbers in the
+  table should reproduce exactly.
 
-***S6 is not a documentation task.*** The readme claims that each implemented MongoDB feature
-  operates in accordance with MongoDB. ***The work is to make that true, not to reword it.***
+***S6 was not a documentation task, and it was closed by doing the work.*** The readme claims
+  that each implemented MongoDB feature operates in accordance with MongoDB.
   *(User decision, 2026-08-17, in response to a proposal to replace it with a measured claim:
   "the whole point of our work is to make that claim true, so lets do the work rather than
   trying to change the goalpost.")*
 
-  What actually falsifies the sentence is now known and is small. Of the 16 parity gaps, 13 are
-  operators which are ***not implemented***, and the sentence excludes those itself by saying
-  "that is implemented". The remaining three are the Known Deviations. ***So S6 closes when
-  Open Decisions 2 and 3 are settled***, and not before. A future session which finds itself
-  editing `docs/templates/readme.md` to close S6 has misread it.
+  ***The sentence was never edited.*** What falsified it was three implemented behaviors — the
+  Known Deviations — and all three are gone. The 13 remaining gaps are operators which are
+  ***not implemented***, and the sentence excludes those itself by saying "that is
+  implemented".
 
-  Two things are worth knowing when it does close. The same claim is made in four places, not
-  the one the finding names: `docs/templates/readme.md:59` and
-  `docs/templates/_coverpage.md:15`, which generate `readme.md` and the docs site front page,
-  plus `Document-Manipulation.md:70` and `Testing.md:6`, which are both already honestly
-  hedged. And `Testing.md` carries a sample `parity-report` output showing 90.3% of 248, which
-  is deliberate narrative about the number falling as the suite sharpened, not a stale status
-  line.
+  The claim is made in four places, not the one the finding names:
+  `docs/templates/readme.md:59` and `docs/templates/_coverpage.md:15`, which generate
+  `readme.md` and the docs site front page, plus `Document-Manipulation.md:70` and
+  `Testing.md:6`, which are both already honestly hedged. ***None of the four needed
+  changing***, which is the whole point. And `Testing.md` carries a sample `parity-report`
+  output showing 90.3% of 248, which is deliberate narrative about the number falling as the
+  suite sharpened, not a stale status line.
 
 
 ### Standing Decisions
@@ -787,12 +790,13 @@ Decisions made in session, which later work should not silently reverse:
 4. ***Parity tests are written against MongoDB first.*** Every assertion is run against the
    server before it is trusted. A test which fails under MongoDB is a test bug, not a finding.
 5. ***Rejection is behavior.*** The drivers rethrow rather than logging. Rejection tests assert
-   only *that* an operation was refused, never the wording, and an update counts as refused if
-   it throws ***or*** leaves the document unchanged.
-   *(Qualified 2026-08-16: a malformed update ***document*** now throws, so `refused()` is only
-   still needed for an operator declining a document it does not suit. The Known Deviations
-   block measures that case with a stricter `threw()` helper, and closing Open Decision 3
-   retires this decision along with one of the two helpers.)*
+   only *that* an operation was refused, never the wording.
+   *(***Retired 2026-08-17***, as its own note predicted. An update used to count as refused if
+   it threw ***or*** left the document unchanged, because an operator which could not apply
+   itself declined quietly. `Update()` now raises that refusal, so every refusal throws and the
+   lenient reading is no longer a state the engine can be in. `refused()` and `threw()`
+   collapsed into one helper, which asserts a throw. The first half of this decision — the
+   drivers rethrow, the wording is never asserted — still stands.)*
 6. ***A parity test may be expected to fail.*** A behavior which is deliberately not MongoDB's,
    and a feature which is not implemented, are both recorded as failing parity tests rather
    than left out of the suite. A gap nothing measures is a gap nobody revisits, so
@@ -804,20 +808,20 @@ Decisions made in session, which later work should not silently reverse:
 
 | Group | Open | Notes |
 |-------|-----:|-------|
-| P1–P10 parity | 0 | ***All ten fixed***, and six more defects the review never named: five from the operator sweep, one from migrating it into the suites. |
-| S1–S8 consistency | 2 | ***S1, S2, S3, S4, S5, S8 fixed.*** S6, S7 open. |
+| P1–P10 parity | 0 | ***All ten fixed***, and nine more defects the review never named: five from the operator sweep, one from migrating it into the suites, three from the path syntax work. |
+| S1–S8 consistency | 1 | ***S1–S6 and S8 fixed.*** ***S6 closed 2026-08-17*** by removing the last three behavioral deviations, without editing the sentence. S7 open. |
 | R1–R4 conciseness | 0 | ***All four fixed.*** R1 as `_compare.js`, R2 as `_arith.js`, R3 with the refusal work, R4 by deleting `ArgCount` rather than enforcing it. |
 | T1–T5 test coverage | 1 | T1, T2, T5 addressed. ***T4 closed*** — the aliasing tests now cover `Filter` and `Sort` as well, with S4. T3 open. |
 | D1–D3 documentation | 1 | ***D1 and D2 closed.*** Every limitation D2 listed is fixed and documented. D3 open, and now measured by the unimplemented projection tests. |
 
 ***The shortest list of what is actually left***, for a session picking this up cold:
 
-- **S6** the accuracy claim in `readme.md`. ***Closed by making it true***, which means closing
-  the three Known Deviations — Open Decisions 2 and 3. Not by editing the sentence.
 - **S7** `/*md` blocks on 41 of 70 operators — decide it is optional, or fill them in.
-- **T3** 163 uncovered blocks; the tool names the files.
+- **T3** 146 uncovered blocks; the tool names the files.
 - **D3** unsupported projection operators report the wrong kind of error.
-- The three **Open Decisions**, each already measured by a failing parity test.
+- **Open Decision 1**, the only one left: whether to implement the 13 absent operators. It is
+  measured by 13 failing parity tests, and it is feature work rather than repair — everything
+  implemented already agrees.
 
 Three findings were discovered by the tests and were ***not*** written up in the sections above.
 ***All three are now fixed***, together with P1:
@@ -833,18 +837,10 @@ All three were invisible to the unit tests because those compare with `JSON.stri
 
 ### Open Decisions
 
-Both of the previous decisions were taken and carried out: `Query()` and `Update()` refuse a
-  malformed statement by throwing, and the evaluation option was threaded so `$elemMatch` can
-  resolve an element without array semantics.
-
-***Each of the three below is now a failing parity test***, by decision, so that the report
-  raises it every session until it is settled. None of them is a broken test.
-
-***Decisions 2 and 3 are what stands between the readme and the truth.*** They are the three
-  Known Deviations, and they are the only implemented behaviors which contradict the accuracy
-  claim — everything else in the report is an operator which is not implemented at all. Closing
-  them closes **S6**. Decision 1 does not affect the claim, because a feature which is absent is
-  outside what the sentence promises.
+Four of the five previous decisions were taken and carried out: `Query()` and `Update()` refuse
+  a malformed statement by throwing, the evaluation option was threaded so `$elemMatch` can
+  resolve an element without array semantics, and Decisions 2 and 3 below were settled on
+  2026-08-17. ***Only Decision 1 remains***, and it is the only failing parity test left.
 
 1. ***Should the unimplemented operators be implemented?***
    Ten in aggregation: `$ceil`, `$floor`, `$round`, `$trunc`, `$size`, `$arrayElemAt`,
@@ -854,27 +850,94 @@ Both of the previous decisions were taken and carried out: `Query()` and `Update
    from the fixes. *(Decided in session: fix the defects first, decide this after.)*
    ***Measured by*** `Aggregate Tests/test-suite/Unimplemented Operator Tests.js` and
    `Projection Tests/test-suite/Unimplemented Projection Tests.js`, 13 failures.
+   ***This decision does not affect the readme claim***, because a feature which is absent is
+   outside what the sentence promises. Note that `$arrayElemAt` is now the ***only*** way to
+   index an array in an expression, since field paths no longer do it, which raises its value.
 
-2. ***Should a negative array index be refused on write?***
-   `SetValue( doc, 'a.-1', 9 )` writes the last element. MongoDB refuses a negative index in an
-   update. Reverse indexing is a documented jsongin path extension, used by `GetValue` and
-   `DeleteValue` as well, so this is about whether the extension should apply to writes at all
-   rather than about a defect.
-   ***Measured by*** `Update Rejection Tests` → Known Deviations, 1 failure.
+2. ***Should a negative array index be refused on write?*** — ***SETTLED 2026-08-17: yes, and
+   removed everywhere, not only on write.***
+   The premise turned out to be wrong. MongoDB has no negative-index rule at all: it reads
+   `-1` as a field name, which is why the write fails (a field cannot be created on an array)
+   and why the read matches nothing. So reverse indexing diverged on ***both*** sides, not
+   just the write side, and the question was never really about writes.
+   *(User decision: remove the extension entirely rather than gate it — "keep your eyes on the
+   prize: 100% parity across a significant surface area.")*
 
-3. ***How loudly should an operator refuse a document it does not suit?***
-   The refusal work drew a line: a malformed update ***document*** throws, while an operator
-   which cannot apply itself to a particular document — `$inc` against a string, `$pop` against
-   a scalar — reports to the OpLog and leaves the field alone. MongoDB errors in both cases.
-   A caller cannot tell a declined `$inc` from an `$inc` which had nothing to do, which is the
-   same complaint that moved the other refusals, so this line is probably temporary.
-   ***Measured by*** `Update Rejection Tests` → Known Deviations, 2 failures, using a `threw()`
-   helper which is deliberately stricter than the suite's `refused()`. Note that closing this
-   would make Standing Decision 5 obsolete: an unchanged document would no longer count as a
-   refusal, and `refused()` and `threw()` would collapse into one helper.
+3. ***How loudly should an operator refuse a document it does not suit?*** — ***SETTLED
+   2026-08-17: out loud, raised by the engine.***
+   `Update()` now raises the refusal an operator reports. The operators are unchanged and
+   still do not throw: an operator reports that it could not apply, and the engine decides how
+   loudly to say so.
+   *(User decision: "an error should be thrown at the engine level. operator refusals can
+   update OpLog/OpError but should not throw errors.")*
+   This retired Standing Decision 5 and collapsed `refused()` and `threw()` into one helper,
+   exactly as that decision's own note predicted.
 
 
 ### Log
+
+#### 2026-08-17 — S6 closed: the path extensions removed, and the refusal raised
+
+***Open Decisions 2 and 3 are settled, and with them S6.*** Parity is ***96.8%***, and every
+  one of the 13 remaining gaps is an operator which is not implemented. ***There are no
+  behavioral deviations left.*** The suite grew from 397 comparisons to 403 in the process, so
+  the rise was measured against more surface, not less.
+
+***The review's framing of Decision 2 was wrong, and measuring it is what showed that.*** The
+  Known Deviation said "MongoDB refuses a negative index in an update". It does not have such a
+  rule. It reads `-1` as a ***field name***, which is why the write fails — a field cannot be
+  created on an array — and why `{ 'a.-1': 3 }` matches nothing, and why
+  `{ $set: { 'a.-1': 9 } }` against a ***document*** succeeds and gives `{ a: { '-1': 9 } }`.
+  The old test could not have caught this: its `refused()` helper accepted a throw ***or*** an
+  unchanged document, so it only ever proved the two engines disagreed, never how.
+
+  That reframing mattered, because it showed reverse indexing diverged on the ***read*** side
+  too — `Query( { a: [ 1, 2, 3 ] }, { 'a.-1': 3 } )` returned `true` where MongoDB matches
+  nothing. Nothing measured it, and Query was 197/197 only because nobody had written the test.
+  Fixing the write alone would have closed the failing test and left the claim false.
+
+***Both path extensions were removed rather than gated.*** *(User decision, after being shown
+  that removing `PathExtensions` costs no parity and that reverse indexing was the more
+  embedded of the two: "take both removals, remove reverse indexing everywhere.")*
+
+- ***`PathExtensions` is gone.*** It gated the write-side implicit iterator, defaulted to off,
+  and ***no released version ever responded to it*** — it was declared and never read before
+  v0.1.0, and activated and removed within it. Removing it cost nothing and deleted three
+  gates.
+- ***Reverse indexing is gone from all eight sites*** — `GetValue`, `SetValue`, `DeleteValue`,
+  `Sort`, `Evaluate`, `Project`, `ResolveCandidates`, and `$unset`. This one ***was*** a real
+  break: shipped and documented since v0.0.10 (2023-11-23), 14 releases.
+
+***Two defects were found in the code the removal touched, and neither was about negative
+  indices.*** Both are cases where jsongin applied the ***query*** path rule to a language that
+  does not use it, and both were fixed by ***deleting*** the numeric branch, so the code got
+  smaller:
+
+- ***Aggregation expressions do not index arrays.*** `'$a.2'` gathers the field `2` from each
+  element and finds none, giving `[]`. jsongin returned `3`. Positional access is
+  `$arrayElemAt`.
+- ***Projection exclusions do not index arrays.*** `{ 'a.1': 0 }` removes nothing. jsongin
+  deleted the element and ***left a sparse hole***, which JSON cannot represent — the same
+  defect class as the `$unset` holes fixed earlier.
+
+  Blast radius was measured before committing to either: one test depended on the projection
+  behavior and none on the expression behavior.
+
+***Decision 3 exposed a conflation the moment it was implemented.*** `Update()` now raises what
+  an operator reports, and two parity tests went red immediately: `$pop` and `$pullAll` against
+  a ***missing*** field. Both returned `false` for "nothing to do" and for "cannot apply",
+  sharing one branch, and MongoDB treats a missing field as a successful no-op. Separating the
+  two is the actual content of the fix. ***The suite caught this, not review*** — which is the
+  argument for having written the tests first.
+
+***What was verified, and how.*** Every behavior above was measured against a live MongoDB
+  6.0.1 server before any code changed, then again after. The six new parity tests were run
+  against the server first, per Standing Decision 4, and all six pass there — `test bugs` is
+  still 0. The probes lived in `~temp/` and were deleted; what survives is the tests.
+
+***One stale artifact fixed in passing.*** `tests.md` still showed 1212 passing, the review's
+  own baseline, so it had not been regenerated in several sessions. It now shows 1124. `dist/`
+  was rebuilt too, since `src/` changed.
 
 #### 2026-08-17 — S6 examined and deliberately left open
 

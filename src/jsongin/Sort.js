@@ -60,7 +60,10 @@ module.exports = function ( jsongin )
 			if ( jsongin.ShortType( key ) === 'n' )
 			{
 				// An explicit index selects a single element, as GetValue() does.
-				if ( key < 0 ) { key = Node.length + key; }
+				// A negative index addresses nothing, so the path cannot be followed and
+				// contributes null. MongoDB has no reverse indexing: it reads '-1' as a
+				// field name, which an array does not have, so sorting by 'a.-1' places
+				// every document with the nulls. Verified against MongoDB 6.0.1.
 				if ( key < 0 ) { Candidates.push( null ); return; }
 				if ( key >= Node.length ) { Candidates.push( null ); return; }
 				collect_candidates( Node[ key ], Segments.slice( 1 ), Candidates );
