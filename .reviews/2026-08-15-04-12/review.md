@@ -701,16 +701,18 @@ The ***Current Status*** block is rewritten in place each session. The ***Log***
 > Written 2026-08-17 at the end of the T3 sweep, and again after the dead branch removal.
 
 1. ***Run every check in the Current Status table below.*** All six pass right now.
-   `git status` will show ***33 modified files and no new commits*** — that is expected, see
-   *Where this lives*.
+   `git status` is ***clean***: the sweep was committed as `76abc68`.
+   *(Two of the six need a MongoDB server at `localhost:27017`. It was not running on
+   2026-08-17 and both hung with no output until stopped, so start `mongod` before running
+   `parity-test-mongodb` or `parity-report`.)*
 2. ***The whole review is closed.*** Every finding P1–P10, S1–S8, R1–R4, T1–T5, D1–D3 is done,
    and there are no Open Decisions left. Parity is 100% of 475 with `test bugs: 0`.
 3. ***The ten dead branches are gone***, removed 2026-08-17 on the user's instruction after they
    were reported with evidence. In-scope uncovered blocks are ***0***: logic branches 9 → 2 and
    validation throws 1 → 0, and the two remaining are ***empty regions with no statement in
    them***, not code. See *Finding Status*.
-4. ***The sweep is uncommitted.*** If the user wants it committed, one commit for the whole
-   sweep is the right shape.
+4. ***Nothing is uncommitted.*** The whole sweep landed as one commit, `76abc68`, on `main`.
+   It has ***not been pushed***; `origin` is `github.com/liquicode/jsongin`.
 
 There is no half-finished work and nothing in flight. Anything beyond the above is new work.
 
@@ -785,21 +787,18 @@ The migration also closed a real hole. ***Only 3 of the 22 expression operators 
 | `2bd54c9` | S6 — both path extensions removed, and an operator's refusal raised by `Update()`. |
 | `7a92187` | Open Decision 1 — the thirteen missing operators, and D3. First 100%. |
 | `8a60e1c` | S7 — every operator documented, `check-docs` enforcing it, and the `$regex` `x` option. |
+| `76abc68` | T3 — the whole coverage sweep: nine engine fixes, the tests proving them, the ten dead branches, and the documentation corrections. |
 
-***The T3 sweep is NOT committed.*** The commit map above ends at `8a60e1c`. Everything from
-  the T3 sweep — nine engine fixes, the new tests, the documentation corrections, the removal of
-  the ten dead branches, and this review file — is sitting in the working tree as ***33 modified
-  files, no new commits***. The numbers in the table above are the numbers of ***the dirty
-  tree***, not of `8a60e1c`.
-  *(No commit was made because none was asked for.)*
+***The T3 sweep landed as one commit, `76abc68`***, on `main` and not pushed. It carried 33
+  files: nine engine fixes, the new tests, the ten dead branch removals, the documentation
+  corrections, and this review file. The numbers in the table above are the numbers of ***that
+  commit***. `git status` is clean again, so a dirty tree now means new work rather than the
+  state these notes describe.
 
-  So the old advice is inverted for this handoff: `git status` will ***not*** be clean, and that
-  is expected rather than a sign something went wrong. ***Start by running every check in the
-  Current Status table*** — they are the fastest way to confirm the tree is where these notes
-  say it is, and all six should pass exactly as tabulated. If they do, nothing was lost in the
-  reset.
+  ***Start by running every check in the Current Status table*** — they are the fastest way to
+  confirm the tree is where these notes say it is, and all six should pass exactly as tabulated.
 
-  What is modified, by group:
+  What the commit carried, by group:
 
   | Group | Files |
   |-------|-------|
@@ -810,8 +809,8 @@ The migration also closed a real hole. ***Only 3 of the 22 expression operators 
   | Unit tests | `110)`, `130)`, `150)`, `260)`, `510)` |
   | This review | `.reviews/2026-08-15-04-12/review.md` |
 
-  ***A single commit for the whole sweep is the right shape***, since the fixes and the tests
-  which prove them belong together and every check in the table passes.
+  ***A single commit was the right shape***, since the fixes and the tests which prove them
+  belong together and every check in the table passed before it was made.
 
 ***S6 was not a documentation task, and it was closed by doing the work.*** The readme claims
   that each implemented MongoDB feature operates in accordance with MongoDB.
