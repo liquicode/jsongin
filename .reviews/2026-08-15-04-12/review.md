@@ -698,7 +698,7 @@ The ***Current Status*** block is rewritten in place each session. The ***Log***
 
 ### Current Status
 
-> As of 2026-08-16.
+> As of 2026-08-17.
 
 | Check | Command | Result |
 |-------|---------|--------|
@@ -745,8 +745,29 @@ The migration also closed a real hole. ***Only 3 of the 22 expression operators 
   precisely because nothing measured them.
 
 ***Where this lives.*** The 2026-08-16 work landed in two commits: `f10ea6f` for the P1 update
-  operator group, and one commit for everything after it. If `git status` is clean, all of the
-  above is committed and the numbers in the table should reproduce exactly.
+  operator group, and one commit for everything after it. The 2026-08-17 work landed in
+  `2aa6320`, `d8e7138`, `22bf978`, and `cdfa748`. If `git status` is clean, all of the above is
+  committed and the numbers in the table should reproduce exactly.
+
+***S6 is not a documentation task.*** The readme claims that each implemented MongoDB feature
+  operates in accordance with MongoDB. ***The work is to make that true, not to reword it.***
+  *(User decision, 2026-08-17, in response to a proposal to replace it with a measured claim:
+  "the whole point of our work is to make that claim true, so lets do the work rather than
+  trying to change the goalpost.")*
+
+  What actually falsifies the sentence is now known and is small. Of the 16 parity gaps, 13 are
+  operators which are ***not implemented***, and the sentence excludes those itself by saying
+  "that is implemented". The remaining three are the Known Deviations. ***So S6 closes when
+  Open Decisions 2 and 3 are settled***, and not before. A future session which finds itself
+  editing `docs/templates/readme.md` to close S6 has misread it.
+
+  Two things are worth knowing when it does close. The same claim is made in four places, not
+  the one the finding names: `docs/templates/readme.md:59` and
+  `docs/templates/_coverpage.md:15`, which generate `readme.md` and the docs site front page,
+  plus `Document-Manipulation.md:70` and `Testing.md:6`, which are both already honestly
+  hedged. And `Testing.md` carries a sample `parity-report` output showing 90.3% of 248, which
+  is deliberate narrative about the number falling as the suite sharpened, not a stale status
+  line.
 
 
 ### Standing Decisions
@@ -791,8 +812,8 @@ Decisions made in session, which later work should not silently reverse:
 
 ***The shortest list of what is actually left***, for a session picking this up cold:
 
-- **S6** the blanket accuracy claim in `readme.md`, which is generated from
-  `docs/templates/readme.md`. Worth revisiting now that the claim is nearly true and measured.
+- **S6** the accuracy claim in `readme.md`. ***Closed by making it true***, which means closing
+  the three Known Deviations — Open Decisions 2 and 3. Not by editing the sentence.
 - **S7** `/*md` blocks on 41 of 70 operators — decide it is optional, or fill them in.
 - **T3** 163 uncovered blocks; the tool names the files.
 - **D3** unsupported projection operators report the wrong kind of error.
@@ -818,6 +839,12 @@ Both of the previous decisions were taken and carried out: `Query()` and `Update
 
 ***Each of the three below is now a failing parity test***, by decision, so that the report
   raises it every session until it is settled. None of them is a broken test.
+
+***Decisions 2 and 3 are what stands between the readme and the truth.*** They are the three
+  Known Deviations, and they are the only implemented behaviors which contradict the accuracy
+  claim — everything else in the report is an operator which is not implemented at all. Closing
+  them closes **S6**. Decision 1 does not affect the claim, because a feature which is absent is
+  outside what the sentence promises.
 
 1. ***Should the unimplemented operators be implemented?***
    Ten in aggregation: `$ceil`, `$floor`, `$round`, `$trunc`, `$size`, `$arrayElemAt`,
@@ -848,6 +875,23 @@ Both of the previous decisions were taken and carried out: `Query()` and `Update
 
 
 ### Log
+
+#### 2026-08-17 — S6 examined and deliberately left open
+
+No code changed. S6 was analyzed and the analysis produced the wrong proposal, which is worth
+  recording because the next session will be tempted by the same one.
+
+***The proposal was to replace the blanket accuracy claim with a measured, checkable one*** —
+  no number, a pointer to the parity suites and the gap list, on the reasoning that even at
+  100% the sentence extrapolates from a 397-comparison sample. ***That was rejected, correctly.***
+  *(User: "the whole point of our work is to make that claim true. so lets do the work rather
+  than trying to change the goalpost.")* Rewording retires the finding by lowering the bar. The
+  finding is a statement about `jsongin`, not about the sentence.
+
+What the analysis was good for: ***S6's real dependency is now known and small.*** 13 of the 16
+  gaps are unimplemented operators, which the sentence excludes itself. Only the three Known
+  Deviations falsify it, so S6 closes with Open Decisions 2 and 3. Also found: the same claim
+  is made in four places, two of them generated, which matters whenever it does close.
 
 #### 2026-08-16 — S5 closed: the three `Path/` sketches moved to `.plans/`
 
