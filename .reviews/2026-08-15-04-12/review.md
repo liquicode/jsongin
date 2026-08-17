@@ -702,38 +702,29 @@ The ***Current Status*** block is rewritten in place each session. The ***Log***
 
 | Check | Command | Result |
 |-------|---------|--------|
-| Unit tests | `npm test` | 1124 passing, ***green*** |
-| Parity baseline | `npm run parity-test-mongodb` | 403 passing, ***0 failing*** (needs a server) |
-| Parity under test | `npm run parity-test-jsongin` | 390 passing, 13 failing |
-| Parity measurement | `npm run parity-report` | ***96.8%*** — 390 of 403 agree |
-| Coverage | `npm run coverage` | 146 uncovered blocks, 52 files fully covered |
-| Docs | `npm run check-docs` | 333 fences, 283 links, 53 pages — passed |
+| Unit tests | `npm test` | 1126 passing, ***green*** |
+| Parity baseline | `npm run parity-test-mongodb` | 428 passing, ***0 failing*** (needs a server) |
+| Parity under test | `npm run parity-test-jsongin` | 428 passing, ***0 failing*** |
+| Parity measurement | `npm run parity-report` | ***100.0%*** — 428 of 428 agree |
+| Coverage | `npm run coverage` | 158 uncovered blocks, 60 files fully covered |
+| Docs | `npm run check-docs` | 335 fences, 283 links, 53 pages — passed |
 
-***Every implemented behavior now agrees with MongoDB.*** There are no behavioral deviations
-  left: all 13 remaining parity gaps are operators which are ***not implemented at all***.
-  Query 199/199, Update 81/81, Projection 31/34, Aggregate 79/89.
+***Parity is 100%, and there are no gaps left to explain.*** Query 199/199, Update 81/81,
+  Projection 40/40, Aggregate 108/108. `test bugs` is 0, so every assertion also passes against
+  the live server.
 
-***That closes S6.*** The readme claims that each implemented MongoDB feature operates in
-  accordance with MongoDB, and the claim is now true as written — nothing was reworded to get
-  there. See the S6 note below, which was the standing instruction, and the Log entry for how
-  it was closed.
+***This is the first time `parity-report` has exited zero.*** Standing Decision 6 said the
+  report is expected to be non-zero while any deliberate gap remains; none remain, so it can
+  now gate a release without qualification.
 
-***The 13 failures are deliberate.*** They record features which are not implemented, so that
-  the report keeps asking about them instead of letting them fade. All 13 pass against
-  MongoDB — `test bugs` is 0 — so the baseline run is green and the failures are the whole of
-  the difference.
+***S6 is closed*** — the readme's accuracy claim is true as written, and the sentence was never
+  edited. ***Open Decision 1 is closed***, which was the last one.
 
-| The 13 | Where | Why it fails |
-|--------|-------|--------------|
-| 10 | `Aggregate Tests/test-suite/Unimplemented Operator Tests.js` | `$ceil`, `$floor`, `$round`, `$trunc`, `$size`, `$arrayElemAt`, `$concatArrays`, `$in` expressions; the `$addToSet` accumulator; the `$count` stage. Feature work, not repair. |
-| 3 | `Projection Tests/test-suite/Unimplemented Projection Tests.js` | The projection `$slice` and `$elemMatch`. Feature work, and **D3** is about the misleading error they raise. |
-
-Deleting one of those tests is only correct when the thing it names has been implemented.
-  See ***Open Decisions***, of which only the first remains.
-
-***The suite has only ever grown.*** 248 comparisons at the start of this review, 397 after
-  the operator sweep was migrated in, ***403 now***. Every rise in the percentage was measured
-  against a larger surface than the one before it, never a smaller one.
+***The suite has only ever grown.*** 248 comparisons at the start of this review, 397 after the
+  operator sweep was migrated in, 403 after the path syntax work, ***428 now***. Every rise in
+  the percentage was measured against a larger surface than the one before it, never a smaller
+  one. Reaching 100% did not come from removing anything: the two `Unimplemented` suites were
+  retired only because richer tests for the same operators replaced them in the real suites.
 
 ***The Parity Tests are the whole of the parity evidence.*** The operator sweep which found
   five of this session's defects was a throwaway harness comparing two engines' output; it has
@@ -802,6 +793,10 @@ Decisions made in session, which later work should not silently reverse:
    than left out of the suite. A gap nothing measures is a gap nobody revisits, so
    `parity-report` is expected to be non-zero while any remain. What must always hold is
    `test bugs: 0` — every test passes against the live server. *(User decision, 2026-08-16.)*
+   *(Qualified 2026-08-17: ***none remain***, so the report exits zero and can gate a release
+   without qualification. The decision still stands and is the reason a future gap should be
+   written down as a failing test rather than left out — but it is no longer the reason the
+   report is red, because it is not red. A non-zero report now means a regression.)*
 
 
 ### Finding Status
@@ -812,16 +807,16 @@ Decisions made in session, which later work should not silently reverse:
 | S1–S8 consistency | 1 | ***S1–S6 and S8 fixed.*** ***S6 closed 2026-08-17*** by removing the last three behavioral deviations, without editing the sentence. S7 open. |
 | R1–R4 conciseness | 0 | ***All four fixed.*** R1 as `_compare.js`, R2 as `_arith.js`, R3 with the refusal work, R4 by deleting `ArgCount` rather than enforcing it. |
 | T1–T5 test coverage | 1 | T1, T2, T5 addressed. ***T4 closed*** — the aliasing tests now cover `Filter` and `Sort` as well, with S4. T3 open. |
-| D1–D3 documentation | 1 | ***D1 and D2 closed.*** Every limitation D2 listed is fixed and documented. D3 open, and now measured by the unimplemented projection tests. |
+| D1–D3 documentation | 0 | ***All three closed.*** D3 closed 2026-08-17: `$` and `$meta` are refused by name as projection operators, and `$slice` and `$elemMatch` are implemented, so nothing reaches the expression evaluator by accident any more. |
 
 ***The shortest list of what is actually left***, for a session picking this up cold:
 
-- **S7** `/*md` blocks on 41 of 70 operators — decide it is optional, or fill them in.
-- **T3** 146 uncovered blocks; the tool names the files.
-- **D3** unsupported projection operators report the wrong kind of error.
-- **Open Decision 1**, the only one left: whether to implement the 13 absent operators. It is
-  measured by 13 failing parity tests, and it is feature work rather than repair — everything
-  implemented already agrees.
+- **S7** `/*md` blocks on operators — decide it is optional, or fill them in. The eleven
+  operators added on 2026-08-17 all carry one, so the ratio has moved; recount before acting.
+- **T3** 158 uncovered blocks; the tool names the files. The count rose with the eleven new
+  files rather than because anything regressed — 60 files are now fully covered, up from 52.
+
+That is the whole list. ***There are no open Open Decisions and no open parity gaps.***
 
 Three findings were discovered by the tests and were ***not*** written up in the sections above.
 ***All three are now fixed***, together with P1:
@@ -842,17 +837,13 @@ Four of the five previous decisions were taken and carried out: `Query()` and `U
   resolve an element without array semantics, and Decisions 2 and 3 below were settled on
   2026-08-17. ***Only Decision 1 remains***, and it is the only failing parity test left.
 
-1. ***Should the unimplemented operators be implemented?***
+1. ***Should the unimplemented operators be implemented?*** — ***SETTLED 2026-08-17: yes, all
+   thirteen.*** *(User decision: "lets implement the missing operators.")*
    Ten in aggregation: `$ceil`, `$floor`, `$round`, `$trunc`, `$size`, `$arrayElemAt`,
    `$concatArrays`, `$in` as expressions, `$addToSet` as an accumulator, and `$count` as a
-   stage. Three more in projection: `$slice` and `$elemMatch`. This is feature work rather than
-   parity repair — everything implemented already agrees — so it was deliberately separated
-   from the fixes. *(Decided in session: fix the defects first, decide this after.)*
-   ***Measured by*** `Aggregate Tests/test-suite/Unimplemented Operator Tests.js` and
-   `Projection Tests/test-suite/Unimplemented Projection Tests.js`, 13 failures.
-   ***This decision does not affect the readme claim***, because a feature which is absent is
-   outside what the sentence promises. Note that `$arrayElemAt` is now the ***only*** way to
-   index an array in an expression, since field paths no longer do it, which raises its value.
+   stage. Three more in projection: `$slice` and `$elemMatch`.
+   The two `Unimplemented` suites were retired, replaced by richer tests for the same operators
+   in the suites which measure the implemented ones.
 
 2. ***Should a negative array index be refused on write?*** — ***SETTLED 2026-08-17: yes, and
    removed everywhere, not only on write.***
@@ -875,6 +866,57 @@ Four of the five previous decisions were taken and carried out: `Query()` and `U
 
 
 ### Log
+
+#### 2026-08-17 — 100% parity: the thirteen missing operators implemented, D3 closed
+
+***`parity-report` exits zero for the first time.*** 428 of 428, across Query 199, Update 81,
+  Projection 40, and Aggregate 108. Open Decision 1 is settled and there are none left.
+  *(User decision: "lets implement the missing operators.")*
+
+***The contract was written as parity tests before any operator existed***, which is the whole
+  reason this went in one pass. *(User, mid-session: "use parity tests!" — the first draft of
+  the semantics had been gathered with a throwaway probe, which is exactly the harness Standing
+  Decision 3 exists to prevent. The probe was deleted and the same ground written as tests.)*
+
+  The order was: write the tests, run them against the live server, fix the ***tests*** where
+  the server disagreed, and only then implement. The server disagreed once — the projection
+  `$elemMatch` is an ***inclusion***, so a non-match returns `{}` rather than leaving the other
+  fields in place. That was a test bug caught before a line of `Project.js` was touched, which
+  is the cheapest place to catch it.
+
+  ***All ten aggregation operators passed on their first run against the suite.*** Aggregate
+  went from 79/89 to 108/108 without a debugging cycle. That is the argument for this order.
+
+***What the measurement taught, which guessing would not have:***
+
+- ***`$round` rounds half to even.*** `{ $round: [ 2.5 ] }` is `2` and `{ $round: [ 3.5 ] }` is
+  `4`. `Math.round()` gives `3` and `4`, and is also asymmetric about zero, so it cannot be
+  repaired by handling the sign. There is a dedicated `RoundHalfToEven` for this.
+- ***The decimal shift cannot be done by multiplying.*** `1.005 * 100` is `100.49999999999999`,
+  which would round the wrong way. `_rounding.js` moves the decimal point through the number's
+  own text instead.
+- ***`$size` does not tolerate a missing field***, unlike almost every other expression
+  operator: it is an error rather than a null.
+- ***`$arrayElemAt` out of range is *missing*, not null***, so the projected field is omitted.
+- ***A single null takes the whole of `$concatArrays`***, rather than being skipped.
+- ***`$slice` is neutral about the projection type and `$elemMatch` is not.*** `$slice` does not
+  make a projection an inclusion, which is what lets it sit beside exclusions, and a
+  `$slice`-only projection therefore returns the whole document. Once something else has made
+  the projection an inclusion, a sliced field is one of the fields included. That distinction
+  is the only subtle part of `Project.js`, and it is now three tests.
+
+***D3 closed on the way.*** A projection operator is recognized by its ***position*** — a
+  projection value which is a document holding exactly one `$` key — rather than by name, so
+  `$` and `$meta` are refused as projection operators instead of falling through to `Evaluate()`
+  and being reported as unrecognized ***expression*** operators. `$elemMatch` was the worst of
+  those, being a registered query operator, which made the old message arguably false.
+
+***One mistake worth recording.*** The operator reference table was edited with an inline shell
+  script, and the shell expanded the `$` in the operator names, so the pattern matched nothing
+  and flipped ***35 rows*** instead of 12 — including operators which are still unimplemented.
+  Caught by reading the diff, reverted with `git checkout`, and redone as a script file with a
+  guard that requires each target to match exactly one row and writes nothing otherwise. The
+  guard is the actual fix: the first version had no way to notice it was wrong.
 
 #### 2026-08-17 — S6 closed: the path extensions removed, and the refusal raised
 

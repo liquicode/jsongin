@@ -152,6 +152,92 @@ module.exports = function ( jsongin )
 
 
 	//---------------------------------------------------------------------
+	// Returns the name of the projection operator a projection value carries, or null when
+	// the value is not one.
+	//
+	// A projection operator is written as a document holding exactly one key, which begins
+	// with a '$'. Anything else is a computed field, including a document with several keys
+	// and a document whose single key is an ordinary field name.
+	//
+	// The four MongoDB defines are $slice, $elemMatch, $ (the positional operator), and
+	// $meta. The first two are implemented; the other two are refused by name, which is what
+	// tells a caller they are a projection operator rather than a misspelled expression.
+	const PROJECTION_OPERATORS = [ '$slice', '$elemMatch', '$', '$meta' ];
+
+	function projection_operator_name( Value )
+	{
+		if ( jsongin.ShortType( Value ) !== 'o' ) { return null; }
+
+		let keys = Object.keys( Value );
+		if ( keys.length !== 1 ) { return null; }
+		if ( PROJECTION_OPERATORS.includes( keys[ 0 ] ) === false ) { return null; }
+
+		return keys[ 0 ];
+	};
+
+
+	//---------------------------------------------------------------------
+	// Applies a projection $slice to the array at Path, in place.
+	//
+	// The argument is either a count, or a [ skip, limit ] pair. A negative count takes from
+	// the end, and a negative skip counts back from the end before taking forward.
+	// A field which is not an array is left exactly as it is, which is what MongoDB does.
+	// Verified against MongoDB 6.0.1.
+	function apply_slice( Node, Path, Argument )
+	{
+		let values = jsongin.GetValue( Node, Path );
+		if ( jsongin.ShortType( values ) !== 'a' ) { return; }
+
+		let skip = 0;
+		let limit = null;
+		let argument_type = jsongin.ShortType( Argument );
+		if ( argument_type === 'n' )
+		{
+			if ( Argument < 0 ) { skip = Math.max( values.length + Argument, 0 ); }
+			else { limit = Argument; }
+		}
+		else if ( ( argument_type === 'a' ) && ( Argument.length === 2 ) )
+		{
+			skip = Argument[ 0 ];
+			if ( skip < 0 ) { skip = Math.max( values.length + skip, 0 ); }
+			limit = Argument[ 1 ];
+		}
+		else
+		{
+			refuse( `The projection operator [$slice] takes a count, or a skip and a limit.` );
+		}
+
+		let sliced = values.slice( skip );
+		if ( limit !== null ) { sliced = sliced.slice( 0, limit ); }
+
+		jsongin.SetValue( Node, Path, sliced );
+	};
+
+
+	//---------------------------------------------------------------------
+	// Returns the first element of the array at Path which matches Criteria, wrapped in an
+	// array, or undefined when the field is not an array or nothing matches.
+	//
+	// Only the first match is taken, which is the whole point of the operator, and the array
+	// is kept around it rather than the element being lifted out.
+	function apply_elem_match( Document, Path, Criteria )
+	{
+		let values = jsongin.GetValue( Document, Path );
+		if ( jsongin.ShortType( values ) !== 'a' ) { return undefined; }
+
+		for ( let index = 0; index < values.length; index++ )
+		{
+			if ( jsongin.Query( values[ index ], Criteria ) === true )
+			{
+				return [ jsongin.SafeClone( values[ index ] ) ];
+			}
+		}
+
+		return undefined;
+	};
+
+
+	//---------------------------------------------------------------------
 	function Project( Document, Projection )
 	{
 		// Validate the parameters.
@@ -170,10 +256,13 @@ module.exports = function ( jsongin )
 
 		// Scan the projection.
 		// A field is included when its value is a non-zero number or true, excluded when its
-		// value is zero or false, and computed when its value is anything else.
+		// value is zero or false, carries a projection operator when its value is a document
+		// naming one, and computed when its value is anything else.
 		let include_keys = [];
 		let exclude_keys = [];
 		let computed_keys = [];
+		let slice_keys = [];
+		let elem_match_keys = [];
 		let include_id = true;
 		for ( let key in Projection )
 		{
@@ -189,7 +278,26 @@ module.exports = function ( jsongin )
 			}
 			if ( is_exclusion ) { exclude_keys.push( key ); }
 			else if ( is_inclusion ) { include_keys.push( key ); }
-			else { computed_keys.push( key ); }
+			else
+			{
+				// A projection operator is a document whose only key names one. It is checked
+				// before the value is treated as an expression, because the two languages
+				// share the '$name' shape and a projection operator is not an expression:
+				// $slice and $elemMatch both exist in the expression and query languages
+				// meaning something else.
+				let operator_name = projection_operator_name( value );
+				if ( operator_name === '$slice' ) { slice_keys.push( { Path: key, Argument: value.$slice } ); }
+				else if ( operator_name === '$elemMatch' ) { elem_match_keys.push( { Path: key, Argument: value.$elemMatch } ); }
+				else if ( operator_name !== null )
+				{
+					// A projection operator jsongin does not implement. Reported as what it is
+					// rather than being handed to Evaluate(), which would report it as an
+					// unrecognized ***expression*** operator and send the reader to the wrong
+					// table. That is finding D3 of the 2026-08-15 review.
+					refuse( `The projection operator [${operator_name}] is not supported.` );
+				}
+				else { computed_keys.push( key ); }
+			}
 		}
 
 		// Validate the projection.
@@ -208,15 +316,28 @@ module.exports = function ( jsongin )
 			// A computed field is an inclusion, so this is the case above in disguise.
 			refuse( `Cannot use an expression within an exclusion projection.` );
 		}
+		if ( ( exclude_keys.length > 0 ) && ( elem_match_keys.length > 0 ) )
+		{
+			// $elemMatch is an inclusion, so this is the same case again.
+			refuse( `Cannot use the projection operator [$elemMatch] within an exclusion projection.` );
+		}
 
 		// Determine the type of projection.
-		// A computed field implies an inclusion projection, which is what MongoDB does.
+		// A computed field implies an inclusion projection, which is what MongoDB does, and
+		// so does $elemMatch.
+		//
+		// ***$slice is deliberately absent from this decision.*** It does not make a
+		// projection an inclusion, which is what lets it sit beside exclusions and what makes
+		// { t: { $slice: 2 } } on its own return the whole document with t sliced. Once
+		// something else has decided the projection is an inclusion, a sliced field is one of
+		// the fields included, which is handled below rather than here.
+		// Verified against MongoDB 6.0.1.
 		let projection_type = 'include';
 		if ( exclude_keys.length > 0 )
 		{
 			projection_type = 'exclude';
 		}
-		else if ( ( include_keys.length === 0 ) && ( computed_keys.length === 0 ) )
+		else if ( ( include_keys.length === 0 ) && ( computed_keys.length === 0 ) && ( elem_match_keys.length === 0 ) )
 		{
 			// Only _id was given, or nothing was.
 			//
@@ -231,6 +352,13 @@ module.exports = function ( jsongin )
 			// tell it is one.
 			if ( include_id === false ) { projection_type = 'exclude'; }
 			else if ( Object.keys( Projection ).length === 0 ) { projection_type = 'exclude'; }
+			else if ( slice_keys.length > 0 )
+			{
+				// Nothing but $slice was given. Since $slice does not make a projection an
+				// inclusion, there is nothing here asking for fields to be dropped, so the
+				// whole document comes back with the slice applied to it.
+				projection_type = 'exclude';
+			}
 		}
 
 		// Process the projection.
@@ -245,6 +373,10 @@ module.exports = function ( jsongin )
 				if ( path_elements.length === 0 ) { continue; }
 				exclude_path( projected, path_elements, 0 );
 			}
+			for ( let index = 0; index < slice_keys.length; index++ )
+			{
+				apply_slice( projected, slice_keys[ index ].Path, slice_keys[ index ].Argument );
+			}
 			if ( include_id === false ) { delete projected._id; }
 		}
 		else
@@ -257,7 +389,16 @@ module.exports = function ( jsongin )
 				if ( typeof Document._id !== 'undefined' ) { projected._id = jsongin.SafeClone( Document._id ); }
 			}
 
-			if ( include_keys.length > 0 )
+			// A sliced field is included, once something else has made this an inclusion.
+			// It is gathered with the ordinary inclusions so that it goes through the same
+			// path handling, and is sliced afterwards.
+			let sliced_include_keys = include_keys.slice();
+			for ( let index = 0; index < slice_keys.length; index++ )
+			{
+				sliced_include_keys.push( slice_keys[ index ].Path );
+			}
+
+			if ( sliced_include_keys.length > 0 )
 			{
 				// The included fields are resolved together rather than one at a time, so that
 				// two fields taken from the same array produce one object per element holding
@@ -269,9 +410,9 @@ module.exports = function ( jsongin )
 				// array it came from: { a: [ { x: 1 }, { x: 3 } ] } projected to
 				// { a: { x: [ 1, 3 ] } }.
 				let include_paths = [];
-				for ( let index = 0; index < include_keys.length; index++ )
+				for ( let index = 0; index < sliced_include_keys.length; index++ )
 				{
-					let path_elements = jsongin.SplitPath( include_keys[ index ] );
+					let path_elements = jsongin.SplitPath( sliced_include_keys[ index ] );
 					if ( path_elements.length === 0 ) { continue; }
 					include_paths.push( path_elements );
 				}
@@ -284,6 +425,21 @@ module.exports = function ( jsongin )
 						projected[ key ] = included[ key ];
 					}
 				}
+
+				for ( let index = 0; index < slice_keys.length; index++ )
+				{
+					apply_slice( projected, slice_keys[ index ].Path, slice_keys[ index ].Argument );
+				}
+			}
+
+			for ( let index = 0; index < elem_match_keys.length; index++ )
+			{
+				let elem_match = elem_match_keys[ index ];
+				let matched = apply_elem_match( Document, elem_match.Path, elem_match.Argument );
+				// Nothing matched, or the field is not an array. The field is omitted rather
+				// than being set to an empty array. Verified against MongoDB 6.0.1.
+				if ( typeof matched === 'undefined' ) { continue; }
+				jsongin.SetValue( projected, elem_match.Path, matched );
 			}
 
 			for ( let index = 0; index < computed_keys.length; index++ )

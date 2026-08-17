@@ -82,6 +82,79 @@ module.exports = function ( Driver )
 			assert.deepStrictEqual( result, { a: [ { x: 1 } ] } );
 		} );
 
+		it( 'should take the first elements of an array with $slice', async () =>
+		{
+			let document = { t: [ 1, 2, 3, 4 ] };
+			assert.deepStrictEqual( await projected( document, { t: { $slice: 2 } } ), { t: [ 1, 2 ] } );
+			assert.deepStrictEqual( await projected( document, { t: { $slice: 9 } } ), { t: [ 1, 2, 3, 4 ] } );
+			assert.deepStrictEqual( await projected( document, { t: { $slice: 0 } } ), { t: [] } );
+		} );
+
+		it( 'should take the last elements for a negative $slice', async () =>
+		{
+			let document = { t: [ 1, 2, 3, 4 ] };
+			assert.deepStrictEqual( await projected( document, { t: { $slice: -1 } } ), { t: [ 4 ] } );
+			assert.deepStrictEqual( await projected( document, { t: { $slice: -2 } } ), { t: [ 3, 4 ] } );
+			assert.deepStrictEqual( await projected( document, { t: { $slice: -9 } } ), { t: [ 1, 2, 3, 4 ] } );
+		} );
+
+		it( 'should skip and then take with a two element $slice', async () =>
+		{
+			let document = { t: [ 1, 2, 3, 4 ] };
+			assert.deepStrictEqual( await projected( document, { t: { $slice: [ 1, 2 ] } } ), { t: [ 2, 3 ] } );
+			assert.deepStrictEqual( await projected( document, { t: { $slice: [ 0, 2 ] } } ), { t: [ 1, 2 ] } );
+
+			// A negative skip counts back from the end, and then takes forward from there.
+			assert.deepStrictEqual( await projected( document, { t: { $slice: [ -2, 1 ] } } ), { t: [ 3 ] } );
+		} );
+
+		it( 'should keep the other fields alongside a $slice', async () =>
+		{
+			// ***$slice does not make the projection an inclusion.*** The other fields come
+			// back untouched, which is why it can sit beside exclusions.
+			let document = { n: 5, t: [ 1, 2, 3, 4 ] };
+			assert.deepStrictEqual( await projected( document, { t: { $slice: 2 } } ), { n: 5, t: [ 1, 2 ] } );
+			assert.deepStrictEqual( await projected( document, { n: 0, t: { $slice: 2 } } ), { t: [ 1, 2 ] } );
+		} );
+
+		it( 'should include a sliced field within an inclusion projection', async () =>
+		{
+			// $slice does not decide the type of projection, but once something else has
+			// decided it is an inclusion, a sliced field is one of the fields included.
+			let document = { n: 5, other: 9, t: [ 1, 2, 3, 4 ] };
+			assert.deepStrictEqual(
+				await projected( document, { n: 1, t: { $slice: 2 } } ),
+				{ n: 5, t: [ 1, 2 ] } );
+		} );
+
+		it( 'should leave a field which is not an array alone through $slice', async () =>
+		{
+			assert.deepStrictEqual( await projected( { n: 5 }, { n: { $slice: 2 } } ), { n: 5 } );
+		} );
+
+		it( 'should take the first matching element with the projection $elemMatch', async () =>
+		{
+			// ***Only the first match***, and the array is kept around it.
+			let document = { a: [ { x: 1 }, { x: 2 }, { x: 2 } ] };
+			assert.deepStrictEqual( await projected( document, { a: { $elemMatch: { x: 2 } } } ), { a: [ { x: 2 } ] } );
+		} );
+
+		it( 'should omit the field when the projection $elemMatch matches nothing', async () =>
+		{
+			// The field is omitted rather than coming back as an empty array. Nothing else
+			// survives either, because $elemMatch is an inclusion — see the test below — so
+			// only _id remains, and the helper has removed it.
+			let document = { n: 5, a: [ { x: 1 } ] };
+			assert.deepStrictEqual( await projected( document, { a: { $elemMatch: { x: 9 } } } ), {} );
+		} );
+
+		it( 'should make the projection an inclusion with $elemMatch', async () =>
+		{
+			// Unlike $slice, $elemMatch ***is*** an inclusion: the other fields are dropped.
+			let document = { n: 5, a: [ { x: 1 }, { x: 2 } ] };
+			assert.deepStrictEqual( await projected( document, { a: { $elemMatch: { x: 2 } } } ), { a: [ { x: 2 } ] } );
+		} );
+
 		it( 'should not exclude an array element by index', async () =>
 		{
 			// A projection does not index an array, with any numeric key. Every key applies

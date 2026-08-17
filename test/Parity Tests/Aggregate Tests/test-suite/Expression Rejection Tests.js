@@ -147,6 +147,58 @@ module.exports = function ( Driver )
 
 		} );
 
+
+		//---------------------------------------------------------------------
+		describe( 'Rounding and Array Operators', () =>
+		{
+
+			it( 'should refuse the wrong number of operands', async () =>
+			{
+				assert.ok( await refused( { $ceil: [ 1.2, 3 ] } ), '$ceil with two' );
+				assert.ok( await refused( { $floor: [ 1.2, 3 ] } ), '$floor with two' );
+				assert.ok( await refused( { $round: [ 1.2, 3, 4 ] } ), '$round with three' );
+				assert.ok( await refused( { $trunc: [ 1.2, 3, 4 ] } ), '$trunc with three' );
+				assert.ok( await refused( { $size: [ [ 1 ], [ 2 ] ] } ), '$size with two' );
+				assert.ok( await refused( { $arrayElemAt: [ '$t' ] } ), '$arrayElemAt with one' );
+				assert.ok( await refused( { $in: [ 1 ] } ), '$in with one' );
+			} );
+
+			it( 'should refuse a non numeric operand to the rounding operators', async () =>
+			{
+				assert.ok( await refused( { $ceil: 'text' } ), '$ceil of a string' );
+				assert.ok( await refused( { $floor: 'text' } ), '$floor of a string' );
+				assert.ok( await refused( { $round: [ 'text', 1 ] } ), '$round of a string' );
+				assert.ok( await refused( { $trunc: [ 'text', 1 ] } ), '$trunc of a string' );
+			} );
+
+			it( 'should refuse $size against anything but an array', async () =>
+			{
+				// ***$size does not tolerate a missing field***, which is unlike most of the
+				// expression operators: it is an error rather than a null.
+				assert.ok( await refused( { $size: '$nope' } ), 'a missing field' );
+				assert.ok( await refused( { $size: null } ), 'a null' );
+				assert.ok( await refused( { $size: 5 } ), 'a scalar' );
+			} );
+
+			it( 'should refuse a bad $arrayElemAt operand', async () =>
+			{
+				assert.ok( await refused( { $arrayElemAt: [ '$a', 0 ] } ), 'a first operand which is not an array' );
+				assert.ok( await refused( { $arrayElemAt: [ [ 1, 2 ], 1.5 ] } ), 'a position which is not an integer' );
+			} );
+
+			it( 'should refuse a $concatArrays operand which is not an array', async () =>
+			{
+				assert.ok( await refused( { $concatArrays: [ [ 1 ], 5 ] } ) );
+			} );
+
+			it( 'should refuse an $in whose second operand is not an array', async () =>
+			{
+				assert.ok( await refused( { $in: [ 1, 5 ] } ), 'a scalar' );
+				assert.ok( await refused( { $in: [ 1, null ] } ), 'a null' );
+			} );
+
+		} );
+
 	} );
 
 };

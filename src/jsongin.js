@@ -100,6 +100,16 @@ function NewJsongin( EngineSettings = {} )
 		$abs: require( './Operators/Expression/Arithmetic/abs' )( Engine ),
 		$min: require( './Operators/Expression/Arithmetic/min' )( Engine ),
 		$max: require( './Operators/Expression/Arithmetic/max' )( Engine ),
+		$ceil: require( './Operators/Expression/Arithmetic/ceil' )( Engine ),
+		$floor: require( './Operators/Expression/Arithmetic/floor' )( Engine ),
+		$round: require( './Operators/Expression/Arithmetic/round' )( Engine ),
+		$trunc: require( './Operators/Expression/Arithmetic/trunc' )( Engine ),
+
+		// Array Expression Operators
+		$size: require( './Operators/Expression/Array/size' )( Engine ),
+		$arrayElemAt: require( './Operators/Expression/Array/arrayElemAt' )( Engine ),
+		$concatArrays: require( './Operators/Expression/Array/concatArrays' )( Engine ),
+		$in: require( './Operators/Expression/Array/in' )( Engine ),
 
 		// Comparison Expression Operators
 		$eq: require( './Operators/Expression/Comparison/eq' )( Engine ),
@@ -161,6 +171,7 @@ function NewJsongin( EngineSettings = {} )
 		$sort: require( './Operators/Stage/sort' )( Engine ),
 		$limit: require( './Operators/Stage/limit' )( Engine ),
 		$skip: require( './Operators/Stage/skip' )( Engine ),
+		$count: require( './Operators/Stage/count' )( Engine ),
 
 	};
 
@@ -174,6 +185,7 @@ function NewJsongin( EngineSettings = {} )
 		$max: require( './Operators/Accumulator/max' )( Engine ),
 		$count: require( './Operators/Accumulator/count' )( Engine ),
 		$push: require( './Operators/Accumulator/push' )( Engine ),
+		$addToSet: require( './Operators/Accumulator/addToSet' )( Engine ),
 		$first: require( './Operators/Accumulator/first' )( Engine ),
 		$last: require( './Operators/Accumulator/last' )( Engine ),
 

@@ -8,6 +8,48 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
+- ***Parity with MongoDB is 100%***, across 428 compared behaviors: Query 199, Update 81,
+  Projection 40, and Aggregate 108. `npm run parity-report` measures it, and every assertion in
+  it was run against a live MongoDB 6.0.1 server before being trusted. There are no known
+  disagreements with MongoDB in anything jsongin implements.
+
+- ***Thirteen operators were added***, which were the last of the measured gap:
+
+  - ***`$ceil`, `$floor`, `$round`, and `$trunc`*** expression operators. `$round` rounds
+    ***half to even***, so `{ $round: [ 2.5 ] }` is `2` while `{ $round: [ 3.5 ] }` is `4`,
+    which is what MongoDB does and is not what `Math.round()` does. Both `$round` and `$trunc`
+    take an optional decimal place, which may be negative to work to the left of the decimal
+    point. The shift to that place is done through the number's decimal text rather than by
+    multiplying by a power of ten, because multiplying introduces the very error it is meant
+    to remove.
+
+  - ***`$size`, `$arrayElemAt`, `$concatArrays`, and the `$in` expression***. `$arrayElemAt` is
+    now the only way to index an array in an expression, since a field path such as `'$a.2'`
+    applies the key to the elements instead; a negative position counts back from the end
+    there, because it is an operand rather than a path element. `$in` takes the value first and
+    the array second, which is the reverse of the query operator of the same name, and compares
+    by content.
+
+  - ***The `$addToSet` accumulator***, which collects distinct values across a group, comparing
+    by content so that an array, a document, or a date is recognized rather than added again.
+    The order of its result is not specified.
+
+  - ***The `$count` stage***, which replaces the stream with a single document holding the
+    count. An empty stream produces no document at all rather than one holding a zero. It is
+    not the `$count` accumulator, which takes `{}` and counts within a `$group`; both are now
+    supported.
+
+  - ***The projection `$slice` and `$elemMatch`***. `$slice` does not make a projection an
+    inclusion, which is what lets it sit beside exclusions, while `$elemMatch` does. `$slice`
+    accepts a count or a `[ skip, limit ]` pair, and leaves a field which is not an array
+    alone.
+
+- ***An unsupported projection operator is now reported as one.*** `$` and `$meta` used to fall
+  through to the expression evaluator and be reported as unrecognized ***expression***
+  operators, which sent the reader to the wrong table of the operator reference. `$elemMatch`
+  was the worst of them, because it is a registered query operator, so the message was
+  arguably false.
+
 - ***Breaking: jsongin's path syntax is now MongoDB's path syntax, with no extensions and no
   settings.*** Two path extensions were removed outright rather than gated, which closes the
   last three behavioral disagreements with MongoDB. Every remaining parity gap is an operator

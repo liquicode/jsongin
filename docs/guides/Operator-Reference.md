@@ -182,10 +182,10 @@ MongoDB adds operators from one server version to the next, so treat this as a c
 |---------------|:-------------:|--------------------|-----------------------------------------------------------------------------------------------|
 | Arithmetic    |      Yes      | $abs               | Returns the absolute value of a number.                                                      |
 | Arithmetic    |      Yes      | $add               | Adds numbers together. Adds milliseconds to a date.                                          |
-| Arithmetic    |       -       | $ceil              | Returns the smallest integer which is greater than or equal to a number.                     |
+| Arithmetic    |      Yes      | $ceil              | Returns the smallest integer which is greater than or equal to a number.                     |
 | Arithmetic    |      Yes      | $divide            | Divides one number by another. Throws when dividing by zero.                                 |
 | Arithmetic    |       -       | $exp               | Raises Euler's number to a power.                                                            |
-| Arithmetic    |       -       | $floor             | Returns the largest integer which is less than or equal to a number.                         |
+| Arithmetic    |      Yes      | $floor             | Returns the largest integer which is less than or equal to a number.                         |
 | Arithmetic    |       -       | $ln                | Returns the natural logarithm of a number.                                                   |
 | Arithmetic    |       -       | $log               | Returns the logarithm of a number in a given base.                                           |
 | Arithmetic    |       -       | $log10             | Returns the base 10 logarithm of a number.                                                   |
@@ -194,17 +194,17 @@ MongoDB adds operators from one server version to the next, so treat this as a c
 | Arithmetic    |      Yes      | $mod               | Divides one number by another and returns the remainder.                                     |
 | Arithmetic    |      Yes      | $multiply          | Multiplies numbers together.                                                                 |
 | Arithmetic    |       -       | $pow               | Raises a number to a power.                                                                  |
-| Arithmetic    |       -       | $round             | Rounds a number to a given number of decimal places.                                         |
+| Arithmetic    |      Yes      | $round             | Rounds a number to a given number of decimal places.                                         |
 | Arithmetic    |       -       | $sqrt              | Returns the square root of a number.                                                         |
 | Arithmetic    |      Yes      | $subtract          | Subtracts two numbers, two dates, or milliseconds from a date.                               |
-| Arithmetic    |       -       | $trunc             | Truncates a number to a given number of decimal places.                                      |
-| Array         |       -       | $arrayElemAt       | Returns the element of an array at a given index.                                            |
+| Arithmetic    |      Yes      | $trunc             | Truncates a number to a given number of decimal places.                                      |
+| Array         |      Yes      | $arrayElemAt       | Returns the element of an array at a given index.                                            |
 | Array         |       -       | $arrayToObject     | Converts an array of key/value pairs into an object.                                         |
-| Array         |       -       | $concatArrays      | Joins arrays together.                                                                       |
+| Array         |      Yes      | $concatArrays      | Joins arrays together.                                                                       |
 | Array         |       -       | $filter            | Returns the elements of an array which satisfy a condition.                                  |
 | Array         |       -       | $first             | Returns the first element of an array.                                                       |
 | Array         |       -       | $firstN            | Returns the first N elements of an array.                                                    |
-| Array         |       -       | $in                | Returns true when a value is found within an array.                                          |
+| Array         |      Yes      | $in                | Returns true when a value is found within an array.                                          |
 | Array         |       -       | $indexOfArray      | Returns the index of the first array element which matches a value.                          |
 | Array         |       -       | $isArray           | Returns true when a value is an array.                                                       |
 | Array         |       -       | $last              | Returns the last element of an array.                                                        |
@@ -215,7 +215,7 @@ MongoDB adds operators from one server version to the next, so treat this as a c
 | Array         |       -       | $range             | Generates an array of numbers.                                                               |
 | Array         |       -       | $reduce            | Reduces the elements of an array to a single value.                                          |
 | Array         |       -       | $reverseArray      | Returns an array with its elements in reverse order.                                         |
-| Array         |       -       | $size              | Returns the number of elements in an array.                                                  |
+| Array         |      Yes      | $size              | Returns the number of elements in an array.                                                  |
 | Array         |       -       | $slice             | Returns a subset of an array.                                                                |
 | Array         |       -       | $sortArray         | Sorts the elements of an array.                                                              |
 | Array         |       -       | $zip               | Merges arrays together, element by element.                                                  |
@@ -345,7 +345,7 @@ See the [`Aggregate()`](jsongin/Aggregate.md) guide for the details of each stag
 | Stage         |       -       | $bucket          | Groups documents into buckets by given boundaries.                       |
 | Stage         |       -       | $bucketAuto      | Groups documents into a given number of buckets.                         |
 | Stage         |       -       | $collStats       | Returns statistics about a collection.                                   |
-| Stage         |       -       | $count           | Returns the number of documents, as a stage. See the note below.         |
+| Stage         |      Yes      | $count           | Returns the number of documents, as a stage. See the note below.         |
 | Stage         |       -       | $densify         | Fills in gaps in a sequence of documents.                                |
 | Stage         |       -       | $documents       | Returns literal documents, as a pipeline source.                         |
 | Stage         |       -       | $facet           | Runs several pipelines over the same documents.                          |
@@ -381,7 +381,9 @@ See the [`Aggregate()`](jsongin/Aggregate.md) guide for the details of each stag
 
 ***Note on names which are also something else*** :
 `$count` and `$unset` are each both a stage and something else.
-The `$count` ***accumulator*** is supported and the `$count` ***stage*** is not.
+The `$count` ***accumulator*** and the `$count` ***stage*** are both supported, and they take
+  different arguments: the accumulator takes `{}` and counts within a `$group`, while the stage
+  takes a field name and replaces the whole stream with one document.
 The `$unset` ***update operator*** is supported and the `$unset` ***stage*** is not.
 `$set` is both a stage and an update operator, and both are supported.
 
@@ -398,7 +400,7 @@ See the *Operators Which Share a Name* section below.
 | **Category**  | **Supported** | **Operator**   | **Description**                                                            |
 |---------------|:-------------:|----------------|------------------------------------------------------------------------------|
 | Accumulator   |       -       | $accumulator   | Accumulates values using custom Javascript functions.                      |
-| Accumulator   |       -       | $addToSet      | Collects the unique values of a field.                                     |
+| Accumulator   |      Yes      | $addToSet      | Collects the unique values of a field.                                     |
 | Accumulator   |      Yes      | $avg           | Returns the average of numeric values.                                     |
 | Accumulator   |       -       | $bottom        | Returns the last value in a given ordering.                                |
 | Accumulator   |       -       | $bottomN       | Returns the last N values in a given ordering.                             |
@@ -449,9 +451,9 @@ There is also a difference in shape which makes them easy to tell apart at a gla
 | `$and` `$or`                          | `{ $and: [ { a: 1 }, { b: 2 } ] }` joins query clauses together.       | `{ $and: [ { $gt: [ '$hp', 0 ] }, '$alive' ] }` combines boolean values.   |
 | `$not`                                | `{ hp: { $not: { $gt: 5 } } }` inverts a query expression on a field.  | `{ $not: '$alive' }` inverts a boolean value.                              |
 | `$mod`                                | `{ n: { $mod: [ 4, 0 ] } }` matches when `n % 4` equals `0`. *(not supported)* | `{ $mod: [ '$n', 4 ] }` returns the remainder itself.               |
-| `$size`                               | `{ tags: { $size: 3 } }` matches arrays of that length.               | `{ $size: '$tags' }` returns the length. *(not supported)*                 |
+| `$size`                               | `{ tags: { $size: 3 } }` matches arrays of that length.               | `{ $size: '$tags' }` returns the length.                                   |
 | `$type`                               | `{ n: { $type: 'number' } }` matches fields of that type.             | `{ $type: '$n' }` returns the type name. *(not supported)*                 |
-| `$in`                                 | `{ role: { $in: [ 'admin', 'super' ] } }` matches any listed value.   | `{ $in: [ '$role', '$allowed' ] }` returns a boolean. *(not supported)*    |
+| `$in`                                 | `{ role: { $in: [ 'admin', 'super' ] } }` matches any listed value.   | `{ $in: [ '$role', '$allowed' ] }` returns a boolean. Note that the array is the ***second*** operand here and the value is the first, which is the reverse of the query form. |
 | `$rand`                               | Generates a random float. *(not supported)*                           | Generates a random float. *(not supported)*                                |
 
 | **Operator**   | **As an Update Operator**                                              | **As an Expression Operator**                                          |
@@ -460,7 +462,7 @@ There is also a difference in shape which makes them easy to tell apart at a gla
 | `$set`         | `{ $set: { hp: 5 } }` sets a document field.                          | The expression equivalent is `$setField`. *(not supported)*            |
 | `$unset`       | `{ $unset: { hp: 0 } }` removes a document field.                     | The expression equivalent is `$unsetField`. *(not supported)*          |
 | `$push`        | `{ $push: { tags: 'new' } }` appends to an array field.               | `$push` is an accumulator, not an expression operator.                 |
-| `$addToSet`    | `{ $addToSet: { tags: 'new' } }` appends only if not already present. | `$addToSet` is an accumulator, not an expression operator.             |
+| `$addToSet`    | `{ $addToSet: { tags: 'new' } }` appends only if not already present. | `$addToSet` is an accumulator, not an expression operator. Both compare by content rather than by reference. |
 
 An ***accumulator*** is written inside a `$group` stage, as the single field of the object which
   defines an output field. That position is what makes it an accumulator.
@@ -471,7 +473,7 @@ An ***accumulator*** is written inside a `$group` stage, as the single field of 
 | `$min` `$max`    | `{ top: { $max: '$points' } }` selects across a group.                      | Also an expression operator and an update operator.                      |
 | `$push`          | `{ names: { $push: '$name' } }` collects a value from every document in a group. | Also an update operator, which appends to an array field within one document. |
 | `$first` `$last` | `{ opener: { $first: '$name' } }` takes the value from one end of a group.  | No counterpart of either name elsewhere.                                 |
-| `$count`         | `{ n: { $count: {} } }` counts the documents in a group.                    | Also a pipeline stage, which is not supported.                           |
+| `$count`         | `{ n: { $count: {} } }` counts the documents in a group.                    | Also a pipeline stage, `{ $count: 'total' }`, which replaces the stream with one document. |
 
 `$min` and `$max` are the most easily confused, because the same two names carry three
   different meanings: an update operator, an expression operator, and an accumulator.
@@ -499,9 +501,48 @@ You can use `jsongin.Project( Document, Projection )` to perform this function.
 | Category | Supported | Operator   | Description                                                                             |
 |----------|:---------:|------------|-----------------------------------------------------------------------------------------|
 | Field    | -         | $          | Projects the first element in an array that matches the query condition.                |
-| Field    | -         | $elemMatch | Projects the first element in an array that matches the specified $elemMatch condition. |
+| Field    |    Yes    | $elemMatch | Projects the first element in an array that matches the specified $elemMatch condition. |
 | Field    | -         | $meta      | Projects the available per-document metadata.                                           |
-| Field    | -         | $slice     | Limits the number of elements projected from an array. Supports skip and limit slices.  |
+| Field    |    Yes    | $slice     | Limits the number of elements projected from an array. Supports skip and limit slices.  |
+
+***A projection operator is not an expression operator***, even where the two share a name.
+`$slice` and `$elemMatch` both exist in other languages meaning something else: there is an
+  expression `$slice`, which is not supported, and a query `$elemMatch`, which is.
+A projection operator is recognized by its position — a projection value which is a document
+  holding exactly one `$` key — so the two never have to be told apart by name alone.
+
+***Note on `$slice`*** :
+`$slice` does ***not*** make a projection an inclusion, which is what lets it sit beside
+  exclusions:
+
+```js
+jsongin.Project( { n: 5, t: [ 1, 2, 3, 4 ] }, { t: { $slice: 2 } } );
+// { n: 5, t: [ 1, 2 ] }        the whole document, with t sliced
+
+jsongin.Project( { n: 5, t: [ 1, 2, 3, 4 ] }, { n: 1, t: { $slice: 2 } } );
+// { n: 5, t: [ 1, 2 ] }        an inclusion, and t is one of the fields included
+
+jsongin.Project( { t: [ 1, 2, 3, 4 ] }, { t: { $slice: -1 } } );      // { t: [ 4 ] }
+jsongin.Project( { t: [ 1, 2, 3, 4 ] }, { t: { $slice: [ 1, 2 ] } } ); // { t: [ 2, 3 ] }
+```
+
+A field which is not an array is left exactly as it is.
+
+***Note on the projection `$elemMatch`*** :
+It takes the ***first*** matching element only, keeps the array around it, and ***is*** an
+  inclusion, so the other fields are dropped:
+
+```js
+jsongin.Project( { n: 5, a: [ { x: 1 }, { x: 2 } ] }, { a: { $elemMatch: { x: 2 } } } );
+// { a: [ { x: 2 } ] }
+```
+
+When nothing matches, the field is omitted rather than coming back as an empty array.
+
+***The two unsupported projection operators are refused by name.***
+`$` and `$meta` raise an error which says they are projection operators, rather than being
+  handed to the expression evaluator and reported as unrecognized ***expression*** operators,
+  which used to send the reader to the wrong table.
 
 
 ## Update Operators

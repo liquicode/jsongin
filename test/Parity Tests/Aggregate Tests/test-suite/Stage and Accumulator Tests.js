@@ -76,6 +76,28 @@ module.exports = function ( Driver )
 				assert.strictEqual( result[ 0 ].n, 1 );
 			} );
 
+			it( 'should count the documents with the $count stage', async () =>
+			{
+				// The stage replaces the whole stream with one document, whose only field is
+				// the one named here. This is the ***stage*** $count, which takes a field
+				// name; the accumulator of the same name takes {} and is tested below.
+				let result = await piped( [ { $count: 'total' } ] );
+				assert.deepStrictEqual( result, [ { total: 4 } ] );
+			} );
+
+			it( 'should count what reaches the $count stage, not what started', async () =>
+			{
+				let result = await piped( [ { $match: { k: 'a' } }, { $count: 'howMany' } ] );
+				assert.deepStrictEqual( result, [ { howMany: 2 } ] );
+			} );
+
+			it( 'should produce nothing for a $count over an empty stream', async () =>
+			{
+				// ***No document at all***, rather than one holding a zero.
+				let result = await piped( [ { $match: { k: 'zzz' } }, { $count: 'total' } ] );
+				assert.deepStrictEqual( result, [] );
+			} );
+
 			it( 'should compute a field with $addFields', async () =>
 			{
 				let result = await piped( [ { $match: { _id: 1 } }, { $addFields: { doubled: { $multiply: [ '$n', 2 ] } } } ] );
@@ -189,6 +211,34 @@ module.exports = function ( Driver )
 			it( 'should collect every value with $push', async () =>
 			{
 				assert.deepStrictEqual( await accumulated( { $push: '$n' } ), [ 1, 2, 3, 4 ] );
+			} );
+
+			it( 'should collect distinct values with $addToSet', async () =>
+			{
+				// Unlike $push, a value already collected is not collected again. ***The order
+				// is not specified***, so the result is sorted before comparing: MongoDB makes
+				// no promise about it and neither should the test.
+				let keys = await accumulated( { $addToSet: '$k' } );
+				assert.deepStrictEqual( keys.slice().sort(), [ 'a', 'b' ] );
+
+				let numbers = await accumulated( { $addToSet: '$n' } );
+				assert.deepStrictEqual( numbers.slice().sort(), [ 1, 2, 3, 4 ] );
+			} );
+
+			it( 'should compare by content in $addToSet', async () =>
+			{
+				// A document or an array is recognized as already present rather than being
+				// added again because it is a different instance.
+				let result = await piped( [
+					{ $group: { _id: null, r: { $addToSet: '$t' } } },
+				] );
+				let sets = result[ 0 ].r.map( function ( V ) { return JSON.stringify( V ); } );
+				assert.strictEqual( sets.length, 3, `expected three distinct arrays, got ${JSON.stringify( sets )}` );
+			} );
+
+			it( 'should skip a missing field in $addToSet', async () =>
+			{
+				assert.deepStrictEqual( await accumulated( { $addToSet: '$nope' } ), [] );
 			} );
 
 			it( 'should count the group with the $count accumulator', async () =>
