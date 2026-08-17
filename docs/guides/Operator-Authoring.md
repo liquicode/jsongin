@@ -306,7 +306,7 @@ Operators live under `src/Operators/`, in a folder named for their kind, and are
   `src/jsongin.js`.
 
 ***An `/*md` block at the top of the file.***
-The newer operators carry a markdown comment describing their usage:
+Every operator carries a markdown comment describing its usage:
 
 ```js
 'use strict';
@@ -321,8 +321,22 @@ Returns the absolute value of a number.
 */
 ```
 
-Note that nothing currently reads these blocks; they are documentation kept beside the code
-  rather than a build input.
+***This is required, and it is checked.*** `npm run check-docs` verifies that every file under
+  `src/Operators/` has one, and fails the build when one is missing. Helper modules, whose names
+  begin with an underscore, are not operators and are skipped.
+
+The check exists because the convention did not hold on its own: it stood at 56 of 85 operators
+  before the check was written, with the query and update operators ignoring it almost entirely.
+  That is the same lesson the `OperatorType` and `ArgCount` members taught when they were
+  deleted for being declared and never read — ***an unenforced convention drifts***.
+
+Note that nothing ***reads*** these blocks to generate anything. They are documentation kept
+  beside the code, and the check only asserts that they are present.
+
+Write what the operator does and what it refuses, and state the cases which are easy to get
+  wrong — a missing field, a null, an empty array, a value of the wrong type. The
+  [Operator Reference](./Operator-Reference.md) carries the one-line summary; this block is for
+  the maintainer standing in the file.
 
 
 ## See Also

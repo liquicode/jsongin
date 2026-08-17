@@ -1,4 +1,20 @@
 'use strict';
+/*md
+
+## Operators > Query > $type
+
+Usage: `$type: type`
+  or `$type: [ type, ... ]`
+
+Matches a field which is of the given BSON type, named either as a string such as `'string'`
+  or as its BSON type number. A list matches when the field is any one of the types.
+
+Through an array, the field matches when the array ***itself*** is of the type or when ***any***
+  element is.
+
+Note that this is the ***query*** `$type`. There is no expression operator of this name here.
+
+*/
 
 module.exports = function ( jsongin )
 {

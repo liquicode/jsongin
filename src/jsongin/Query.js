@@ -152,6 +152,64 @@ module.exports = function ( jsongin )
 
 
 	//---------------------------------------------------------------------
+	// Applies MongoDB's 'x' option to a pattern, by removing what it says to ignore.
+	//
+	// Extended mode ignores unescaped whitespace, and everything from an unescaped '#' to the
+	// end of the line. Javascript's RegExp has no such flag, so the pattern is rewritten here
+	// rather than the flag being passed along.
+	//
+	// Two things are deliberately left alone, which is what PCRE does and what MongoDB
+	// inherits: an ***escaped*** space is a space, and whitespace ***inside a character
+	// class*** is part of the class rather than layout.
+	function strip_extended_pattern( Source )
+	{
+		let stripped = '';
+		let in_character_class = false;
+
+		for ( let index = 0; index < Source.length; index++ )
+		{
+			let character = Source[ index ];
+
+			if ( character === '\\' )
+			{
+				// An escape carries its next character through untouched, whatever it is.
+				stripped += character;
+				index++;
+				if ( index < Source.length ) { stripped += Source[ index ]; }
+				continue;
+			}
+
+			if ( in_character_class )
+			{
+				if ( character === ']' ) { in_character_class = false; }
+				stripped += character;
+				continue;
+			}
+
+			if ( character === '[' )
+			{
+				in_character_class = true;
+				stripped += character;
+				continue;
+			}
+
+			if ( character === '#' )
+			{
+				// A comment runs to the end of the line.
+				while ( ( index < Source.length ) && ( Source[ index ] !== '\n' ) ) { index++; }
+				continue;
+			}
+
+			if ( /\s/.test( character ) ) { continue; }
+
+			stripped += character;
+		}
+
+		return stripped;
+	};
+
+
+	//---------------------------------------------------------------------
 	// Combines a $regex and its sibling $options into the one RegExp to match with.
 	// Refuses the query when the pair cannot be used.
 	//
@@ -181,9 +239,18 @@ module.exports = function ( jsongin )
 			refuse( `$regex requires regexp or string but found [${pattern_type}] instead at [${Path}].` );
 		}
 
+		// 'x' is MongoDB's, not Javascript's, so it is applied to the pattern and then removed
+		// from the flags. The remaining flags are passed along as they are.
+		let flags = Options;
+		if ( flags.includes( 'x' ) )
+		{
+			source = strip_extended_pattern( source );
+			flags = flags.split( 'x' ).join( '' );
+		}
+
 		try
 		{
-			return new RegExp( source, Options );
+			return new RegExp( source, flags );
 		}
 		catch ( error )
 		{

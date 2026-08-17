@@ -1,4 +1,18 @@
 'use strict';
+/*md
+
+## Operators > Query > $gte
+
+Usage: `$gte: value`
+
+Matches a field which is greater than or equal to the value.
+
+***Comparison is bracketed by type***, the same way `$gt` is: a field only matches when it is
+  the same BSON type as the value.
+
+Unlike `$gt`, a null or ***missing*** field satisfies `{ $gte: null }`.
+
+*/
 
 module.exports = function ( jsongin )
 {

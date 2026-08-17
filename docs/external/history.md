@@ -8,10 +8,28 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
-- ***Parity with MongoDB is 100%***, across 428 compared behaviors: Query 199, Update 81,
+- ***Parity with MongoDB is 100%***, across 430 compared behaviors: Query 201, Update 81,
   Projection 40, and Aggregate 108. `npm run parity-report` measures it, and every assertion in
   it was run against a live MongoDB 6.0.1 server before being trusted. There are no known
   disagreements with MongoDB in anything jsongin implements.
+
+- ***`$regex` now supports the `x` option.*** MongoDB's extended mode ignores unescaped
+  whitespace in a pattern, and everything from an unescaped `#` to the end of the line, which
+  lets a long pattern be laid out and commented. Javascript's `RegExp` has no such flag, so the
+  pattern is rewritten rather than the flag being passed along. An ***escaped*** space and
+  whitespace ***inside a character class*** are left alone, which is what PCRE does and what
+  MongoDB inherits.
+
+      jsongin.Query( { s: 'ab' }, { s: { $regex: 'a b # a note\n', $options: 'x' } } );  // true
+
+  `$options` used to be handed straight to `new RegExp`, so it accepted the Javascript flag set
+  rather than MongoDB's: `x` was rejected as an unknown flag. This was found while documenting
+  the operator, and nothing measured it.
+
+- ***Every operator now carries an `/*md` documentation block, and `check-docs` enforces it.***
+  It stood at 56 of 85, with the query and update operators ignoring the convention almost
+  entirely. Writing the missing 29 corrected five statements which turned out to be wrong about
+  the engine's own behavior, `$options: 'x'` among them.
 
 - ***Thirteen operators were added***, which were the last of the measured gap:
 

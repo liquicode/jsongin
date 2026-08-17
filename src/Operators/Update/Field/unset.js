@@ -1,4 +1,18 @@
 'use strict';
+/*md
+
+## Operators > Update > $unset
+
+Usage: `$unset: { field: '', ... }`
+
+Removes a field. The value is ignored, and `''` is the conventional one.
+
+***An array element is set to `null` rather than removed***, so the array keeps its length and
+  the elements after it keep their positions. Only a document field is actually removed.
+
+Naming a field which is not there is a successful no-op rather than a failure.
+
+*/
 
 module.exports = function ( jsongin )
 {

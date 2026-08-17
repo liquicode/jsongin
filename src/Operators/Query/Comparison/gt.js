@@ -1,4 +1,22 @@
 'use strict';
+/*md
+
+## Operators > Query > $gt
+
+Usage: `$gt: value`
+
+Matches a field which is greater than the value.
+
+***Comparison is bracketed by type.*** A field only matches when it is the same BSON type as
+  the value, so `{ n: { $gt: 1 } }` never matches a string. This is unlike the ***expression***
+  `$gt`, which compares across types by the BSON ordering.
+
+Through an array, the field matches when ***any*** element is greater than the value.
+
+`{ $gt: null }` matches nothing, which is what MongoDB does. Only `$gte` and `$lte` are
+  satisfied by a null.
+
+*/
 
 module.exports = function ( jsongin )
 {

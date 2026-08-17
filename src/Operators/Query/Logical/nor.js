@@ -1,4 +1,16 @@
 'use strict';
+/*md
+
+## Operators > Query > $nor
+
+Usage: `$nor: [ query, ... ]`
+
+Matches a document which satisfies ***none*** of the queries.
+
+May be used at the top level of a query.
+***An empty list is refused***, as MongoDB refuses it.
+
+*/
 
 module.exports = function ( jsongin )
 {

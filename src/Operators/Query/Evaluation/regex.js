@@ -1,4 +1,23 @@
 'use strict';
+/*md
+
+## Operators > Query > $regex
+
+Usage: `$regex: pattern`
+  or `$regex: pattern, $options: flags`
+
+Matches a string field against a regular expression.
+The pattern may be a string or a `RegExp` object, and the field must be a string: a number is
+  never matched by its printed form.
+
+`$options` accepts the MongoDB flags `i`, `m`, `s`, and `x`, and sits beside `$regex` in the
+  same object.
+
+***The pattern is rebuilt for each document***, so a pattern carrying the `g` flag does not
+  carry `lastIndex` from one document to the next. Without that, the same document would match
+  or not depending on how many documents preceded it.
+
+*/
 
 module.exports = function ( jsongin )
 {

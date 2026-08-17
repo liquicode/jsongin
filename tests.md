@@ -670,7 +670,7 @@
       ✔ should reject a non-object UpdateFields for $push
       ✔ should reject a non-object UpdateFields for $pullAll
     Operator OpError Reporting
-      ✔ should report from every expression operator which rejects its argument (8ms)
+      ✔ should report from every expression operator which rejects its argument (6ms)
       ✔ should report from every update operator which rejects its argument
       ✔ should report from every accumulator which rejects its argument
       ✔ should report from every stage which rejects its argument
@@ -1326,6 +1326,6 @@
       ✔ should keep a date through a computed field
 
 
-  1126 passing (256ms)
+  1126 passing (222ms)
 
 ```

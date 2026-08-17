@@ -1,4 +1,16 @@
 'use strict';
+/*md
+
+## Operators > Update > $max
+
+Usage: `$max: { field: value, ... }`
+
+Raises a field to the value, but only when the value is ***larger*** than what is stored.
+
+***Comparison is by the BSON ordering***, not numeric, the same way `$min` compares. A field
+  which is ***not there*** is set to the value.
+
+*/
 
 module.exports = function ( jsongin )
 {

@@ -1,4 +1,17 @@
 'use strict';
+/*md
+
+## Operators > Query > $or
+
+Usage: `$or: [ query, ... ]`
+
+Matches a document which satisfies ***at least one*** of the queries.
+
+May be used at the top level of a query.
+***An empty list is refused***, as MongoDB refuses it, rather than being read as a condition
+  which no document satisfies.
+
+*/
 
 module.exports = function ( jsongin )
 {

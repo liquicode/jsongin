@@ -1,4 +1,18 @@
 'use strict';
+/*md
+
+## Operators > Query > $lt
+
+Usage: `$lt: value`
+
+Matches a field which is less than the value.
+
+***Comparison is bracketed by type***, the same way `$gt` is: a field only matches when it is
+  the same BSON type as the value.
+
+Through an array, the field matches when ***any*** element is less than the value.
+
+*/
 
 module.exports = function ( jsongin )
 {

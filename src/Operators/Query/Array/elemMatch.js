@@ -1,4 +1,30 @@
 'use strict';
+/*md
+
+## Operators > Query > $elemMatch
+
+Usage: `$elemMatch: { criteria }`
+
+Matches an array field which has ***a single element*** satisfying all of the criteria at once.
+
+That "at once" is the whole point: `{ v: [ 1, 9 ] }` does not match
+  `{ $elemMatch: { $gt: 2, $lt: 5 } }` because no one element is both, while
+  `{ v: [ 1, 4, 9 ] }` does.
+
+***Within `$elemMatch` an element is a value, not a container.*** An element which is itself an
+  array is not looked inside, so a nested array needs a nested `$elemMatch`:
+
+```js
+jsongin.Query( { v: [ [ { x: 1 } ] ] }, { v: { $elemMatch: { x: 1 } } } );                 // false
+jsongin.Query( { v: [ [ { x: 1 } ] ] }, { v: { $elemMatch: { $elemMatch: { x: 1 } } } } ); // true
+```
+
+An empty criteria matches any array which has at least one ***document*** element.
+
+Note that this is the ***query*** `$elemMatch`. There is also a ***projection*** `$elemMatch`,
+  which returns the first matching element rather than selecting a document.
+
+*/
 
 module.exports = function ( jsongin )
 {

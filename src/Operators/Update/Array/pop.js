@@ -1,4 +1,18 @@
 'use strict';
+/*md
+
+## Operators > Update > $pop
+
+Usage: `$pop: { array-field: 1 }` to remove the ***last*** element
+  or `$pop: { array-field: -1 }` to remove the ***first***
+
+Removes one element from either end of an array field.
+
+The value must be exactly `1` or `-1`; anything else is refused.
+An ***empty*** array is left alone, and a field which is ***not there*** is a successful no-op.
+A field which is present but is not an array is refused.
+
+*/
 
 module.exports = function ( jsongin )
 {

@@ -1,4 +1,23 @@
 'use strict';
+/*md
+
+## Operators > Query > $eq
+
+Usage: `$eq: value`
+
+Matches a field which equals the value.
+
+***Through an array***, the field matches when the whole array equals the value ***or*** when
+  any one element does. `{ tags: { $eq: 'red' } }` matches `{ tags: [ 'red', 'blue' ] }`.
+
+Values are compared by ***content*** and by ***type***, all the way down, so an object holding
+  a date does not equal an object holding the equivalent string.
+
+A regexp given here is a value to compare against rather than a pattern to test with:
+  `{ f: { $eq: /re/ } }` matches only a field which is itself that regexp, while the implicit
+  form `{ f: /re/ }` pattern matches. That asymmetry is MongoDB's.
+
+*/
 
 module.exports = function ( jsongin )
 {
