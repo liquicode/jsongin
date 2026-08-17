@@ -796,7 +796,14 @@ Notes:
 - Integers and doubles can be compared to each other (`42 == 42.0`).
 - Numerics and strings can be compared to each other (`42 == "42.0"`).
 - When comparing two objects, their fields can appear in any order.
+  Every key of both objects is compared, so an object does not match one which carries more.
 - When comparing two arrays, their elements can appear in any order.
+
+The comparison is the only thing which differs from `$eq`.
+A path resolves the same way it does for `$eq`, so a match value equals a field which holds it
+  and also a field which holds an array containing it, and a path which crosses an array asks
+  whether any element satisfies the comparison.
+The comparison itself is available on its own as [`LooseEquals()`](./LooseEquals.md).
 
 ### Example
 ```js
@@ -811,6 +818,13 @@ let document = {
 // Use a loose == equality check..
 jsongin.Query( document, { login_attempts: { $eqx: 7 } } ) === true
 jsongin.Query( document, { login_attempts: { $eqx: '7' } } ) === true
+
+// An array field is matched by one of its elements, as it is with $eq.
+jsongin.Query( document, { tags: { $eqx: 'A' } } ) === true
+
+// Where $eq compares strictly, $eqx coerces.
+jsongin.Query( { codes: [ '1', '2' ] }, { codes: { $eq: 1 } } ) === false
+jsongin.Query( { codes: [ '1', '2' ] }, { codes: { $eqx: 1 } } ) === true
 ```
 
 

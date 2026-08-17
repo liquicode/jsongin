@@ -21,23 +21,44 @@ Loose means two things:
 1. Primitive values match loosely, as Javascript's `==` does. Types are coerced.
 2. Values may appear in ***any order*** within objects and arrays.
 
-`LooseEquals` is the `$eqx` query operator applied to two whole values.
-`$eqx` is a `jsongin` extension and is not part of MongoDB.
-
-```js
-jsongin.LooseEquals( DocumentA, DocumentB )
-// is the same as
-jsongin.QueryOperators.$eqx.Query( DocumentA, DocumentB )
-```
-
 Use this when you want to compare two documents by ***content***, without caring how their keys
   happen to be ordered. Use [`StrictEquals()`](./StrictEquals.md) when order is part of what you
   are testing.
+
+`LooseEquals` is ***symmetric***: it answers the same whichever value is named first. It is the
+  loose counterpart of [`CompareValues()`](./CompareValues.md), and it is what the `$eqx` query
+  operator compares with — the same relation `CompareValues` has to `$eq`. `$eqx` is a `jsongin`
+  extension and is not part of MongoDB.
+
+A query operator is ***not*** symmetric, which is why this is not one. Its first parameter is a
+  document field and its second is a match value, and a match value is allowed to equal an
+  element of an array the document holds:
+
+```js
+// The operator matches an array by one of its elements. LooseEquals does not.
+jsongin.QueryOperators.$eqx.Query( [ [ 1, 2 ] ], [ 1, 2 ] ) === true
+jsongin.LooseEquals( [ [ 1, 2 ] ], [ 1, 2 ] ) === false
+```
+
+A key which is not there reads as `undefined`, and `null` and `undefined` are equivalent, so a
+  `null` member and a missing member are loosely equal. `StrictEquals` reports them as
+  different.
+
+```js
+jsongin.LooseEquals( { a: null }, {} ) === true
+jsongin.StrictEquals( { a: null }, {} ) === false
+```
 
 > ***Fixed in v0.1.0*** :
   `LooseEquals( dateA, dateB )` returned `true` for ***any*** two dates.
   A `Date` has no enumerable own properties, so comparing two of them member-wise found nothing
   to disagree about. Dates now compare by their time value.
+
+> ***Fixed in v0.1.0*** :
+  `LooseEquals( {}, { a: 1 } )` returned `true`, and so did every other subset comparison, while
+  the same two values named in the other order returned `false`. This was `$eqx` applied to two
+  whole values, and its object comparison walked the keys of the first value only, so a key
+  which only the second one carried was never examined. Keys from both values are now compared.
 
 
 ## See Also

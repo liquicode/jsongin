@@ -24,7 +24,7 @@
 	This landed ahead of the operators which use it, so that the mechanism could be proven on
 	its own before any operator changed behavior. That migration has happened: it is registered
 	on the engine, documented at docs/guides/jsongin/ResolveCandidates.md, and called by $eq,
-	$gt/$gte/$lt/$lte, $regex, $size, $exists, $type, $all, and $elemMatch.
+	$eqx, $gt/$gte/$lt/$lte, $regex, $size, $exists, $type, $all, and $elemMatch.
 */
 
 module.exports = function ( jsongin )

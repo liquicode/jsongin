@@ -702,12 +702,12 @@ The ***Current Status*** block is rewritten in place each session. The ***Log***
 
 | Check | Command | Result |
 |-------|---------|--------|
-| Unit tests | `npm test` | 1108 passing, ***green*** |
+| Unit tests | `npm test` | 1119 passing, ***green*** |
 | Parity baseline | `npm run parity-test-mongodb` | 389 passing, ***0 failing*** (needs a server) |
 | Parity under test | `npm run parity-test-jsongin` | 373 passing, 16 failing |
 | Parity measurement | `npm run parity-report` | ***95.9%*** — 373 of 389 agree |
-| Coverage | `npm run coverage` | 165 uncovered blocks, 48 files fully covered |
-| Docs | `npm run check-docs` | 332 fences, 281 links, 53 pages — passed |
+| Coverage | `npm run coverage` | 163 uncovered blocks, 48 files fully covered |
+| Docs | `npm run check-docs` | 333 fences, 283 links, 53 pages — passed |
 
 ***Every parity finding P1–P10 is fixed, and every defect is closed.*** Parity reached ***100%
   on a 281-comparison suite*** — up from 90.3% on the 248 comparisons this review started with,
@@ -784,21 +784,19 @@ Decisions made in session, which later work should not silently reverse:
 | Group | Open | Notes |
 |-------|-----:|-------|
 | P1–P10 parity | 0 | ***All ten fixed***, and six more defects the review never named: five from the operator sweep, one from migrating it into the suites. |
-| S1–S8 consistency | 7 | ***S2 fixed*** — the stale `ResolveCandidates` header. S1, S3, S4, S5, S6, S7, S8 open. |
+| S1–S8 consistency | 5 | ***S1, S2, S8 fixed.*** S3, S4, S5, S6, S7 open. |
 | R1–R4 conciseness | 2 | ***R2 fixed*** as `_arith.js`, ***R3 fixed*** with the refusal work. R1, R4 open. |
 | T1–T5 test coverage | 1 | T1, T2, T5 addressed. ***T4 effectively closed*** — 13 aliasing tests now exist, and the one gap left is `Filter`, which is S4. T3 open. |
 | D1–D3 documentation | 1 | ***D1 and D2 closed.*** Every limitation D2 listed is fixed and documented. D3 open, and now measured by the unimplemented projection tests. |
 
 ***The shortest list of what is actually left***, for a session picking this up cold:
 
-- **S1** `LooseEquals` is not symmetric — the one remaining correctness-shaped finding.
 - **S3** `OperatorType` and `ArgCount` are unenforced metadata. **R4** is the same subject.
 - **S4** `Filter()` returns the caller's own documents and nothing says so.
 - **S5** three unregistered modules under `src/jsongin/Path/`.
 - **S6** the blanket accuracy claim in `readme.md`, which is generated from
   `docs/templates/readme.md`. Worth revisiting now that the claim is nearly true and measured.
 - **S7** `/*md` blocks on 41 of 70 operators — decide it is optional, or fill them in.
-- **S8** `module.exports = module.exports` in `eqx.js`. One line.
 - **R1** the seven expression comparison operators are one implementation written seven times.
 - **T3** 165 uncovered blocks; the tool names the files.
 - **D3** unsupported projection operators report the wrong kind of error.
@@ -854,6 +852,52 @@ Both of the previous decisions were taken and carried out: `Query()` and `Update
 
 
 ### Log
+
+#### 2026-08-16 — S1 fixed: `LooseEquals` is symmetric, and `$eqx` is `$eq` with a loose comparison
+
+The last correctness-shaped finding is closed. Unit tests 1108 → ***1119***, coverage 165 →
+  ***163*** uncovered blocks despite a new source file, parity unchanged at 95.9% with the same
+  16 deliberate failures — `$eqx` is a jsongin extension and has no MongoDB counterpart, so no
+  parity test speaks to any of this.
+
+***The fix was measured before it was chosen.*** A fuzz over a 37 value corpus — 1332 ordered
+  pairs — found ***13 asymmetric pairs, every one of them from the object branch*** the review
+  names at `eqx.js:66`. The date, regexp, array, and primitive branches were already symmetric,
+  and the regexp one only looked suspect: `$eq` does not pattern match a bare regexp match
+  value, so it answers `false` in both directions.
+
+***The rule came from `$eq` rather than from a decision.*** *(User: "`$eqx` should function in a
+  manner similar to `$eq`, all it is intended to do is perform loose comparisons rather than
+  strict comparisons.")* That settled the open question — whether `{ a: null }` should loosely
+  equal `{}` — without a judgement call. `$eq` compares objects with `CompareValues`, which
+  requires the whole object on both sides, so the loose counterpart compares every key appearing
+  in either value; a key which is not there reads as `undefined`, and the operator's own
+  `null == undefined` rule then makes a null member and a missing member equal. One rule applied
+  one level down, not a second rule.
+
+It also exposed a second divergence the review never named, in the same subject. ***`$eqx`
+  called `GetValue` where every other comparison operator calls `ResolveCandidates`***, leaving
+  it the only one with path semantics of its own: `{ tags: { $eqx: 'a' } }` missed
+  `{ tags: [ 'a', 'b' ] }`, and a path crossing an array found nothing. Three measured cases.
+  *(User decision: fix that too, since under the definition above they are defects.)*
+
+***What the shape of the fix had to be.*** Making `$eqx` array aware makes it *necessarily*
+  asymmetric — a match value equals an element of a document array — so `LooseEquals` could not
+  stay defined on it. The codebase already had the pattern: `StrictEquals` is `CompareValues`
+  applied to two values, and `$eq` is candidates plus `CompareValues`. The loose side was
+  missing its `CompareValues`. So `src/jsongin/LooseEquals.js` is now the symmetric comparison,
+  `eqx.js` is candidates plus that function and is otherwise `eq.js`, and `Engine.LooseEquals`
+  calls the module. `$nex` inherits all of it and gained the `ExpandArrays` passthrough `$ne`
+  has. ***S8*** — `module.exports = module.exports` — went with the rewrite of `eqx.js`.
+
+The check was then rewritten to assert the contract rather than to print a list: `LooseEquals`
+  is symmetric for every one of the corpus's 1369 pairs, `$eqx` is asymmetric ***only*** where
+  one side is an array, which is the licensed cause, and the S1 cases answer as stated. A
+  784 pair symmetry sweep is now a unit test at `130)`, so the property cannot rot.
+
+No existing test flipped, which is worth stating plainly: the 11 new tests are all new ground.
+  Six `$eqx` tests already passed under both behaviors because they compared two whole values,
+  which is exactly the job that moved to `LooseEquals`.
 
 #### 2026-08-16 — Swept every operator, then reached 100% parity
 

@@ -361,10 +361,54 @@ describe( '200) Comparison Operator Tests', () =>
 			assert.ok( jsongin.QueryOperators.$eqx.Query( undefined, undefined ) === true );
 		} );
 
-		it( 'should equate null and undefined values', () => 
+		it( 'should equate null and undefined values', () =>
 		{
 			assert.ok( jsongin.QueryOperators.$eqx.Query( null, undefined ) === true );
 			assert.ok( jsongin.QueryOperators.$eqx.Query( undefined, null ) === true );
+		} );
+
+		// $eqx is $eq with a loose comparison in place of the strict one, so it resolves a
+		// path to candidates the way $eq does. It used to call GetValue and never look inside
+		// an array, which made it the only comparison operator with its own path semantics.
+		it( 'should match an element of an array field, as $eq does', () =>
+		{
+			let document = { tags: [ 'a', 'b' ] };
+			assert.ok( jsongin.QueryOperators.$eqx.Query( document, 'a', 'tags' ) === true );
+			assert.ok( jsongin.QueryOperators.$eqx.Query( document, [ 'a', 'b' ], 'tags' ) === true );
+			assert.ok( jsongin.QueryOperators.$eqx.Query( document, 'c', 'tags' ) === false );
+		} );
+
+		it( 'should follow a path which crosses an array, as $eq does', () =>
+		{
+			let document = { a: [ { x: 1 }, { x: 2 } ] };
+			assert.ok( jsongin.QueryOperators.$eqx.Query( document, 1, 'a.x' ) === true );
+			assert.ok( jsongin.QueryOperators.$eqx.Query( document, 2, 'a.x' ) === true );
+			assert.ok( jsongin.QueryOperators.$eqx.Query( document, 3, 'a.x' ) === false );
+		} );
+
+		it( 'should match a missing field against null, as $eq does', () =>
+		{
+			assert.ok( jsongin.QueryOperators.$eqx.Query( { a: 1 }, null, 'b' ) === true );
+			assert.ok( jsongin.QueryOperators.$eqx.Query( { a: 1 }, 1, 'b' ) === false );
+		} );
+
+		// This is the whole of the difference between the two operators.
+		it( 'should coerce where $eq does not', () =>
+		{
+			let document = { tags: [ '1', '2' ] };
+			assert.ok( jsongin.QueryOperators.$eq.Query( document, 1, 'tags' ) === false );
+			assert.ok( jsongin.QueryOperators.$eqx.Query( document, 1, 'tags' ) === true );
+		} );
+
+		// ExpandArrays false is what $elemMatch passes: the element is a value to test rather
+		// than an array to look inside.
+		it( 'should take ExpandArrays, as $eq does', () =>
+		{
+			let document = { a: [ 1, 2 ] };
+			assert.ok( jsongin.QueryOperators.$eqx.Query( document, 1, 'a', true ) === true );
+			assert.ok( jsongin.QueryOperators.$eqx.Query( document, 1, 'a', false ) === false );
+			assert.ok( jsongin.QueryOperators.$nex.Query( document, 1, 'a', true ) === false );
+			assert.ok( jsongin.QueryOperators.$nex.Query( document, 1, 'a', false ) === true );
 		} );
 
 	} );

@@ -186,6 +186,30 @@ v0.1.0 (current)
   where jsongin has deliberately settled somewhere other than MongoDB. All 16 pass against the
   live server, so `test bugs` stays at 0 and the failures are the whole of the difference.
 
+- ***Breaking: `LooseEquals()` examines the keys of both values.*** It walked the keys of the
+  first one only, so a key which only the second one carried was never looked at:
+  `LooseEquals( {}, { a: 1 } )` answered `true`, an empty object loosely equalled everything,
+  and every subset comparison answered `true` in one direction and `false` in the other. An
+  equality test must not depend on the order of its arguments.
+
+  It is now [`src/jsongin/LooseEquals.js`](http://jsongin.liquicode.com/#/guides/jsongin/LooseEquals.md), an engine function of its own, and stands to
+  `$eqx` exactly as `CompareValues()` stands to `$eq`. It used to be the `$eqx` query operator
+  applied to two whole values, which is where the asymmetry came from: a query operator's first
+  parameter is a document field and its second is a match value, and a match value is allowed to
+  equal an element of a document array. `StrictEquals()` has carried a note saying so all along.
+
+  A key which is not there reads as `undefined`, so a `null` member and a missing member are
+  loosely equal — the operator's own `null == undefined` rule applied one level down.
+  `StrictEquals()` reports those two as different, which is the difference between the strict
+  comparison and the loose one.
+
+- ***Breaking: `$eqx` and `$nex` resolve candidates, the way `$eq` and `$ne` do.*** They asked
+  `GetValue()` for a single value, which left them the only comparison operators with path
+  semantics of their own: `{ tags: { $eqx: 'a' } }` did not match `{ tags: [ 'a', 'b' ] }`, and
+  a path which crossed an array found nothing at all. `$eqx` is now `$eq` with a loose
+  comparison in place of the strict one, and nothing else about it differs. Both take the
+  `ExpandArrays` parameter which `$elemMatch` passes.
+
 - A code review of the whole library was run and its findings worked through. The review is kept
   at `.reviews/2026-08-14-03-35/review.md`. What it turned up, and what was done about it:
 

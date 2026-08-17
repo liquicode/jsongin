@@ -440,6 +440,80 @@ describe( '130) Engine Function Tests', () =>
 			assert.strictEqual( jsongin.StrictEquals( [ 1, 2 ], [ 2, 1 ] ), false );
 		} );
 
+		// LooseEquals used to be the $eqx query operator applied to two whole values, and its
+		// object comparison walked the keys of the first value only. A key which only the
+		// second value carried was never examined, so an empty object loosely equalled
+		// everything and the answer depended on which value was named first.
+		it( 'should not equate an object with one which has more keys', () =>
+		{
+			assert.strictEqual( jsongin.LooseEquals( {}, { a: 1 } ), false );
+			assert.strictEqual( jsongin.LooseEquals( { a: 1 }, {} ), false );
+			assert.strictEqual( jsongin.LooseEquals( { a: 1 }, { a: 1, b: 2 } ), false );
+			assert.strictEqual( jsongin.LooseEquals( { a: 1, b: 2 }, { a: 1 } ), false );
+			assert.strictEqual( jsongin.LooseEquals( { a: {} }, { a: { b: 1 } } ), false );
+			assert.strictEqual( jsongin.LooseEquals( [ { a: 1 } ], [ { a: 1, b: 2 } ] ), false );
+		} );
+
+		it( 'should answer the same in either order', () =>
+		{
+			let values = [
+				{}, { a: 1 }, { a: '1' }, { a: 1, b: 2 }, { b: 2, a: 1 }, { a: null },
+				{ a: {} }, { a: { b: 1 } }, { a: [ 1, 2 ] },
+				[], [ 1 ], [ 1, 2 ], [ 2, 1 ], [ [ 1, 2 ] ], [ { a: 1 } ],
+				null, undefined, 0, 1, '0', '', 'abc', true, false,
+				new Date( 1 ), new Date( 2 ), /abc/, /abc/i,
+			];
+			for ( let index_a = 0; index_a < values.length; index_a++ )
+			{
+				for ( let index_b = 0; index_b < values.length; index_b++ )
+				{
+					let forward = jsongin.LooseEquals( values[ index_a ], values[ index_b ] );
+					let reverse = jsongin.LooseEquals( values[ index_b ], values[ index_a ] );
+					assert.strictEqual( forward, reverse,
+						`LooseEquals is not symmetric for [${JSON.stringify( values[ index_a ] )}] `
+						+ `and [${JSON.stringify( values[ index_b ] )}].` );
+				}
+			}
+		} );
+
+		// A key which is not there reads as undefined, and null and undefined are equivalent,
+		// so a null member and a missing member are the same thing to the loose comparison.
+		// StrictEquals reports them as different, which is the point of having both.
+		it( 'should equate a null member with a missing member, unlike StrictEquals', () =>
+		{
+			assert.strictEqual( jsongin.LooseEquals( { a: null }, {} ), true );
+			assert.strictEqual( jsongin.LooseEquals( { a: undefined }, {} ), true );
+			assert.strictEqual( jsongin.LooseEquals( { a: null }, { a: undefined } ), true );
+			assert.strictEqual( jsongin.StrictEquals( { a: null }, {} ), false );
+		} );
+
+		// A query operator lets a match value equal an element of a document array, which is
+		// what makes $eqx asymmetric and why LooseEquals cannot be defined on it.
+		it( 'should not match an array by one of its elements, unlike the $eqx operator', () =>
+		{
+			assert.strictEqual( jsongin.LooseEquals( [ [ 1, 2 ] ], [ 1, 2 ] ), false );
+			assert.strictEqual( jsongin.LooseEquals( [ 1, 2 ], [ [ 1, 2 ] ] ), false );
+			assert.strictEqual( jsongin.QueryOperators.$eqx.Query( [ [ 1, 2 ] ], [ 1, 2 ] ), true );
+		} );
+
+		it( 'should ignore element order loosely', () =>
+		{
+			assert.strictEqual( jsongin.LooseEquals( [ 1, 2 ], [ 2, 1 ] ), true );
+			assert.strictEqual( jsongin.LooseEquals( [ 1, 1 ], [ 1, 2 ] ), false );
+		} );
+
+		it( 'should compare dates and regular expressions by value', () =>
+		{
+			assert.strictEqual( jsongin.LooseEquals( new Date( 1 ), new Date( 1 ) ), true );
+			assert.strictEqual( jsongin.LooseEquals( new Date( 1 ), new Date( 2 ) ), false );
+			assert.strictEqual( jsongin.LooseEquals( new Date( 1 ), {} ), false );
+			assert.strictEqual( jsongin.LooseEquals( /abc/, /abc/ ), true );
+			assert.strictEqual( jsongin.LooseEquals( /abc/, /xyz/ ), false );
+			assert.strictEqual( jsongin.LooseEquals( /abc/, /abc/i ), false );
+			// A regexp is compared as a pattern here, not applied as one. $regex applies it.
+			assert.strictEqual( jsongin.LooseEquals( /abc/, 'abc' ), false );
+		} );
+
 	} );
 
 

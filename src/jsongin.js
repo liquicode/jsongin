@@ -220,7 +220,13 @@ function NewJsongin( EngineSettings = {} )
 
 	//---------------------------------------------------------------------
 	// Object Matching and Cloning
-	Engine.LooseEquals = function ( DocumentA, DocumentB ) { return Engine.QueryOperators.$eqx.Query( DocumentA, DocumentB ); };
+
+	// Compares two values loosely and returns true or false.
+	// Note that this does not call the $eqx query operator, for the reason StrictEquals gives
+	// below. $eqx calls here instead, which is the relation $eq has to CompareValues.
+	// This used to be $eqx applied to two whole values, and inherited the operator's asymmetry:
+	// LooseEquals( {}, { a: 1 } ) answered true while the reverse answered false.
+	Engine.LooseEquals = require( './jsongin/LooseEquals' )( Engine );
 
 	// Compares two values for equality and returns true or false.
 	// Note that this does not call the $eq query operator. A query operator is not symmetric:
