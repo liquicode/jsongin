@@ -344,7 +344,7 @@ describe( '150) Error Handling Tests', () =>
 		{
 			let reported = sweep( 'AccumulatorOperators', 'Accumulator.',
 				function ( Engine, Name ) { Engine.AccumulatorOperators[ Name ].Accumulate( 'abc', '$n' ); } );
-			assert.strictEqual( reported, 8 );
+			assert.strictEqual( reported, 9 );
 		} );
 
 		it( 'should report from every stage which rejects its argument', () =>
@@ -358,7 +358,7 @@ describe( '150) Error Handling Tests', () =>
 					if ( ( Name === '$limit' ) || ( Name === '$skip' ) ) { bad = 'abc'; }
 					Engine.StageOperators[ Name ].Stage( [], bad );
 				} );
-			assert.strictEqual( reported, 9 );
+			assert.strictEqual( reported, 10 );
 		} );
 
 		it( 'should report from the query operators which reject their argument', () =>
@@ -380,7 +380,7 @@ describe( '150) Error Handling Tests', () =>
 		it( 'should reject a non-array Documents to every accumulator', () =>
 		{
 			let names = Object.keys( jsongin.AccumulatorOperators );
-			assert.strictEqual( names.length, 8 );
+			assert.strictEqual( names.length, 9 );
 			for ( let index = 0; index < names.length; index++ )
 			{
 				let args = ( names[ index ] === '$count' ) ? {} : '$n';
@@ -393,15 +393,15 @@ describe( '150) Error Handling Tests', () =>
 
 		it( 'should reject a malformed argument to every stage', () =>
 		{
-			// Each stage rejects a string where its own argument type is required. $unwind is
-			// the exception: a string is one of its two valid forms, so it is given a number.
+			// Each stage rejects a string where its own argument type is required. $unwind and
+			// $count are the exceptions: a string is one of $unwind's two valid forms and is
+			// the only form $count takes, so both are given a number instead.
 			let names = Object.keys( jsongin.StageOperators );
-			assert.strictEqual( names.length, 9 );
+			assert.strictEqual( names.length, 10 );
 			for ( let index = 0; index < names.length; index++ )
 			{
 				let name = names[ index ];
-				let bad = ( name === '$unwind' ) ? 3 : 'abc';
-				if ( ( name === '$limit' ) || ( name === '$skip' ) ) { bad = 'abc'; }
+				let bad = ( ( name === '$unwind' ) || ( name === '$count' ) ) ? 3 : 'abc';
 				assert.throws(
 					function () { jsongin.StageOperators[ name ].Stage( [], bad ); },
 					`${name} accepted a malformed argument.` );

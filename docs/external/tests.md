@@ -670,11 +670,11 @@
       ✔ should reject a non-object UpdateFields for $push
       ✔ should reject a non-object UpdateFields for $pullAll
     Operator OpError Reporting
-      ✔ should report from every expression operator which rejects its argument
+      ✔ should report from every expression operator which rejects its argument (8ms)
       ✔ should report from every update operator which rejects its argument
       ✔ should report from every accumulator which rejects its argument
       ✔ should report from every stage which rejects its argument
-      ✔ should report from the query operators which reject their argument (6ms)
+      ✔ should report from the query operators which reject their argument
     Aggregation Argument Validation
       ✔ should reject a non-array Documents to every accumulator
       ✔ should reject a malformed argument to every stage
@@ -1300,6 +1300,8 @@
       ✔ should reject an expression within an exclusion projection
       ✔ should allow _id to be suppressed alongside an inclusion
       ✔ should accept booleans in place of 1 and 0
+      ✔ should reject an unsupported projection operator by name
+      ✔ should not mistake a computed field for a projection operator
     Projected Document Shape
       ✔ should remove excluded fields rather than leaving them undefined
       ✔ should include a field through an array, keeping the array
@@ -1324,6 +1326,6 @@
       ✔ should keep a date through a computed field
 
 
-  1124 passing (279ms)
+  1126 passing (256ms)
 
 ```

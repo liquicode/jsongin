@@ -123,6 +123,36 @@ describe( '510) Projection Computed Field Tests', () =>
 			assert.ok( jsongin.StrictEquals( jsongin.Project( { a: 1, b: 2 }, { a: false } ), { b: 2 } ) );
 		} );
 
+		/*
+			An unsupported projection operator is reported as a ***projection*** operator.
+
+			These used to fall through to Evaluate() as a computed field, which reported them as
+			an unrecognized ***expression*** operator and sent the reader to the wrong table of
+			the operator reference. $elemMatch was the worst of them, because it is a registered
+			query operator, so the message was arguably false.
+			That is finding D3 of the 2026-08-15 review.
+		*/
+
+		it( 'should reject an unsupported projection operator by name', () =>
+		{
+			assert.throws(
+				function () { jsongin.Project( { a: [ 1, 2 ] }, { a: { $meta: 'textScore' } } ); },
+				/The projection operator \[\$meta\] is not supported/ );
+
+			assert.throws(
+				function () { jsongin.Project( { a: [ 1, 2 ] }, { a: { $: 1 } } ); },
+				/The projection operator \[\$\] is not supported/ );
+		} );
+
+		it( 'should not mistake a computed field for a projection operator', () =>
+		{
+			// A projection operator is a document holding exactly one '$' key. A document
+			// holding an expression is still a computed field, and a document holding several
+			// keys is not a projection operator at all.
+			let projected = jsongin.Project( { a: 3, b: 4 }, { n: { $add: [ '$a', '$b' ] } } );
+			assert.strictEqual( projected.n, 7 );
+		} );
+
 	} );
 
 

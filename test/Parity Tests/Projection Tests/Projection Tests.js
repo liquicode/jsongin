@@ -24,7 +24,6 @@ module.exports = function ( Driver )
 		require( './test-suite/Ad-Hoc Tests.js' )( Driver );
 		require( './test-suite/Projection Shape Tests.js' )( Driver );
 		require( './test-suite/Computed Field Tests.js' )( Driver );
-		require( './test-suite/Unimplemented Projection Tests.js' )( Driver );
 	} );
 
 };

@@ -294,6 +294,157 @@ module.exports = function ( Driver )
 
 		} );
 
+
+		//---------------------------------------------------------------------
+		describe( 'Rounding Expression Operators', () =>
+		{
+
+			it( 'should round up with $ceil', async () =>
+			{
+				assert.strictEqual( await evaluated( { $ceil: 1.2 } ), 2 );
+				assert.strictEqual( await evaluated( { $ceil: -2.5 } ), -2 );
+				assert.strictEqual( await evaluated( { $ceil: 7 } ), 7 );
+			} );
+
+			it( 'should round down with $floor', async () =>
+			{
+				assert.strictEqual( await evaluated( { $floor: 1.8 } ), 1 );
+				assert.strictEqual( await evaluated( { $floor: -2.5 } ), -3 );
+				assert.strictEqual( await evaluated( { $floor: 7 } ), 7 );
+			} );
+
+			it( 'should give null for a null or missing operand', async () =>
+			{
+				// Null propagates rather than being treated as a zero, and a missing field is
+				// the same as a null here. This is a null, not an omitted field.
+				assert.strictEqual( await evaluated( { $ceil: null } ), null );
+				assert.strictEqual( await evaluated( { $ceil: '$nope' } ), null );
+				assert.strictEqual( await evaluated( { $floor: null } ), null );
+				assert.strictEqual( await evaluated( { $floor: '$nope' } ), null );
+				assert.strictEqual( await evaluated( { $round: [ null, 1 ] } ), null );
+				assert.strictEqual( await evaluated( { $trunc: [ null, 1 ] } ), null );
+			} );
+
+			it( 'should round half to even with $round', async () =>
+			{
+				// ***This is not the usual rounding.*** A value exactly half way is rounded to
+				// the ***even*** neighbour, so 2.5 goes down to 2 while 3.5 goes up to 4. The
+				// familiar Math.round() rounds half up and would give 3 and 4.
+				assert.strictEqual( await evaluated( { $round: [ 2.5 ] } ), 2 );
+				assert.strictEqual( await evaluated( { $round: [ 3.5 ] } ), 4 );
+				assert.strictEqual( await evaluated( { $round: [ -2.5 ] } ), -2 );
+				assert.strictEqual( await evaluated( { $round: [ 1.25, 1 ] } ), 1.2 );
+			} );
+
+			it( 'should round to a place with $round', async () =>
+			{
+				assert.strictEqual( await evaluated( { $round: [ 1.567, 2 ] } ), 1.57 );
+				assert.strictEqual( await evaluated( { $round: [ 1.35, 1 ] } ), 1.4 );
+
+				// A negative place rounds to the left of the decimal point.
+				assert.strictEqual( await evaluated( { $round: [ 1234, -2 ] } ), 1200 );
+
+				// The place defaults to zero, and the argument list may be given bare.
+				assert.strictEqual( await evaluated( { $round: 2.5 } ), 2 );
+			} );
+
+			it( 'should truncate toward zero with $trunc', async () =>
+			{
+				// $trunc discards, it does not round: -1.567 to one place is -1.5, not -1.6.
+				assert.strictEqual( await evaluated( { $trunc: [ 1.567, 1 ] } ), 1.5 );
+				assert.strictEqual( await evaluated( { $trunc: [ -1.567, 1 ] } ), -1.5 );
+				assert.strictEqual( await evaluated( { $trunc: [ 1.567, 0 ] } ), 1 );
+				assert.strictEqual( await evaluated( { $trunc: [ -2.5 ] } ), -2 );
+				assert.strictEqual( await evaluated( { $trunc: [ 1234, -2 ] } ), 1200 );
+			} );
+
+		} );
+
+
+		//---------------------------------------------------------------------
+		describe( 'Array Expression Operators', () =>
+		{
+
+			it( 'should count the elements of an array with $size', async () =>
+			{
+				assert.strictEqual( await evaluated( { $size: '$t' } ), 2 );
+				assert.strictEqual( await evaluated( { $size: [ [ 1, 2, 3 ] ] } ), 3 );
+			} );
+
+			it( 'should count an empty array as zero with $size', async () =>
+			{
+				assert.strictEqual( await evaluated( { $size: [ [] ] } ), 0 );
+			} );
+
+			it( 'should read one element with $arrayElemAt', async () =>
+			{
+				assert.strictEqual( await evaluated( { $arrayElemAt: [ '$t', 0 ] } ), 1 );
+				assert.strictEqual( await evaluated( { $arrayElemAt: [ '$t', 1 ] } ), 2 );
+			} );
+
+			it( 'should index from the end for a negative $arrayElemAt position', async () =>
+			{
+				// ***This is the one place a negative index counts back from the end.*** It is
+				// an operand here rather than a path element, which is why it survived the
+				// removal of reverse indexing from the path syntax.
+				assert.strictEqual( await evaluated( { $arrayElemAt: [ '$t', -1 ] } ), 2 );
+				assert.strictEqual( await evaluated( { $arrayElemAt: [ '$t', -2 ] } ), 1 );
+			} );
+
+			it( 'should omit the field for an $arrayElemAt position out of range', async () =>
+			{
+				// Out of range is ***missing***, not null, so the projected field is not
+				// produced at all. Both ends behave the same way.
+				assert.strictEqual( await produced_a_field( { $arrayElemAt: [ '$t', 9 ] } ), false );
+				assert.strictEqual( await produced_a_field( { $arrayElemAt: [ '$t', -9 ] } ), false );
+			} );
+
+			it( 'should give null for an $arrayElemAt over a null or missing array', async () =>
+			{
+				assert.strictEqual( await evaluated( { $arrayElemAt: [ null, 0 ] } ), null );
+				assert.strictEqual( await evaluated( { $arrayElemAt: [ '$nope', 0 ] } ), null );
+			} );
+
+			it( 'should join arrays with $concatArrays', async () =>
+			{
+				assert.deepStrictEqual( await evaluated( { $concatArrays: [ [ 1 ], [ 2, 3 ] ] } ), [ 1, 2, 3 ] );
+				assert.deepStrictEqual( await evaluated( { $concatArrays: [ '$t', [ 9 ] ] } ), [ 1, 2, 9 ] );
+				assert.deepStrictEqual( await evaluated( { $concatArrays: [] } ), [] );
+			} );
+
+			it( 'should give null when any $concatArrays operand is null or missing', async () =>
+			{
+				// One null operand takes the whole result, rather than being skipped.
+				assert.strictEqual( await evaluated( { $concatArrays: [ [ 1 ], null ] } ), null );
+				assert.strictEqual( await evaluated( { $concatArrays: [ [ 1 ], '$nope' ] } ), null );
+			} );
+
+			it( 'should test for membership with the $in expression', async () =>
+			{
+				// The expression $in takes [ value, array ], which is not the query operator
+				// of the same name. See the Operators Which Share a Name reference.
+				assert.strictEqual( await evaluated( { $in: [ 2, '$t' ] } ), true );
+				assert.strictEqual( await evaluated( { $in: [ 9, '$t' ] } ), false );
+			} );
+
+			it( 'should compare by content in the $in expression', async () =>
+			{
+				// The value is compared to each element by content, so an array or a document
+				// is found rather than being compared by reference.
+				assert.strictEqual( await evaluated( { $in: [ [ 1 ], [ [ 1 ], 2 ] ] } ), true );
+				assert.strictEqual( await evaluated( { $in: [ { x: 1 }, [ { x: 1 } ] ] } ), true );
+				assert.strictEqual( await evaluated( { $in: [ { x: 1 }, [ { x: 2 } ] ] } ), false );
+			} );
+
+			it( 'should not match a null against an array which has none', async () =>
+			{
+				// A null value is an ordinary value here, not a wildcard and not an error.
+				assert.strictEqual( await evaluated( { $in: [ null, '$t' ] } ), false );
+				assert.strictEqual( await evaluated( { $in: [ null, [ 1, null ] ] } ), true );
+			} );
+
+		} );
+
 	} );
 
 };
