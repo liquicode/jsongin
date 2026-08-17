@@ -96,9 +96,6 @@ module.exports = function ( jsongin )
 					return false;
 				}
 			}
-
-			// Code should be inaccessible: the loop returns on its last element.
-			return false;
 		}
 		catch ( error )
 		{

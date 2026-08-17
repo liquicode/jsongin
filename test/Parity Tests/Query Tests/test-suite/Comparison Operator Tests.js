@@ -498,6 +498,14 @@ module.exports = function ( Driver )
 				assert.ok( !await matches( { v: [ [ 1, 2 ] ] }, { v: { $elemMatch: { $all: [ 1 ] } } } ) );
 				assert.ok( !await matches( { v: [ [ 1, 2 ] ] }, { v: { $elemMatch: { $type: 'number' } } } ) );
 				assert.ok( !await matches( { v: [ [ 'ab' ] ] }, { v: { $elemMatch: { $regex: 'ab' } } } ) );
+
+				// The range operators follow the same rule. These were the last case of this
+				// which `Operator-Reference.md` recorded as an open deviation, after it had in
+				// fact been closed.
+				assert.ok( !await matches( { v: [ [ 1, 2 ] ] }, { v: { $elemMatch: { $gt: 1 } } } ) );
+				assert.ok( !await matches( { v: [ [ 1, 2 ] ] }, { v: { $elemMatch: { $lt: 5 } } } ) );
+				assert.ok( !await matches( { v: [ [ 1, 2 ] ] }, { v: { $elemMatch: { $gte: 2 } } } ) );
+				assert.ok( !await matches( { v: [ [ 1, 2 ] ] }, { v: { $elemMatch: { $lte: 1 } } } ) );
 			} );
 
 			it( 'should match an operator against the element itself', async () =>
@@ -545,6 +553,57 @@ module.exports = function ( Driver )
 				assert.ok( !await matches( { v: [ 1 ] }, { v: { $elemMatch: {} } } ) );
 				assert.ok( !await matches( { v: [ null ] }, { v: { $elemMatch: {} } } ) );
 				assert.ok( !await matches( { v: [] }, { v: { $elemMatch: {} } } ) );
+			} );
+
+			/*
+				A logical operator inside $elemMatch applies to ***one element at a time***,
+				which is the whole reason the operator exists: { $and: [ { x: 1 }, { y: 6 } ] }
+				asks for one element satisfying both, not for the array to satisfy both.
+			*/
+
+			let people = { v: [ { x: 1, y: 2 }, { x: 5, y: 6 } ] };
+
+			it( 'should apply $or to each element in turn', async () =>
+			{
+				assert.ok( await matches( people, { v: { $elemMatch: { $or: [ { x: 1 }, { x: 9 } ] } } } ) );
+				assert.ok( await matches( people, { v: { $elemMatch: { $or: [ { x: 9 }, { y: 6 } ] } } } ) );
+				assert.ok( !await matches( people, { v: { $elemMatch: { $or: [ { x: 8 }, { x: 9 } ] } } } ) );
+			} );
+
+			it( 'should require one element to satisfy every branch of $and', async () =>
+			{
+				assert.ok( await matches( people, { v: { $elemMatch: { $and: [ { x: 1 }, { y: 2 } ] } } } ) );
+
+				// ***The point of the operator.*** One element has x:1 and another has y:6, and
+				// no single element has both, so this does not match — where the same criteria
+				// spelled { 'v.x': 1, 'v.y': 6 } would.
+				assert.ok( !await matches( people, { v: { $elemMatch: { $and: [ { x: 1 }, { y: 6 } ] } } } ) );
+				assert.ok( await matches( people, { 'v.x': 1, 'v.y': 6 } ) );
+			} );
+
+			it( 'should apply $nor to each element in turn', async () =>
+			{
+				// One element matches none of the branches.
+				assert.ok( await matches( people, { v: { $elemMatch: { $nor: [ { x: 9 } ] } } } ) );
+				assert.ok( await matches( people, { v: { $elemMatch: { $nor: [ { x: 5 } ] } } } ) );
+
+				// Every element matches one of them.
+				assert.ok( !await matches( people, { v: { $elemMatch: { $nor: [ { x: 1 }, { x: 5 } ] } } } ) );
+			} );
+
+			it( 'should apply $not with a regexp to each element in turn', async () =>
+			{
+				assert.ok( await matches( { v: [ 'abc', 'xyz' ] }, { v: { $elemMatch: { $not: /abc/ } } } ) );
+				assert.ok( !await matches( { v: [ 'abc' ] }, { v: { $elemMatch: { $not: /abc/ } } } ) );
+				assert.ok( await matches( { v: [ 'abc', 'xyz' ] }, { v: { $elemMatch: { $not: { $regex: 'abc' } } } } ) );
+			} );
+
+			it( 'should nest a logical operator inside another', async () =>
+			{
+				assert.ok( await matches( people,
+					{ v: { $elemMatch: { $and: [ { $or: [ { x: 1 }, { x: 9 } ] }, { y: 2 } ] } } } ) );
+				assert.ok( !await matches( people,
+					{ v: { $elemMatch: { $and: [ { $or: [ { x: 1 }, { x: 9 } ] }, { y: 6 } ] } } } ) );
 			} );
 
 		} );

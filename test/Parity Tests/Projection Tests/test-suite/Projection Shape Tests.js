@@ -183,6 +183,73 @@ module.exports = function ( Driver )
 			assert.deepStrictEqual( result, { a: { x: 1 } } );
 		} );
 
+		it( 'should omit the field when the projection $elemMatch names one which is not an array', async () =>
+		{
+			// $elemMatch has nothing to search, so it contributes no field. It is still an
+			// inclusion, so nothing else survives either.
+			assert.deepStrictEqual( await projected( { n: 5, a: 7 }, { a: { $elemMatch: { x: 1 } } } ), {} );
+			assert.deepStrictEqual( await projected( { n: 5, a: { x: 1 } }, { a: { $elemMatch: { x: 1 } } } ), {} );
+		} );
+
+		it( 'should omit the field when the projection $elemMatch names one which is absent', async () =>
+		{
+			assert.deepStrictEqual( await projected( { n: 5 }, { a: { $elemMatch: { x: 1 } } } ), {} );
+		} );
+
+		it( 'should apply the projection $elemMatch within an exclusion projection', async () =>
+		{
+			// ***$elemMatch does not force an inclusion.*** Like $slice, it only decides the type
+			// of projection when nothing else has. Beside an exclusion the exclusion wins: the
+			// unnamed fields survive, the excluded one is dropped, and the $elemMatch field is
+			// replaced by its first match.
+			let document = { n: 5, s: 'x', a: [ { x: 1 }, { x: 2 } ] };
+			assert.deepStrictEqual(
+				await projected( document, { n: 0, a: { $elemMatch: { x: 2 } } } ),
+				{ s: 'x', a: [ { x: 2 } ] } );
+		} );
+
+		it( 'should drop the field when a $elemMatch within an exclusion matches nothing', async () =>
+		{
+			let document = { n: 5, s: 'x', a: [ { x: 1 } ] };
+			assert.deepStrictEqual(
+				await projected( document, { n: 0, a: { $elemMatch: { x: 9 } } } ),
+				{ s: 'x' } );
+		} );
+
+		it( 'should include a $elemMatch field alongside an inclusion of another field', async () =>
+		{
+			let document = { n: 5, s: 'x', a: [ { x: 1 }, { x: 2 } ] };
+			assert.deepStrictEqual(
+				await projected( document, { n: 1, a: { $elemMatch: { x: 2 } } } ),
+				{ n: 5, a: [ { x: 2 } ] } );
+		} );
+
+		it( 'should read a nested document as a projection specification', async () =>
+		{
+			// ***{ o: { p: 1 } } is { 'o.p': 1 }***, not a computed field holding the literal
+			// document { p: 1 }. The value comes from the document being projected.
+			//
+			// jsongin used to hand this to Evaluate() as an expression, which returned the
+			// specification itself, so the projection invented a value the document never held.
+			let document = { o: { p: 99, q: 2 }, n: 5 };
+			assert.deepStrictEqual( await projected( document, { o: { p: 1 } } ), { o: { p: 99 } } );
+			assert.deepStrictEqual( await projected( document, { 'o.p': 1 } ), { o: { p: 99 } } );
+		} );
+
+		it( 'should read a nested document with several keys as a specification', async () =>
+		{
+			let document = { o: { p: 99, q: 2, r: 3 }, n: 5 };
+			assert.deepStrictEqual( await projected( document, { o: { p: 1, q: 1 } } ), { o: { p: 99, q: 2 } } );
+		} );
+
+		it( 'should read a nested specification which excludes', async () =>
+		{
+			// A nested exclusion is an exclusion of the whole projection, so the fields it does
+			// not name survive.
+			let document = { o: { p: 99, q: 2 }, n: 5 };
+			assert.deepStrictEqual( await projected( document, { o: { p: 0 } } ), { n: 5, o: { q: 2 } } );
+		} );
+
 	} );
 
 };

@@ -116,7 +116,6 @@ module.exports = function ( jsongin )
 				if ( jsongin.OpError ) { jsongin.OpError( `Update.$unset: ${error.message}` ); }
 				throw error;
 			}
-			return; // Code should be inaccessible.
 		},
 
 	};

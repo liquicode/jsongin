@@ -950,4 +950,206 @@ describe( '130) Engine Function Tests', () =>
 	} );
 
 
+	//---------------------------------------------------------------------
+	describe( 'Javascript Values Which BSON Has No Place For', () =>
+	{
+
+		/*
+			A document held in memory can carry values BSON cannot: a symbol, a function, an
+			Error, an `undefined` member. These are outside the parity suite by definition,
+			because MongoDB has no opinion about a value it cannot store, so what the engine
+			does with them is stated here.
+		*/
+
+		it( 'should name a symbol and an undefined in ShortType', () =>
+		{
+			assert.strictEqual( jsongin.ShortType( Symbol( 'x' ) ), 'y' );
+			assert.strictEqual( jsongin.ShortType( undefined ), 'u' );
+		} );
+
+		it( 'should return a symbol from SafeClone as it is', () =>
+		{
+			// A symbol is immutable and has no interior, so there is nothing to copy. The
+			// clone is the same symbol, which is the only thing it could be.
+			let symbol = Symbol( 'x' );
+			assert.strictEqual( jsongin.SafeClone( symbol ), symbol );
+		} );
+
+		it( 'should clone a null and a string as themselves', () =>
+		{
+			assert.strictEqual( jsongin.SafeClone( null ), null );
+			assert.strictEqual( jsongin.SafeClone( 'abc' ), 'abc' );
+			assert.strictEqual( jsongin.SafeClone( 42 ), 42 );
+			assert.strictEqual( jsongin.SafeClone( true ), true );
+		} );
+
+		it( 'should give a BsonType for a symbol and none for a function', () =>
+		{
+			// BSON has a symbol type, deprecated but real. It has nothing for a function.
+			assert.strictEqual( jsongin.BsonType( Symbol( 'x' ), true ), 'symbol' );
+			assert.strictEqual( jsongin.BsonType( Symbol( 'x' ), false ), 14 );
+			assert.strictEqual( jsongin.BsonType( undefined, true ), 'undefined' );
+			assert.strictEqual( jsongin.BsonType( function () { return; }, true ), null );
+		} );
+
+		it( 'should refuse to compare a value which has no place in the ordering', () =>
+		{
+			// The BSON ordering ranks the types it knows. A value outside it cannot be placed,
+			// and guessing a position would put documents in an order nothing justifies.
+			assert.throws( function () { jsongin.CompareValues( Symbol( 'x' ), 1 ); }, /Cannot compare values of type/ );
+			assert.throws( function () { jsongin.CompareValues( 1, function () { return; } ); }, /Cannot compare values of type/ );
+		} );
+
+		it( 'should carry a symbol through a Hybridize round trip', () =>
+		{
+			// Hybridize flattens a document to values a simple store can hold, and Unhybridize
+			// reads it back. A symbol survives by its description, which is all a symbol
+			// carries; the result is an equal symbol rather than the same one.
+			let hybridized = jsongin.Hybridize( { s: Symbol( 'x' ), b: true, n: 1 } );
+			assert.strictEqual( typeof hybridized.s, 'string' );
+			assert.strictEqual( hybridized.b, true );
+
+			let restored = jsongin.Unhybridize( hybridized );
+			assert.strictEqual( typeof restored.s, 'symbol' );
+			assert.strictEqual( restored.b, true );
+			assert.strictEqual( restored.n, 1 );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'Engine Function Paths and Criteria', () =>
+	{
+
+		it( 'should compare two regular expressions by their text', () =>
+		{
+			assert.strictEqual( jsongin.CompareValues( /abc/, /abc/ ), 0 );
+			assert.strictEqual( jsongin.CompareValues( /abc/, /abd/ ), -1 );
+			assert.strictEqual( jsongin.CompareValues( /abd/, /abc/ ), 1 );
+
+			// The flags are part of the text, so they take part in the comparison.
+			assert.strictEqual( jsongin.CompareValues( /a/, /a/i ), -1 );
+		} );
+
+		it( 'should return false from SetValue for a path which names nothing', () =>
+		{
+			// An empty path, however it is spelled, addresses the document itself rather than
+			// a field in it, so there is nothing to set.
+			assert.strictEqual( jsongin.SetValue( {}, '', 1 ), false );
+			assert.strictEqual( jsongin.SetValue( {}, null, 1 ), false );
+			assert.strictEqual( jsongin.SetValue( {}, undefined, 1 ), false );
+		} );
+
+		it( 'should refuse a SortCriteria which is not an object', () =>
+		{
+			assert.throws( function () { jsongin.Sort( [ { a: 1 } ], 5 ); }, /SortCriteria must be an object/ );
+			assert.throws( function () { jsongin.Sort( [ { a: 1 } ], 'a' ); }, /SortCriteria must be an object/ );
+		} );
+
+		it( 'should sort a document whose key path runs past the end of an array', () =>
+		{
+			// An index past the end addresses nothing, so the document offers no sort key and
+			// sorts with the others which offered none.
+			let documents = [ { _id: 1, a: [ 1, 2, 3 ] }, { _id: 2, a: [ 1 ] }, { _id: 3, a: [ 1, 2 ] } ];
+			let sorted = jsongin.Sort( documents, { 'a.2': 1 } );
+			assert.strictEqual( sorted.length, 3 );
+
+			// _id 2 and _id 3 have no element at index 2, so both sort below _id 1.
+			assert.strictEqual( sorted[ 2 ]._id, 1 );
+		} );
+
+		it( 'should keep the order of two documents which both offer no sort key', () =>
+		{
+			let documents = [ { _id: 1 }, { _id: 2 } ];
+			let sorted = jsongin.Sort( documents, { nope: 1 } );
+			assert.deepStrictEqual( sorted.map( function ( D ) { return D._id; } ), [ 1, 2 ] );
+		} );
+
+		it( 'should refuse a data type it has no ShortType for', () =>
+		{
+			// Every Javascript type maps to a ShortType except BigInt, which has no BSON
+			// counterpart and no place in the ordering. It is refused rather than being
+			// silently treated as a number, which would lose precision — the one thing a
+			// BigInt exists to keep.
+			assert.throws( function () { jsongin.ShortType( 10n ); }, /Unsupported data type \[bigint\]/ );
+		} );
+
+		it( 'should take the SafeClone exceptions in every form', () =>
+		{
+			// null and undefined mean no exceptions, a string is one path, and an array is
+			// several.
+			assert.deepStrictEqual( jsongin.SafeClone( { a: 1 }, null ), { a: 1 } );
+			assert.deepStrictEqual( jsongin.SafeClone( { a: 1 }, undefined ), { a: 1 } );
+			assert.deepStrictEqual( jsongin.SafeClone( { a: 1 }, 'a' ), { a: 1 } );
+			assert.deepStrictEqual( jsongin.SafeClone( { a: 1 }, [ 'a' ] ), { a: 1 } );
+
+			assert.throws( function () { jsongin.SafeClone( { a: 1 }, 5 ); },
+				/Exceptions parameter must be a document path/ );
+		} );
+
+		it( 'should leave an excepted path uncloned', () =>
+		{
+			// The point of an exception: the named value is carried across by reference rather
+			// than copied, so the clone shares it with the original.
+			let original = { kept: { n: 1 }, copied: { n: 1 } };
+			let clone = jsongin.SafeClone( original, 'kept' );
+			assert.strictEqual( clone.kept, original.kept );
+			assert.notStrictEqual( clone.copied, original.copied );
+		} );
+
+		it( 'should except a path which names an array element', () =>
+		{
+			let original = { a: [ { n: 1 }, { n: 2 } ] };
+			let clone = jsongin.SafeClone( original, 'a.0' );
+			assert.strictEqual( clone.a[ 0 ], original.a[ 0 ] );
+			assert.notStrictEqual( clone.a[ 1 ], original.a[ 1 ] );
+		} );
+
+		it( 'should sort documents which offer no key below those which do', () =>
+		{
+			// A path which resolves to no candidate at all gives the document no sort key, and
+			// a document with no key sorts below every document which has one.
+			let documents = [ { _id: 1 }, { _id: 2, a: 5 }, { _id: 3 }, { _id: 4, a: 1 } ];
+			let sorted = jsongin.Sort( documents, { a: 1 } );
+			assert.deepStrictEqual( sorted.map( function ( D ) { return D._id; } ), [ 1, 3, 4, 2 ] );
+
+			let descending = jsongin.Sort( documents, { a: -1 } );
+			assert.deepStrictEqual( descending.map( function ( D ) { return D._id; } ), [ 2, 4, 1, 3 ] );
+		} );
+
+		it( 'should format a value which JSON has no representation for', () =>
+		{
+			// Format is jsongin's own writer, not JSON.stringify, and it writes the key with
+			// an empty value where JSON.stringify would drop the key. These are the four types
+			// with nothing to write: undefined, a symbol, a function, and a BigInt, which is
+			// the one of the four that does have a representation.
+			assert.strictEqual( jsongin.Format( { a: 10n } ), '{"a":10}' );
+
+			// The other three produce a key with no value, which is not parseable JSON. Stated
+			// here as the behavior it is rather than asserted to be correct.
+			assert.strictEqual( jsongin.Format( { a: undefined } ), '{"a":}' );
+			assert.strictEqual( jsongin.Format( { a: Symbol( 'x' ) } ), '{"a":}' );
+			assert.strictEqual( jsongin.Format( { a: function () { return; } } ), '{"a":}' );
+
+			// At the top level there is no key, so the result is empty.
+			assert.strictEqual( jsongin.Format( undefined ), '' );
+		} );
+
+		it( 'should take a ResolveCandidates path in every form', () =>
+		{
+			// An empty path, however it is spelled, means the document itself.
+			assert.deepStrictEqual( jsongin.ResolveCandidates( { a: 1 }, undefined ), [ { a: 1 } ] );
+			assert.deepStrictEqual( jsongin.ResolveCandidates( { a: 1 }, null ), [ { a: 1 } ] );
+			assert.deepStrictEqual( jsongin.ResolveCandidates( { a: 1 }, '' ), [ { a: 1 } ] );
+
+			// A numeric path is a key, which is what indexes an array.
+			assert.deepStrictEqual( jsongin.ResolveCandidates( [ 9, 8 ], 0 ), [ 9 ] );
+
+			assert.throws( function () { jsongin.ResolveCandidates( { a: 1 }, true ); }, /Path is invalid/ );
+		} );
+
+	} );
+
+
 } );

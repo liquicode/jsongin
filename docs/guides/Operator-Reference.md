@@ -136,10 +136,30 @@ jsongin.Query( { v: [ { x: 1 } ] }, { v: { $elemMatch: {} } } );  // true
 jsongin.Query( { v: [ 1 ] }, { v: { $elemMatch: {} } } );         // false
 ```
 
-All of the above was verified against MongoDB 6.0.1.
-***One known deviation remains***: a comparison operator applied to an element which is itself an
-  array still looks inside that element, so
-  `{ v: { $elemMatch: { $gt: 1 } } }` matches `{ v: [ [ 1, 2 ] ] }` here and does not in MongoDB.
+A logical operator inside `$elemMatch` applies to ***one element at a time***, which is the whole
+  reason to reach for it. `$and` asks for a single element satisfying every branch, where the
+  dotted spelling of the same conditions would accept them spread across different elements:
+
+```js
+let document = { v: [ { x: 1, y: 2 }, { x: 5, y: 6 } ] };
+
+jsongin.Query( document, { v: { $elemMatch: { $and: [ { x: 1 }, { y: 6 } ] } } } );  // false
+jsongin.Query( document, { 'v.x': 1, 'v.y': 6 } );                                  // true
+```
+
+The criteria inside `$elemMatch` is a criteria in its own right, so a ***malformed*** one is
+  refused with an error rather than reported as no match — and it is refused whether or not there
+  is an element to apply it to, because being malformed has nothing to do with the data:
+
+```js
+// throws: $or requires an array of criteria
+jsongin.Query( { v: [] }, { v: { $elemMatch: { $or: 5 } } } );
+
+// throws: Operator [$gt] cannot appear at the top level of a $or branch
+jsongin.Query( { v: [ 1, 2 ] }, { v: { $elemMatch: { $or: [ { $gt: 1 } ] } } } );
+```
+
+All of the above was verified against MongoDB 6.0.1, and there are no known deviations.
 
 
 ## jsongin Extended Query Operators
@@ -529,15 +549,31 @@ jsongin.Project( { t: [ 1, 2, 3, 4 ] }, { t: { $slice: [ 1, 2 ] } } ); // { t: [
 A field which is not an array is left exactly as it is.
 
 ***Note on the projection `$elemMatch`*** :
-It takes the ***first*** matching element only, keeps the array around it, and ***is*** an
-  inclusion, so the other fields are dropped:
+It takes the ***first*** matching element only and keeps the array around it.
+Like `$slice`, it only decides the type of projection when nothing else has: on its own it is an
+  inclusion, but beside an exclusion the exclusion wins and the `$elemMatch` is applied within
+  it.
 
 ```js
-jsongin.Project( { n: 5, a: [ { x: 1 }, { x: 2 } ] }, { a: { $elemMatch: { x: 2 } } } );
-// { a: [ { x: 2 } ] }
+let document = { n: 5, s: 'x', a: [ { x: 1 }, { x: 2 } ] };
+
+jsongin.Project( document, { a: { $elemMatch: { x: 2 } } } );
+// { a: [ { x: 2 } ] }              on its own, an inclusion
+
+jsongin.Project( document, { n: 1, a: { $elemMatch: { x: 2 } } } );
+// { n: 5, a: [ { x: 2 } ] }        an inclusion, and a is one of the fields included
+
+jsongin.Project( document, { n: 0, a: { $elemMatch: { x: 2 } } } );
+// { s: 'x', a: [ { x: 2 } ] }      an exclusion, with a matched
 ```
 
-When nothing matches, the field is omitted rather than coming back as an empty array.
+The difference from `$slice` is only what each does on its own: `$elemMatch` alone is an
+  inclusion, while `$slice` alone returns the whole document with the slice applied.
+`jsongin` used to refuse `$elemMatch` beside an exclusion, which MongoDB accepts.
+Verified against MongoDB 6.0.1.
+
+When nothing matches, or the field is not an array, the field is omitted rather than coming back
+  as an empty array — and dropped from an exclusion projection for the same reason.
 
 ***The two unsupported projection operators are refused by name.***
 `$` and `$meta` raise an error which says they are projection operators, rather than being

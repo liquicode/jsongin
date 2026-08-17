@@ -131,6 +131,21 @@ module.exports = function ( Driver )
 			assert.ok( await matches( { s: 'a b' }, { s: { $regex: 'a\\ b', $options: 'x' } } ) );
 		} );
 
+		it( 'should keep whitespace inside a character class under the extended flag', async () =>
+		{
+			// Whitespace ***inside a character class*** is part of the class rather than layout,
+			// which is what PCRE does and what MongoDB inherits. So '[a b]' still matches a
+			// space, even though the same space outside a class would be ignored.
+			assert.ok( await matches( { s: 'a b' }, { s: { $regex: '^[a b]+$', $options: 'x' } } ) );
+
+			// The class ends at its ']', so whitespace after it is layout again.
+			assert.ok( await matches( { s: 'ac' }, { s: { $regex: '^[ab] c$', $options: 'x' } } ) );
+			assert.ok( !await matches( { s: 'a c' }, { s: { $regex: '^[ab] c$', $options: 'x' } } ) );
+
+			// A '#' inside a class is a literal too, not the start of a comment.
+			assert.ok( await matches( { s: '#' }, { s: { $regex: '^[#]$', $options: 'x' } } ) );
+		} );
+
 		it( 'should match every document for an empty query', async () =>
 		{
 			assert.ok( await matches( { a: 1 }, {} ) );

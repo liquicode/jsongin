@@ -32,7 +32,7 @@ module.exports = function ( Driver )
 	{
 
 		let documents = [
-			{ _id: 1, a: 10, b: 2 },
+			{ _id: 1, a: 10, b: 2, when: new Date( 1700000000000 ) },
 		];
 
 
@@ -195,6 +195,23 @@ module.exports = function ( Driver )
 			{
 				assert.ok( await refused( { $in: [ 1, 5 ] } ), 'a scalar' );
 				assert.ok( await refused( { $in: [ 1, null ] } ), 'a null' );
+			} );
+
+			it( 'should refuse a rounding place which is not an integer', async () =>
+			{
+				// The place selects a decimal position, so a fraction of one means nothing.
+				// A null place is a different matter and gives null; see the Null Operands
+				// group of the Expression Operator Tests.
+				assert.ok( await refused( { $round: [ '$a', 1.5 ] } ), '$round' );
+				assert.ok( await refused( { $trunc: [ '$a', 1.5 ] } ), '$trunc' );
+			} );
+
+			it( 'should refuse subtracting a date from a number', async () =>
+			{
+				// Date minus date is a number of milliseconds and date minus number is a date,
+				// but number minus date is not anything. The counterparts which are allowed are
+				// asserted in the Expression Operator Tests.
+				assert.ok( await refused( { $subtract: [ 5, '$when' ] } ) );
 			} );
 
 		} );

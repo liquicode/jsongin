@@ -147,6 +147,26 @@ module.exports = function ( Driver )
 
 
 		//---------------------------------------------------------------------
+		it( 'should order two empty arrays against each other', async () =>
+		{
+			// ***Two documents which both offer no sort key at all.*** An empty array at the
+			// end of the path contributes no candidate, unlike a missing field or an empty
+			// array crossed by a longer path, which each contribute a null. The cases above
+			// have only one such document, so they never compare two of them, and the answer
+			// for a pair of them is the whole question here: they are equal, and both sort
+			// below the nulls in either direction.
+			await check(
+				[
+					{ _id: 1, v: [] },
+					{ _id: 2, v: [] },
+					{ _id: 3, v: null },
+					{ _id: 4, v: 5 },
+				],
+				'v', [ 1, 2, 3, 4 ], [ 4, 3, 1, 2 ] );
+		} );
+
+
+		//---------------------------------------------------------------------
 		it( 'should sort an empty array reached through a path below every value', async () =>
 		{
 			await check(

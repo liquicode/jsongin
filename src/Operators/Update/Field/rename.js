@@ -76,7 +76,6 @@ module.exports = function ( jsongin )
 				if ( jsongin.OpError ) { jsongin.OpError( `Update.$rename: ${error.message}` ); }
 				throw error;
 			}
-			return; // Code should be inaccessible.
 		},
 
 	};

@@ -44,9 +44,9 @@ module.exports = function ( jsongin )
 		let claimed = [];
 		for ( let key in Updates )
 		{
+			// Every value here is a document: the dispatcher checks each operator's ValueTypes,
+			// which is 'o' for all twelve update operators, before this runs.
 			let fields = Updates[ key ];
-			if ( jsongin.ShortType( fields ) !== 'o' ) { continue; }
-
 			for ( let field in fields )
 			{
 				for ( let index = 0; index < claimed.length; index++ )

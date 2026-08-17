@@ -25,7 +25,7 @@ module.exports = function ( Driver )
 	{
 
 		let documents = [
-			{ _id: 1, n: 4, s: 'text', b: true, l: null, o: { x: 7 }, t: [ 1, 2 ] },
+			{ _id: 1, n: 4, s: 'text', b: true, l: null, o: { x: 7 }, t: [ 1, 2 ], when: new Date( 1700000000000 ) },
 		];
 
 
@@ -441,6 +441,86 @@ module.exports = function ( Driver )
 				// A null value is an ordinary value here, not a wildcard and not an error.
 				assert.strictEqual( await evaluated( { $in: [ null, '$t' ] } ), false );
 				assert.strictEqual( await evaluated( { $in: [ null, [ 1, null ] ] } ), true );
+			} );
+
+		} );
+
+
+		//---------------------------------------------------------------------
+		describe( 'Null Operands', () =>
+		{
+
+			/*
+				A null operand ***propagates*** through the arithmetic operators rather than
+				being treated as a zero or as an error. A missing field resolves to nothing and
+				takes the same route, which is why '$nope' behaves as null does here.
+			*/
+
+			it( 'should return null for a null operand to the arithmetic operators', async () =>
+			{
+				assert.strictEqual( await evaluated( { $mod: [ '$n', null ] } ), null );
+				assert.strictEqual( await evaluated( { $mod: [ null, 2 ] } ), null );
+				assert.strictEqual( await evaluated( { $mod: [ '$n', '$nope' ] } ), null );
+				assert.strictEqual( await evaluated( { $multiply: [ '$n', null ] } ), null );
+				assert.strictEqual( await evaluated( { $add: [ '$n', null ] } ), null );
+			} );
+
+			it( 'should return null for a null place given to the rounding operators', async () =>
+			{
+				assert.strictEqual( await evaluated( { $round: [ '$n', null ] } ), null );
+				assert.strictEqual( await evaluated( { $trunc: [ '$n', null ] } ), null );
+
+				// The value itself takes the same route.
+				assert.strictEqual( await evaluated( { $round: [ null, 1 ] } ), null );
+				assert.strictEqual( await evaluated( { $ceil: [ null ] } ), null );
+				assert.strictEqual( await evaluated( { $floor: [ null ] } ), null );
+			} );
+
+			it( 'should return null for a null position given to $arrayElemAt', async () =>
+			{
+				assert.strictEqual( await evaluated( { $arrayElemAt: [ '$t', null ] } ), null );
+				assert.strictEqual( await evaluated( { $arrayElemAt: [ null, 0 ] } ), null );
+				assert.strictEqual( await evaluated( { $arrayElemAt: [ '$t', '$nope' ] } ), null );
+			} );
+
+			it( 'should return null when a null is subtracted from a date', async () =>
+			{
+				assert.strictEqual( await evaluated( { $subtract: [ '$when', null ] } ), null );
+				assert.strictEqual( await evaluated( { $subtract: [ null, 5 ] } ), null );
+			} );
+
+		} );
+
+
+		//---------------------------------------------------------------------
+		describe( 'Values Which Are Not Finite', () =>
+		{
+
+			/*
+				Infinity and NaN are ordinary BSON doubles, so they reach the operators as
+				numbers rather than being refused as the wrong type. What each operator does
+				with one is its own rule.
+			*/
+
+			it( 'should carry an infinity through the rounding operators', async () =>
+			{
+				assert.strictEqual( await evaluated( { $round: [ Infinity, 2 ] } ), Infinity );
+				assert.strictEqual( await evaluated( { $round: [ -Infinity, 2 ] } ), -Infinity );
+				assert.strictEqual( await evaluated( { $trunc: [ Infinity, 2 ] } ), Infinity );
+				assert.strictEqual( await evaluated( { $ceil: [ Infinity ] } ), Infinity );
+			} );
+
+			it( 'should round a value already in exponential notation', async () =>
+			{
+				assert.strictEqual( await evaluated( { $round: [ 1e21, 2 ] } ), 1e21 );
+				assert.strictEqual( await evaluated( { $round: [ 1.5e-7, 8 ] } ), 1.5e-7 );
+			} );
+
+			it( 'should carry a NaN through arithmetic', async () =>
+			{
+				assert.ok( Number.isNaN( await evaluated( { $add: [ NaN, 1 ] } ) ) );
+				assert.ok( Number.isNaN( await evaluated( { $multiply: [ NaN, 2 ] } ) ) );
+				assert.ok( Number.isNaN( await evaluated( { $round: [ NaN, 2 ] } ) ) );
 			} );
 
 		} );

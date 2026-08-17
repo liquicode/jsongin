@@ -87,6 +87,19 @@ describe( '260) Extension Operator Tests', () =>
 			assert.ok( find( entities, { name: { $exprx: { $eq: [ 1, 1 ] } } } ).length === 0 );
 		} );
 
+
+		it( 'should skip an array element which is not a document', () =>
+		{
+			// An expression reads fields, so an element which has none cannot satisfy one. The
+			// element is passed over rather than failing the whole array, so a mixed array
+			// still matches on the documents in it.
+			let documents = [ { a: [ 5, { n: 2 } ] } ];
+			assert.ok( find( documents, { a: { $exprx: { $gt: [ '$n', 1 ] } } } ).length === 1 );
+
+			// With nothing but non-documents there is nothing left to match.
+			assert.ok( find( [ { a: [ 5, 'x', null ] } ], { a: { $exprx: { $gt: [ '$n', 1 ] } } } ).length === 0 );
+		} );
+
 	} );
 
 

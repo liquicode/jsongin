@@ -44,6 +44,14 @@ module.exports = function ( jsongin )
 	// Converts an operand to a number.
 	// Returns null when the operand is null or missing, which callers propagate.
 	// Throws when the operand is present but is not a number.
+	//
+	// ***NaN and the infinities are numbers here***, not refusals. They are ordinary BSON
+	// doubles, and MongoDB computes with them rather than rejecting them, so { $add: [ NaN, 1 ] }
+	// is NaN and { $round: [ Infinity, 2 ] } is Infinity. Verified against MongoDB 6.0.1.
+	//
+	// This used to pass the operand through AsNumber(), which returns null for a NaN, and then
+	// read that null as "not a number" and threw. The ShortType test above has already
+	// established that the operand is a number, so there is nothing left to convert.
 	helper.AsOperandNumber = function ( Operand, OperatorName )
 	{
 		let short_type = jsongin.ShortType( Operand );
@@ -52,12 +60,7 @@ module.exports = function ( jsongin )
 		{
 			throw new Error( `${OperatorName}: requires numeric operands but found a [${short_type}] operand instead.` );
 		}
-		let number = jsongin.AsNumber( Operand );
-		if ( number === null )
-		{
-			throw new Error( `${OperatorName}: requires numeric operands but found [${Operand}] instead.` );
-		}
-		return number;
+		return Operand;
 	};
 
 

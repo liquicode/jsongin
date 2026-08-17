@@ -145,7 +145,6 @@ module.exports = function ( jsongin )
 				{
 					throw new Error( `The element [${key}] of the path [${Path}] must reference an object or array.` );
 				}
-				return false; // Code should be inaccessible.
 			}
 
 			// Return, OK.

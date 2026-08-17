@@ -34,18 +34,6 @@ module.exports = function ( jsongin )
 			return true;
 		},
 
-		//---------------------------------------------------------------------
-		ToMongoQuery: function ( Expression )
-		{
-			return;
-		},
-
-		//---------------------------------------------------------------------
-		ToSql: function ( Expression )
-		{
-			return '';
-		},
-
 	};
 
 	// Return the operator.

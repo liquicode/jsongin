@@ -696,35 +696,72 @@ The ***Current Status*** block is rewritten in place each session. The ***Log***
   append-only: entries are never edited after the fact, so that a wrong turn stays visible.
 
 
+### Next Session: Start Here
+
+> Written 2026-08-17 at the end of the T3 sweep, and again after the dead branch removal.
+
+1. ***Run every check in the Current Status table below.*** All six pass right now.
+   `git status` will show ***33 modified files and no new commits*** — that is expected, see
+   *Where this lives*.
+2. ***The whole review is closed.*** Every finding P1–P10, S1–S8, R1–R4, T1–T5, D1–D3 is done,
+   and there are no Open Decisions left. Parity is 100% of 475 with `test bugs: 0`.
+3. ***The ten dead branches are gone***, removed 2026-08-17 on the user's instruction after they
+   were reported with evidence. In-scope uncovered blocks are ***0***: logic branches 9 → 2 and
+   validation throws 1 → 0, and the two remaining are ***empty regions with no statement in
+   them***, not code. See *Finding Status*.
+4. ***The sweep is uncommitted.*** If the user wants it committed, one commit for the whole
+   sweep is the right shape.
+
+There is no half-finished work and nothing in flight. Anything beyond the above is new work.
+
+
 ### Current Status
 
-> As of 2026-08-17.
+> As of 2026-08-17, after the T3 coverage sweep.
 
 | Check | Command | Result |
 |-------|---------|--------|
-| Unit tests | `npm test` | 1126 passing, ***green*** |
-| Parity baseline | `npm run parity-test-mongodb` | 430 passing, ***0 failing*** (needs a server) |
-| Parity under test | `npm run parity-test-jsongin` | 430 passing, ***0 failing*** |
-| Parity measurement | `npm run parity-report` | ***100.0%*** — 430 of 430 agree |
-| Coverage | `npm run coverage` | 122 files exercised, ***60 fully covered***, 160 uncovered blocks |
-| Docs | `npm run check-docs` | 335 fences, 284 links, 53 pages, ***85 operators*** — passed |
+| Unit tests | `npm test` | 1161 passing, ***green*** |
+| Parity baseline | `npm run parity-test-mongodb` | 475 passing, ***0 failing*** (needs a server) |
+| Parity under test | `npm run parity-test-jsongin` | 475 passing, ***0 failing*** |
+| Parity measurement | `npm run parity-report` | ***100.0%*** — 475 of 475 agree |
+| Coverage | `npm run coverage` | 122 files exercised, ***79 fully covered***, 76 uncovered blocks |
+| Docs | `npm run check-docs` | 340 fences, 285 links, 53 pages, ***85 operators*** — passed |
 
-***Parity is 100%, and there are no gaps left to explain.*** Query 201/201, Update 81/81,
-  Projection 40/40, Aggregate 108/108. `test bugs` is 0, so every assertion also passes against
+***T3 is finished, and it was the most productive finding of the review.*** Chasing uncovered
+  branches found ***nine real defects*** in code that was already at 100% parity — because a
+  branch nothing executes is a branch nothing measures. Coverage was the instrument that found
+  them; parity was the instrument that proved them. Details in the Log below.
+
+***Every in-scope block is now either covered or gone.*** Logic branches ***81 → 9 → 2***,
+  validation throws ***12 → 1 → 0***: the ten dead branches were reported, then removed on
+  2026-08-17 once the user asked for it. The two logic blocks left are ***not code*** — each is
+  the empty tail of a loop body whose every path returns, continues or throws, so there is no
+  statement in the range to delete. Uncovered blocks 160 → 84 → 76, of which ***74 are error
+  plumbing***, which is out of scope by decision. Fully covered files ***60 → 79***.
+
+The surface grew throughout: ***430 → 475 parity comparisons and 1126 → 1161 unit tests***,
+  and parity finished at 100% of the larger number. Nine times the report went red and was
+  brought back by fixing the engine, never by removing a test.
+
+***Parity is 100%, and there are no gaps left to explain.*** Query 214/214, Update 86/86,
+  Projection 51/51, Aggregate 124/124. `test bugs` is 0, so every assertion also passes against
   the live server.
 
-***This is the first time `parity-report` has exited zero.*** Standing Decision 6 said the
-  report is expected to be non-zero while any deliberate gap remains; none remain, so it can
-  now gate a release without qualification.
+***`parity-report` exits zero*** — first achieved on 2026-08-17 and held since, across the T3
+  sweep which added 45 comparisons and nine engine fixes. Standing Decision 6 said the report is
+  expected to be non-zero while any deliberate gap remains; none remain, so it gates a release
+  without qualification.
 
 ***S6 is closed*** — the readme's accuracy claim is true as written, and the sentence was never
   edited. ***Open Decision 1 is closed***, which was the last one.
 
 ***The suite has only ever grown.*** 248 comparisons at the start of this review, 397 after the
-  operator sweep was migrated in, 403 after the path syntax work, ***428 now***. Every rise in
-  the percentage was measured against a larger surface than the one before it, never a smaller
-  one. Reaching 100% did not come from removing anything: the two `Unimplemented` suites were
-  retired only because richer tests for the same operators replaced them in the real suites.
+  operator sweep was migrated in, 403 after the path syntax work, 430 at the end of the S7 work,
+  ***475 now***. Every rise in the percentage was measured against a larger surface than the one
+  before it, never a smaller one. Reaching and holding 100% did not come from removing anything:
+  the two `Unimplemented` suites were retired only because richer tests for the same operators
+  replaced them in the real suites.
 
 ***The Parity Tests are the whole of the parity evidence.*** The operator sweep which found
   five of this session's defects was a throwaway harness comparing two engines' output; it has
@@ -749,9 +786,32 @@ The migration also closed a real hole. ***Only 3 of the 22 expression operators 
 | `7a92187` | Open Decision 1 — the thirteen missing operators, and D3. First 100%. |
 | `8a60e1c` | S7 — every operator documented, `check-docs` enforcing it, and the `$regex` `x` option. |
 
-If `git status` is clean, all of the above is committed and the numbers in the table above
-  should reproduce exactly. ***Start by running the four checks***; they are the fastest way to
-  confirm the tree is where these notes say it is.
+***The T3 sweep is NOT committed.*** The commit map above ends at `8a60e1c`. Everything from
+  the T3 sweep — nine engine fixes, the new tests, the documentation corrections, the removal of
+  the ten dead branches, and this review file — is sitting in the working tree as ***33 modified
+  files, no new commits***. The numbers in the table above are the numbers of ***the dirty
+  tree***, not of `8a60e1c`.
+  *(No commit was made because none was asked for.)*
+
+  So the old advice is inverted for this handoff: `git status` will ***not*** be clean, and that
+  is expected rather than a sign something went wrong. ***Start by running every check in the
+  Current Status table*** — they are the fastest way to confirm the tree is where these notes
+  say it is, and all six should pass exactly as tabulated. If they do, nothing was lost in the
+  reset.
+
+  What is modified, by group:
+
+  | Group | Files |
+  |-------|-------|
+  | Engine fixes | `src/jsongin/Project.js`, `src/jsongin/Query.js`, `src/Operators/Query/Array/elemMatch.js`, `src/Operators/Query/Comparison/in.js`, `src/Operators/Expression/Arithmetic/_arithmetic.js`, `src/Operators/Accumulator/sum.js`, `src/Operators/Accumulator/avg.js` |
+  | Dead branch removal | `src/jsongin/SetValue.js`, `src/jsongin/DeleteValue.js`, `src/jsongin/SafeClone.js`, `src/jsongin/Update.js`, `src/Operators/Query/Extension/noop.js`, `src/Operators/Update/Field/rename.js`, `src/Operators/Update/Field/set.js`, `src/Operators/Update/Field/unset.js` |
+  | Documentation | `docs/guides/jsongin/Project.md`, `docs/guides/Operator-Reference.md` |
+  | Parity tests | 10 files under `test/Parity Tests/*/test-suite/` |
+  | Unit tests | `110)`, `130)`, `150)`, `260)`, `510)` |
+  | This review | `.reviews/2026-08-15-04-12/review.md` |
+
+  ***A single commit for the whole sweep is the right shape***, since the fixes and the tests
+  which prove them belong together and every check in the table passes.
 
 ***S6 was not a documentation task, and it was closed by doing the work.*** The readme claims
   that each implemented MongoDB feature operates in accordance with MongoDB.
@@ -815,14 +875,56 @@ Decisions made in session, which later work should not silently reverse:
 | P1–P10 parity | 0 | ***All ten fixed***, and nine more defects the review never named: five from the operator sweep, one from migrating it into the suites, three from the path syntax work. |
 | S1–S8 consistency | 0 | ***All eight fixed.*** S6 closed 2026-08-17 by removing the last three behavioral deviations, without editing the sentence. ***S7 closed 2026-08-17***: all 85 operators carry an `/*md` block and `check-docs` enforces it. |
 | R1–R4 conciseness | 0 | ***All four fixed.*** R1 as `_compare.js`, R2 as `_arith.js`, R3 with the refusal work, R4 by deleting `ArgCount` rather than enforcing it. |
-| T1–T5 test coverage | 1 | T1, T2, T5 addressed. ***T4 closed*** — the aliasing tests now cover `Filter` and `Sort` as well, with S4. T3 open. |
+| T1–T5 test coverage | 0 | T1, T2, T5 addressed. ***T4 closed*** — the aliasing tests now cover `Filter` and `Sort` as well, with S4. ***T3 closed 2026-08-17***: every in-scope block is covered or removed, logic branches 81 → 2, and ***nine defects*** fell out of it. The ten dead branches were removed the same day. |
 | D1–D3 documentation | 0 | ***All three closed.*** D3 closed 2026-08-17: `$` and `$meta` are refused by name as projection operators, and `$slice` and `$elemMatch` are implemented, so nothing reaches the expression evaluator by accident any more. |
 
 ***The shortest list of what is actually left***, for a session picking this up cold:
 
-- **T3** uncovered blocks; `npm run coverage` names the files. ***This is the only finding of
-  the review still open.*** Note that the count rises whenever operators are added, so compare
-  the ***fully covered*** figure rather than the raw block count.
+- **T3** uncovered blocks. ***Nothing is left.*** Every in-scope block is covered, and the ten
+  which were dead have been removed. Compare the ***logic branch*** count (2, both of them empty
+  regions rather than statements), not the raw block count and not `fully covered` — see the
+  Current Status block for why.
+
+  Scope, by decision: the ***81 logic branches and 12 validation throws***, not the 74 error
+  plumbing blocks (`if ( jsongin.OpLog )` guards and `catch` bodies), which are reached only
+  when something already covered has failed. *(User decision, 2026-08-17.)*
+
+  ***Dead branches are reported before they are removed***, with the evidence for each.
+  *(User decision, 2026-08-17.)*
+
+  ***Removed so far***: in `Project.js`, a scalar guard redundant with the `undefined` test
+  below it and three guards against an empty path which the new empty-field-name refusal made
+  unreachable; `Query.js:43`, which guarded `SplitPath` returning `null` — it never does, it
+  returns `[]` or throws; and `Query.js:238`, which re-refused a `$regex` the `ValueTypes: 'sr'`
+  check already refuses first.
+
+  ***Reported, then removed 2026-08-17*** on the user's instruction — all ten in-scope blocks,
+  with the evidence each was reported on:
+
+  | Branch | Why it could not execute |
+  |--------|--------------------------|
+  | `noop.js:38` `ToMongoQuery` | No caller in `src/`, `test/`, `build/` or `docs/`. `$noop` is the only one of the 85 operators with this member, so it is an interface with one implementor and no consumer — the shape S5 flagged for the `Path/` modules. |
+  | `noop.js:44` `ToSql` | The same. |
+  | `Update.js:48` | Skips an operator whose value is not a document. All twelve update operators declare `ValueTypes: 'o'` and the dispatcher enforces it ***before*** `check_for_conflicts` runs. A comment now records why the values are known to be documents. |
+  | `SafeClone.js:77` | The `default:` throw for an unrecognized ShortType. `ShortType` returns exactly the twelve types `clone_node` has a case for, or throws itself. A comment now records why the switch needs no default. |
+  | `SetValue.js:147`, `:149` | Marked `// Code should be inaccessible` by the author. |
+  | `DeleteValue.js:98` | Marked `// Code should be inaccessible: the loop returns on its last element.` |
+  | `rename.js:78`, `set.js:54`, `unset.js:118` | Each a `return; // Code should be inaccessible.` after a try/catch whose every path returns or throws. |
+
+  ***Two logic blocks survive the removal, and neither is code.*** `SetValue.js:148` and
+  `DeleteValue.js:98` are now the closing brace of a loop, reported because the range they end
+  is unreachable — every path through those loop bodies returns, continues or throws. There is
+  no statement inside either range to delete. They were previously reported as ***two*** blocks
+  each because a dead `return` sat in the same region; removing it left the empty tail behind.
+  ***Removing these would mean restructuring working loops to satisfy the coverage tool***,
+  which is the tail wagging the dog, so they stay.
+
+  ***The recurring shape is worth naming.*** Of the fifteen dead branches found, most were a
+  guard compensating for validation that was added later — `ValueTypes` enforcement accounts for
+  three of them on its own — or a defence against a return value the callee never produces.
+  ***When a branch will not execute, ask what made it redundant***; the answer has been a later,
+  better check nearly every time. The rest are `// Code should be inaccessible` markers, which
+  are honest and correct and simply need deleting.
 
 ***Everything else is closed.*** No open Open Decisions, no parity gaps, and `parity-report`
   exits zero.
@@ -875,6 +977,148 @@ Four of the five previous decisions were taken and carried out: `Query()` and `U
 
 
 ### Log
+
+#### 2026-08-17 — the ten dead branches, removed
+
+The user gave the go-ahead, so the ten branches reported under T3 were deleted: `$noop`'s
+  `ToMongoQuery` and `ToSql`, the `ShortType` guard in `check_for_conflicts`, `SafeClone`'s
+  `default:` throw, and the six `// Code should be inaccessible` returns. Eight files, and the
+  numbers moved as predicted — logic branches ***9 → 2***, validation throws ***1 → 0***,
+  uncovered blocks ***84 → 76***, fully covered files ***77 → 79***. Unit tests 1161 and parity
+  475 both still pass, and `check-docs` still passes with 85 operators.
+
+Two of the removals left a comment behind rather than nothing, because the reason the code was
+  safe to delete is not obvious from what remains: `Update.js` now says the dispatcher has
+  already checked `ValueTypes`, and `SafeClone.js` says `ShortType` throws on anything the
+  switch does not have a case for. ***A deleted guard is only an improvement if the invariant it
+  guarded is written down somewhere.***
+
+***The count did not reach zero, and that is the honest answer rather than a shortfall.*** Two
+  logic blocks remain, both the closing brace of a loop whose body always returns, continues or
+  throws. There is no statement in either range. Reaching zero would mean rewriting working
+  loops to please the tool, so the notes above say plainly what the two are.
+
+The confirmation-first rule was worth keeping. `SafeClone.js:77` was a `default:` throw — the
+  kind of defensive guard that looks reckless to delete on a whim — and it was only removed
+  after checking that `ShortType`'s twelve return values and `clone_node`'s twelve cases are the
+  same twelve, and that `ShortType` itself throws on anything else.
+
+#### 2026-08-17 — T3 sweep, part two: the tail, and three more defects
+
+The long tail behaved differently from the three concentrations. Most of it was ***unmeasured
+  but correct***: null propagation through the arithmetic operators, the stage validations, the
+  `$elemMatch` logical branches, the engine's handling of symbols and BigInt. Those became 45
+  new parity comparisons and 27 new unit tests and agreed on the first run. ***Three did not.***
+
+- ***`$in` silently skipped a query operator nested inside it, where MongoDB refuses.***
+  `{ a: { $in: [ { $gt: 5 } ] } }` returned false. The code already carried a comment saying
+  MongoDB refuses this, and skipped it anyway. Worse, the check sat ***inside the matching
+  loop***, so `{ $in: [ 9, { $gt: 5 } ] }` against `{ a: 9 }` returned true without ever
+  reaching the bad element. Hoisted to run over the whole list before any of it is matched —
+  the same fix, and the same reasoning, as the `$elemMatch` one in part one.
+- ***NaN was refused by the arithmetic operators.*** `{ $add: [ NaN, 1 ] }` threw. NaN is an
+  ordinary BSON double and MongoDB computes with it. The cause was `AsOperandNumber` passing an
+  operand it had ***already established was a number*** through `AsNumber()`, which returns null
+  for NaN, and then reading that null as "not a number".
+- ***`$sum` and `$avg` skipped NaN.*** They ignored it alongside the genuinely non-numeric
+  values, which quietly produced a total that looked sound. MongoDB takes it into the total, so
+  a NaN anywhere in the stream takes the result with it — which is the point.
+
+***The `AsNumber` bug is the one worth remembering.*** Two checks in sequence, each correct on
+  its own, that together rejected a valid value: the ShortType test established the operand was
+  a number, and then the conversion re-decided it was not. A test with only well behaved numbers
+  can never see it, which is why it survived to now.
+
+***A stale claim in the operator reference, found by verifying prose against the engine.***
+  `Operator-Reference.md` recorded "one known deviation remains" for `$elemMatch` against an
+  element which is itself an array. It has not been true since the `ResolveCandidates` work.
+  The parity tests covered `$eq`, `$in`, `$all`, `$type` and `$regex` for that rule but never
+  the range operators — exactly the pair the claim named. ***The documentation was understating
+  the engine***, which is the opposite of the failure S6 was about and just as much a defect.
+
+***On reading the coverage tool.*** The reported line is where an uncovered V8 ***range***
+  begins, which is often the line ***before*** the code that never runs — a `}` or a `{` rather
+  than a statement. Read the block after it, not the line itself. Twice this sent the first
+  guess to the wrong branch: `Project.js:204` looked like the `$slice` pair form, which was
+  already tested, and was really the malformed-argument refusal after it.
+
+***And on probing before asserting.*** `Sort.js:136` needs two documents which offer ***no sort
+  key at all***. A missing field does not do it, and neither does an empty array crossed by a
+  longer path — both contribute a null candidate. Only an empty array ***at the end of the
+  path*** contributes nothing. Three wrong guesses, each of which produced a passing test that
+  covered nothing, before instrumenting the function settled it. When a test does not move the
+  count, the belief behind it was wrong.
+
+#### 2026-08-17 — T3 sweep, part one: coverage found six defects at 100% parity
+
+***The headline: a suite at 100% parity still had six real defects, and uncovered branches are
+  where they were.*** Parity was 100% of 430 before this session and is 100% of ***452*** after
+  it. Nothing regressed; the surface grew and the engine was wrong on the new part of it.
+
+The method was the same each time, and it is the reason this worked. Take an uncovered branch,
+  ask what input reaches it, and then ask ***who decides what that input should do***. If
+  MongoDB has an opinion, it becomes a parity test written against the server ***first***; if it
+  is a statement about the jsongin API, it becomes a unit test. The branch being uncovered was
+  only ever the prompt. What found the defects was asking what the behavior ***should*** be.
+
+***`Project.js` — three defects, from six uncovered branches.***
+
+- ***Nested projection specifications were not implemented, and fabricated data.***
+  `{ o: { p: 1 } }` means `{ 'o.p': 1 }` in MongoDB. jsongin fell through to `Evaluate()` as a
+  computed field, which evaluated the specification as an expression and returned ***the
+  specification itself***, so `{ o: { p: 0 } }` projected a document containing `{ o: { p: 0 } }`
+  — a value the source never held. This is ordinary usage (`{ user: { name: 1 } }`) and it is the
+  worst thing found in this review: not a missing feature but an invented value.
+  ***It hid behind a coincidence.*** The first probe, `{ o: { p: 1 } }` against `{ o: { p: 1 } }`,
+  agreed with MongoDB — because the literal being returned happened to equal the value being
+  projected. Only a document whose value differed from its specification separated them. A
+  test whose expected value is also its input cannot fail.
+- ***`$elemMatch` beside an exclusion was refused, and MongoDB accepts it.*** The rule is that
+  `$elemMatch`, like `$slice`, only ***decides*** the projection type when nothing else has; it
+  does not force an inclusion. `{ n: 0, a: { $elemMatch: {...} } }` is an exclusion with the
+  match applied inside it. The refusal was written from the reasonable-sounding premise that an
+  inclusion and an exclusion cannot combine, which is true of the other three cases beside it
+  and not of this one.
+- ***Two things MongoDB refuses were silently accepted***: an empty sub-projection `{ o: {} }`
+  and an empty field name `{ '': 1 }`.
+
+  The fix is one `flatten_projection()` pass which rewrites nested specifications into dotted
+  paths ***before*** the existing scan, so the include, exclude and computed field machinery
+  below it is untouched and only ever sees paths. Refusing the empty field name up front then
+  made three defensive guards unreachable, and they were removed with it — the guards had been
+  compensating for validation that did not exist.
+
+***`elemMatch.js` — two defects, from seven uncovered branches.***
+
+- ***A malformed criteria inside `$elemMatch` returned `false` instead of refusing.***
+  `{ $or: 5 }`, `{ $or: [ 5 ] }`, `{ $not: 5 }` all quietly reported no match. This is exactly
+  the defect the review's own refusal work fixed at the top level of a query, surviving one
+  level down: reporting `false` gives the caller no way to tell a typo from an empty result.
+- ***The refusal that did exist depended on the data.*** Validation ran while matching, so it
+  needed an element to reach it: `{ v: [] }`, a field which is not an array, and a field which
+  is not there all returned `false` for a criteria MongoDB refuses to run at all. Being
+  malformed has nothing to do with the data, so validation was hoisted into a
+  `validate_criteria()` which runs once, up front, against the criteria alone. That also made
+  `logical_matches()` purely evaluative, which is the better shape.
+
+***One stale documentation claim, found by verifying prose against the engine.***
+  `Operator-Reference.md` recorded "one known deviation remains" for `$elemMatch` — that a
+  comparison operator applied to an element which is itself an array still looks inside it. It
+  does not, and has not since the `ResolveCandidates` work; the parity tests covered `$eq`,
+  `$in`, `$all`, `$type` and `$regex` for that rule but never the range operators, which is
+  exactly the pair the claim named. ***The documentation was understating the engine.*** The
+  four range operators are now tested and the claim is gone.
+
+***What this says about the finding.*** T3 read as bookkeeping — a block count to grind down,
+  the last item on a closed list. It was the finding that proved 100% parity is a statement
+  about ***the surface you measure***, not about the engine. Every one of these six defects sat
+  in code that no test executed, which is precisely why no parity test had an opinion about it.
+  Coverage does not verify behavior; it tells you where nobody has looked.
+
+***Method note, for the next session.*** Two of the six were found only because the probe was
+  designed to ***distinguish*** rather than confirm. Choose inputs where the wrong answer and
+  the right answer differ visibly — a projected value that differs from the projection, a
+  criteria applied to an empty array — or the test will pass for the wrong reason.
 
 #### 2026-08-17 — S7 closed: every operator documented, and the convention enforced
 
@@ -1467,17 +1711,19 @@ npm run check-docs              # fences, links, orphans
 
 ***Read this before reacting to the report.***
 
-`parity-report` ***exits non-zero, and that is the expected state.*** Sixteen parity tests are
-  written to fail on purpose. They hold open the work listed under **Open Decisions**, and each
-  of the three files carrying them says so in its header:
+`parity-report` ***exits zero, and that is now the expected state.*** It has since 2026-08-17.
+  ***A non-zero report means a regression*** — it no longer means a deliberate gap.
 
-- `Aggregate Tests/test-suite/Unimplemented Operator Tests.js` — 10 operators not implemented
-- `Projection Tests/test-suite/Unimplemented Projection Tests.js` — 3 not implemented
-- `Update Tests/test-suite/Update Rejection Tests.js` → `Known Deviations` — 3 deviations
+*(This paragraph used to say the opposite. Sixteen parity tests were written to fail on purpose,
+  in two `Unimplemented` suites and a `Known Deviations` section, holding open the work listed
+  under **Open Decisions**. All sixteen are gone: the thirteen operators were implemented and
+  the three deviations removed, so the tests which named them were replaced by richer ones in
+  the suites that measure the implemented operators. None was deleted to make the report green.)*
 
-***Do not make one of them pass by deleting or weakening it.*** The only correct way to remove
-  one is to implement the operator, or to settle the decision, that it names. A session which
-  quietly deletes them has erased the reason they exist.
+***Should a deliberate gap ever open again, write it down as a failing parity test*** rather
+  than leaving it out of the suite — Standing Decision 6, which still stands. And do not make a
+  failing parity test pass by deleting or weakening it: the only correct way to remove one is to
+  implement the operator, or settle the decision, that it names.
 
 The number which must always be zero is ***`test bugs`***: every parity test passes against the
   live server, so a test failing under MongoDB is a broken test rather than a jsongin finding.

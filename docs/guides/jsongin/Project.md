@@ -17,15 +17,63 @@
 `jsongin` supports the MongoDB projection mechanic with the function `jsongin.Project( Document, Projection )`.
 This function returns a new document built from the fields of `Document`.
 
-Each field in `Projection` is one of three things:
+Each field in `Projection` is one of four things:
 
 - ***Include*** : a value of `1` or `true` includes that field in the output.
 - ***Exclude*** : a value of `0` or `false` removes that field from the output.
+- ***Specify*** : a document whose keys are ordinary field names is a projection specification
+  for the field it sits under, so `{ o: { p: 1 } }` means the same as `{ 'o.p': 1 }`.
 - ***Compute*** : any other value is an expression, evaluated against `Document` with
   [`Evaluate()`](./Evaluate.md), whose result becomes the field's value.
 
 Field names may be document paths in dot notation, both when reading from `Document` and when
   writing to the output.
+
+
+## Nested Specifications
+
+A projection value which is a document is read as a ***specification for the field it sits
+  under***, not as a value to store. The value in the output comes from `Document`:
+
+```js
+let document = { o: { p: 99, q: 2 }, n: 5 };
+
+jsongin.Project( document, { o: { p: 1 } } );    // { o: { p: 99 } }
+jsongin.Project( document, { 'o.p': 1 } );       // { o: { p: 99 } }   the same thing
+
+jsongin.Project( document, { o: { p: 0 } } );    // { n: 5, o: { q: 2 } }
+```
+
+A nested specification is flattened into dot notation before anything else happens, so it
+  inherits every rule below without exception, and a nested inclusion makes the whole projection
+  an inclusion in the ordinary way.
+
+A document value is a specification ***unless*** it is one of three other things:
+
+- a single key naming a projection operator, such as `{ $slice: 2 }`
+- any key beginning with `$`, which makes the value an expression
+- ***empty***, which throws: there is no field for `{}` to name
+
+```js
+jsongin.Project( { o: { p: 1 } }, { o: {} } );
+// throws: An empty sub-projection is not a valid value at [o]
+```
+
+An empty projection at the ***top*** level is a different matter and is perfectly legal; see
+  below.
+
+A field name may not be the empty string, at any level, because no field is named by it:
+
+```js
+jsongin.Project( { a: 1 }, { '': 1 } );
+// throws: A projection field name cannot be empty
+```
+
+Both rules match MongoDB, verified against MongoDB 6.0.1.
+`jsongin` used to hand a nested specification to [`Evaluate()`](./Evaluate.md) as a computed
+  field, which evaluated the specification as an expression and returned the specification
+  itself — so `{ o: { p: 0 } }` projected a document containing `{ o: { p: 0 } }`, a value the
+  source document never held.
 
 
 ## Inclusion and Exclusion
