@@ -357,6 +357,11 @@
       ✔ should support SearchReplace when detached
       ✔ should support SearchReplace as a callback
       ✔ should support every Text function when detached
+    Text Parameter Validation
+      ✔ should refuse a Compare parameter which is not a string
+      ✔ should refuse a FindBetween parameter which is not a string
+      ✔ should treat a missing FindBetween delimiter as an empty one
+      ✔ should return null when FindBetween cannot find a delimiter
 
   120) Date Handling Tests
     Data Types
@@ -533,6 +538,26 @@
       ✔ should break an object tie on key count
       ✔ should treat null and missing values as equivalent
       ✔ should compare dates by their time value
+    Javascript Values Which BSON Has No Place For
+      ✔ should name a symbol and an undefined in ShortType
+      ✔ should return a symbol from SafeClone as it is
+      ✔ should clone a null and a string as themselves
+      ✔ should give a BsonType for a symbol and none for a function
+      ✔ should refuse to compare a value which has no place in the ordering
+      ✔ should carry a symbol through a Hybridize round trip
+    Engine Function Paths and Criteria
+      ✔ should compare two regular expressions by their text
+      ✔ should return false from SetValue for a path which names nothing
+      ✔ should refuse a SortCriteria which is not an object
+      ✔ should sort a document whose key path runs past the end of an array
+      ✔ should keep the order of two documents which both offer no sort key
+      ✔ should refuse a data type it has no ShortType for
+      ✔ should take the SafeClone exceptions in every form
+      ✔ should leave an excepted path uncloned
+      ✔ should except a path which names an array element
+      ✔ should sort documents which offer no key below those which do
+      ✔ should format a value which JSON has no representation for
+      ✔ should take a ResolveCandidates path in every form
 
   140) Snapshot Tests
     Diff Tests
@@ -677,7 +702,16 @@
       ✔ should report from the query operators which reject their argument
     Aggregation Argument Validation
       ✔ should reject a non-array Documents to every accumulator
+      ✔ should reject a document in the pipeline which is not an object
       ✔ should reject a malformed argument to every stage
+    Operators Called Directly
+      ✔ should answer false for a $type value which is not a number, string or array
+      ✔ should answer false for a $regex value which is not a string or regexp
+      ✔ should run a query handed directly to $ImplicitEq
+    Query Parameters
+      ✔ should return false when the document is not an object
+      ✔ should refuse a criteria which is not an object
+      ✔ should refuse an implicit $eq against undefined
 
   200) Comparison Operator Tests
     $eq Tests
@@ -1280,6 +1314,7 @@
       ✔ should match when any element of an array sub-document matches
       ✔ should not match when no element of an array sub-document matches
       ✔ should not match when the field is missing or is not a document
+      ✔ should skip an array element which is not a document
     $expr and $exprx Placement Tests
       ✔ should not allow $expr to appear within a field
       ✔ should give $expr and $exprx the same meaning at the top level
@@ -1302,6 +1337,12 @@
       ✔ should accept booleans in place of 1 and 0
       ✔ should reject an unsupported projection operator by name
       ✔ should not mistake a computed field for a projection operator
+      ✔ should not treat a document of several $ keys as a projection operator
+    Projection Parameters
+      ✔ should return null when the document is not an object
+      ✔ should return null when the projection is neither an object nor missing
+      ✔ should return the whole document when the projection is missing
+      ✔ should not alias the document when the projection is missing
     Projected Document Shape
       ✔ should remove excluded fields rather than leaving them undefined
       ✔ should include a field through an array, keeping the array
@@ -1326,6 +1367,6 @@
       ✔ should keep a date through a computed field
 
 
-  1126 passing (222ms)
+  1161 passing (232ms)
 
 ```
