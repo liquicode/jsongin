@@ -113,5 +113,7 @@ jsongin.BsonType( new Date() ) === 9
 jsongin.BsonType( { a: 1 } ) === 3
 
 // A number which would be a valid timestamp is still a number.
-jsongin.BsonType( 1700000000000 ) === 16
+// It is a double rather than an int, because it is outside the int32 range.
+jsongin.BsonType( 1700000000000 ) === 1
+jsongin.BsonType( 1700000000000, true ) === 'double'
 ```

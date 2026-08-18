@@ -27,6 +27,15 @@
 	- [`Project()`](/guides/jsongin/Project.md)
 	- [`Update()`](/guides/jsongin/Update.md)
 
+	- **Operators**
+
+		- [Query Operators](/guides/jsongin/Query-Operators.md)
+		- [Expression Operators](/guides/jsongin/Expression-Operators.md)
+		- [Stage Operators](/guides/jsongin/Stage-Operators.md)
+		- [Accumulator Operators](/guides/jsongin/Accumulator-Operators.md)
+		- [Update Operators](/guides/jsongin/Update-Operators.md)
+		- [Projection Operators](/guides/jsongin/Projection-Operators.md)
+
 	- [Operator Reference](/guides/Operator-Reference.md)
 	- [Operator Authoring](/guides/Operator-Authoring.md)
 

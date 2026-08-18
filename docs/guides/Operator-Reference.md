@@ -3,7 +3,22 @@
 
 ### Operator Reference
 
-This is a list of existing MongoDB operators.
+***This page answers "is it supported?".***
+It lists the operators MongoDB defines and marks which of them `jsongin` implements, so that the
+  gap between the two is visible in one place.
+
+***For "how do I use it?", follow the operator's link*** into the page which describes it in
+  detail and gives examples:
+
+| **Page**                                                          | **Covers**                                           |
+|-------------------------------------------------------------------|------------------------------------------------------|
+| [Query Operators](./jsongin/Query-Operators.md)                   | the operators of a query criteria                    |
+| [Expression Operators](./jsongin/Expression-Operators.md)         | the aggregation expression language                  |
+| [Stage Operators](./jsongin/Stage-Operators.md)                   | the stages of an aggregation pipeline                |
+| [Accumulator Operators](./jsongin/Accumulator-Operators.md)       | what may appear inside a `$group`                    |
+| [Update Operators](./jsongin/Update-Operators.md)                 | the operators of an update document                  |
+| [Projection Operators](./jsongin/Projection-Operators.md)         | the operators of a projection                        |
+
 There are three types of operators:
 - `Query` operators are used to construct queries that filter documents.
 - `Projection` operators control the inclusion or exclusion of fields from documents returned by a query.
@@ -23,33 +38,33 @@ Read the [`Query()`](./jsongin/Query.md) document to understand how these operat
 | **Category**  | **Supported** | **Operator**   | **Description**                                                                                                                               |
 |---------------|:-------------:|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
 | Comparison    |      Yes      | <field>: value | Implicit $eq. Specify a document field and value. A matching document will have that field strictly equal to that value.                      |
-| Comparison    |      Yes      | $eq            | Matches values that are equal to a specified value.                                                                                           |
-| Comparison    |      Yes      | $ne            | Matches all values that are not equal to a specified value.                                                                                   |
-| Comparison    |      Yes      | $gt            | Matches values that are greater than a specified value.                                                                                       |
-| Comparison    |      Yes      | $gte           | Matches values that are greater than or equal to a specified value.                                                                           |
-| Comparison    |      Yes      | $lt            | Matches values that are less than a specified value.                                                                                          |
-| Comparison    |      Yes      | $lte           | Matches values that are less than or equal to a specified value.                                                                              |
-| Comparison    |      Yes      | $in            | Matches any of the values specified in an array. Each value is matched the way the implicit form matches one, so a sub-document, an array, a date, and `null` all work, and a regexp in the list pattern matches. |
-| Comparison    |      Yes      | $nin           | Matches none of the values specified in an array. The exact negation of `$in`.                                                                |
-| Logical       |      Yes      | $and           | Joins query clauses with a logical AND returns all documents that match the conditions of both clauses.                                       |
-| Logical       |      Yes      | $or            | Joins query clauses with a logical OR returns all documents that match the conditions of either clause.                                       |
-| Logical       |      Yes      | $nor           | Joins query clauses with a logical NOR returns all documents that fail to match both clauses.                                                 |
-| Logical       |      Yes      | $not           | Inverts the effect of a query expression and returns documents that do not match the query expression. Applies to a field, and is not a top level operator: use `$nor` to negate a whole query. |
-| Element       |      Yes      | $exists        | Matches documents that have the specified field. The value is coerced to a boolean, so only `0`, `null`, and `false` ask for a missing field. |
-| Element       |      Yes      | $type          | Selects documents if a field is of the specified type.                                                                                        |
-| Evaluation    |      Yes      | $expr          | Allows use of aggregation expressions within the query language.                                                                              |
+| Comparison    |      Yes      | [$eq](./jsongin/Query-Operators.md#$eq)            | Matches values that are equal to a specified value.                                                                                           |
+| Comparison    |      Yes      | [$ne](./jsongin/Query-Operators.md#$ne)            | Matches all values that are not equal to a specified value.                                                                                   |
+| Comparison    |      Yes      | [$gt](./jsongin/Query-Operators.md#$gt)            | Matches values that are greater than a specified value.                                                                                       |
+| Comparison    |      Yes      | [$gte](./jsongin/Query-Operators.md#$gte)           | Matches values that are greater than or equal to a specified value.                                                                           |
+| Comparison    |      Yes      | [$lt](./jsongin/Query-Operators.md#$lt)            | Matches values that are less than a specified value.                                                                                          |
+| Comparison    |      Yes      | [$lte](./jsongin/Query-Operators.md#$lte)           | Matches values that are less than or equal to a specified value.                                                                              |
+| Comparison    |      Yes      | [$in](./jsongin/Query-Operators.md#$in)            | Matches any of the values specified in an array. Each value is matched the way the implicit form matches one, so a sub-document, an array, a date, and `null` all work, and a regexp in the list pattern matches. |
+| Comparison    |      Yes      | [$nin](./jsongin/Query-Operators.md#$nin)           | Matches none of the values specified in an array. The exact negation of `$in`.                                                                |
+| Logical       |      Yes      | [$and](./jsongin/Query-Operators.md#$and)           | Joins query clauses with a logical AND returns all documents that match the conditions of both clauses.                                       |
+| Logical       |      Yes      | [$or](./jsongin/Query-Operators.md#$or)            | Joins query clauses with a logical OR returns all documents that match the conditions of either clause.                                       |
+| Logical       |      Yes      | [$nor](./jsongin/Query-Operators.md#$nor)           | Joins query clauses with a logical NOR returns all documents that fail to match both clauses.                                                 |
+| Logical       |      Yes      | [$not](./jsongin/Query-Operators.md#$not)           | Inverts the effect of a query expression and returns documents that do not match the query expression. Applies to a field, and is not a top level operator: use `$nor` to negate a whole query. |
+| Element       |      Yes      | [$exists](./jsongin/Query-Operators.md#$exists)        | Matches documents that have the specified field. The value is coerced to a boolean, so only `0`, `null`, and `false` ask for a missing field. |
+| Element       |      Yes      | [$type](./jsongin/Query-Operators.md#$type)          | Selects documents if a field is of the specified type.                                                                                        |
+| Evaluation    |      Yes      | [$expr](./jsongin/Query-Operators.md#$expr)          | Allows use of aggregation expressions within the query language.                                                                              |
 | Evaluation    |       -       | $jsonSchema    | Validate documents against the given JSON Schema.                                                                                             |
 | Evaluation    |       -       | $mod           | Performs a modulo operation on the value of a field and selects documents with a specified result.                                            |
-| Evaluation    |      Yes      | $regex         | Selects documents where values match a specified regular expression. Accepts a sibling `$options` carrying the flags. See the note below.     |
+| Evaluation    |      Yes      | [$regex](./jsongin/Query-Operators.md#$regex)         | Selects documents where values match a specified regular expression. Accepts a sibling `$options` carrying the flags. See the note below.     |
 | Evaluation    |       -       | $text          | Performs text search.                                                                                                                         |
 | Evaluation    |       -       | $where         | Matches documents that satisfy a JavaScript expression.                                                                                       |
 | Geospatial    |       -       | $geoIntersects | Selects geometries that intersect with a GeoJSON geometry. The 2dsphere index supports $geoIntersects.                                        |
 | Geospatial    |       -       | $geoWithin     | Selects geometries within a bounding GeoJSON geometry. The 2dsphere and 2d indexes support $geoWithin.                                        |
 | Geospatial    |       -       | $near          | Returns geospatial objects in proximity to a point. Requires a geospatial index. The 2dsphere and 2d indexes support $near.                   |
 | Geospatial    |       -       | $nearSphere    | Returns geospatial objects in proximity to a point on a sphere. Requires a geospatial index. The 2dsphere and 2d indexes support $nearSphere. |
-| Array         |      Yes      | $elemMatch     | Selects documents if a single element of the array field matches all the specified $elemMatch conditions. See the note below.                 |
-| Array         |      Yes      | $size          | Selects documents if the array field is a specified size.                                                                                     |
-| Array         |      Yes      | $all           | Matches arrays that contain all elements specified in the query.                                                                              |
+| Array         |      Yes      | [$elemMatch](./jsongin/Query-Operators.md#$elemMatch)     | Selects documents if a single element of the array field matches all the specified $elemMatch conditions. See the note below.                 |
+| Array         |      Yes      | [$size](./jsongin/Query-Operators.md#$size)          | Selects documents if the array field is a specified size.                                                                                     |
+| Array         |      Yes      | [$all](./jsongin/Query-Operators.md#$all)           | Matches arrays that contain all elements specified in the query.                                                                              |
 | Bitwise       |       -       | $bitsAllClear  | Matches numeric or binary values in which a set of bit positions all have a value of 0.                                                       |
 | Bitwise       |       -       | $bitsAllSet    | Matches numeric or binary values in which a set of bit positions all have a value of 1.                                                       |
 | Bitwise       |       -       | $bitsAnyClear  | Matches numeric or binary values in which any bit from a set of bit positions has a value of 0.                                               |
@@ -102,9 +117,8 @@ jsongin.Query( { a: 'FOO' }, { a: { $regex: 'foo' } } );                 // fals
 ```
 
 `$options` given ***without*** a `$regex`, given as anything but a string, carrying a flag which
-  is not valid, or given beside a regexp which already carries its own flags, is refused and the
-  query returns `false`.
-MongoDB reports an error for each of those instead.
+  is not valid, or given beside a regexp which already carries its own flags, is refused with an
+  error, which is what MongoDB does for each of those.
 
 A pattern is rebuilt for every document, so a regexp carrying the ***global flag*** is not
   stateful across a `Filter()`.
@@ -198,31 +212,31 @@ MongoDB adds operators from one server version to the next, so treat this as a c
 
 | **Category**  | **Supported** | **Operator**       | **Description**                                                                              |
 |---------------|:-------------:|--------------------|-----------------------------------------------------------------------------------------------|
-| Arithmetic    |      Yes      | $abs               | Returns the absolute value of a number.                                                      |
-| Arithmetic    |      Yes      | $add               | Adds numbers together. Adds milliseconds to a date.                                          |
-| Arithmetic    |      Yes      | $ceil              | Returns the smallest integer which is greater than or equal to a number.                     |
-| Arithmetic    |      Yes      | $divide            | Divides one number by another. Throws when dividing by zero.                                 |
+| Arithmetic    |      Yes      | [$abs](./jsongin/Expression-Operators.md#$abs)               | Returns the absolute value of a number.                                                      |
+| Arithmetic    |      Yes      | [$add](./jsongin/Expression-Operators.md#$add)               | Adds numbers together. Adds milliseconds to a date.                                          |
+| Arithmetic    |      Yes      | [$ceil](./jsongin/Expression-Operators.md#$ceil)              | Returns the smallest integer which is greater than or equal to a number.                     |
+| Arithmetic    |      Yes      | [$divide](./jsongin/Expression-Operators.md#$divide)            | Divides one number by another. Throws when dividing by zero.                                 |
 | Arithmetic    |       -       | $exp               | Raises Euler's number to a power.                                                            |
-| Arithmetic    |      Yes      | $floor             | Returns the largest integer which is less than or equal to a number.                         |
+| Arithmetic    |      Yes      | [$floor](./jsongin/Expression-Operators.md#$floor)             | Returns the largest integer which is less than or equal to a number.                         |
 | Arithmetic    |       -       | $ln                | Returns the natural logarithm of a number.                                                   |
 | Arithmetic    |       -       | $log               | Returns the logarithm of a number in a given base.                                           |
 | Arithmetic    |       -       | $log10             | Returns the base 10 logarithm of a number.                                                   |
-| Arithmetic    |      Yes      | $max               | Returns the largest of several values, ignoring null and missing values.                     |
-| Arithmetic    |      Yes      | $min               | Returns the smallest of several values, ignoring null and missing values.                    |
-| Arithmetic    |      Yes      | $mod               | Divides one number by another and returns the remainder.                                     |
-| Arithmetic    |      Yes      | $multiply          | Multiplies numbers together.                                                                 |
+| Arithmetic    |      Yes      | [$max](./jsongin/Expression-Operators.md#$max)               | Returns the largest of several values, ignoring null and missing values.                     |
+| Arithmetic    |      Yes      | [$min](./jsongin/Expression-Operators.md#$min)               | Returns the smallest of several values, ignoring null and missing values.                    |
+| Arithmetic    |      Yes      | [$mod](./jsongin/Expression-Operators.md#$mod)               | Divides one number by another and returns the remainder.                                     |
+| Arithmetic    |      Yes      | [$multiply](./jsongin/Expression-Operators.md#$multiply)          | Multiplies numbers together.                                                                 |
 | Arithmetic    |       -       | $pow               | Raises a number to a power.                                                                  |
-| Arithmetic    |      Yes      | $round             | Rounds a number to a given number of decimal places.                                         |
+| Arithmetic    |      Yes      | [$round](./jsongin/Expression-Operators.md#$round)             | Rounds a number to a given number of decimal places.                                         |
 | Arithmetic    |       -       | $sqrt              | Returns the square root of a number.                                                         |
-| Arithmetic    |      Yes      | $subtract          | Subtracts two numbers, two dates, or milliseconds from a date.                               |
-| Arithmetic    |      Yes      | $trunc             | Truncates a number to a given number of decimal places.                                      |
-| Array         |      Yes      | $arrayElemAt       | Returns the element of an array at a given index.                                            |
+| Arithmetic    |      Yes      | [$subtract](./jsongin/Expression-Operators.md#$subtract)          | Subtracts two numbers, two dates, or milliseconds from a date.                               |
+| Arithmetic    |      Yes      | [$trunc](./jsongin/Expression-Operators.md#$trunc)             | Truncates a number to a given number of decimal places.                                      |
+| Array         |      Yes      | [$arrayElemAt](./jsongin/Expression-Operators.md#$arrayElemAt)       | Returns the element of an array at a given index.                                            |
 | Array         |       -       | $arrayToObject     | Converts an array of key/value pairs into an object.                                         |
-| Array         |      Yes      | $concatArrays      | Joins arrays together.                                                                       |
+| Array         |      Yes      | [$concatArrays](./jsongin/Expression-Operators.md#$concatArrays)      | Joins arrays together.                                                                       |
 | Array         |       -       | $filter            | Returns the elements of an array which satisfy a condition.                                  |
 | Array         |       -       | $first             | Returns the first element of an array.                                                       |
 | Array         |       -       | $firstN            | Returns the first N elements of an array.                                                    |
-| Array         |      Yes      | $in                | Returns true when a value is found within an array.                                          |
+| Array         |      Yes      | [$in](./jsongin/Expression-Operators.md#$in)                | Returns true when a value is found within an array.                                          |
 | Array         |       -       | $indexOfArray      | Returns the index of the first array element which matches a value.                          |
 | Array         |       -       | $isArray           | Returns true when a value is an array.                                                       |
 | Array         |       -       | $last              | Returns the last element of an array.                                                        |
@@ -233,20 +247,20 @@ MongoDB adds operators from one server version to the next, so treat this as a c
 | Array         |       -       | $range             | Generates an array of numbers.                                                               |
 | Array         |       -       | $reduce            | Reduces the elements of an array to a single value.                                          |
 | Array         |       -       | $reverseArray      | Returns an array with its elements in reverse order.                                         |
-| Array         |      Yes      | $size              | Returns the number of elements in an array.                                                  |
+| Array         |      Yes      | [$size](./jsongin/Expression-Operators.md#$size)              | Returns the number of elements in an array.                                                  |
 | Array         |       -       | $slice             | Returns a subset of an array.                                                                |
 | Array         |       -       | $sortArray         | Sorts the elements of an array.                                                              |
 | Array         |       -       | $zip               | Merges arrays together, element by element.                                                  |
-| Comparison    |      Yes      | $cmp               | Returns -1, 0, or 1 from the comparison of two values.                                       |
-| Comparison    |      Yes      | $eq                | Returns true when two values are equal.                                                      |
-| Comparison    |      Yes      | $gt                | Returns true when the first value is greater than the second.                                |
-| Comparison    |      Yes      | $gte               | Returns true when the first value is greater than or equal to the second.                    |
-| Comparison    |      Yes      | $lt                | Returns true when the first value is less than the second.                                   |
-| Comparison    |      Yes      | $lte               | Returns true when the first value is less than or equal to the second.                       |
-| Comparison    |      Yes      | $ne                | Returns true when two values are not equal.                                                  |
-| Conditional   |      Yes      | $cond              | Returns one of two values, depending upon a condition.                                       |
-| Conditional   |      Yes      | $ifNull            | Returns the first value which is neither null nor missing.                                   |
-| Conditional   |      Yes      | $switch            | Returns the value belonging to the first matching branch.                                    |
+| Comparison    |      Yes      | [$cmp](./jsongin/Expression-Operators.md#$cmp)               | Returns -1, 0, or 1 from the comparison of two values.                                       |
+| Comparison    |      Yes      | [$eq](./jsongin/Expression-Operators.md#$eq)                | Returns true when two values are equal.                                                      |
+| Comparison    |      Yes      | [$gt](./jsongin/Expression-Operators.md#$gt)                | Returns true when the first value is greater than the second.                                |
+| Comparison    |      Yes      | [$gte](./jsongin/Expression-Operators.md#$gte)               | Returns true when the first value is greater than or equal to the second.                    |
+| Comparison    |      Yes      | [$lt](./jsongin/Expression-Operators.md#$lt)                | Returns true when the first value is less than the second.                                   |
+| Comparison    |      Yes      | [$lte](./jsongin/Expression-Operators.md#$lte)               | Returns true when the first value is less than or equal to the second.                       |
+| Comparison    |      Yes      | [$ne](./jsongin/Expression-Operators.md#$ne)                | Returns true when two values are not equal.                                                  |
+| Conditional   |      Yes      | [$cond](./jsongin/Expression-Operators.md#$cond)              | Returns one of two values, depending upon a condition.                                       |
+| Conditional   |      Yes      | [$ifNull](./jsongin/Expression-Operators.md#$ifNull)            | Returns the first value which is neither null nor missing.                                   |
+| Conditional   |      Yes      | [$switch](./jsongin/Expression-Operators.md#$switch)            | Returns the value belonging to the first matching branch.                                    |
 | Custom        |       -       | $accumulator       | Defines a custom accumulator in Javascript.                                                  |
 | Custom        |       -       | $function          | Defines a custom function in Javascript.                                                     |
 | Data Size     |       -       | $binarySize        | Returns the size of a binary value in bytes.                                                 |
@@ -272,10 +286,10 @@ MongoDB adds operators from one server version to the next, so treat this as a c
 | Date          |       -       | $second            | Returns the seconds of a date, from 0 to 60.                                                 |
 | Date          |       -       | $week              | Returns the week number of a date.                                                           |
 | Date          |       -       | $year              | Returns the year of a date.                                                                  |
-| Literal       |      Yes      | $literal           | Returns a value without evaluating it. Use this for literal strings which begin with a `$`.  |
-| Logical       |      Yes      | $and               | Returns true when all of the expressions are true.                                           |
-| Logical       |      Yes      | $not               | Returns the opposite of an expression's boolean value.                                       |
-| Logical       |      Yes      | $or                | Returns true when any of the expressions is true.                                            |
+| Literal       |      Yes      | [$literal](./jsongin/Expression-Operators.md#$literal)           | Returns a value without evaluating it. Use this for literal strings which begin with a `$`.  |
+| Logical       |      Yes      | [$and](./jsongin/Expression-Operators.md#$and)               | Returns true when all of the expressions are true.                                           |
+| Logical       |      Yes      | [$not](./jsongin/Expression-Operators.md#$not)               | Returns the opposite of an expression's boolean value.                                       |
+| Logical       |      Yes      | [$or](./jsongin/Expression-Operators.md#$or)                | Returns true when any of the expressions is true.                                            |
 | Miscellaneous |       -       | $rand              | Generates a random float between 0 and 1.                                                    |
 | Miscellaneous |       -       | $sampleRate        | Randomly selects documents at a given rate.                                                  |
 | Object        |       -       | $getField          | Returns the value of a given field, including fields whose names begin with a `$`.           |
@@ -359,37 +373,37 @@ See the [`Aggregate()`](jsongin/Aggregate.md) guide for the details of each stag
 
 | **Category**  | **Supported** | **Operator**     | **Description**                                                          |
 |---------------|:-------------:|------------------|----------------------------------------------------------------------------|
-| Stage         |      Yes      | $addFields       | Adds computed fields to each document.                                   |
+| Stage         |      Yes      | [$addFields](./jsongin/Stage-Operators.md#$addFields)       | Adds computed fields to each document.                                   |
 | Stage         |       -       | $bucket          | Groups documents into buckets by given boundaries.                       |
 | Stage         |       -       | $bucketAuto      | Groups documents into a given number of buckets.                         |
 | Stage         |       -       | $collStats       | Returns statistics about a collection.                                   |
-| Stage         |      Yes      | $count           | Returns the number of documents, as a stage. See the note below.         |
+| Stage         |      Yes      | [$count](./jsongin/Stage-Operators.md#$count)           | Returns the number of documents, as a stage. See the note below.         |
 | Stage         |       -       | $densify         | Fills in gaps in a sequence of documents.                                |
 | Stage         |       -       | $documents       | Returns literal documents, as a pipeline source.                         |
 | Stage         |       -       | $facet           | Runs several pipelines over the same documents.                          |
 | Stage         |       -       | $fill            | Populates missing field values.                                          |
 | Stage         |       -       | $geoNear         | Orders documents by proximity to a point.                                |
 | Stage         |       -       | $graphLookup     | Performs a recursive search across a collection.                         |
-| Stage         |      Yes      | $group           | Groups documents and reduces each group with accumulators.               |
+| Stage         |      Yes      | [$group](./jsongin/Stage-Operators.md#$group)           | Groups documents and reduces each group with accumulators.               |
 | Stage         |       -       | $indexStats      | Returns statistics about index usage.                                    |
-| Stage         |      Yes      | $limit           | Passes the first N documents along.                                      |
+| Stage         |      Yes      | [$limit](./jsongin/Stage-Operators.md#$limit)           | Passes the first N documents along.                                      |
 | Stage         |       -       | $lookup          | Joins documents from another collection.                                 |
-| Stage         |      Yes      | $match           | Selects the documents which match a query.                               |
+| Stage         |      Yes      | [$match](./jsongin/Stage-Operators.md#$match)           | Selects the documents which match a query.                               |
 | Stage         |       -       | $merge           | Writes the results into a collection.                                    |
 | Stage         |       -       | $out             | Writes the results into a new collection.                                |
-| Stage         |      Yes      | $project         | Includes, excludes, and computes document fields.                        |
+| Stage         |      Yes      | [$project](./jsongin/Stage-Operators.md#$project)         | Includes, excludes, and computes document fields.                        |
 | Stage         |       -       | $redact          | Restricts the content of documents based on their content.               |
 | Stage         |       -       | $replaceRoot     | Promotes a sub-document to the top level.                                |
 | Stage         |       -       | $replaceWith     | An alias of $replaceRoot.                                                |
 | Stage         |       -       | $sample          | Selects a random sample of documents.                                    |
-| Stage         |      Yes      | $set             | An alias of $addFields.                                                  |
+| Stage         |      Yes      | [$set](./jsongin/Stage-Operators.md#$set)             | An alias of $addFields.                                                  |
 | Stage         |       -       | $setWindowFields | Computes values over a window of documents.                              |
-| Stage         |      Yes      | $skip            | Discards the first N documents.                                          |
-| Stage         |      Yes      | $sort            | Sorts the documents by one or more fields.                               |
+| Stage         |      Yes      | [$skip](./jsongin/Stage-Operators.md#$skip)            | Discards the first N documents.                                          |
+| Stage         |      Yes      | [$sort](./jsongin/Stage-Operators.md#$sort)            | Sorts the documents by one or more fields.                               |
 | Stage         |       -       | $sortByCount     | Groups documents and sorts the groups by count.                          |
 | Stage         |       -       | $unionWith       | Appends the documents of another collection.                             |
 | Stage         |       -       | $unset           | Removes fields from each document, as a stage. See the note below.       |
-| Stage         |      Yes      | $unwind          | Emits one document per element of an array field.                        |
+| Stage         |      Yes      | [$unwind](./jsongin/Stage-Operators.md#$unwind)          | Emits one document per element of an array field.                        |
 | Stage         |       -       | $vectorSearch    | Performs a vector similarity search.                                     |
 
 ***Note on the stages which need a second collection*** :
@@ -418,26 +432,26 @@ See the *Operators Which Share a Name* section below.
 | **Category**  | **Supported** | **Operator**   | **Description**                                                            |
 |---------------|:-------------:|----------------|------------------------------------------------------------------------------|
 | Accumulator   |       -       | $accumulator   | Accumulates values using custom Javascript functions.                      |
-| Accumulator   |      Yes      | $addToSet      | Collects the unique values of a field.                                     |
-| Accumulator   |      Yes      | $avg           | Returns the average of numeric values.                                     |
+| Accumulator   |      Yes      | [$addToSet](./jsongin/Accumulator-Operators.md#$addToSet)      | Collects the unique values of a field.                                     |
+| Accumulator   |      Yes      | [$avg](./jsongin/Accumulator-Operators.md#$avg)           | Returns the average of numeric values.                                     |
 | Accumulator   |       -       | $bottom        | Returns the last value in a given ordering.                                |
 | Accumulator   |       -       | $bottomN       | Returns the last N values in a given ordering.                             |
-| Accumulator   |      Yes      | $count         | Returns the number of documents.                                           |
-| Accumulator   |      Yes      | $first         | Returns the value from the first document.                                 |
+| Accumulator   |      Yes      | [$count](./jsongin/Accumulator-Operators.md#$count)         | Returns the number of documents.                                           |
+| Accumulator   |      Yes      | [$first](./jsongin/Accumulator-Operators.md#$first)         | Returns the value from the first document.                                 |
 | Accumulator   |       -       | $firstN        | Returns the values from the first N documents.                             |
-| Accumulator   |      Yes      | $last          | Returns the value from the last document.                                  |
+| Accumulator   |      Yes      | [$last](./jsongin/Accumulator-Operators.md#$last)          | Returns the value from the last document.                                  |
 | Accumulator   |       -       | $lastN         | Returns the values from the last N documents.                              |
-| Accumulator   |      Yes      | $max           | Returns the largest value. See the note below.                             |
+| Accumulator   |      Yes      | [$max](./jsongin/Accumulator-Operators.md#$max)           | Returns the largest value. See the note below.                             |
 | Accumulator   |       -       | $maxN          | Returns the N largest values.                                              |
 | Accumulator   |       -       | $median        | Returns the median value.                                                  |
 | Accumulator   |       -       | $mergeObjects  | Merges documents together into a single document.                          |
-| Accumulator   |      Yes      | $min           | Returns the smallest value. See the note below.                            |
+| Accumulator   |      Yes      | [$min](./jsongin/Accumulator-Operators.md#$min)           | Returns the smallest value. See the note below.                            |
 | Accumulator   |       -       | $minN          | Returns the N smallest values.                                             |
 | Accumulator   |       -       | $percentile    | Returns values at given percentiles.                                       |
-| Accumulator   |      Yes      | $push          | Collects the values of a field into an array.                              |
+| Accumulator   |      Yes      | [$push](./jsongin/Accumulator-Operators.md#$push)          | Collects the values of a field into an array.                              |
 | Accumulator   |       -       | $stdDevPop     | Returns the population standard deviation of numeric values.               |
 | Accumulator   |       -       | $stdDevSamp    | Returns the sample standard deviation of numeric values.                   |
-| Accumulator   |      Yes      | $sum           | Returns the sum of numeric values.                                         |
+| Accumulator   |      Yes      | [$sum](./jsongin/Accumulator-Operators.md#$sum)           | Returns the sum of numeric values.                                         |
 | Accumulator   |       -       | $top           | Returns the first value in a given ordering.                               |
 | Accumulator   |       -       | $topN          | Returns the first N values in a given ordering.                            |
 
@@ -519,9 +533,9 @@ You can use `jsongin.Project( Document, Projection )` to perform this function.
 | Category | Supported | Operator   | Description                                                                             |
 |----------|:---------:|------------|-----------------------------------------------------------------------------------------|
 | Field    | -         | $          | Projects the first element in an array that matches the query condition.                |
-| Field    |    Yes    | $elemMatch | Projects the first element in an array that matches the specified $elemMatch condition. |
+| Field    |    Yes    | [$elemMatch](./jsongin/Projection-Operators.md#$elemMatch) | Projects the first element in an array that matches the specified $elemMatch condition. |
 | Field    | -         | $meta      | Projects the available per-document metadata.                                           |
-| Field    |    Yes    | $slice     | Limits the number of elements projected from an array. Supports skip and limit slices.  |
+| Field    |    Yes    | [$slice](./jsongin/Projection-Operators.md#$slice)     | Limits the number of elements projected from an array. Supports skip and limit slices.  |
 
 ***A projection operator is not an expression operator***, even where the two share a name.
 `$slice` and `$elemMatch` both exist in other languages meaning something else: there is an
@@ -586,18 +600,18 @@ Use the `jsongin.Update( Document, Updates )` function to apply updates to a doc
 | Category | Supported | Operator         | Description                                                                                                                                   |
 |----------|:---------:|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
 | Field    |    Yes    | $set             | Sets the value of a field in a document. A path which is not there is created as a document, and a gap written past the end of an array is filled with `null`. See [`SetValue`](./jsongin/SetValue.md). |
-| Field    |    Yes    | $unset           | Removes the specified field from a document. An array element is set to `null` rather than being removed, which keeps the array's length.     |
-| Field    |    Yes    | $rename          | Renames a field. A source field which is not present is left alone, and the target field is not created.                                      |
-| Field    |    Yes    | $inc             | Increments the value of the field by the specified amount. A field which is not present is created. See the note below.                       |
-| Field    |    Yes    | $min             | Only updates the field if the specified value is less than the existing field value. Compares by BSON order, not just numerically. See the note below. |
-| Field    |    Yes    | $max             | Only updates the field if the specified value is greater than the existing field value. Compares by BSON order, not just numerically. See the note below. |
-| Field    |    Yes    | $mul             | Multiplies the value of the field by the specified amount. A field which is not present is set to `0`. See the note below.                    |
-| Field    |    Yes    | $currentDate     | Sets the value of a field to the current date, as a `Date` or as a numeric timestamp. Takes `true` or `{ $type: '...' }`, never a bare string. |
+| Field    |    Yes    | [$unset](./jsongin/Update-Operators.md#$unset)           | Removes the specified field from a document. An array element is set to `null` rather than being removed, which keeps the array's length.     |
+| Field    |    Yes    | [$rename](./jsongin/Update-Operators.md#$rename)          | Renames a field. A source field which is not present is left alone, and the target field is not created.                                      |
+| Field    |    Yes    | [$inc](./jsongin/Update-Operators.md#$inc)             | Increments the value of the field by the specified amount. A field which is not present is created. See the note below.                       |
+| Field    |    Yes    | [$min](./jsongin/Update-Operators.md#$min)             | Only updates the field if the specified value is less than the existing field value. Compares by BSON order, not just numerically. See the note below. |
+| Field    |    Yes    | [$max](./jsongin/Update-Operators.md#$max)             | Only updates the field if the specified value is greater than the existing field value. Compares by BSON order, not just numerically. See the note below. |
+| Field    |    Yes    | [$mul](./jsongin/Update-Operators.md#$mul)             | Multiplies the value of the field by the specified amount. A field which is not present is set to `0`. See the note below.                    |
+| Field    |    Yes    | [$currentDate](./jsongin/Update-Operators.md#$currentDate)     | Sets the value of a field to the current date, as a `Date` or as a numeric timestamp. Takes `true` or `{ $type: '...' }`, never a bare string. |
 | Field    |     -     | $setOnInsert     | Sets the value of a field if an update results in an insert of a document. Has no effect on update operations that modify existing documents. |
-| Array    |    Yes    | $addToSet        | Adds elements to an array only if they do not already exist in the set. Supports the `$each` modifier. Creates the array when the field is not present. |
-| Array    |    Yes    | $pop             | Removes the first or last item of an array.                                                                                                   |
-| Array    |    Yes    | $push            | Adds items to an array. Supports the `$each`, `$position`, `$sort`, and `$slice` modifiers, which require a `$each` beside them to be read as modifiers at all. Creates the array when the field is not present. |
-| Array    |    Yes    | $pullAll         | Removes all matching values from an array.                                                                                                    |
+| Array    |    Yes    | [$addToSet](./jsongin/Update-Operators.md#$addToSet)        | Adds elements to an array only if they do not already exist in the set. Supports the `$each` modifier. Creates the array when the field is not present. |
+| Array    |    Yes    | [$pop](./jsongin/Update-Operators.md#$pop)             | Removes the first or last item of an array.                                                                                                   |
+| Array    |    Yes    | [$push](./jsongin/Update-Operators.md#$push)            | Adds items to an array. Supports the `$each`, `$position`, `$sort`, and `$slice` modifiers, which require a `$each` beside them to be read as modifiers at all. Creates the array when the field is not present. |
+| Array    |    Yes    | [$pullAll](./jsongin/Update-Operators.md#$pullAll)         | Removes all matching values from an array.                                                                                                    |
 | Array    |     -     | $pull            | Removes all array elements that match a specified query.                                                                                      |
 | Array    |     -     | $                | Acts as a placeholder to update the first element that matches the query condition.                                                           |
 | Array    |     -     | $[]              | Acts as a placeholder to update all elements in an array for the documents that match the query condition.                                    |
