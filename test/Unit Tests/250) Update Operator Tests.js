@@ -920,6 +920,20 @@ describe( '250) Update Operator Tests', () =>
 				assert.ok( updated.a[ 0 ] instanceof Date );
 			} );
 
+			it( 'should append a document without $each as a value, not read it as a modifier', () =>
+			{
+				// $each is what makes a document a modifier document. An object without one is a
+				// plain value to append, even when it carries $position, $sort, or $slice.
+				let updated = jsongin.Update( { a: [ 1 ] }, { $push: { a: { $position: 0 } } } );
+				assert.strictEqual( updated.a.length, 2 );
+				assert.deepEqual( updated.a[ 1 ], { $position: 0 } );
+			} );
+
+			it( 'should reject an unrecognized $ field within a modifier document', () =>
+			{
+				assert.throws( function () { jsongin.Update( { a: [ 1 ] }, { $push: { a: { $each: [ 3 ], $bogus: 1 } } } ); } );
+			} );
+
 
 		} );
 

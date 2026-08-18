@@ -575,4 +575,163 @@ describe( '220) Expression Operator Tests', () =>
 	} );
 
 
+	//---------------------------------------------------------------------
+	describe( '$ceil and $floor Tests', () =>
+	{
+
+		it( 'should round up to the next integer with $ceil', () =>
+		{
+			assert.ok( jsongin.Evaluate( {}, { $ceil: 2.1 } ) === 3 );
+			assert.ok( jsongin.Evaluate( {}, { $ceil: -2.1 } ) === -2 );
+		} );
+
+		it( 'should round down to the previous integer with $floor', () =>
+		{
+			assert.ok( jsongin.Evaluate( {}, { $floor: 2.9 } ) === 2 );
+			assert.ok( jsongin.Evaluate( {}, { $floor: -2.9 } ) === -3 );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( '$round Tests', () =>
+	{
+
+		// $round rounds half to even, which is what MongoDB does and Math.round() does not.
+
+		it( 'should round half to even', () =>
+		{
+			assert.ok( jsongin.Evaluate( {}, { $round: [ 2.5 ] } ) === 2 );
+			assert.ok( jsongin.Evaluate( {}, { $round: [ 3.5 ] } ) === 4 );
+			assert.ok( jsongin.Evaluate( {}, { $round: [ 2.4 ] } ) === 2 );
+			assert.ok( jsongin.Evaluate( {}, { $round: [ 2.6 ] } ) === 3 );
+		} );
+
+		it( 'should round to a positive decimal place', () =>
+		{
+			assert.ok( jsongin.Evaluate( {}, { $round: [ 3.14159, 2 ] } ) === 3.14 );
+		} );
+
+		it( 'should round to a negative place, left of the decimal point', () =>
+		{
+			assert.ok( jsongin.Evaluate( {}, { $round: [ 1234, -1 ] } ) === 1230 );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( '$trunc Tests', () =>
+	{
+
+		// $trunc discards digits past the place without rounding, so it cuts toward zero.
+
+		it( 'should discard the digits past the decimal point', () =>
+		{
+			assert.ok( jsongin.Evaluate( {}, { $trunc: [ 2.9 ] } ) === 2 );
+			assert.ok( jsongin.Evaluate( {}, { $trunc: [ -2.9 ] } ) === -2 );
+		} );
+
+		it( 'should truncate to a positive decimal place', () =>
+		{
+			assert.ok( jsongin.Evaluate( {}, { $trunc: [ 3.14159, 2 ] } ) === 3.14 );
+		} );
+
+		it( 'should truncate to a negative place, left of the decimal point', () =>
+		{
+			assert.ok( jsongin.Evaluate( {}, { $trunc: [ 1234, -1 ] } ) === 1230 );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( '$size (expression) Tests', () =>
+	{
+
+		it( 'should return the length of an array', () =>
+		{
+			assert.ok( jsongin.Evaluate( { scores: [ 10, 20, 30 ] }, { $size: '$scores' } ) === 3 );
+		} );
+
+		it( 'should throw when the operand is not an array', () =>
+		{
+			assert.throws( function () { jsongin.Evaluate( { a: 5 }, { $size: '$a' } ); }, /requires an array/ );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( '$arrayElemAt Tests', () =>
+	{
+
+		it( 'should return the element at a position', () =>
+		{
+			let document = { scores: [ 10, 20, 30 ] };
+			assert.ok( jsongin.Evaluate( document, { $arrayElemAt: [ '$scores', 1 ] } ) === 20 );
+		} );
+
+		it( 'should count a negative position back from the end', () =>
+		{
+			let document = { scores: [ 10, 20, 30 ] };
+			assert.ok( jsongin.Evaluate( document, { $arrayElemAt: [ '$scores', -1 ] } ) === 30 );
+		} );
+
+		it( 'should give a missing value for a position outside the array', () =>
+		{
+			let document = { scores: [ 10, 20, 30 ] };
+			assert.ok( jsongin.Evaluate( document, { $arrayElemAt: [ '$scores', 10 ] } ) === undefined );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( '$concatArrays Tests', () =>
+	{
+
+		it( 'should join arrays end to end', () =>
+		{
+			assert.deepEqual( jsongin.Evaluate( {}, { $concatArrays: [ [ 1, 2 ], [ 3 ] ] } ), [ 1, 2, 3 ] );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( '$in (expression) Tests', () =>
+	{
+
+		// The expression $in takes the value first and the array second, the reverse of the
+		// query operator of the same name.
+
+		it( 'should be true when the array holds the value', () =>
+		{
+			let document = { scores: [ 10, 20, 30 ] };
+			assert.ok( jsongin.Evaluate( document, { $in: [ 20, '$scores' ] } ) === true );
+			assert.ok( jsongin.Evaluate( document, { $in: [ 99, '$scores' ] } ) === false );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( '$literal Tests', () =>
+	{
+
+		it( 'should return a $-string as text rather than as a field reference', () =>
+		{
+			assert.ok( jsongin.Evaluate( { a: 5 }, { $literal: '$a' } ) === '$a' );
+		} );
+
+		it( 'should return an operator-shaped document as data', () =>
+		{
+			assert.deepEqual( jsongin.Evaluate( {}, { $literal: { $add: [ 1, 2 ] } } ), { $add: [ 1, 2 ] } );
+		} );
+
+	} );
+
+
 } );

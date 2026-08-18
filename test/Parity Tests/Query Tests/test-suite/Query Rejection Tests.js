@@ -58,6 +58,13 @@ module.exports = function ( Driver )
 			assert.ok( await refused( [ { a: 1 } ], { $gt: 1 } ) );
 		} );
 
+		it( 'should refuse $all at the top level of a query', async () =>
+		{
+			// $all applies to a field. The top-level form is not a valid query, so it is
+			// refused rather than read as a field named $all.
+			assert.ok( await refused( [ { a: [ 1, 2 ] } ], { $all: { a: [ 1 ] } } ) );
+		} );
+
 		it( 'should refuse an operator it does not know', async () =>
 		{
 			// A misspelled operator used to be read as a field name, which tested a field that

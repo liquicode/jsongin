@@ -482,6 +482,19 @@ describe( '240) Aggregate Stage Tests', () =>
 			assert.ok( jsongin.StrictEquals( result, [ { a: 0, b: 9 }, { a: 1, b: 2 }, { a: 1, b: 1 } ] ) );
 		} );
 
+		it( 'should reduce an array sort field to one key, smallest ascending and largest descending', () =>
+		{
+			// A sort field which holds an array is reduced to a single sort key first.
+			// docA's only element is 3; docB holds 1 and 2.
+			let documents = [ { v: [ 3 ] }, { v: [ 1, 2 ] } ];
+			let asc = jsongin.Aggregate( documents, [ { $sort: { v: 1 } } ] );
+			// Ascending takes the smallest element: docB (1) comes before docA (3).
+			assert.deepEqual( asc[ 0 ].v, [ 1, 2 ] );
+			let desc = jsongin.Aggregate( documents, [ { $sort: { v: -1 } } ] );
+			// Descending takes the largest element: docA (3) comes before docB (2).
+			assert.deepEqual( desc[ 0 ].v, [ 3 ] );
+		} );
+
 		it( 'should leave the input array ordering untouched', () =>
 		{
 			let documents = [ { n: 2 }, { n: 1 } ];

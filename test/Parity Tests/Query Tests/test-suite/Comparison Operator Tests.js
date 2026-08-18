@@ -374,6 +374,39 @@ module.exports = function ( Driver )
 				assert.ok( !await matches( { other: 1 }, { v: { $type: 'null' } } ) );
 			} );
 
+			it( 'should distinguish an int from a double', async () =>
+			{
+				// A whole number in the int32 range is an int; a fraction is a double.
+				// The BSON serializer stores each the same way jsongin's BsonType reports it.
+				assert.ok( await matches( { v: 42 }, { v: { $type: 'int' } } ) );
+				assert.ok( !await matches( { v: 42 }, { v: { $type: 'double' } } ) );
+				assert.ok( await matches( { v: 3.14 }, { v: { $type: 'double' } } ) );
+				assert.ok( !await matches( { v: 3.14 }, { v: { $type: 'int' } } ) );
+			} );
+
+			it( 'should use the int32 range, not the safe-integer range, to tell int from double', async () =>
+			{
+				// 2147483647 is the largest int32; 2147483648 is one past it. A whole number
+				// inside the int32 range is an int, and one outside it is a double, even
+				// though both are safe integers. jsongin once used Number.isSafeInteger()
+				// here and called the second one a long.
+				assert.ok( await matches( { v: 2147483647 }, { v: { $type: 'int' } } ) );
+				assert.ok( await matches( { v: 2147483648 }, { v: { $type: 'double' } } ) );
+			} );
+
+			it( 'should match no plain number with the long type', async () =>
+			{
+				// A plain Javascript number is never a long, so 'long' selects none of them.
+				assert.ok( !await matches( { v: 42 }, { v: { $type: 'long' } } ) );
+				assert.ok( !await matches( { v: 3.14 }, { v: { $type: 'long' } } ) );
+			} );
+
+			it( 'should treat number as an alias for every numeric type', async () =>
+			{
+				assert.ok( await matches( { v: 42 }, { v: { $type: 'number' } } ) );
+				assert.ok( await matches( { v: 3.14 }, { v: { $type: 'number' } } ) );
+			} );
+
 		} );
 
 
