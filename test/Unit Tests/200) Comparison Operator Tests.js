@@ -1438,6 +1438,27 @@ describe( '200) Comparison Operator Tests', () =>
 			assert.strictEqual( jsongin.Query( { a: null }, { a: { $type: 'null' } } ), true );
 		} );
 
+		it( 'should match a Date by alias and by number', () =>
+		{
+			// The BSON type table once marked Date (9) as unsupported. BsonType returns 9
+			// for a Date, so $type recognizes it both ways.
+			assert.strictEqual( jsongin.Query( { a: new Date( 123 ) }, { a: { $type: 'date' } } ), true );
+			assert.strictEqual( jsongin.Query( { a: new Date( 123 ) }, { a: { $type: 9 } } ), true );
+			assert.strictEqual( jsongin.Query( { a: new Date( 123 ) }, { a: { $type: 'string' } } ), false );
+		} );
+
+		it( 'should distinguish int from double and never report long', () =>
+		{
+			// A whole number inside the int32 range is an int; a fraction is a double.
+			assert.strictEqual( jsongin.Query( { a: 42 }, { a: { $type: 'int' } } ), true );
+			assert.strictEqual( jsongin.Query( { a: 42 }, { a: { $type: 'double' } } ), false );
+			assert.strictEqual( jsongin.Query( { a: 3.14 }, { a: { $type: 'double' } } ), true );
+			assert.strictEqual( jsongin.Query( { a: 3.14 }, { a: { $type: 'int' } } ), false );
+			// A plain Javascript number is never a long, so 'long' matches nothing.
+			assert.strictEqual( jsongin.Query( { a: 42 }, { a: { $type: 'long' } } ), false );
+			assert.strictEqual( jsongin.Query( { a: 9007199254740991 }, { a: { $type: 'long' } } ), false );
+		} );
+
 	} );
 
 
@@ -1500,6 +1521,13 @@ describe( '200) Comparison Operator Tests', () =>
 		it( 'should reject a non array match value', () =>
 		{
 			assert.strictEqual( jsongin.QueryOperators.$all.Query( { a: [ 1 ] }, 1, 'a' ), false );
+		} );
+
+		it( 'should not appear at the top level of a query', () =>
+		{
+			// $all applies to a field. The top-level form { $all: { field: [...] } } is not
+			// a valid query, so it is rejected rather than silently matching nothing.
+			assert.throws( () => jsongin.Query( { tags: [ 'a', 'b' ] }, { $all: { tags: [ 'a', 'b' ] } } ) );
 		} );
 
 	} );

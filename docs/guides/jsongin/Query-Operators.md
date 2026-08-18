@@ -486,7 +486,7 @@ BSON Types and `jsongin` Support
 
 | **Type**                   | **Number** | **Alias**             | **Notes**                  | **Supported** |
 |----------------------------|------------|-----------------------|----------------------------|---------------|
-| Double                     | 1          | "double"              |                            | Yes           |
+| Double                     | 1          | "double"              | Fractions and out-of-int32-range numbers. | Yes           |
 | String                     | 2          | "string"              |                            | Yes           |
 | Object                     | 3          | "object"              |                            | Yes           |
 | Array                      | 4          | "array"               |                            | Yes           |
@@ -494,16 +494,16 @@ BSON Types and `jsongin` Support
 | Undefined                  | 6          | "undefined"           | Deprecated.                | Yes           |
 | ObjectId                   | 7          | "objectId"            |                            | -             |
 | Boolean                    | 8          | "bool"                |                            | Yes           |
-| Date                       | 9          | "date"                |                            | -             |
+| Date                       | 9          | "date"                |                            | Yes           |
 | Null                       | 10         | "null"                |                            | Yes           |
 | Regular Expression         | 11         | "regex"               |                            | Yes           |
 | DBPointer                  | 12         | "dbPointer"           | Deprecated.                | -             |
 | JavaScript                 | 13         | "javascript"          |                            | -             |
 | Symbol                     | 14         | "symbol"              | Deprecated.                | Yes           |
 | JavaScript code with scope | 15         | "javascriptWithScope" | Deprecated in MongoDB 4.4. | -             |
-| 32-bit integer             | 16         | "int"                 |                            | Yes           |
+| 32-bit integer             | 16         | "int"                 | A whole number in the int32 range. | Yes           |
 | Timestamp                  | 17         | "timestamp"           |                            | -             |
-| 64-bit integer             | 18         | "long"                |                            | Yes           |
+| 64-bit integer             | 18         | "long"                | A plain JS number is never a long. | -             |
 | Decimal128                 | 19         | "decimal"             |                            | -             |
 | Min key                    | -1         | "minKey"              |                            | -             |
 | Max key                    | 127        | "maxKey"              |                            | -             |
@@ -525,6 +525,15 @@ jsongin.Query( document, { user: { $type: 3 } } ) === true
 jsongin.Query( document, { user: { $type: 'object' } } ) === true
 jsongin.Query( document, { 'user.name': { $type: 'string' } } ) === true
 jsongin.Query( document, { tags: { $type: 'array' } } ) === true
+// A Date is recognized by alias and by BSON number.
+jsongin.Query( { when: new Date( 123 ) }, { when: { $type: 'date' } } ) === true
+jsongin.Query( { when: new Date( 123 ) }, { when: { $type: 9 } } ) === true
+// A whole number in the int32 range is an int, not a double.
+jsongin.Query( { n: 42 }, { n: { $type: 'int' } } ) === true
+jsongin.Query( { n: 42 }, { n: { $type: 'double' } } ) === false
+jsongin.Query( { n: 3.14 }, { n: { $type: 'double' } } ) === true
+// 'number' is an alias for every numeric type.
+jsongin.Query( { n: 42 }, { n: { $type: 'number' } } ) === true
 ```
 
 
@@ -675,10 +684,38 @@ jsongin.Query( document, { tags: { $size: 2 } } ) === true
 <a id="$all"></a>$all
 ---------------------------------------------------------------------
 
-**Usage** : `$all: { field: [ values ], ... }`
+**Usage** : `{ field: { $all: [ value, ... ] }}`
 
+The `$all` operator matches a field which contains ***every*** one of the listed values.
+
+Each value is delegated to [`$eq`](#$eq), so the values may be sub-documents, arrays, or dates,
+  and they are compared by content. `$all` is `$in` with an `AND` between the values rather
+  than an `OR`, and an empty list matches nothing.
+
+`$all` applies to a ***field*** and cannot appear at the top level of a query. Because each
+  value is tested as ordinary equality, `$all` also works against a field which is not an
+  array at all: `{ qty: { $all: [ 50 ] } }` matches a document whose `qty` is `50`.
 
 > MongoDB Reference: [Array Query Operator: $all](https://www.mongodb.com/docs/manual/reference/operator/query/all/)
+
+### Example
+```js
+let document = {
+	user: {
+		name: 'Alice',
+		role: 'admin',
+	},
+	login_attempts: 7,
+	tags: [ 'A', 'B', 'C' ]
+};
+// Returns true when every listed value is present in the array field.
+jsongin.Query( document, { tags: { $all: [ 'A', 'B' ] } } ) === true
+jsongin.Query( document, { tags: { $all: [ 'A', 'X' ] } } ) === false
+// A single value reads as ordinary equality, so a non-array field works too.
+jsongin.Query( document, { login_attempts: { $all: [ 7 ] } } ) === true
+// An empty list matches nothing.
+jsongin.Query( document, { tags: { $all: [] } } ) === false
+```
 
 
 # jsongin Extended Query Operators

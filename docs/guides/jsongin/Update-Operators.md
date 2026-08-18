@@ -292,8 +292,10 @@ A document carrying `$each` is a ***modifier document***, and appends every elem
 The modifiers are applied in the order MongoDB applies them: `$each`, then `$position`, then
   `$sort`, then `$slice`.
 
-A modifier written without `$each` is rejected, as it is by MongoDB, and so is an unrecognized
-  `$` field within a modifier document.
+`$each` is what makes a document a modifier document.
+An object written ***without*** one is a plain value to append, even when it carries `$slice`,
+  `$position`, or `$sort`, which are stored as data rather than read as modifiers.
+An unrecognized `$` field ***within*** a modifier document is rejected rather than being stored.
 ***A rejected modifier leaves the array untouched***, because the whole modifier document is
   checked before the first element is inserted.
 
@@ -329,6 +331,15 @@ updated = jsongin.Update(
 
 Note that a document with no `$each` is a value rather than a modifier, so
   `{ $push: { a: { n: 1 } } }` appends the document `{ n: 1 }`.
+
+```js
+// A document with no $each is a value to append, even one carrying a modifier field.
+jsongin.Update( { a: [] }, { $push: { a: { n: 1 } } } ).a.length === 1
+jsongin.Update( { a: [ 1 ] }, { $push: { a: { $position: 0 } } } ).a.length === 2
+
+// An unrecognized $ field within a modifier document is rejected, and the array is untouched.
+jsongin.Update( { a: [ 1 ] }, { $push: { a: { $each: [ 3 ], $bogus: 1 } } } );   // throws
+```
 
 
 <a id="$pullAll"></a>$pullAll

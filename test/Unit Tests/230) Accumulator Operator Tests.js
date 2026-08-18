@@ -306,4 +306,44 @@ describe( '230) Accumulator Operator Tests', () =>
 	} );
 
 
+	//---------------------------------------------------------------------
+	describe( '$addToSet Tests', () =>
+	{
+
+		// $addToSet collects the distinct values. Its order is not specified, so these tests
+		// compare a sorted copy of the result.
+
+		it( 'should collect the distinct values, compared by content', () =>
+		{
+			let documents = [ { a: 1 }, { a: 1 }, { a: 2 } ];
+			let result = accumulate( '$addToSet', documents, '$a' ).slice().sort();
+			assert.deepEqual( result, [ 1, 2 ] );
+		} );
+
+		it( 'should recognize an equal document as already present', () =>
+		{
+			let documents = [ { a: { x: 1 } }, { a: { x: 1 } } ];
+			let result = accumulate( '$addToSet', documents, '$a' );
+			assert.strictEqual( result.length, 1 );
+			assert.deepEqual( result[ 0 ], { x: 1 } );
+		} );
+
+		it( 'should keep a null and skip a missing value', () =>
+		{
+			let documents = [ { a: 1 }, { a: null }, {} ];
+			let result = accumulate( '$addToSet', documents, '$a' );
+			// null is a value; a missing field contributes nothing.
+			assert.strictEqual( result.length, 2 );
+			assert.ok( result.includes( 1 ) );
+			assert.ok( result.includes( null ) );
+		} );
+
+		it( 'should return an empty array for an empty group', () =>
+		{
+			assert.deepEqual( accumulate( '$addToSet', [], '$a' ), [] );
+		} );
+
+	} );
+
+
 } );
