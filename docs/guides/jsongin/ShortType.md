@@ -97,3 +97,9 @@ jsongin.ShortType( /^abc/ ) === 'r'
 jsongin.ShortType() === 'u'
 ```
 
+
+## See Also
+
+- [`BsonType( Value, ReturnAlias )`](./BsonType.md), the BSON type of a value.
+- [`CompareValues( ValueA, ValueB )`](./CompareValues.md), which orders values by type.
+- [`AsBoolean( Value )`](./AsBoolean.md), [`AsNumber( Value )`](./AsNumber.md), and [`AsDate( Value )`](./AsDate.md), which convert between them.

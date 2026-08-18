@@ -361,3 +361,10 @@ updated = jsongin.Update(
 // updated is { a: [ { n: 2 } ] }
 ```
 
+
+## See Also
+
+- [`Update( Document, Updates )`](./Update.md), which applies these operators.
+- [`Diff( Before, After )`](./Diff.md) and [`Invert( Before, Patch )`](./Invert.md), which write update documents.
+- [`SetValue( Document, Path, Value )`](./SetValue.md), which the field operators write through.
+- [Operator Reference](../Operator-Reference.md), for which MongoDB operators are implemented.

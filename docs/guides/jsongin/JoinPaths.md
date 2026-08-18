@@ -59,3 +59,9 @@ jsongin.JoinPaths( 'users', null, 'name' ) === 'users.name'
 jsongin.JoinPaths( 'users', { a: 1 }, 'name' ) // throws 'Path segment is invalid ...'
 ```
 
+
+## See Also
+
+- [`SplitPath( Path )`](./SplitPath.md), the counterpart which takes a path apart.
+- [`GetValue( Document, Path )`](./GetValue.md) and [`SetValue( Document, Path, Value )`](./SetValue.md), which read and write by path.
+- [Document Manipulation](../Document-Manipulation.md)
