@@ -73,7 +73,10 @@ jsongin.Query( document, { 'user.name': { $eq: 'Alice' } } ) === true
 jsongin.Query( document, { 'tags.0': { $eq: 'A' } } ) === true
 // Returns true if two arrays match or if one is an element of another.
 jsongin.Query( document, { tags: { $eq: [ 'A', 'C' ] } } ) === true
-jsongin.Query( document, { tags: { $eq: [ 'C' ] } } ) === true
+// A match value equals an element of an array field, so a bare value matches.
+jsongin.Query( document, { tags: { $eq: 'C' } } ) === true
+// An array is compared as a whole, so a shorter array is not a match.
+jsongin.Query( document, { tags: { $eq: [ 'C' ] } } ) === false
 ```
 
 
@@ -397,10 +400,14 @@ jsongin.Query( document,
 <a id="$not"></a>$not
 ---------------------------------------------------------------------
 
-**Usage** : `{ $not: { expression } }` or `{ field: { $not: /regexp/ } }`
+**Usage** : `{ field: { $not: { operator } } }` or `{ field: { $not: /regexp/ } }`
 
 The `$not` operator does a logical negation of another query operation.
 The `$not` operator can also do a logical negation of a regular expression.
+
+***`$not` applies to a field***, and cannot appear at the top level of a query.
+MongoDB's top level operators are `$and`, `$or`, `$nor`, `$expr`, `$text`, `$where`,
+  `$comment`, and `$jsonSchema`; negating a whole query is spelled `$nor`.
 
 ### Example
 ```js
@@ -413,10 +420,15 @@ let document = {
 	tags: [ 'A', 'C' ]
 };
 // Returns the opposite of what another query operation would.
-jsongin.Query( document, { $not: { login_attempts: { $eq: 0 } } } ) === true
-jsongin.Query( document, { $not: { tags: { $eq: 'X' } } } ) === true
+jsongin.Query( document, { login_attempts: { $not: { $eq: 0 } } } ) === true
+jsongin.Query( document, { tags: { $not: { $eq: 'X' } } } ) === true
 // Returns the opposite of what a regular expression would.
 jsongin.Query( document, { tags: { $not: /X|Y|Z/ } } ) === true
+
+// $not sits within a field, never at the top level of a query.
+jsongin.Query( document, { $not: { login_attempts: { $eq: 0 } } } );   // throws
+// Negate a whole query with $nor instead.
+jsongin.Query( document, { $nor: [ { login_attempts: { $eq: 0 } } ] } ) === true
 ```
 
 

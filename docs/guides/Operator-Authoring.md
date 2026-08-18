@@ -17,6 +17,7 @@ An operator module exports a ***factory function*** which takes the engine and r
   operator object:
 
 ```js
+// docs-check: skip - an operator module, shown as it appears in its own file.
 'use strict';
 
 module.exports = function ( jsongin )
@@ -232,6 +233,7 @@ See the [OpLog](./OpLog.md) document.
 Add it to the appropriate registry on an engine instance:
 
 ```js
+// docs-check: skip - registers an operator from a file of your own.
 const jsongin = require( '@liquicode/jsongin' ).NewJsongin();
 
 jsongin.QueryOperators.$startsWith = require( './my-operators/startsWith' )( jsongin );
@@ -252,6 +254,7 @@ Because the registry belongs to the instance, an operator you add to one engine 
 A query operator which matches a string field by its prefix:
 
 ```js
+// docs-check: skip - an operator module, shown as it appears in its own file.
 'use strict';
 
 module.exports = function ( jsongin )

@@ -51,7 +51,11 @@ It is also how [`Diff()`](./Diff.md) treats arrays, and what the `$set` update o
 To combine two arrays instead, do it explicitly:
 
 ```js
-jsongin.Merge( defaults, { tags: defaults.tags.concat( custom.tags ) } )
+let defaults = { tags: [ 'a', 'b' ] };
+let custom = { tags: [ 'c' ] };
+
+jsongin.Merge( defaults, { tags: defaults.tags.concat( custom.tags ) } );
+// returns { tags: [ 'a', 'b', 'c' ] }
 ```
 
 Dates and regular expressions are values in the same way, and replace rather than merge.

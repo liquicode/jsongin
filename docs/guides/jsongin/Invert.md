@@ -17,11 +17,17 @@
 Returns the update document which ***undoes*** `Patch`, given the document it applies to.
 
 ```js
-let patch = jsongin.Diff( before, after );
+let before = { hp: 10 };
+let patch = { $inc: { hp: -3 } };
+
 let after = jsongin.Update( before, patch );
+// returns { hp: 7 }
 
 let undo = jsongin.Invert( before, patch );
-jsongin.Update( after, undo );   // holds the content of before again
+// returns { $set: { hp: 10 } }
+
+jsongin.Update( after, undo );
+// returns { hp: 10 }                         the content of before again
 ```
 
 Both `Before` and `Patch` are left unmodified.
@@ -36,7 +42,7 @@ This is the primitive behind undo and redo, and behind replaying a change log in
 `Invert` does not inspect the operators in the patch. It applies the patch and then diffs the
   result back toward the original:
 
-```js
+```
 Invert( Before, Patch )   ===   Diff( Update( Before, Patch ), Before )
 ```
 

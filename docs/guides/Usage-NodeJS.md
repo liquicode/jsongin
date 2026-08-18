@@ -32,6 +32,8 @@ For most uses it is all you need.
 To configure the engine, call the `NewJsongin( Settings )` factory method:
 
 ```js
+let Settings = { OpLog: null, OpError: null };
+
 const jsongin = require( '@liquicode/jsongin' ).NewJsongin( Settings );
 ```
 
@@ -46,7 +48,8 @@ Each instance carries its own settings and its own operator registries, so you c
 ## Customize jsongin Behavior with Settings
 
 ```js
-Settings = {
+// docs-check: skip - the shape of the settings object.
+let Settings = {
 	OpLog: null, // A function to call (such as console.log) to output OpLog messages.
 	OpError: null, // A function to call (such as console.error) to output OpError messages.
 }
