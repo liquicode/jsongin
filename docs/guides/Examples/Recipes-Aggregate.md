@@ -142,6 +142,107 @@ jsongin.Aggregate( players, [
 ```
 
 
+### Compute a field, then filter on it
+
+`$addFields` adds a computed field; a later `$match` can filter on it. Find
+players whose doubled score is at least 10:
+
+```js
+jsongin.Aggregate( players, [
+	{ $addFields: { doubled: { $multiply: [ '$points', 2 ] } } },
+	{ $match: { doubled: { $gte: 10 } } },
+	{ $project: { _id: 0, name: 1, doubled: 1 } },
+] )
+// returns [ { name: 'Bob', doubled: 10 }, { name: 'Eve', doubled: 18 } ]
+```
+
+
+### Keep the first and last of each group
+
+`$first` and `$last` take the value from the first and last document a group
+receives, so sort first to make them meaningful. The lowest- and highest-scoring
+name on each team:
+
+```js
+jsongin.Aggregate( players, [
+	{ $sort: { points: 1 } },
+	{ $group: { _id: '$team', low: { $first: '$name' }, high: { $last: '$name' } } },
+	{ $sort: { _id: 1 } },
+] )
+// returns [ { _id: 'blue', low: 'Mallory', high: 'Eve' }, { _id: 'red', low: 'Alice', high: 'Bob' } ]
+```
+
+
+### Keep the min and max of each group
+
+`$min` and `$max` are accumulators that track the extreme values:
+
+```js
+jsongin.Aggregate( players, [
+	{ $group: { _id: '$team', low: { $min: '$points' }, high: { $max: '$points' } } },
+	{ $sort: { _id: 1 } },
+] )
+// returns [ { _id: 'blue', low: 1, high: 9 }, { _id: 'red', low: 3, high: 5 } ]
+```
+
+
+### Collect the distinct values of each group
+
+`$addToSet` gathers the distinct values into an array. Unwind the tags first, then
+collect one set per team:
+
+```js
+jsongin.Aggregate( players, [
+	{ $unwind: '$tags' },
+	{ $group: { _id: '$team', tags: { $addToSet: '$tags' } } },
+	{ $sort: { _id: 1 } },
+] )
+// returns [ { _id: 'blue', tags: [ 'ranged', 'tank' ] }, { _id: 'red', tags: [ 'melee', 'tank', 'ranged' ] } ]
+```
+
+
+### Drop fields with `$project` in a pipeline
+
+`$project` in a pipeline works the same way as
+[`Project()`](../jsongin/Project.md): set a field to `0` to drop it:
+
+```js
+jsongin.Aggregate( players, [
+	{ $project: { tags: 0, alive: 0 } },
+	{ $limit: 1 },
+] )
+// returns [ { _id: 1, name: 'Alice', team: 'red', points: 3 } ]
+```
+
+
+### Sort by more than one field
+
+A `$sort` with several keys breaks ties in order. Sort by `team` ascending, then
+by `points` descending within each team:
+
+```js
+jsongin.Aggregate( players, [
+	{ $sort: { team: 1, points: -1 } },
+	{ $project: { _id: 0, team: 1, points: 1 } },
+] )
+// returns [ { team: 'blue', points: 9 }, { team: 'blue', points: 1 }, { team: 'red', points: 5 }, { team: 'red', points: 3 } ]
+```
+
+
+### Filter with `$expr` in `$match`
+
+`$match` accepts `$expr`, so a pipeline can filter on a comparison between fields
+or against a computed value. Find players with more than four points:
+
+```js
+jsongin.Aggregate( players, [
+	{ $match: { $expr: { $gt: [ '$points', 4 ] } } },
+	{ $project: { _id: 0, name: 1, points: 1 } },
+] )
+// returns [ { name: 'Bob', points: 5 }, { name: 'Eve', points: 9 } ]
+```
+
+
 ## See Also
 
 - [`Aggregate( Documents, Pipeline )`](../jsongin/Aggregate.md)

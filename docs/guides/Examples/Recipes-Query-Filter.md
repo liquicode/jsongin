@@ -112,6 +112,147 @@ jsongin.Filter( users, { tags: 'staff' } ).length === 2
 ```
 
 
+### Make the "and" explicit with `$and`
+
+Multiple keys in one criteria object already mean "and". `$and` makes it explicit,
+which is useful when two conditions apply to the same field:
+
+```js
+jsongin.Query( users[ 0 ], { $and: [ { role: 'admin' }, { active: true } ] } ) === true
+```
+
+
+### Negate with `$not`
+
+`$not` inverts the operator it wraps:
+
+```js
+jsongin.Query( users[ 0 ], { age: { $not: { $gt: 50 } } } ) === true
+jsongin.Query( users[ 0 ], { age: { $not: { $gt: 25 } } } ) === false
+```
+
+
+### Match a range with `$gte` and `$lte`
+
+Two comparison operators on one field select a range:
+
+```js
+jsongin.Query( users[ 0 ], { age: { $gte: 30, $lte: 40 } } ) === true
+jsongin.Query( users[ 1 ], { age: { $gte: 30, $lte: 40 } } ) === false
+```
+
+
+### Exclude values with `$nin`
+
+`$nin` matches when the field is none of the listed values:
+
+```js
+jsongin.Query( users[ 0 ], { tags: { $nin: [ 'z' ] } } ) === true
+jsongin.Query( users[ 0 ], { tags: { $nin: [ 'staff' ] } } ) === false
+```
+
+
+### Require every value with `$all`
+
+`$all` matches when the array field contains every listed value:
+
+```js
+jsongin.Query( users[ 0 ], { tags: { $all: [ 'staff', 'a' ] } } ) === true
+jsongin.Query( users[ 1 ], { tags: { $all: [ 'staff', 'a' ] } } ) === false
+```
+
+
+### Match an array's length with `$size`
+
+`$size` matches an array field with exactly that many elements:
+
+```js
+jsongin.Query( users[ 0 ], { tags: { $size: 2 } } ) === true
+jsongin.Query( users[ 1 ], { tags: { $size: 2 } } ) === false
+```
+
+
+### Select by type with `$type`
+
+`$type` matches a field whose value is of a named BSON type. `'number'` is an
+alias for every numeric type:
+
+```js
+jsongin.Query( users[ 0 ], { age: { $type: 'number' } } ) === true
+jsongin.Query( users[ 0 ], { name: { $type: 'string' } } ) === true
+jsongin.Query( users[ 0 ], { tags: { $type: 'array' } } ) === true
+```
+
+
+### Match an array element on several fields with `$elemMatch`
+
+`$elemMatch` can test an array element against more than one sub-criteria at once.
+Find users with an order whose `total` is over 10 and whose `id` is under 3:
+
+```js
+jsongin.Query( users[ 0 ], { orders: { $elemMatch: { total: { $gt: 10 }, id: { $lt: 3 } } } } ) === true
+jsongin.Query( users[ 2 ], { orders: { $elemMatch: { total: { $gt: 10 }, id: { $lt: 3 } } } } ) === false
+```
+
+
+### Combine expressions with `$expr` and `$and`
+
+`$expr` can hold a logical expression, so two field comparisons combine into one
+query. Find users whose `score` beats their `age` and is under 100:
+
+```js
+jsongin.Query( users[ 0 ], { $expr: { $and: [ { $gt: [ '$score', '$age' ] }, { $lt: [ '$score', 100 ] } ] } } ) === true
+jsongin.Query( users[ 1 ], { $expr: { $and: [ { $gt: [ '$score', '$age' ] }, { $lt: [ '$score', 100 ] } ] } } ) === false
+```
+
+
+### Sort a collection with `Sort()`
+
+[`Sort( Documents, SortCriteria )`](../jsongin/Sort.md) orders documents by one or
+more fields. `1` is ascending, `-1` is descending. It sorts the array ***in place***,
+so pass it a fresh array when you do not want to reorder the original:
+
+```js
+let sorted = jsongin.Sort(
+	[ { name: 'Alice', age: 30 }, { name: 'Eve', age: 40 }, { name: 'Bob', age: 25 } ],
+	{ age: -1 }
+);
+sorted[ 0 ].name === 'Eve'
+sorted[ 2 ].name === 'Bob'
+```
+
+
+### List the distinct values with `Distinct()`
+
+[`Distinct( Documents, DistinctCriteria )`](../jsongin/Distinct.md) returns one
+document per distinct combination of the fields you name. The criteria is an object
+mapping each field path to `1`:
+
+```js
+jsongin.Sort( jsongin.Distinct( users, { role: 1 } ), { role: 1 } )
+// returns [ { role: 'admin' }, { role: 'user' } ]
+```
+
+Two fields give one row per combination:
+
+```js
+jsongin.Sort( jsongin.Distinct( users, { role: 1, active: 1 } ), { role: 1, active: 1 } )
+// returns [ { role: 'admin', active: true }, { role: 'user', active: false } ]
+```
+
+
+### Filter, then sort
+
+`Filter` returns a new array, so you can sort it without disturbing the original
+collection. The active users, oldest first:
+
+```js
+let top = jsongin.Sort( jsongin.Filter( users, { active: true } ), { age: -1 } );
+top[ 0 ].name === 'Eve'
+top[ 1 ].name === 'Alice'
+```
+
+
 ## See Also
 
 - [`Query( Document, Criteria )`](../jsongin/Query.md)

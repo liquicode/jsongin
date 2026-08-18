@@ -123,7 +123,12 @@
 		- [Query & Filter](/guides/Examples/Recipes-Query-Filter.md)
 		- [Project & Update](/guides/Examples/Recipes-Project-Update.md)
 		- [Aggregate](/guides/Examples/Recipes-Aggregate.md)
+		- [Arrays](/guides/Examples/Recipes-Arrays.md)
+		- [Expressions](/guides/Examples/Recipes-Expressions.md)
+		- [Types & Dates](/guides/Examples/Recipes-Types-Dates.md)
 		- [Operators & Mechanics](/guides/Examples/Recipes-Operators-Mechanics.md)
+		- [Patterns](/guides/Examples/Recipes-Patterns.md)
+		- [Debugging](/guides/Examples/Recipes-Debugging.md)
 
 <hr>
 
