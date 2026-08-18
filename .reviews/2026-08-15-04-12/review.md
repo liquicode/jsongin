@@ -695,6 +695,9 @@ A running record of what has been done against this review, newest entry first.
 The ***Current Status*** block is rewritten in place each session. The ***Log*** below it is
   append-only: entries are never edited after the fact, so that a wrong turn stays visible.
 
+***This file is the record of this review.*** Material which outlives it — standing decisions,
+  approaches tried and rejected, threads still open — lives in `.plans/story.md`.
+
 
 ### Next Session: Start Here
 
@@ -728,7 +731,7 @@ There is no half-finished work and nothing in flight. Anything beyond the above 
 | Parity under test | `npm run parity-test-jsongin` | 475 passing, ***0 failing*** |
 | Parity measurement | `npm run parity-report` | ***100.0%*** — 475 of 475 agree |
 | Coverage | `npm run coverage` | 122 files exercised, ***79 fully covered***, 76 uncovered blocks |
-| Docs | `npm run check-docs` | 340 fences, 285 links, 53 pages, ***85 operators*** — passed |
+| Docs | `npm run check-docs` | 341 fences, 284 links, 53 pages, ***85 operators*** — passed |
 
 ***T3 is finished, and it was the most productive finding of the review.*** Chasing uncovered
   branches found ***nine real defects*** in code that was already at 100% parity — because a

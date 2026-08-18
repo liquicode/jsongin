@@ -199,19 +199,15 @@ This generates a runner for each engine over the same suite list, runs both, and
 ```
    area          compared   agree   gaps   test bugs
    ----------------------------------------------------
-   Query              165     154     11           0
-   Update              45      33     12           0
-   Projection          17      16      1           0
-   Aggregate           21      21      0           0
+   Query              214     214      0           0
+   Update              86      86      0           0
+   Projection          51      51      0           0
+   Aggregate          124     124      0           0
    ----------------------------------------------------
-   total              248     224     24           0
+   total              475     475      0           0
 
-   parity   90.3%   (224 of 248 compared behaviors agree)
+   parity   100.0%   (475 of 475 compared behaviors agree)
 ```
-
-The number went ***down*** as the suites grew, which is the point. A parity gap does not
-  appear when it is introduced; it appears when a test finally asks about it. Falling from
-  100% to 90.3% is a measurement getting sharper, not an engine getting worse.
 
 It exits non-zero when there is a gap, so it can gate a build.
 
@@ -246,9 +242,8 @@ Uncovered blocks are grouped into three kinds, because they deserve different am
 
 ***`plumbing` is where the defects hide.***
 A message which is only built when something has gone wrong is never built by a test which
-  asserts success. The v0.1.0 release found a `ReferenceError` sitting in the failure path of
-  six update operators for exactly this reason: the code only ran when a store failed ***and***
-  an `OpLog` was configured, which no test did at the same time.
+  asserts success, so a broken failure path can sit there indefinitely — it needs an operation
+  to fail ***and*** an `OpLog` to be configured at the same time, which a suite rarely does.
 
 Some `logic` blocks are genuinely unreachable defensive code and are not worth chasing.
 
@@ -262,13 +257,14 @@ npm run check-docs
 npm run check-docs -- --verbose
 ```
 
-Three things are checked, all of them cheap to detect and expensive to find by reading:
+Four things are checked, all of them cheap to detect and expensive to find by reading:
 
-| **Check**  | **Asserts**                                                                 |
-|------------|------------------------------------------------------------------------------|
-| `fences`   | Every ` ```js ` block parses as Javascript.                                 |
-| `links`    | Every local markdown link resolves to a file which exists.                  |
-| `orphans`  | Every page under `docs/` is reachable from another page.                    |
+| **Check**   | **Asserts**                                                                |
+|-------------|-----------------------------------------------------------------------------|
+| `fences`    | Every ` ```js ` block parses as Javascript.                                |
+| `links`     | Every local markdown link resolves to a file which exists.                 |
+| `orphans`   | Every page under `docs/` is reachable from another page.                   |
+| `operators` | Every registered operator carries an `/*md` documentation block.           |
 
 ***What goes inside a ` ```js ` fence must be code.***
 A result belongs in a comment rather than in a bare expression:
@@ -287,9 +283,8 @@ A block which is ***not*** Javascript — program output, the shape of a value, 
   signature — carries no language tag and is not checked.
 
 This check is worth more than it looks.
-Enforcing it is what found a wrong operator name (`eq$` for `$eq`), a missing colon, an array
-  declared with braces, and four headline examples in the `Query` guide which inverted operator
-  and field and therefore returned `false` where the document claimed `true`.
+A documented example which does not parse is usually one which was never run, and an example
+  which was never run is as likely to be wrong as right.
 
 The check runs as the last step of `npm run "build docs"`, so a broken fence, a dead link, or an
   unlinked page halts the docs build.

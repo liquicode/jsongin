@@ -57,7 +57,7 @@ jsongin.DeleteValue( document, 'a.-1' ) === false
 There is no reverse indexing. A negative number is read as a field name like any other, and an
   array has no field called `-1`.
 This matches MongoDB, where `$unset: { 'a.-1': '' }` reports a successful update which modified
-  nothing, verified against MongoDB 6.0.1.
+  nothing.
 
 
 ## Reaching Into An Array
@@ -76,10 +76,7 @@ This matches MongoDB, where `$unset: { 'a.x': '' }` reports a successful update 
 Reaching through an array there requires the all positional operator,
   `$unset: { 'a.$[].x': '' }`.
 
-Deleting from every element instead used to be a ***path extension***, enabled with a
-  `PathExtensions` engine setting.
-There is no such setting: jsongin's path syntax is MongoDB's path syntax, so there is nothing
-  to turn on.
+`jsongin`'s path syntax is MongoDB's path syntax, with no extensions and no settings to turn on.
 
 
 ## See Also

@@ -41,8 +41,7 @@ To specify an element of an array, use the numeric (zero-based) index of that el
 ***There is no reverse indexing*** :
 A negative number is read as a field name like any other, and a field cannot be created on an
   array, so `SetValue( document, 'a.-1', 9 )` ***throws***.
-MongoDB refuses the same write with `Cannot create field '-1' in element {a: [ 1, 2, 3 ]}`,
-  verified against MongoDB 6.0.1.
+MongoDB refuses the same write with `Cannot create field '-1' in element {a: [ 1, 2, 3 ]}`.
 Against a ***document***, `-1` is an ordinary field name and is set normally.
 
 ***A path may not reach into an array by field name*** :
@@ -51,7 +50,7 @@ MongoDB refuses this too, and reaching through an array on the write side requir
   positional operator, `'users.$[].status'`.
 
 ***Writing Past the End of an Array*** :
-The gap is filled with `null`, which is what MongoDB does, verified against MongoDB 6.0.1:
+The gap is filled with `null`, which is what MongoDB does:
 
 ```js
 let document = { a: [ 1 ] };
@@ -59,14 +58,14 @@ jsongin.SetValue( document, 'a.3', 9 );
 // document.a is now [ 1, null, null, 9 ]
 ```
 
-The gap used to be left as Javascript array holes.
-A hole is not representable in JSON, and only looked like a `null` because `JSON.stringify`
+The gap is never left as Javascript array holes.
+A hole is not representable in JSON, and only looks like a `null` because `JSON.stringify`
   renders it as one.
 
 ***Creating a Path Which Is Not There*** :
 Each missing path element is created as a ***document***, whatever the next key looks like.
 A numeric key does not imply an array, because only the array update operators ever create one.
-This matches MongoDB, verified against MongoDB 6.0.1:
+This matches MongoDB:
 
 ```js
 let document = {};
@@ -162,9 +161,8 @@ jsongin.SetValue( document, -1, 'xyz' );
 A negative number is a field name, not an index, and a field cannot be created on an array.
 MongoDB refuses the same update with `Cannot create field '-1' in element {a: [ ... ]}`.
 
-Reverse indexing used to be a ***path extension*** here, writing the last element.
-It has been removed from the engine entirely, on the read side as well as the write side, so
-  that a path means the same thing everywhere it appears.
+There is no reverse indexing anywhere in the engine, on the read side or the write side, so a
+  path means the same thing everywhere it appears.
 
 ### It sets a document field which is literally named -1
 ```js
@@ -222,10 +220,7 @@ MongoDB rejects the same update, with
 Reaching through an array on the write side requires the all positional operator,
   `'users.$[].status'`.
 
-Writing into every element instead used to be a ***path extension***, enabled with a
-  `PathExtensions` engine setting.
-There is no such setting: jsongin's path syntax is MongoDB's path syntax, so there is nothing
-  to turn on.
+`jsongin`'s path syntax is MongoDB's path syntax, with no extensions and no settings to turn on.
 
 Note that ***reading*** through an array by field name still works, because MongoDB does
   traverse arrays when it resolves a query path.

@@ -48,7 +48,7 @@ An ***empty list*** means the path resolves to nothing, which is how a missing f
 
 ## Rules
 
-These follow MongoDB, verified against MongoDB 6.0.1.
+These follow MongoDB.
 
 ***An array offers itself and each of its elements.***
 This is how `{ tags: 'red' }` matches `{ tags: [ 'red', 'blue' ] }` while
