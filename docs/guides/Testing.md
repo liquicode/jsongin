@@ -150,6 +150,7 @@ The defaults themselves are pinned by `Default Settings Tests` in
 To test a non-default configuration, pass settings to the driver deliberately:
 
 ```js
+// docs-check: skip - the path is relative to the test suite, not to this page.
 const Driver = require( './Drivers/jsongin-Driver.js' )( { Explain: true } );
 ```
 
@@ -270,6 +271,7 @@ Four things are checked, all of them cheap to detect and expensive to find by re
 A result belongs in a comment rather than in a bare expression:
 
 ```js
+let doc = { a: 1 };
 let merged = jsongin.Merge( doc, null );
 // merged matches doc (effectively, a clone)
 ```

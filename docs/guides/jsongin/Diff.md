@@ -22,8 +22,14 @@ That is the whole design of this function: a change is expressed in the same sha
   the result.
 
 ```js
-let patch = jsongin.Diff( before, after );   // { $set: { ... }, $unset: { ... } }
-jsongin.Update( before, patch );             // holds the content of after
+let before = { hp: 10, n: 1 };
+let after = { hp: 7 };
+
+let patch = jsongin.Diff( before, after );
+// returns { $set: { hp: 7 }, $unset: { n: '' } }
+
+jsongin.Update( before, patch );
+// returns { hp: 7 }                          the content of after
 ```
 
 Neither document is modified, and nothing in the patch aliases either of them.

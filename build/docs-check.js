@@ -10,7 +10,7 @@
 		npm run check-docs
 		npm run check-docs -- --verbose      (list every finding rather than the first few)
 
-	Three checks are performed:
+	Five checks are performed:
 
 		fences      Every ```js block must parse as Javascript.
 		            A result belongs in a comment, not in a bare expression, so that what sits
@@ -28,12 +28,32 @@
 		orphans     Every page under docs/ must be reachable from another page, so that a
 		            document cannot be written and then quietly left unlinked.
 
+		operators   Every registered operator must carry an /*md block describing its usage,
+		            so that an operator cannot be added without being written up.
+
+		examples    Every ```js block is executed against the engine, and the claims its
+		            comments make are checked:
+
+		                // returns <value>   the statement must produce that value
+		                // throws            the statement must throw
+		                expression === value the expression must be true
+
+		            Parsing is not enough. `jsongin.BsonType( 1700000000000 ) === 16` parses
+		            perfectly and is false, and documentation drifts from the engine exactly
+		            this way: every stale claim this check has caught was a behavior which
+		            changed while the page describing it did not.
+
+		            A fence which shows the shape of a call the reader completes with their
+		            own values cannot run. It opts out with a `// docs-check: skip` comment
+		            and is still parsed by the fences check.
+
 	Exits with a non-zero status when anything fails, so that a build can depend on it.
 */
 
 const LIB_FS = require( 'fs' );
 const LIB_PATH = require( 'path' );
 const LIB_VM = require( 'vm' );
+const LIB_JSONGIN = require( '../src/jsongin.js' );
 
 const REPO = LIB_PATH.resolve( __dirname, '..' );
 const DOCS = LIB_PATH.join( REPO, 'docs' );
@@ -154,7 +174,8 @@ function check_fences( Files )
 		for ( let fence_index = 0; fence_index < fences.length; fence_index++ )
 		{
 			let fence = fences[ fence_index ];
-			if ( ( fence.Language !== 'js' ) && ( fence.Language !== 'javascript' ) ) { continue; }
+			let language = fence.Language.toLowerCase();
+			if ( ( language !== 'js' ) && ( language !== 'javascript' ) ) { continue; }
 			checked++;
 			try
 			{
@@ -286,6 +307,282 @@ function check_operator_blocks()
 
 
 //---------------------------------------------------------------------
+// True when a fragment compiles on its own.
+function compiles( Text )
+{
+	try
+	{
+		new LIB_VM.Script( Text );
+		return true;
+	}
+	catch ( error )
+	{
+		return false;
+	}
+}
+
+
+//---------------------------------------------------------------------
+// True when every bracket opened within a fragment has also been closed.
+function brackets_balanced( Text )
+{
+	let depth = 0;
+	let in_string = null;
+	for ( let index = 0; index < Text.length; index++ )
+	{
+		let character = Text[ index ];
+		if ( in_string !== null )
+		{
+			if ( character === '\\' ) { index++; continue; }
+			if ( character === in_string ) { in_string = null; }
+			continue;
+		}
+		if ( ( character === '\'' ) || ( character === '"' ) || ( character === '`' ) )
+		{
+			in_string = character;
+			continue;
+		}
+		if ( '([{'.includes( character ) ) { depth++; }
+		if ( ')]}'.includes( character ) ) { depth--; }
+	}
+	return ( depth === 0 );
+}
+
+
+//---------------------------------------------------------------------
+// Takes the leading javascript value out of a claim, discarding any prose written after
+// it. Returns null when the claim does not begin with a value.
+function claim_value( Text )
+{
+	let text = Text.trim();
+	let open = text[ 0 ];
+	if ( ( open === '[' ) || ( open === '{' ) )
+	{
+		let close = ( open === '[' ) ? ']' : '}';
+		let depth = 0;
+		let in_string = null;
+		for ( let index = 0; index < text.length; index++ )
+		{
+			let character = text[ index ];
+			if ( in_string !== null )
+			{
+				if ( character === '\\' ) { index++; continue; }
+				if ( character === in_string ) { in_string = null; }
+				continue;
+			}
+			if ( ( character === '\'' ) || ( character === '"' ) ) { in_string = character; continue; }
+			if ( character === open ) { depth++; }
+			else if ( character === close )
+			{
+				depth--;
+				if ( depth === 0 ) { return text.slice( 0, index + 1 ); }
+			}
+		}
+		return null;
+	}
+	if ( ( open === '\'' ) || ( open === '"' ) )
+	{
+		let end = text.indexOf( open, 1 );
+		if ( end < 0 ) { return null; }
+		return text.slice( 0, end + 1 );
+	}
+	let token = text.split( /[\s,]/ )[ 0 ];
+	if ( /^(-?[0-9.]+|true|false|null|undefined|NaN|Infinity)$/.test( token ) ) { return token; }
+	return null;
+}
+
+
+//---------------------------------------------------------------------
+// Splits a fence into statements, each paired with the comment which claims something
+// about it. A claim is written after the statement, or above it for a refusal.
+function fence_statements( Code )
+{
+	let lines = Code.split( '\n' );
+	let statements = [];
+	let buffer = '';
+	let pending = null;
+
+	for ( let index = 0; index < lines.length; index++ )
+	{
+		let line = lines[ index ];
+		let bare = line.trim();
+		if ( bare === '' ) { continue; }
+		if ( bare.startsWith( '//' ) )
+		{
+			if ( ( statements.length > 0 ) && ( buffer === '' ) && !statements[ statements.length - 1 ].Claim )
+			{
+				statements[ statements.length - 1 ].Claim = bare;
+				continue;
+			}
+			if ( /^\/\/\s*throws/i.test( bare ) && ( buffer === '' ) ) { pending = bare; }
+			continue;
+		}
+
+		buffer += ( buffer ? '\n' : '' ) + line;
+
+		// Balanced brackets are not enough: `module.exports = function ( x )` balances
+		// before its body has been seen. A statement is finished when it also compiles.
+		if ( brackets_balanced( buffer ) && compiles( buffer ) )
+		{
+			let claim = pending;
+			let trailing = buffer.match( /\s*(\/\/[^\n]*)$/ );
+			if ( trailing !== null ) { claim = trailing[ 1 ].trim(); }
+			statements.push( { Code: buffer, Claim: claim } );
+			buffer = '';
+			pending = null;
+		}
+	}
+	return statements;
+}
+
+
+//---------------------------------------------------------------------
+// Every ```js block is executed and the claims its comments make are checked.
+function check_examples( Files )
+{
+	let findings = [];
+	let checked = 0;
+
+	for ( let file_index = 0; file_index < Files.length; file_index++ )
+	{
+		let file = Files[ file_index ];
+		let relative = LIB_PATH.relative( REPO, file );
+		let fences = find_fences( file );
+		let claims = [];
+		let parts = [];
+
+		for ( let fence_index = 0; fence_index < fences.length; fence_index++ )
+		{
+			let fence = fences[ fence_index ];
+			let language = fence.Language.toLowerCase();
+			if ( ( language !== 'js' ) && ( language !== 'javascript' ) ) { continue; }
+			if ( fence.Code.includes( 'docs-check: skip' ) ) { continue; }
+
+			let statements = fence_statements( fence.Code );
+			for ( let index = 0; index < statements.length; index++ )
+			{
+				let statement = statements[ index ];
+				let code = statement.Code.replace( /\/\/.*$/gm, '' ).trim().replace( /;$/, '' ).trim();
+				if ( code === '' ) { continue; }
+				let claim = statement.Claim || '';
+				let label = code.split( '\n' )[ 0 ].trim();
+
+				// A declaration whose initializer is documented to throw is a claim, not code
+				// to run: `let x = jsongin.Flatten( 3.14 );  // throws`.
+				if ( /^\/\/\s*throws/i.test( claim ) )
+				{
+					let expression = code.replace( /^(let|const|var)\s+[A-Za-z_$][\w$]*\s*=\s*/, '' );
+					claims.push( { Line: fence.Line, Label: label } );
+					parts.push( `__expect_throw( ${claims.length - 1}, function () { return ( ${expression} ); } );` );
+					continue;
+				}
+				// Any other declaration is code to keep in scope, never a claim to check.
+				if ( /^(let|const|var|function|class)\s/.test( code ) )
+				{
+					parts.push( statement.Code );
+					continue;
+				}
+				let returns = claim.match( /^\/\/\s*returns\s+(.+)$/ );
+				let value = returns ? claim_value( returns[ 1 ] ) : null;
+				if ( value !== null )
+				{
+					claims.push( { Line: fence.Line, Label: label } );
+					parts.push( `__expect_value( ${claims.length - 1}, function () { return ( ${code} ); }, function () { return ( ${value} ); } );` );
+					continue;
+				}
+				// A statement which opens with a keyword is not an expression, so it cannot be
+				// wrapped in a return even when its condition happens to contain an ===.
+				let is_statement = /^(if|for|while|switch|try|do|return|throw)\b/.test( code );
+				if ( code.includes( ' === ' ) && !is_statement )
+				{
+					claims.push( { Line: fence.Line, Label: label } );
+					parts.push( `__expect_true( ${claims.length - 1}, function () { return ( ${code} ); } );` );
+					continue;
+				}
+				parts.push( statement.Code.replace( /$/, ';' ) );
+			}
+		}
+
+		if ( parts.length === 0 ) { continue; }
+
+		// The fences of a page share their declarations, and a page may declare the same
+		// name twice, so let/const become var.
+		let script = parts.join( '\n' ).replace( /^(\s*)(let|const)\s/gm, '$1var ' );
+
+		function note( Index, Detail )
+		{
+			findings.push( {
+				Path: relative,
+				Line: claims[ Index ].Line,
+				Detail: `${claims[ Index ].Label}  ${Detail}`,
+			} );
+		}
+		function __expect_true( Index, Fn )
+		{
+			checked++;
+			let result = null;
+			try { result = Fn(); }
+			catch ( error ) { note( Index, `threw: ${error.message}` ); return; }
+			if ( result !== true ) { note( Index, `is ${JSON.stringify( result )}, not true` ); }
+		}
+		function __expect_value( Index, Fn, ExpectedFn )
+		{
+			checked++;
+			let result = null;
+			let expected = null;
+			try { result = Fn(); }
+			catch ( error ) { note( Index, `threw: ${error.message}` ); return; }
+			try { expected = ExpectedFn(); }
+			catch ( error ) { note( Index, `the claim does not evaluate: ${error.message}` ); return; }
+			if ( JSON.stringify( result ) !== JSON.stringify( expected ) )
+			{
+				note( Index, `returns ${JSON.stringify( result )}, claimed ${JSON.stringify( expected )}` );
+			}
+		}
+		function __expect_throw( Index, Fn )
+		{
+			checked++;
+			try { Fn(); }
+			catch ( error ) { return; }
+			note( Index, 'did not throw' );
+		}
+		function doc_require( Name )
+		{
+			// A page may show the require() a reader would write.
+			if ( String( Name ).includes( 'jsongin' ) ) { return LIB_JSONGIN; }
+			return require( Name );
+		}
+
+		// An example may print, and a page which demonstrates the OpLog certainly does.
+		// That output belongs to the example, not to this report.
+		let real_log = console.log;
+		let real_error = console.error;
+		try
+		{
+			console.log = function () { };
+			console.error = function () { };
+			let run = new Function( 'jsongin', 'require', '__expect_true', '__expect_value', '__expect_throw', script );
+			run( LIB_JSONGIN, doc_require, __expect_true, __expect_value, __expect_throw );
+		}
+		catch ( error )
+		{
+			findings.push( {
+				Path: relative,
+				Line: null,
+				Detail: `the page's examples could not run: ${error.message}`,
+			} );
+		}
+		finally
+		{
+			console.log = real_log;
+			console.error = real_error;
+		}
+	}
+	return { Checked: checked, Findings: findings, Unit: 'example claims' };
+}
+
+
+//---------------------------------------------------------------------
 function report( Name, Result )
 {
 	let count = Result.Findings.length;
@@ -329,6 +626,7 @@ function main()
 	failures += report( 'links', check_links( all_files ) );
 	failures += report( 'orphans', check_orphans( doc_files ) );
 	failures += report( 'operators', check_operator_blocks() );
+	failures += report( 'examples', check_examples( all_files ) );
 	console.log( '' );
 
 	if ( failures > 0 )

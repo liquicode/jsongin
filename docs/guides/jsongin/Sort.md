@@ -25,6 +25,11 @@ When more than one field is given, documents are sorted by the first field, then
   broken by the second, and so on.
 
 ```js
+let documents = [
+	{ id: 1, type: 'B', title: 'Second' },
+	{ id: 2, type: 'A', title: 'First' },
+];
+
 jsongin.Sort( documents, { type: 1, title: -1 } );
 ```
 

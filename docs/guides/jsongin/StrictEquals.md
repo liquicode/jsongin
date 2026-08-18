@@ -24,9 +24,13 @@ Strict means two things:
 `StrictEquals` is [`CompareValues()`](./CompareValues.md) asked whether its result is zero.
 
 ```js
-jsongin.StrictEquals( DocumentA, DocumentB )
-// is the same as
-( jsongin.CompareValues( DocumentA, DocumentB ) === 0 )
+let a = { hp: 10 };
+let b = { hp: 10 };
+
+jsongin.StrictEquals( a, b ) === true
+
+// which is the same question as
+( jsongin.CompareValues( a, b ) === 0 ) === true
 ```
 
 Dates are compared by their time value, so two distinct `Date` objects holding the same instant

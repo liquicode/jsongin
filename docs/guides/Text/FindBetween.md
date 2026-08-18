@@ -58,6 +58,6 @@ jsongin.Text.FindBetween( 'The red fox', null, ' ', false ) === 'The'
 
 ### It finds text in middle of string (case insensitive)
 ```js
-assert.ok( jsongin.Text.FindBetween( 'The red fox', 'The', 'fox', false ) === ' red ' );
-assert.ok( jsongin.Text.FindBetween( 'The red fox', 'THE', 'FOX', false ) === ' red ' );
+jsongin.Text.FindBetween( 'The red fox', 'The', 'fox', false ) === ' red '
+jsongin.Text.FindBetween( 'The red fox', 'THE', 'FOX', false ) === ' red '
 ```

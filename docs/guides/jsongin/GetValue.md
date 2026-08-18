@@ -65,7 +65,10 @@ jsongin.GetValue( document, 'user.name' ) === 'Alice'
 let document = [ 'one', 'two', 'three' ];
 jsongin.GetValue( document, '0' ) === 'one'
 jsongin.GetValue( document, '1' ) === 'two'
-jsongin.GetValue( document, '-1' ) === 'three'
+
+// There is no reverse indexing. A negative key is read as a field name, and an
+// array has no such field.
+jsongin.GetValue( document, '-1' ) === undefined
 ```
 
 ### It returns fields from inside an array of objects

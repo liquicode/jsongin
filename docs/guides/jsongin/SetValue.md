@@ -175,7 +175,7 @@ document.a[ '-1' ] === 9
 Against a document the key is a field name rather than an index, so this is legal.
 MongoDB does the same: `{ $set: { 'a.-1': 9 } }` gives `{ a: { '-1': 9 } }`.
 
-### Array elements can be set to undefined, but they are not removed
+### Writing past the end of an array fills the gap with null
 ```js
 let document = [ 'one', 'two', 'three' ];
 
@@ -184,9 +184,12 @@ document.length === 5
 document[ 0 ] === 'one'
 document[ 1 ] === 'two'
 document[ 2 ] === 'three'
-document[ 3 ] === undefined
+document[ 3 ] === null
 document[ 4 ] === 'xyz'
 ```
+
+A Javascript array hole is not representable in JSON, so the gap is filled with `null` rather
+  than left empty.
 
 ### It sets fields inside an array of objects
 ```js
@@ -239,10 +242,11 @@ jsongin.SetValue( document, -1, 'four' );
 // throws: Cannot create field [-1] in the array at [].
 ```
 
-### It returns false when an array index is out of bounds
+### An index past the end of an array extends it
 ```js
 let document = [ 'one', 'two', 'three' ];
-jsongin.SetValue( document, 3, 'four' ) === false
+jsongin.SetValue( document, 3, 'four' ) === true
+// document is now [ 'one', 'two', 'three', 'four' ]
 ```
 
 ### It throws an error when an invalid document is given

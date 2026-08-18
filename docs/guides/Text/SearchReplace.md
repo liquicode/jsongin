@@ -46,21 +46,21 @@ jsongin.Text.SearchReplace( 'The red fox', 'fox', 'dog', true ) === 'The red dog
 
 ### It replaces entire string (case insensitive)
 ```js
-jsongin.Text.SearchReplace( 'THE RED FOX', 'The red fox', 'A blue dog', true ) === 'A blue dog'
+jsongin.Text.SearchReplace( 'THE RED FOX', 'The red fox', 'A blue dog', false ) === 'A blue dog'
 ```
 
 ### It replaces text at start of string (case insensitive)
 ```js
-jsongin.Text.SearchReplace( 'THE RED FOX', 'The', 'A', true ) === 'A RED FOX'
+jsongin.Text.SearchReplace( 'THE RED FOX', 'The', 'A', false ) === 'A RED FOX'
 ```
 
 ### It replaces text in middle of string (case insensitive)
 ```js
-jsongin.Text.SearchReplace( 'THE RED FOX', 'red', 'blue', true ) === 'THE blue FOX'
+jsongin.Text.SearchReplace( 'THE RED FOX', 'red', 'blue', false ) === 'THE blue FOX'
 ```
 
 ### It replaces text at end of string (case insensitive)
 ```js
-jsongin.Text.SearchReplace( 'THE RED FOX', 'fox', 'dog', true ) === 'THE RED dog'
+jsongin.Text.SearchReplace( 'THE RED FOX', 'fox', 'dog', false ) === 'THE RED dog'
 ```
 
