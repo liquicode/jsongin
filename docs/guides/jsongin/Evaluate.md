@@ -60,6 +60,26 @@ jsongin.Evaluate( { dmg: 8 }, { $subtract: [ '$dmg', 'five' ] } )             //
 ```
 
 
+## Operator Summary
+
+| **Category**     | **Operators**                                                                                                                                                    |
+|------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Arithmetic       | [$add](./Expression-Operators.md#$add), [$subtract](./Expression-Operators.md#$subtract), [$multiply](./Expression-Operators.md#$multiply), [$divide](./Expression-Operators.md#$divide), [$mod](./Expression-Operators.md#$mod), [$abs](./Expression-Operators.md#$abs) |
+| Rounding         | [$ceil](./Expression-Operators.md#$ceil), [$floor](./Expression-Operators.md#$floor), [$round](./Expression-Operators.md#$round), [$trunc](./Expression-Operators.md#$trunc) |
+| Comparison       | [$eq](./Expression-Operators.md#$eq), [$ne](./Expression-Operators.md#$ne), [$gt](./Expression-Operators.md#$gt), [$gte](./Expression-Operators.md#$gte), [$lt](./Expression-Operators.md#$lt), [$lte](./Expression-Operators.md#$lte), [$cmp](./Expression-Operators.md#$cmp) |
+| Smallest/Largest | [$min](./Expression-Operators.md#$min), [$max](./Expression-Operators.md#$max)                                                                                    |
+| Array            | [$size](./Expression-Operators.md#$size), [$arrayElemAt](./Expression-Operators.md#$arrayElemAt), [$concatArrays](./Expression-Operators.md#$concatArrays), [$in](./Expression-Operators.md#$in) |
+| Logical          | [$and](./Expression-Operators.md#$and), [$or](./Expression-Operators.md#$or), [$not](./Expression-Operators.md#$not)                                              |
+| Conditional      | [$cond](./Expression-Operators.md#$cond), [$ifNull](./Expression-Operators.md#$ifNull), [$switch](./Expression-Operators.md#$switch)                              |
+| Literal          | [$literal](./Expression-Operators.md#$literal)                                                                                                                   |
+
+Each operator is described in detail, with examples, in
+  [Expression Operators](./Expression-Operators.md).
+
+***An expression operator throws on an operand of the wrong type***, unlike the accumulators,
+  which ignore what they cannot use. See [Accumulator Operators](./Accumulator-Operators.md).
+
+
 ## See Also
 
 - [`Query( Document, Criteria )`](./Query.md) and the `$expr` operator, which uses `Evaluate`

@@ -211,6 +211,23 @@ The projected document never shares structure with the source, so modifying the 
   affect the document it came from.
 
 
+## Operator Summary
+
+| **Operator**                                            | **Supported** | **Usage**                             |
+|---------------------------------------------------------|:-------------:|---------------------------------------|
+| [`$slice`](./Projection-Operators.md#$slice)            |      Yes      | `{ field: { $slice: count } }`        |
+| [`$elemMatch`](./Projection-Operators.md#$elemMatch)    |      Yes      | `{ field: { $elemMatch: criteria } }` |
+| [`$`](./Projection-Operators.md#$)                      |       -       | `{ 'field.$': 1 }`                    |
+| [`$meta`](./Projection-Operators.md#$meta)              |       -       | `{ field: { $meta: 'textScore' } }`   |
+
+Each operator is described in detail, with examples, in
+  [Projection Operators](./Projection-Operators.md).
+
+A field whose value is none of these, and is not `1`/`true` or `0`/`false`, is a
+  ***computed field*** — see [Computed Fields](#computed-fields) below and
+  [Expression Operators](./Expression-Operators.md).
+
+
 ## See Also
 
 - [`Evaluate( Document, Expression )`](./Evaluate.md)
@@ -247,6 +264,5 @@ jsongin.Project( document, { name: 1, _id: 0 } )
 // returns { name: 'Alice' }
 
 // Inclusion and exclusion cannot be combined.
-jsongin.Project( document, { name: 1, dmg: 0 } )
-// returns null
+jsongin.Project( document, { name: 1, dmg: 0 } )   // throws
 ```
