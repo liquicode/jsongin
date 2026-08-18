@@ -102,6 +102,129 @@ jsongin.Update( users[ 0 ], { $rename: { name: 'full_name' } } )
 ```
 
 
+### Clamp a number with `$min` or `$max`
+
+`$min` sets the field to the smaller of its current value and the given value;
+`$max` sets it to the larger. They only change the field when the new value wins:
+
+```js
+jsongin.Update( users[ 0 ], { $min: { age: 20 } } )
+// returns { _id: 1, name: 'Alice', role: 'admin', age: 20, logins: 5, tags: [ 'staff', 'a' ] }
+```
+
+```js
+jsongin.Update( users[ 0 ], { $max: { age: 50 } } )
+// returns { _id: 1, name: 'Alice', role: 'admin', age: 50, logins: 5, tags: [ 'staff', 'a' ] }
+```
+
+
+### Scale a number with `$mul`
+
+`$mul` multiplies a numeric field:
+
+```js
+jsongin.Update( users[ 0 ], { $mul: { age: 2 } } )
+// returns { _id: 1, name: 'Alice', role: 'admin', age: 60, logins: 5, tags: [ 'staff', 'a' ] }
+```
+
+
+### Remove the last element with `$pop`
+
+`$pop: 1` removes the last element of an array; `$pop: -1` removes the first:
+
+```js
+jsongin.Update( users[ 0 ], { $pop: { tags: 1 } } )
+// returns { _id: 1, name: 'Alice', role: 'admin', age: 30, logins: 5, tags: [ 'staff' ] }
+```
+
+```js
+jsongin.Update( users[ 0 ], { $pop: { tags: -1 } } )
+// returns { _id: 1, name: 'Alice', role: 'admin', age: 30, logins: 5, tags: [ 'a' ] }
+```
+
+
+### Remove every occurrence with `$pullAll`
+
+`$pullAll` removes every element that equals any value in the list:
+
+```js
+jsongin.Update( users[ 0 ], { $pullAll: { tags: [ 'a' ] } } )
+// returns { _id: 1, name: 'Alice', role: 'admin', age: 30, logins: 5, tags: [ 'staff' ] }
+```
+
+
+## Project and Update Nested Fields
+
+Dot notation reaches into sub-documents. The next recipes use this document:
+
+```js
+let doc = { _id: 1, name: 'Alice', role: 'admin', age: 30, profile: { city: 'East', logins: 5 }, tags: [ 'staff', 'a' ] };
+```
+
+
+### Project a nested field
+
+A dot-path in `Project` keeps the parent structure around the field you named:
+
+```js
+jsongin.Project( doc, { 'profile.city': 1 } )
+// returns { _id: 1, profile: { city: 'East' } }
+```
+
+
+### Fall back to a default with `$ifNull`
+
+`$ifNull: [ expression, fallback ]` returns the first value that is not null or
+missing:
+
+```js
+jsongin.Project( doc, { label: { $ifNull: [ '$missing', 'none' ] } } )
+// returns { _id: 1, label: 'none' }
+```
+
+
+### Take a string literally with `$literal`
+
+A string that begins with `$` is a field reference. `$literal` takes its argument
+as a value instead:
+
+```js
+jsongin.Project( doc, { x: { $literal: '$name' } } )
+// returns { _id: 1, x: '$name' }
+```
+
+
+### Update a nested field
+
+Every update operator accepts dot-paths. `$set` writes a nested field:
+
+```js
+jsongin.Update( doc, { $set: { 'profile.city': 'North' } } )
+// returns { _id: 1, name: 'Alice', role: 'admin', age: 30, profile: { city: 'North', logins: 5 }, tags: [ 'staff', 'a' ] }
+```
+
+`$inc` adds to a nested number:
+
+```js
+jsongin.Update( doc, { $inc: { 'profile.logins': 1 } } )
+// returns { _id: 1, name: 'Alice', role: 'admin', age: 30, profile: { city: 'East', logins: 6 }, tags: [ 'staff', 'a' ] }
+```
+
+`$unset` removes a nested field:
+
+```js
+jsongin.Update( doc, { $unset: { 'profile.city': '' } } )
+// returns { _id: 1, name: 'Alice', role: 'admin', age: 30, profile: { logins: 5 }, tags: [ 'staff', 'a' ] }
+```
+
+`$rename` moves a nested field to a new key:
+
+```js
+jsongin.Update( doc, { $rename: { 'profile.city': 'profile.town' } } )
+// returns { _id: 1, name: 'Alice', role: 'admin', age: 30, profile: { logins: 5, town: 'East' }, tags: [ 'staff', 'a' ] }
+```
+
+
 ## See Also
 
 - [`Project( Document, Projection )`](../jsongin/Project.md)
