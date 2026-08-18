@@ -619,3 +619,12 @@ jsongin.Evaluate( document, { $literal: '$a' } );
 jsongin.Evaluate( document, { $literal: { $add: [ 1, 2 ] } } );
 // returns { $add: [ 1, 2 ] }
 ```
+
+
+## See Also
+
+- [`Evaluate( Document, Expression )`](./Evaluate.md), which evaluates these operators.
+- [`Project( Document, Projection )`](./Project.md), whose computed fields are expressions.
+- [`Aggregate( Documents, Pipeline )`](./Aggregate.md), whose computing stages use them.
+- [Accumulator Operators](./Accumulator-Operators.md), which reduce a group rather than a document.
+- [Operator Reference](../Operator-Reference.md), for which MongoDB operators are implemented.

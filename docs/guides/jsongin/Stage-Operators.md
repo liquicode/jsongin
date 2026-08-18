@@ -197,3 +197,11 @@ jsongin.Aggregate( players, [ { $match: { alive: 'nope' } }, { $count: 'n' } ] )
 jsongin.Aggregate( players, [ { $count: '' } ] );   // throws, the field name cannot be empty
 jsongin.Aggregate( players, [ { $count: 5 } ] );    // throws, $count takes a string
 ```
+
+
+## See Also
+
+- [`Aggregate( Documents, Pipeline )`](./Aggregate.md), which runs these stages.
+- [Accumulator Operators](./Accumulator-Operators.md), for what may appear inside a `$group`.
+- [Expression Operators](./Expression-Operators.md), for the values a stage computes.
+- [Operator Reference](../Operator-Reference.md), for which MongoDB operators are implemented.

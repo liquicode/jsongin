@@ -16,35 +16,46 @@ Operators marked `*` are `jsongin` extensions and are not part of MongoDB.
 
 # Comparison Operators
 
+***The range operators are bracketed by type.***
+`$gt`, `$gte`, `$lt`, and `$lte` match only a value of the same type as the operand, however
+  MongoDB's ordering ranks the two types against each other:
+
+```js
+jsongin.Query( { v: 5 }, { v: { $gt: 'abc' } } ) === false      // a number is not a string
+jsongin.Query( { v: 'abc' }, { v: { $gt: 1 } } ) === false
+```
+
+Objects, arrays, and dates are inside the bracket too, ordered against their own type by
+  [`CompareValues()`](./CompareValues.md), so these are not numeric operators:
+
+```js
+jsongin.Query( { v: { a: 2 } }, { v: { $gt: { a: 1 } } } ) === true
+jsongin.Query( { v: [ 2 ] }, { v: { $gt: [ 1 ] } } ) === true
+jsongin.Query( { v: { a: 1 } }, { v: { $gt: [ 1 ] } } ) === false   // still bracketed
+```
+
 
 <a id="$eq"></a>$eq
 ---------------------------------------------------------------------
 
 **Usage** : `{ field: { $eq: value }}`
 
-The `$eq` operator compares two values and returns true if they are strictly (`===`) the same.
+The `$eq` operator matches a field whose value equals the given value.
 
-Performs a strict equals between values in the document and values in the query.
-Returns `true` if both values are strictly equal to each other.
-For primitive types, `$eq` performs the javascript `===` comparison.
+Values are compared by ***content***, with [`CompareValues()`](./CompareValues.md), which
+  follows MongoDB's ordering. That means a `Date`, a sub-document, and an array are each
+  compared by what they hold rather than by reference, so two distinct `Date` objects holding
+  the same instant are equal.
 
-If both `field` and `value` are of type `bnslru` and are of the same type,
-  then they are compared to each other using a strict `===` comparison.
-
-If both `field` and `value` are of type `lu`, then `true` is always returned.
-
-If both `field` and `value` are of type `o`,
-  then they are compared to each other using a strict `===` comparison.
-
-If both `field` and `value` are of type `a`,
-  then they are compared to each other using a strict `===` comparison.
-If this comparison fails, a further check is performed to see if `value`
-  can be matched to one of the elements in `field`.
+When the field holds an ***array***, the whole array is compared first, and then the value is
+  matched against each element. A bare value therefore matches an array which contains it.
 
 Notes:
-- The values `null` and `undefined` are considered equivalent (`null === undefined`)
-- Returns `false` if the document value and the query value are of different types.
-- Integers and doubles can be compared to each other (42 === 42.0).
+- The comparison is ***type strict***. A value of one type never equals a value of another, so
+  a `Date` does not equal the ISO string which represents it.
+- Integers and doubles are both numbers and compare to each other (`42` equals `42.0`).
+- The values `null` and `undefined` are equivalent, so `{ f: { $eq: null } }` matches a document
+  which has no `f` at all.
 - When comparing two objects, their fields must be in the same order.
 - When comparing two arrays, their elements must be in the same order.
 
@@ -85,9 +96,10 @@ jsongin.Query( document, { tags: { $eq: [ 'C' ] } } ) === false
 
 **Usage** : `{ field: { $ne: value }}`
 
-The `$ne` operator compares two values and returns true if they are not strictly (`!==`) the same.
+The `$ne` operator matches a field whose value is ***not*** equal to the given value.
 
-This operator essentially returns the not {`!`} of `$eq`.
+It is the exact negation of [`$eq`](#$eq) and inherits every rule from it, including the
+  content comparison and the array handling.
 
 ### Example
 ```js
@@ -113,7 +125,7 @@ jsongin.Query( document, { login_attempts: { $ne: 10 } } ) === true
 The `$gt` operator compares two values and returns true if the field's value is
   greater than (`>`) the specified value.
 
-If both `field` and `value` are of type `bns` and are of the same type,
+When `field` and `value` are of the ***same type***,
   then the operator returns `true` if `field > value`.
 
 If `field` is an array,
@@ -146,10 +158,10 @@ jsongin.Query( document, { tags: { $gt: 'B' } } ) === true
 The `$gte` operator compares two values and returns true if the field's value is
   greater than or equal to (`>=`) the specified value.
 
-If both `field` and `value` are of type `bns` and are of the same type,
+When `field` and `value` are of the ***same type***,
   then the operator returns `true` if `field >= value`.
 
-If both `field` and `value` are of type `lu`, then `true` is always returned.
+`null` and a missing field are the same value, so both are matched by a `null` operand.
 
 If `field` is an array,
   then the operator returns `true` if any element of `field` is `>= value`.
@@ -181,7 +193,7 @@ jsongin.Query( document, { tags: { $gte: 'C' } } ) === true
 The `$lt` operator compares two values and returns true if the field's value is
   less than (`<`) the specified value.
 
-If both `field` and `value` are of type `bns` and are of the same type,
+When `field` and `value` are of the ***same type***,
   then the operator returns `true` if `field < value`.
 
 If `field` is an array,
@@ -214,10 +226,10 @@ jsongin.Query( document, { tags: { $lt: 'B' } } ) === true
 The `$lte` operator compares two values and returns true if the field's value is
   less than or equal to (`<=`) the specified value.
 
-If both `field` and `value` are of type `bns` and are of the same type,
+When `field` and `value` are of the ***same type***,
   then the operator returns `true` if `field <= value`.
 
-If both `field` and `value` are of type `lu`, then `true` is always returned.
+`null` and a missing field are the same value, so both are matched by a `null` operand.
 
 If `field` is an array,
   then the operator returns `true` if any element of `field` is `<= value`.
@@ -853,3 +865,11 @@ The `$ImplicitEq` operator is a `jsongin` extension and does not appear in Mongo
 jsongin.Query( { user: { name: 'Alice' } }, { 'user.name': 'Alice' } ) === true
 ```
 
+
+## See Also
+
+- [`Query( Document, Criteria )`](./Query.md), which reads these operators.
+- [`Filter( Documents, QueryCriteria )`](./Filter.md), which applies a criteria to a set.
+- [`$match`](./Stage-Operators.md#$match), the aggregation stage which takes a criteria.
+- [Expression Operators](./Expression-Operators.md), the language `$expr` evaluates.
+- [Operator Reference](../Operator-Reference.md), for which MongoDB operators are implemented.
