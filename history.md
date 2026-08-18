@@ -8,958 +8,308 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
-- ***Parity with MongoDB is 100%***, across 430 compared behaviors: Query 201, Update 81,
-  Projection 40, and Aggregate 108. `npm run parity-report` measures it, and every assertion in
-  it was run against a live MongoDB 6.0.1 server before being trusted. There are no known
-  disagreements with MongoDB in anything jsongin implements.
-
-- ***`$regex` now supports the `x` option.*** MongoDB's extended mode ignores unescaped
-  whitespace in a pattern, and everything from an unescaped `#` to the end of the line, which
-  lets a long pattern be laid out and commented. Javascript's `RegExp` has no such flag, so the
-  pattern is rewritten rather than the flag being passed along. An ***escaped*** space and
-  whitespace ***inside a character class*** are left alone, which is what PCRE does and what
-  MongoDB inherits.
-
-      jsongin.Query( { s: 'ab' }, { s: { $regex: 'a b # a note\n', $options: 'x' } } );  // true
-
-  `$options` used to be handed straight to `new RegExp`, so it accepted the Javascript flag set
-  rather than MongoDB's: `x` was rejected as an unknown flag. This was found while documenting
-  the operator, and nothing measured it.
-
-- ***Every operator now carries an `/*md` documentation block, and `check-docs` enforces it.***
-  It stood at 56 of 85, with the query and update operators ignoring the convention almost
-  entirely. Writing the missing 29 corrected five statements which turned out to be wrong about
-  the engine's own behavior, `$options: 'x'` among them.
-
-- ***Thirteen operators were added***, which were the last of the measured gap:
-
-  - ***`$ceil`, `$floor`, `$round`, and `$trunc`*** expression operators. `$round` rounds
-    ***half to even***, so `{ $round: [ 2.5 ] }` is `2` while `{ $round: [ 3.5 ] }` is `4`,
-    which is what MongoDB does and is not what `Math.round()` does. Both `$round` and `$trunc`
-    take an optional decimal place, which may be negative to work to the left of the decimal
-    point. The shift to that place is done through the number's decimal text rather than by
-    multiplying by a power of ten, because multiplying introduces the very error it is meant
-    to remove.
-
-  - ***`$size`, `$arrayElemAt`, `$concatArrays`, and the `$in` expression***. `$arrayElemAt` is
-    now the only way to index an array in an expression, since a field path such as `'$a.2'`
-    applies the key to the elements instead; a negative position counts back from the end
-    there, because it is an operand rather than a path element. `$in` takes the value first and
-    the array second, which is the reverse of the query operator of the same name, and compares
-    by content.
-
-  - ***The `$addToSet` accumulator***, which collects distinct values across a group, comparing
-    by content so that an array, a document, or a date is recognized rather than added again.
-    The order of its result is not specified.
-
-  - ***The `$count` stage***, which replaces the stream with a single document holding the
-    count. An empty stream produces no document at all rather than one holding a zero. It is
-    not the `$count` accumulator, which takes `{}` and counts within a `$group`; both are now
-    supported.
-
-  - ***The projection `$slice` and `$elemMatch`***. `$slice` does not make a projection an
-    inclusion, which is what lets it sit beside exclusions, while `$elemMatch` does. `$slice`
-    accepts a count or a `[ skip, limit ]` pair, and leaves a field which is not an array
-    alone.
-
-- ***An unsupported projection operator is now reported as one.*** `$` and `$meta` used to fall
-  through to the expression evaluator and be reported as unrecognized ***expression***
-  operators, which sent the reader to the wrong table of the operator reference. `$elemMatch`
-  was the worst of them, because it is a registered query operator, so the message was
-  arguably false.
-
-- ***Breaking: jsongin's path syntax is now MongoDB's path syntax, with no extensions and no
-  settings.*** Two path extensions were removed outright rather than gated, which closes the
-  last three behavioral disagreements with MongoDB. Every remaining parity gap is an operator
-  which is not implemented at all.
-
-  - ***Reverse indexing is gone.*** A negative array index used to count back from the end, so
-    `'a.-1'` addressed the last element. MongoDB has no such thing: it reads `-1` as a field
-    name, an array has no such field, and a field cannot be created on an array. The extension
-    was removed everywhere it appeared — `GetValue`, `SetValue`, `DeleteValue`, `Sort`,
-    `Evaluate`, `Project`, `ResolveCandidates`, and `$unset` — so a path means the same thing
-    wherever it is written.
-
-        jsongin.GetValue( { a: [ 1, 2, 3 ] }, 'a.-1' );          // undefined, was 3
-        jsongin.Query( { a: [ 1, 2, 3 ] }, { 'a.-1': 3 } );      // false, was true
-        jsongin.Update( { a: [ 1, 2, 3 ] }, { $set: { 'a.-1': 9 } } );   // throws
-        jsongin.Update( { a: [ 1, 2, 3 ] }, { $unset: { 'a.-1': '' } } ); // no-op, was [ 1, 2, null ]
-
-    Against a ***document*** a negative key is an ordinary field name and still resolves:
-    `{ a: { '-1': 5 } }` is reached by `'a.-1'`, and MongoDB agrees.
-
-  - ***The `PathExtensions` setting is gone.*** It gated the implicit iterator on the write
-    side, and defaulted to off, so removing it changes nothing for a caller who did not set
-    it. No released version of the package ever responded to the setting: it was declared and
-    never read before this version, and activated and removed within it.
-
-- ***Breaking: an update operator which cannot apply itself now raises an error.*** `$inc`
-  against a string, `$push` against a scalar, and a malformed `$currentDate` or `$push` modifier
-  used to report to the `OpLog` and leave the field alone, which a caller could not tell from an
-  update that had nothing to do. MongoDB errors on all of them.
-
-  The operators themselves are unchanged and still do not throw: an operator reports that it
-  could not apply, and `Update()` decides how loudly to say so. Nothing is half written, because
-  `Update()` works on a clone and discards it.
-
-  A field which is ***not there*** is a no-op and not a refusal, and the two used to share a
-  branch. `$pop` and `$pullAll` against a missing field now say so separately, because they
-  began raising once `Update()` began raising.
-
-- ***Breaking: aggregation expressions and projections no longer index arrays.*** A field path
-  in an aggregation expression applies every key to the array's elements, so `'$a.2'` gathers
-  the field `2` from each element and finds none. Positional access is `$arrayElemAt`. A
-  projection follows the same rule, so `{ 'a.1': 0 }` excludes nothing.
-
-      jsongin.Evaluate( { a: [ 1, 2, 3 ] }, '$a.2' );          // [], was 3
-      jsongin.Project( { a: [ 1, 2, 3 ] }, { 'a.1': 0 } );     // { a: [ 1, 2, 3 ] }
-
-  ***Query*** paths are unchanged and still index: `{ 'a.2': 3 }` matches. The three languages
-  resolve a path differently and MongoDB is followed in each. The projection case also used to
-  leave a sparse array hole, which JSON cannot represent.
-
-- A second code review was run, and is kept at `.reviews/2026-08-15-04-12/review.md`. Its parity
-  findings were first written as tests against a live MongoDB 6.0.1 server, so that each one is
-  measured rather than asserted. `npm run parity-report` prints the number and names every
-  remaining gap. The update operators were the first group fixed:
-
-  - ***`$inc` and `$mul` on a field which is not there no longer write a `NaN`.*** The field
-    counts as a zero, so `$inc` stores the operand and `$mul` stores `0`, and the path to the
-    field is created. Both operators applied their arithmetic to the `undefined` which
-    `GetValue()` returned, and a `NaN` serializes to `null` through `JSON.stringify`, so
-    starting a counter — the most common use of `$inc` — quietly ruined the document.
-
-  - ***Breaking: `$inc` and `$mul` now check the stored value, not just the operand.*** Both are
-    strictly numeric on both sides. A field holding a string, a boolean, a date, or a `null` is
-    refused rather than coerced, so `{ n: 'abc' }` incremented by 1 is no longer the string
-    `'abc1'` and `{ n: true }` is no longer `2`. A numeric string operand is refused as well:
-    `AsNumber()` converts it, which is right for `AsNumber` and wrong here, because MongoDB
-    rejects `{ $inc: { n: '5' } }` rather than adding 5. Every field is checked before any field
-    is written, so a refused update leaves the whole document untouched.
-    The two operators now share `_arith.js`, the way `$min` and `$max` share `_minmax.js`.
-
-  - ***Breaking: `$rename` removes the source key*** rather than setting it to `undefined`.
-    The key stayed in the document, so a renamed field still answered `{ $exists: true }` and
-    still appeared in `Object.keys()`. A source field which is not there is now left alone and
-    no longer creates the target field holding `undefined`.
-
-  - ***Breaking: `$unset` sets an array element to `null`*** rather than leaving a sparse hole,
-    which keeps the array's length and the positions of the elements after it. `DeleteValue()`
-    is unchanged and still mirrors the Javascript `delete` operator, which is its documented
-    contract; `$unset` no longer routes that one case through it.
-
-  - ***`$push` creates the array*** when the field is not there, rather than refusing the
-    update. Starting a list was a two step operation.
-
-  All five were invisible to the test suite because it compared documents with
-  `JSON.stringify`, which renders a hole as `null` and drops a member holding `undefined`.
-
-  The query operators followed:
-
-  - ***Breaking: `$in` and `$nin` match the way the implicit form does.*** Each value in the
-    list is now matched by `$ImplicitEq`, so a regexp in the list pattern matches and everything
-    else goes through `$eq`. `$in` carried its own comparison built on `array.includes()`, which
-    is `===`, so it failed every case where equality is not identity: a sub-document, an array,
-    a date, a missing field against `null` — the idiom for "missing or null" — and any path
-    which crosses an array. `$nin` is the exact negation and inherits all of it. A query
-    operator nested inside `$in` is refused rather than run, which is what MongoDB does.
-
-  - ***`$regex` accepts `$options`.*** It is not an operator of its own, so `Query()` consumes
-    the pair together. `$options` used to fall through to the implicit equality branch, which
-    tested a field named `a.$options` against the flags string and took the whole query down
-    with it. `$options` without a `$regex`, with a non-string value, with an invalid flag, or
-    beside a regexp which already carries its own flags is refused.
-
-  - ***`$regex` is no longer stateful across documents.*** The pattern is rebuilt for each call.
-    `RegExp.test()` advances `lastIndex` on a pattern carrying the `g` flag, so the caller's
-    reused object matched every other document: `Filter( documents, { a: /x/g } )` returned 3 of
-    4 identical documents. The caller's own object is left untouched rather than rewound.
-
-  - ***Breaking: `$exists` coerces its value*** rather than requiring a boolean, so
-    `{ $exists: 1 }` and `{ $exists: 0 }` ask the questions MongoDB asks. The narrow
-    `ValueTypes: 'b'` made both of them `false`, the second one the opposite of the right
-    answer. It was a deviation introduced by enforcing `ValueTypes`, which turned a note into
-    behavior.
-
-  - ***Breaking: `$not` is no longer accepted at the top level of a query.*** MongoDB's top
-    level operators are `$and`, `$or`, `$nor`, `$expr`, `$text`, `$where`, `$comment`, and
-    `$jsonSchema`. Negating a whole query is spelled `$nor`.
-
-  - ***`$elemMatch` resolves candidates*** instead of asking `GetValue` for one value and
-    indexing into it, so `{ 'a.b': { $elemMatch: { $gt: 1 } } }` now matches
-    `{ a: [ { b: [ 1, 2 ] } ] }`. An element which is itself an array is treated as a value to
-    test rather than a second array to search, so a field condition no longer looks inside it
-    while a nested `$elemMatch` still does. An empty condition matches an element which can hold
-    fields — a document or an array — and nothing else. `ResolveCandidates()` gained an optional
-    `ExpandArrays` parameter for this; it defaults to `true` and every other caller is unchanged.
-
-  - ***Breaking: `$eq` compares structured values with `CompareValues`*** rather than by their
-    `JSON.stringify` text. Stringifying discards the type before comparing, so an object holding
-    a `Date` compared equal to an object holding the equivalent ISO string. `undefined` members,
-    `NaN`, and `Infinity` collapsed the same way.
-
-  - ***Breaking: `Project( Document, {} )` returns the whole document*** rather than an empty
-    one. An empty projection names nothing to exclude, which is the same rule that makes
-    `{ _id: 0 }` an exclusion. The `$project` aggregation stage has the opposite rule and now
-    refuses an empty specification, as MongoDB does.
-
-  Every operator was then swept against a live MongoDB 6.0.1 server — 317 cases across queries,
-  updates, projections, and aggregation — rather than only the cases the review named. Every
-  implemented aggregation operator already agreed, as did the whole projection surface. The
-  sweep found five more differences, all now fixed:
-
-  - ***Breaking: the range operators compare objects and arrays.*** `$gt`, `$gte`, `$lt`, and
-    `$lte` refused both outright, because their `ValueTypes` did not admit either and the
-    comparison used the raw `>` operator, which cannot order them. They now compare through
-    `CompareValues` within the operand's own type bracket, so `{ v: [ 2 ] }` matches
-    `{ v: { $gt: [ 1 ] } }`. Comparisons across types are still bracketed out.
-
-  - ***Breaking: `SetValue()` fills a gap with `null`*** when it writes past the end of an
-    array, rather than leaving Javascript array holes. `{ a: [ 1 ] }` with
-    `{ $set: { 'a.3': 9 } }` now gives `[ 1, null, null, 9 ]`. A hole is not representable in
-    JSON and only looked like a `null` because `JSON.stringify` renders it as one.
-
-  - ***Breaking: `SetValue()` creates a document for a path which is not there***, whatever the
-    next key looks like. A numeric key no longer implies an array, because only the array
-    update operators ever create one: `{ $set: { 'a.0': 9 } }` against a document with no `a`
-    now gives `{ a: { '0': 9 } }` rather than `{ a: [ 9 ] }`. An array which already exists is
-    still indexed by a numeric key. `SetValue()` takes a new optional `CreateArrays` parameter
-    for the older behavior, and [`Expand()`](http://jsongin.liquicode.com/#/guides/jsongin/Expand.md) is the one caller which
-    asks for it, because it is rebuilding a hierarchy that `Flatten()` took apart.
-
-  - ***`$addToSet` creates the array*** when the field is not there, rather than refusing the
-    update. This is the same defect `$push` had, in its sibling operator.
-
-  - ***Breaking: `$push` stores a modifier document which has no `$each`*** as a plain value.
-    `$each` is what makes a document a modifier document, so `{ $push: { a: { $slice: 1 } } }`
-    appends `{ $slice: 1 }` as data, which is what MongoDB does. This used to be refused, which
-    was safer and was not parity. An unrecognized `$` field *within* a real modifier document
-    is still rejected.
-
-- ***Breaking: a malformed query or update is refused rather than answered.***
-  `Query()` returned `false` and `Update()` returned the document unchanged for input which
-  could not mean anything. Both are legitimate answers — "nothing matched", "nothing to do" —
-  so a typo was indistinguishable from an empty result, and a misspelled query operator was
-  read as a field name, tested a field which was never there, and quietly reported no match.
-  MongoDB refuses every case below with an error, verified against MongoDB 6.0.1.
-
-  `Query()` now throws for an unknown operator, an operator which cannot appear where it was
-  written, an operator value of a type the operator does not take, a `$options` which cannot be
-  applied, and a logical operator given no conditions. `Update()` now throws for an unknown
-  operator, for an update document which is not made of operators, for an operator value of the
-  wrong type, and for ***two operators which write to the same path or to a path and one below
-  it***, which MongoDB refuses because the result would depend on which ran first. The whole
-  update document is checked before any of it is applied.
-
-  ***A well formed statement still answers.*** A query which simply matches nothing returns
-  `false`, including `{ a: { $gt: null } }`. An operator which cannot apply itself to a
-  particular document — `$inc` against a string, `$pop` against a scalar — still reports to the
-  `OpLog` and leaves the field alone. A `Document` parameter of the wrong type still returns
-  `false` from `Query()` and `null` from `Update()`, because those are statements about the
-  data rather than about the query.
-
-  `IsQuery()` changed with it: a key beginning with `$` now makes an object a query, whether or
-  not the operator is one this engine knows. That is what carries a misspelled operator to the
-  refusal instead of to a field comparison.
-
-- The duplicated copy of `is_query()` in `src/jsongin/Query.js` was deleted, along with the
-  seven-line `//TODO` comment it carried in both places. `Query()` calls `IsQuery()` now, so
-  the decision is made in one place.
-
-- ***Breaking: an invalid projection throws*** rather than returning `null`. Combining an
-  inclusion with an exclusion, or writing a computed field inside an exclusion, is refused the
-  same way a malformed query or update document is — `null` was a value a caller could carry on
-  with. `null` is now reserved for a `Document` or `Projection` parameter of the wrong type.
-  This was found by moving the operator sweep into the parity suites.
-
-- ***The Parity Tests are now the whole of the parity evidence.*** The sweep which found the
-  defects above was a throwaway harness comparing two engines' output; everything it covered is
-  now expressed as parity tests with stated expectations, which is a claim a reader can check
-  and a test which survives MongoDB being absent. The suite grew from 248 comparisons to 389.
-  What that migration added, beyond the defects it surfaced:
-
-  - ***All 22 expression operators are measured.*** Only three of them appeared anywhere in the
-    suite before, so `$abs`, `$add`, `$mod`, `$cmp`, `$ifNull`, `$switch`, `$literal`, the six
-    comparisons, the three booleans, and field path resolution had no parity coverage at all.
-    Every one agrees with MongoDB.
-  - Every pipeline stage and every accumulator is measured on its own, rather than only in
-    combination, including the `$unwind` options and the missing-field behavior of `$sum`,
-    `$avg`, and `$min`.
-  - `$currentDate` gained parity coverage, which it had none of.
-  - Projection gained computed fields, nested path inclusion and exclusion, and the two
-    projections MongoDB refuses.
-  - Path semantics gained the cases where a document's shape decides what a path means, such
-    as `'a.0'` being an index into an array and a field name on a document.
-
-  ***Sixteen parity tests are expected to fail***, and `npm run parity-report` exits non-zero
-  while they do. They are not broken tests: 10 record aggregation operators which are not
-  implemented, 3 record projection operators which are not implemented, and 3 record places
-  where jsongin has deliberately settled somewhere other than MongoDB. All 16 pass against the
-  live server, so `test bugs` stays at 0 and the failures are the whole of the difference.
-
-- ***Breaking: `LooseEquals()` examines the keys of both values.*** It walked the keys of the
-  first one only, so a key which only the second one carried was never looked at:
-  `LooseEquals( {}, { a: 1 } )` answered `true`, an empty object loosely equalled everything,
-  and every subset comparison answered `true` in one direction and `false` in the other. An
-  equality test must not depend on the order of its arguments.
-
-  It is now [`src/jsongin/LooseEquals.js`](http://jsongin.liquicode.com/#/guides/jsongin/LooseEquals.md), an engine function of its own, and stands to
-  `$eqx` exactly as `CompareValues()` stands to `$eq`. It used to be the `$eqx` query operator
-  applied to two whole values, which is where the asymmetry came from: a query operator's first
-  parameter is a document field and its second is a match value, and a match value is allowed to
-  equal an element of a document array. `StrictEquals()` has carried a note saying so all along.
-
-  A key which is not there reads as `undefined`, so a `null` member and a missing member are
-  loosely equal — the operator's own `null == undefined` rule applied one level down.
-  `StrictEquals()` reports those two as different, which is the difference between the strict
-  comparison and the loose one.
-
-- ***Breaking: `$eqx` and `$nex` resolve candidates, the way `$eq` and `$ne` do.*** They asked
-  `GetValue()` for a single value, which left them the only comparison operators with path
-  semantics of their own: `{ tags: { $eqx: 'a' } }` did not match `{ tags: [ 'a', 'b' ] }`, and
-  a path which crossed an array found nothing at all. `$eqx` is now `$eq` with a loose
-  comparison in place of the strict one, and nothing else about it differs. Both take the
-  `ExpandArrays` parameter which `$elemMatch` passes.
-
-- The seven expression comparison operators — `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, and
-  `$cmp` — now share `_compare.js`, the way the query range operators share `_range.js` and the
-  `$min`/`$max` update operators share `_minmax.js`. Each of the seven was the same body written
-  out again, differing only in what it made of the comparison: `=== 0`, `!== 0`, `> 0`, `>= 0`,
-  `< 0`, `<= 0`, and `$cmp` returning the comparison itself. Argument validation and the
-  comparison now happen in one place. No behavior changed and no error message changed.
-
-- ***`OperatorType` and `ArgCount` were removed from every operator.*** Both were declared
-  everywhere and read nowhere — `OperatorType` on all 75 operators, `ArgCount` on the 22
-  expression operators. Unlike `ValueTypes` and `ArgTypes`, which the dispatchers enforce,
-  neither could make the engine refuse anything. `OperatorType` is a label, and a label cannot
-  constrain what an operator accepts; which kind an operator is was already settled by the
-  registry it is registered in. `ArgCount` was already enforced by the operators themselves:
-  13 of the 22 checked exactly what they declared, 6 were variadic and declared `null`, and the
-  last two were simply wrong — `$literal` declared one argument while correctly accepting an
-  argument of any length, and `$switch` declared one while taking an object.
-
-  ***What an engine refuses is now measured rather than declared.*** MongoDB rejects a wrong
-  operand count, and so does jsongin, but nothing had ever compared the two.
-  `Aggregate Tests/test-suite/Expression Rejection Tests.js` does now, over 41 assertions run
-  against MongoDB 6.0.1 before they were written down. All 41 agree. An operator author checks
-  the operand count in the operator, which is what
-  [`Operator-Authoring.md`](http://jsongin.liquicode.com/#/guides/Operator-Authoring.md) now says: the count means something different for
-  each operator, so no single declared number could have been enforced without carving out
-  exceptions for the operators it does not fit.
-
-- ***`src/jsongin/Path/` no longer ships.*** `Ancestor.js`, `Parent.js`, and `Children.js` were
-  three unfinished sketches of the path navigation functions named in `todo.md`. They were
-  registered on no engine, required from nowhere, tested by nothing, and documented in no guide,
-  but `package.json` publishes `src` whole, so they reached every consumer of the package
-  looking like part of the library. They were also not finishable as written: `Children`
-  returned whole paths while `Parent` returned a bare key, so their results could not be handed
-  to each other, and `Ancestor` and `Parent` demanded a `Document` neither of them read.
-  The sketches, what they did, and the decisions to settle before writing them again are kept
-  in `.plans/2026-08-16/path-navigation-functions.md`.
-
-- A code review of the whole library was run and its findings worked through. The review is kept
-  at `.reviews/2026-08-14-03-35/review.md`. What it turned up, and what was done about it:
-
-  - ***Breaking:*** `$currentDate` now stores a `Date` object for `true` and for
-    `{ $type: 'date' }`, rather than a `Date.toISOString()` string and a `Date.toDateString()`
-    string. `{ $type: 'timestamp' }` still stores a number, because there is no BSON Timestamp
-    type to store. The stored value now answers a `{ $type: 'date' }` query, which its own
-    output previously did not. Code which read these fields as strings has to change.
-    Each field also gets its own `Date` rather than every field in one operation sharing a
-    single object.
-
-  - `Unhybridize()` silently dropped any string field whose text happened to parse as JSON.
-    `'123'`, `'true'`, and `'[1,2]'` all parse without being one of `Hybridize()`'s envelopes,
-    matched none of the type cases, and left the field unwritten. The parsed value is now
-    checked for an envelope before it is used, and anything else is returned as the string it
-    was. A value which is not a string is carried across unchanged rather than dropped, so a
-    document which was never hybridized survives the call.
-
-  - `Unhybridize()` read the `message` and `source` of an `Error`, a function, and a `Symbol`
-    off the raw JSON string rather than off the parsed envelope, so all three came back
-    `undefined`. Rebuilding a function also passed a whole function declaration to
-    `new Function()`, which takes a body; the source is now evaluated as an expression.
-
-  - `Distinct()` built its key by concatenating the stringified field values with nothing
-    between them, so `{ a: 1, b: 23 }` and `{ a: 12, b: 3 }` produced the same key and one of
-    the two was lost. Each field's key now carries its short type and the parts are combined
-    through `JSON.stringify()`, which is what the `$group` stage already did. The returned
-    values are also cloned, so the result no longer aliases the given documents.
-
-  - `Format()` escaped only the first quote in a string and did not escape the backslash or the
-    control characters at all, so its output could not be read back by `JSON.parse()`. It now
-    escapes exactly what `JSON.stringify()` escapes, including lone surrogates, and it does so
-    for field names as well as for values.
-
-  - `Parse()` dropped the backslash of an escape sequence and took the next character
-    literally, turning `\n` into the letter `n`. It now decodes `\b`, `\f`, `\n`, `\r`, `\t`,
-    `\uXXXX`, and the quote, backslash, and slash escapes; any other escape stands for the
-    character which follows it.
-
-  - `Parse()` threw a raw `TypeError` on truncated input, from reading a token which was not
-    there. It is now a forgiving parser which ***never throws***: a string it cannot read is
-    returned unchanged, as is an argument which is not a string, and the reason is reported to
-    the `OpLog`.
-
-  - Derived values no longer alias the data they came from. A computed field in `Project()` and
-    a field added by the `$addFields` and `$set` stages were stored without being cloned, but a
-    field reference such as `'$user'` evaluates to the value inside the document rather than to
-    a copy of it, so writing to the result reached back into the input. The `$set` and `$push`
-    update operators had the same problem with the update document itself.
-
-  - `$pullAll` matched with `Array.includes()`, which compares objects, arrays, and dates by
-    reference, so it could only ever pull primitives. It now matches by content, which is what
-    `$addToSet` already did.
-
-  - `Text.SearchReplace()` and `Text.SearchReplacements()` built a regular expression from the
-    search text without escaping it. Searching for `a.b` also matched `axb` and then wrote the
-    text `undefined` into the result, and searching for `(` threw a `SyntaxError`. The search
-    text is now matched as the literal text it is, an empty replacement map returns the text
-    unchanged rather than matching at every position, and both functions validate their
-    parameters as the rest of the module does.
-
-  - ***The types an operator declares are now checked.*** Every operator has always declared
-    which [ShortTypes](http://jsongin.liquicode.com/#/guides/jsongin/ShortType.md) it takes, as
-    `ValueTypes` or `ArgTypes`, and the authoring guide has always said a value of any other
-    type is rejected. Nothing read those declarations. `Query()`, `Evaluate()`, `Update()`, and
-    `Aggregate()` now check the value against the declaration before dispatching.
-
-    Turning the check on first meant correcting the declarations, which had drifted out of true
-    precisely because nothing read them:
-      - `$all` declared `o` while its own code required `a`, so enforcing it as written would
-        have broken the operator outright.
-      - `$ne` declared a narrower set than the `$eq` it negates, and `$eqx` a wider set than
-        the `$nex` which negates it. A negation cannot accept a different set from what it
-        negates.
-      - `$expr` and `$exprx` declared `o` while passing anything to `Evaluate()`.
-      - The arithmetic and logical expression operators declared `a` while also accepting a
-        single operand written without the enclosing array, which is a documented form.
-      - Seven accumulators omitted `d` from an otherwise complete set.
-      - `$noop` ignores its value, so it now says it takes anything.
-
-    An operator still validates its own value, because the engine's check only runs when the
-    operator is reached through the engine, and an operator can be called directly.
-
-  - The authoring guide was corrected alongside it: it listed `ValueTypes` for stage operators,
-    which declare `ArgTypes`, and said to write `0` for a variable `ArgCount`, which is `null`.
-    It now also states that `ArgTypes` describes the argument itself rather than the operands
-    inside it, and that `ArgCount` is checked by the operator rather than by the engine.
-
-  - ***The two browser globals are now one instance.*** The module published
-    `window.liquicode.jsongin` by building a second engine, while the bundle publishes this
-    module's export as `window.jsongin`. The Browser Usage document said the two were the same
-    instance; they were not. Because the operator registries belong to an instance, an operator
-    registered through one global was invisible through the other. The module now publishes its
-    own export. Note that a browser only sees this once `dist/jsongin.min.js` is rebuilt.
-
-  - ***`$push` and `$addToSet` now support their modifiers.*** Neither implemented `$each`, and
-    neither rejected it: a modifier document was stored as a literal array element, so
-    `{ $push: { a: { $each: [ 3, 4 ] } } }` appended the object `{ $each: [ 3, 4 ] }` rather
-    than `3` and `4`. Valid MongoDB syntax silently corrupted the array.
-
-    `$push` now supports `$each`, `$position`, `$sort`, and `$slice`, applied in the order
-    MongoDB applies them, and `$addToSet` supports `$each`. A modifier written without `$each`
-    is rejected, as MongoDB rejects it, and so is an unrecognized `$` field within a modifier
-    document. The whole modifier document is checked before the first element is inserted, so
-    a rejected modifier leaves the array untouched.
-
-    A document with no `$each` is still a value rather than a modifier, so
-    `{ $push: { a: { n: 1 } } }` appends `{ n: 1 }` as before.
-
-    Both operators are no longer marked *(partially implemented)* in the Operator Reference.
-
-  - Two published statements which were not true were corrected:
-      - The Library Guide described `StrictEquals` as requiring values to match `===`. It is
-        `CompareValues()` asked whether its result is zero, so two `Date` objects holding the
-        same instant are equal, as are two equal regular expressions, and `null` equals a
-        missing value. The `StrictEquals` page already described this correctly; only the
-        one-line summary in the guide did not.
-      - The Browser Usage document's claim about the two globals, described above, was made
-        true by changing the code rather than the document.
-
-    The readme's claim that "each MongoDB feature that is implemented here operates accurately
-    and in accordance with MongoDB" was contradicted by `$push` and `$addToSet`. Rather than
-    weaken the claim, those two were finished, so it stands. It now also points at the Operator
-    Reference for which operators are implemented at all.
-
-  - ***Breaking: `BsonType()` no longer reports a number as a `long`.*** It tested
-    `Number.isSafeInteger()`, which is not an `int32` range test, so every safe integer was an
-    `int` and everything above one was a `long`. A Javascript number is a double, and the BSON
-    serializer stores it as an `int32` only when it is a whole number inside that range, so a
-    number is never a `long`. It is now `int` between `-2147483648` and `2147483647`, and
-    `double` everywhere else, including `NaN` and the infinities.
-
-    Verified against MongoDB 6.0.1 by inserting each value and reading back `$type`: `42` and
-    `2147483647` store as `int`, while `2147483648`, `3000000000`, and `9007199254740991` store
-    as `double`. A `$type: 'long'` query matched none of them. The `$type` query operator is
-    built directly on this, so `{ a: { $type: 'int' } }` and `{ a: { $type: 'double' } }` now
-    select the same documents MongoDB selects.
-
-  - ***Breaking: a field name which merely looks numeric is a field name again.*** `SplitPath()`
-    converted a path element to a number whenever `AsNumber()` accepted it, and `AsNumber()`
-    accepts `'01'`, `'1e2'`, `'0x10'`, and `'Infinity'`. A field in any of those forms became an
-    array index, which made its data unreachable: `GetValue( { '01': 'x' }, '01' )` returned
-    `undefined`, and `SetValue( {}, 'a.01', 'x' )` built `{ a: [ null, 'x' ] }`.
-
-    Only canonical integer text now converts, which is `'0'`, `'7'`, and the documented negative
-    index `'-1'`. MongoDB 6.0.1 resolves `'a.01'` as a field name and finds
-    `{ a: { '01': 'x' } }`, and so does `jsongin` now. Array indexing and reverse indexing are
-    unchanged.
-
-  - `Flatten()` dropped empty objects and arrays, because an empty container holds no leaf to
-    descend to, so `Flatten( { a: {}, b: [] } )` returned `{}` and the round trip through
-    `Expand()` lost both fields. An empty container is now emitted as a value at its own path,
-    and a new one rather than the one from the document, so the flattened result does not alias
-    its source.
-
-    Two round trip limitations which cannot be fixed this way are now documented rather than
-    left to be discovered: a document which is itself an array expands back as an object, and an
-    object whose keys are canonical integers expands back as an array. Dot notation paths do not
-    record which of the two a container was, and `Flatten( { a: { '0': 'x' } } )` and
-    `Flatten( { a: [ 'x' ] } )` produce identical results.
-
-  - `$eq` and `$ne` compared two regular expressions with `===`, which is never true for
-    distinct objects, so `{ a: { $eq: /ell/ } }` did not match `{ a: /ell/ }`. Regular
-    expressions are now compared by their source and flags, the same trap dates already had a
-    branch for.
-
-    Note that `{ a: { $eq: /ell/ } }` still does ***not*** pattern match the string `'hello'`,
-    while the implicit form `{ a: /ell/ }` does. That asymmetry is MongoDB's own, verified
-    against MongoDB 6.0.1: the explicit form matches only a field which is itself that regular
-    expression, and a regular expression is not even a legal argument to `$ne` there. Use
-    `$regex` to pattern match.
-
-  - ***Breaking: `DeleteValue()` reports whether it removed anything.*** It returned `true` for
-    any path whose parent resolved, because the Javascript `delete` operator returns `true` for
-    a property which was never there. Deleting a field which does not exist, a path into an
-    array by field name, and an out of range array index all reported success while changing
-    nothing. It now returns `false` when nothing was removed.
-
-    `$unset` treats that as a successful no-op rather than a failure, which is what MongoDB
-    reports: unsetting an absent field is an update with `modifiedCount` 0 and no error.
-
-  - The `$query` query operator was removed. It was registered, returned `true` for any input
-    regardless of its match value, and appeared in no document. `$query` was a MongoDB
-    ***query modifier*** which wrapped a whole filter alongside `$orderby` and `$hint`,
-    deprecated in MongoDB 3.2 and removed in 4.4 with the `OP_QUERY` wire protocol; it was never
-    a field level operator, and this implementation did not do what the modifier did either.
-
-    Because it was registered, `{ a: { $query: true } }` silently matched every document where
-    an unrecognized operator returns `false`. `$noop` fills the same role, is documented, and
-    works at the top level of a query where `$query` did not.
-
-  - `Text.Matches()` validates its parameters as the rest of the module does. A non string
-    pattern surfaced as a raw `TypeError` from `String.replace()` rather than as a described
-    error.
-
-  - ***Breaking: a path which reaches into an array by field name is no longer a write
-    target.*** `GetValue`, `SetValue`, and `DeleteValue` all applied a non numeric key against
-    an array to every element of that array. MongoDB does this for reads, and does not do it
-    for writes: `{ $set: { 'a.x': 9 } }` against `{ a: [ { x: 1 }, { x: 2 } ] }` is rejected
-    outright, and `{ $unset: { 'a.x': '' } }` modifies nothing. Reaching through an array there
-    requires the all positional operator, `'a.$[].x'`.
-
-    `SetValue` throws and `DeleteValue` returns `false`, which is what makes `$set`, `$inc`,
-    `$mul`, `$rename`, and `$unset` agree with MongoDB.
-
-    This was first done behind a `PathExtensions` engine setting, off by default, which could
-    be turned on to restore the previous behavior. ***That setting no longer exists*** — see
-    the path syntax entry above. It was introduced and removed within this same version, and
-    was declared but never read in every version before it, so no released version of the
-    package ever responded to it.
-
-    Reading is deliberately ***not*** changed, because MongoDB does traverse arrays when it
-    resolves a query path. `GetValue( doc, 'users.id' )` and `{ 'users.id': 101 }` are
-    unchanged.
-
-    Three of the affected operators were corrupting data rather than merely differing: through
-    an array, `$inc` wrote the string `"1,21"`, `$mul` wrote `null`, and `$rename` copied the
-    gathered array into every element.
-
-  - ***Breaking: `$min` and `$max` are no longer numeric operators.*** Both forced their operand
-    through `AsNumber()` and rejected anything else, then compared with the raw `<` and `>`
-    operators, which coerce. They now compare by the BSON ordering through `CompareValues()`,
-    the same order `Sort()` uses, so strings, dates, booleans, and comparisons between
-    different types all work:
-
-        jsongin.Update( { s: 'xyz' }, { $min: { s: 'abc' } } );  // { s: 'abc' }
-        jsongin.Update( { n: 5 }, { $max: { n: 'abc' } } );      // { n: 'abc' }
-        jsongin.Update( { n: 5 }, { $min: { n: null } } );       // { n: null }
-
-    A field which is not present is now set to the given value rather than left alone, since
-    there is nothing to compare against. A field holding `null` is compared rather than treated
-    as missing. Code which relied on either operator quietly doing nothing to a non numeric
-    field will see it change.
-
-    Measured against MongoDB 6.0.1, the two went from 14 of 26 cases matching to 26 of 26.
-    `min.js` and `max.js` now share one implementation in `_minmax.js`, differing only in which
-    direction of comparison replaces the value, following the `_arithmetic.js` and
-    `_accumulator.js` helper convention.
-
-  - ***A query path which crosses an array now means what it means in MongoDB.***
-    Twelve measured divergences were closed, across `$eq`, `$ne`, `$not`, `$gt`, `$gte`,
-    `$lt`, `$lte`, `$exists`, `$type`, `$size`, `$all`, `$regex`, and the implicit
-    `{ field: value }` form.
-
-    All of them had one cause. A path was resolved with `GetValue`, which returns a single
-    value, and for a path crossing an array that value is every element's value gathered into
-    one array. That gathered array is indistinguishable from a field which genuinely holds an
-    array:
-
-        { a: [ { x: 1 }, { x: 2 } ] }   at 'a.x' gathered to [ 1, 2 ]
-        { a: [ { x: [ 1, 2 ] } ] }      at 'a.x' gathered to [ 1, 2 ] as well
-
-    Every operator downstream saw the same shape for both and could not apply the right rule.
-    `$size` shows the damage plainly: `{ 'a.x': { $size: 2 } }` matched the first document,
-    whose `x` is not an array at all, and missed the second, whose `x` really is a two element
-    array. One line producing both a false positive and a false negative.
-
-    The new [`ResolveCandidates( Document, Path )`](http://jsongin.liquicode.com/#/guides/jsongin/ResolveCandidates.md)
-    returns the ***list of values*** a path can mean instead of one gathered value. An array
-    offers itself and each of its elements, one level deep; traversal happens at every path
-    element, so two array levels work where one used to; and an array directly inside another
-    is not descended into without an index. An operator matches when any candidate satisfies
-    it. A missing field yields an empty list, which is what lets `$exists` tell it from a field
-    holding `undefined`.
-
-    `GetValue` is unchanged. It is a published function with its own documented behavior, and
-    nothing here required changing it.
-
-    Behavior changes worth calling out individually:
-
-    - `$lt` and `$lte` had a ***false positive***. `{ 'a.x': { $lt: 'zzz' } }` matched a field
-      holding `[ 5, 6 ]`, because comparing an array to a string in Javascript compares the
-      text `'5,6'` to `'zzz'`. The range operators now compare only values of the same type,
-      which is how MongoDB brackets them: `{ $gt: 1 }` never matches a string, however the BSON
-      ordering ranks the two.
-    - `$all` is no longer an array operator. MongoDB defines it as an AND of the given values,
-      each tested as ordinary equality, which is why it works against a field that is not an
-      array: `{ 'qty.num': { $all: [ 50 ] } }` selects a document whose `num` is `50`. An empty
-      match array now selects nothing, as MongoDB does, rather than matching every array.
-    - `$regex` handed the field to `RegExp.test()`, which converts whatever it is given to a
-      string, so a field holding the regexp `/MongoDB/i` was tested as the text `'/MongoDB/i'`
-      and matched the pattern `/MongoDB/`. The pattern now applies only to strings, and a field
-      which is itself a regexp matches when its source and flags are the same. MongoDB matches
-      a field holding `/MongoDB/` against `{ $regex: /MongoDB/ }` and does not match one
-      holding `/MongoDB/i`.
-    - `$exists` now reports a field holding `undefined` as ***present***. `GetValue` could not
-      tell that from a missing field, since both read as `undefined`; a candidate list can.
-      This follows `DeleteValue`, which removes a key rather than setting it to `undefined`
-      precisely so the two states stay distinguishable, and it agrees with `Object.keys()` and
-      the `in` operator. MongoDB has no say here, as BSON cannot store `undefined`.
-    - `$type: 'array'` now finds an array field. It previously tested that field's elements and
-      so never saw the array itself.
-
-    `ImplicitEq` was a dispatch table over every pairing of the field's type with the match
-    value's type, each array pairing carrying its own traversal. Those pairings collapse once
-    equality resolves candidates, so it now only decides which operator the match value calls
-    for. `$gt`, `$gte`, `$lt`, and `$lte` likewise share one implementation, differing in the
-    comparison and in whether an equal value counts.
-
-  - The test suite grew from 989 to 1172 tests, and the uncovered blocks which
-    `npm run coverage` reports fell from 172 to 149. Every fix above landed with tests, and
-    `Parse` and `Distinct` are now fully covered. A duplicated copy of the `Parse` tests was
-    removed from the `Format` test block.
-
-- ***Breaking***: `Sort( Documents, SortCriteria )` now builds a sort key by gathering candidates
-  along the sort path, rather than by reducing the single value which `GetValue()` returns.
-  A path which crosses an array reduces through every array level it crosses, so
-  `{ a: [ { x: [ 0, 7 ] } ] }` sorted by `a.x` now sorts as `0` ascending and `7` descending.
-  It previously stopped one level short, sorted by the whole `[ 0, 7 ]` array, and landed above
-  every number because an array outranks one. `GetValue()` gathers the values along a path into
-  one array which is indistinguishable from a field that genuinely holds an array, so sorting
-  could not tell the two shapes apart. A field holding `[ [ 3, 4 ], [ 1, 2 ] ]` sorted by `v`
-  crosses nothing, still expands one level only, and still sorts by `[ 1, 2 ]`.
-
-  The empty array rule changed with it. It applies to a field which produces ***no*** sort key
-  candidate at all, not to a sort key which happens to be an empty array. `{ v: [] }` still
-  sorts below every value including `null` and below documents missing the field, but
-  `{ v: [ [] ] }` now sorts by the array type rank, and `{ v: [ 3, [] ] }` now sorts above every
-  number when descending, because the empty array wins the descending maximum. An empty array
-  which the path merely crosses, as in `{ a: [] }` sorted by `a.x`, contributes `null` and sorts
-  with the other nulls.
-
-  Verified against MongoDB 6.0.1 across 30 orderings. The parity cases are kept at
-  `test/Aggregate Tests/test-suite/Sort Parity Tests.js` and run against both `jsongin` and a
-  live server. The `$sort` aggregation stage delegates to `Sort()` and inherits all of this.
-
-- Documentation was brought up to date with this release:
-  - Fixed three passages which did not work as written. The `OpLog` document initialized the
-    library with `require( '@liquicode/jsongin' )( Settings )`, which has thrown since v0.0.19
-    when the module's export became an instance rather than a factory. The `$currentDate`
-    update operator was documented as taking the bare strings `'timestamp'` and `'date'`; it
-    takes `{ $type: 'timestamp' }`, so the documented form silently did nothing. The browser
-    guide linked to an UNPKG URL which serves a file browser page rather than the script.
-  - Added pages for the functions which had none: `DeleteValue`, `CompareValues`, `AsBoolean`,
-    `AsNumber`, `AsDate`, `BsonType`, `Clone`, `LooseEquals`, `StrictEquals`, and `IsQuery`.
-  - Documented the `$expr` and `$exprx` query operators, which were added in this version but
-    never written up in the [Query](http://jsongin.liquicode.com/#/guides/jsongin/Query.md) document.
-  - Added an [Operator Authoring](http://jsongin.liquicode.com/#/guides/Operator-Authoring.md) guide, describing the
-    operator contract and how to register one. Extensibility was an advertised feature with no
-    document behind it.
-  - Added a [Testing](http://jsongin.liquicode.com/#/guides/Testing.md) guide covering `npm test`, `npm run coverage`,
-    and the driver harness which runs the same suite against a real MongoDB server.
-  - Linked the `Merge` document, which existed but was unreachable from the sidebar, the
-    library guide, and the readme.
-  - Rewrote the `Merge` document for the behavior described below.
-  - Added `npm run check-docs`, which asserts that every ` ```js ` block parses as Javascript,
-    that every local link resolves, and that every page is reachable from another page.
-    It runs as the last step of `build docs`, so any of those failing now halts the docs build
-    and, through it, a release. It uses only Node's own modules and adds no dependency.
-  - ***What goes inside a code fence is now code.*** A result is written as a comment rather
-    than as a bare expression, e.g. `// merged matches doc`. `===` is kept only where it is
-    literally true, which is scalars and booleans, and not for objects or arrays where
-    reference equality does not hold. A block which is not Javascript — program output, the
-    shape of a value, a method signature — no longer claims to be.
-  - Fixed the defects that enforcing the above uncovered: the `Query` document named the
-    equality operator `eq$` rather than `$eq` in its first three examples, omitted the colon
-    between a field and its operator document in the `$or` example, declared an array of
-    documents with braces, and gave four headline examples in the form
-    `{ $gte: { id: 100 } }`. That last one is inverted — `$gte` is not a top level operator —
-    so all four returned `false` where the document claimed `true`. They are now written
-    `{ id: { $gte: 100 } }` and were verified against the library.
-  - Fixed the documentation links. The site resolved links from the docs root while the files
-    were written relative to each other, so roughly half of the cross-references were broken in
-    any given context, the readme's own links included.
-- ***Breaking***: `Merge( DocumentA, DocumentB )` now descends into a field only when ***both***
-  documents hold a sub-document there. Every other value in `DocumentB` replaces the value in
-  `DocumentA`. See the [Merge](http://jsongin.liquicode.com/#/guides/jsongin/Merge.md) document.
-  `Merge` dispatched on Javascript's `typeof`, which reports `object` for arrays, dates,
-  regular expressions, and `null` alike, so it walked all of them member-wise. That one mistake
-  produced four separate defects:
-  - An array in `DocumentB` was merged into `DocumentA`'s array ***by index*** rather than
-    replacing it, so a shorter array could not narrow a longer one and an empty array could not
-    clear one at all. `Merge( { tags: [ 'a', 'b', 'c' ] }, { tags: [ 'a' ] } )` returned all
-    three tags. This is the case that matters for a defaults document, where an override has to
-    be able to narrow a list and not only extend it.
-  - A `Date` or `RegExp` in `DocumentB` was ***silently discarded***, leaving `DocumentA`'s
-    value in place, because neither has any enumerable own properties to walk.
-    `Merge( { w: dateA }, { w: dateB } )` returned `dateA`.
-  - A value which changed type either threw or produced nonsense.
-    `Merge( { a: 'c' }, { a: [ 'b' ] } )` threw a `TypeError`, and
-    `Merge( { a: { x: 1 } }, { a: [ 1, 2 ] } )` returned `{ a: { '0': 1, '1': 2, x: 1 } }`.
-  - `Merge` is now idempotent. Applying the same overrides twice gives the same result as
-    applying them once, so settings can be layered without the result depending on how many
-    times a layer was applied.
-  This follows RFC 7386, JSON Merge Patch, with one deliberate difference: `null` is a value
-  and sets the field to `null` rather than removing it. The RFC spends `null` on deletion
-  because a merge patch has no other way to express removal; `jsongin` has `$unset` and
-  `DeleteValue`. This also keeps `Merge` consistent with `ShortType()`, which gives `null` its
-  own type `l`, and with `Diff()`, which reports a change to `null` as `$set`.
-  ***`Merge` adds and overwrites fields, but never removes one.***
-- ***Breaking***: `Merge( DocumentA, DocumentB )` now requires both parameters to be objects.
-  A `null` or missing document is still treated as an empty one, so that
-  `Merge( DEFAULTS, options )` works when no options were supplied, but any other type throws.
-  Merging arrays at the top level is no longer supported.
-  This also removes a falsiness test which treated a legitimate value as an absent one:
-  `Merge( 0, { a: 1 } )` ignored the `0`. The parameters are checked with `ShortType()` now.
-- ***Breaking***: `CompareValues( ValueA, ValueB )` now orders `NaN`, which it previously
-  reported as ***equal to every number***. It compared numbers with `<` and then `>` and fell
-  through to returning `0`. Every comparison against `NaN` is false, so `NaN` took that path.
-  `NaN` now sorts below every other number and equal to itself, which is where MongoDB puts it.
-  This is the same failure this version already repaired for missing fields: a value which
-  compares equal to everything makes the ordering inconsistent, and one such value is enough to
-  make the whole result arbitrary. `Sort( [ 3, NaN, 1, 2 ] )` returned `[ 3, NaN, 1, 2 ]`.
-  It also repairs the expression comparison operators, where `{ $eq: [ 1, NaN ] }` was `true`.
-- ***Breaking***: `StrictEquals( DocumentA, DocumentB )` is now symmetric.
-  It called the `$eq` query operator, whose two parameters are not peers: the first is a
-  document field and the second is a match value, and `$eq` lets a match value equal an
-  ***element*** of a document array. That is correct for querying — `{ tags: [ 1, 2 ] }` should
-  match a document whose `tags` holds `[ [ 1, 2 ], 'x' ]` — but an equality test must not depend
-  on the order of its arguments. `StrictEquals( [ [ 1, 2 ] ], [ 1, 2 ] )` returned `true` while
-  the reverse returned `false`.
-  It now compares with `CompareValues()`, which is symmetric and reflexive.
-  This also repairs `Diff( Before, After )`, which compares with `StrictEquals` and so reported
-  an ***empty patch*** for two documents which differed, losing the change on a round trip.
-  Note that the `$eq` query operator itself is unchanged. Its behavior is MongoDB's.
-  One further difference: two equivalent regular expressions are now equal, where the reference
-  comparison inherited from `$eq` reported `/a/` and `/a/` as different.
-- Fixed `BsonType( Value, ReturnAlias )`, which reported `NaN`, `Infinity`, and `-Infinity` as
-  `18` / `'long'`. None has a decimal point in its text and none is a safe integer, so
-  classifying by text alone sent all three down the long branch. All three are `1` / `'double'`,
-  which is what BSON calls them.
-- ***Breaking***: the `$addToSet` update operator now compares values by ***content*** rather
-  than by reference, so it is a set operation for every value and not only for primitives.
-  It tested for membership with Javascript's `Array.includes()`, which compares objects,
-  arrays, and dates by identity. A value of one of those types was therefore appended again on
-  every call, no matter what it contained, and `$addToSet` was not idempotent.
-  e.g. `Update( { a: [ { id: 1 } ] }, { $addToSet: { a: { id: 1 } } } )` returned
-  `{ a: [ { id: 1 }, { id: 1 } ] }` and now returns `{ a: [ { id: 1 } ] }`.
-  Comparison is by `CompareValues()`, so it remains type strict: `1` and `'1'` are different
-  values, as are `0` and `false`, and two documents whose fields appear in a different order
-  are different documents, which is what MongoDB does.
-  `$addToSet` also stores a copy of the value now, rather than a reference to the one inside
-  the update document, and a `Date` survives as a `Date`.
-- Fixed `BsonType( Value, ReturnAlias )`, which threw whenever it was called as anything other
-  than a method of the engine. It read the engine through `this` rather than through the
-  instance it was built with, so detaching it or passing it as a callback threw a `TypeError`.
-  e.g. `const BsonType = jsongin.BsonType; BsonType( 42 )` now returns `16`.
-- Fixed `Text.SearchReplace( Text, Search, Replace, CaseSensitive )`, which had the same defect.
-  It called its sibling `Text.SearchReplacements` through `this`, so it threw whenever it was
-  called as anything other than a member of the `Text` object.
-  The `Text` functions are now declared at module scope and call each other directly, so every
-  one of them can be detached or passed as a callback.
-  These two were the only places in `src` which reached for `this`.
-- Added the `Evaluate( Document, Expression )` function, which evaluates a MongoDB aggregation
-  expression against a document. See the [Evaluate](http://jsongin.liquicode.com/#/guides/jsongin/Evaluate.md) document.
-- Added 22 expression operators, available in `jsongin.ExpressionOperators`:
-  `$literal`, `$add`, `$subtract`, `$multiply`, `$divide`, `$mod`, `$abs`, `$min`, `$max`,
-  `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$cmp`, `$and`, `$or`, `$not`,
-  `$cond`, `$ifNull`, and `$switch`.
-- Added the `$expr` query operator, which allows a query to compare one document field to
-  another. e.g. `Query( entity, { $expr: { $gt: [ '$dmg', '$armor' ] } } )`
-- Added the `$exprx` query operator, a jsongin extension of `$expr` which can also appear
-  within a field of a query, where it evaluates its expression against the sub-document found
-  at that field.
-- Added the `AsBoolean( Value )` function.
-- Fixed the `$noop` query operator, which could not do the one thing it is documented to do.
-  It was marked as not allowed at the top level of a query, which is exactly where a commented
-  out clause sits, so `Query( doc, { a: 1, $noop: { b: 2 } } )` returned `false` instead of
-  ignoring the `$noop` clause. It now works at the top level and within a field.
-- `Project( Document, Projection )` now supports computed fields. A projection field whose
-  value is neither `1`/`true` nor `0`/`false` is an expression, evaluated against the document
-  with `Evaluate()`. e.g. `Project( entity, { net: { $subtract: [ '$dmg', '$armor' ] } } )`
-  A projection containing a computed field is an inclusion projection, as it is in MongoDB.
-  An expression which evaluates to `null` sets the field, while one which evaluates to a
-  missing value omits it.
-  `Project` also now accepts `true` and `false` in place of `1` and `0`.
-- Fixed several `Project( Document, Projection )` defects:
-  - A projection combining `_id: 0` with a computed field inverted into an exclusion and
-    returned the ***entire document***.
-  - Excluded fields were removed from the output's JSON but their keys remained, holding
-    `undefined`, so `Object.keys()` and the `in` operator still reported them.
-  - An inclusion projection always produced an `_id` key, even when the source document had
-    no `_id`, leaving a key holding `undefined`.
-  - Dates were converted to strings, because the function cloned with `Clone()`. It now
-    clones with `SafeClone()`.
-  - Using an expression within an exclusion projection is now rejected, matching MongoDB.
-  Projection behavior was verified case by case against a MongoDB 8.0 server.
-- ***Breaking***: `Date` values now have their own short type `d`. `ShortType( aDate )` returns
-  `d` where it previously returned `o`, and `BsonType( aDate )` returns `9` / `'date'` where it
-  previously returned `3` / `'object'`. Code which switches on these values is affected.
-  A date is recognized by its type only, never by parsing: a number which would be a valid
-  timestamp is still `n`, and a string which would parse as a date is still `s`.
-  This repairs a family of defects which all had the same cause. A `Date` has no enumerable
-  own properties, so any function which saw `o` and walked the value member-wise found nothing
-  and silently produced an empty object:
-  - `LooseEquals( dateA, dateB )` returned `true` for ***any*** two dates.
-  - `Flatten()` dropped date fields entirely.
-  - `Format()` emitted `{}` for a date. It now emits an ISO string, matching `JSON.stringify`.
-  - `Evaluate()` destroyed a literal date within an expression.
-  - `Query()` could not compare dates with `$gt`, `$gte`, `$lt`, `$lte`, `$in`, or `$nin`.
-  - `$type: 'date'` and `$type: 9` never matched anything.
-  - `GetValue()` descended into a `Date` and returned its methods.
-  - `Hybridize()` recorded a date as an object, so the round trip could not restore it.
-  Date equality, ranges, sets, `$type`, and `$expr` were verified case by case against a
-  MongoDB 8.0 server.
-- Fixed `SafeClone( Document, Exceptions )`, which silently destroyed dates. A `Date` has the
-  short type `o` but has no enumerable own properties, so cloning it member-wise returned an
-  empty object `{}` and the value was lost. Dates are now cloned by value.
-  This also repairs `Merge( DocumentA, DocumentB )`, which clones with `SafeClone` and was
-  therefore destroying any date in either document.
-  Note that `Clone( Document )` is unchanged: it converts dates to ISO strings, which is
-  inherent to the stringify/parse approach it documents.
-- Added the `CompareValues( ValueA, ValueB )` function, which compares two values using
-  MongoDB's comparison order and returns `-1`, `0`, or `1`.
-  This is the comparison used by the expression comparison operators and by `Sort()`.
-- ***Breaking***: `Sort()` now orders documents the way MongoDB does. It previously compared
-  values with Javascript's `>` and `<` operators, which report every comparison against a
-  missing field as equal. A single document missing the sort field made the comparison
-  inconsistent and the resulting order arbitrary. Sorting complete, same-typed documents is
-  unchanged. Specifically:
-  - A document missing the sort field now sorts as `null`, at the beginning of an ascending sort.
-  - Values of different types are ordered `null` < numbers < strings < objects < arrays <
-    booleans < dates < regular expressions.
-  - A sort field holding an array is sorted by that array's smallest element when ascending,
-    and by its largest element when descending.
-  - A sort field holding an empty array sorts below every other value, including `null`.
-  - `Sort()` still sorts in place and still returns the array which was passed to it.
-  - These orderings were verified case by case against a MongoDB 8.0 server.
-- Fixed `AsNumber( Value )` and `AsDate( Value )`, which were testing their parameter for
-  falsiness and so rejected legitimate values. `AsNumber( 0 )` returned `null` instead of `0`
-  and `AsDate( 0 )` returned `null` instead of the epoch.
-- This also fixes the `$mul`, `$min`, and `$max` update operators, which silently performed no
-  update when given a value of `0`. For example, `Update( { hp: 5 }, { $max: { hp: 0 } } )`
-  now correctly clamps `hp` to `0` rather than leaving the document unchanged.
-- ***Breaking***: `AsNumber` no longer applies Javascript's own type coercion to non-numeric
-  values. `AsNumber( true )` now returns `null` rather than `1`, and `AsNumber( [ 5 ] )` now
-  returns `null` rather than `5`. Only numbers and numeric strings are converted.
-  Consequently, update operators like `$inc: { count: true }` no longer modify the field.
-- Added tests for `AsNumber` and `AsDate`.
-- Added the `Aggregate( Documents, Pipeline )` function, which runs an array of documents
-  through a MongoDB aggregation pipeline.
-  See the [Aggregate](http://jsongin.liquicode.com/#/guides/jsongin/Aggregate.md) document.
-  e.g. `Aggregate( players, [ { $match: { alive: true } }, { $group: { _id: '$team', score: { $sum: '$points' } } } ] )`
-- Added 9 pipeline stages, available in `jsongin.StageOperators`:
-  `$match`, `$project`, `$addFields`, `$set`, `$unwind`, `$group`, `$sort`, `$limit`, and
-  `$skip`. As in MongoDB, `$set` is an alias of `$addFields`.
-- Added 8 accumulators, available in `jsongin.AccumulatorOperators`:
-  `$sum`, `$avg`, `$min`, `$max`, `$count`, `$push`, `$first`, and `$last`.
-  Note that `$sum` and `$avg` ignore non-numeric values rather than throwing on them, which is
-  what MongoDB does and is deliberately unlike the expression operator `$add`.
-- `Aggregate` never modifies the array it is given, nor the documents within it. The stages
-  which only select or reorder documents (`$match`, `$sort`, `$limit`, `$skip`) pass the
-  original documents along, and the stages which produce documents clone with `SafeClone()`
-  before writing. Dates therefore survive a pipeline as dates.
-- `$group` emits its groups in the order they were first seen. MongoDB does not guarantee an
-  order here; jsongin's is deterministic so that a pipeline result is testable.
-- Added an `Aggregate` method to the test drivers, so that the same pipelines can be run
-  against a real MongoDB server.
-- Added the `Diff( Before, After )` function, which describes the changes between two documents
-  as a `jsongin` update document, so that a change is expressed in the same shape that `Update()`
-  already applies. See the [Diff](http://jsongin.liquicode.com/#/guides/jsongin/Diff.md) document.
+Parity with MongoDB is ***100%*** across 475 compared behaviors: Query 214, Update 86,
+  Projection 51, and Aggregate 124. Run `npm run parity-report` to measure it.
+
+This version carries many breaking changes. Nearly all of them correct a behavior which
+  disagreed with MongoDB, so code written against MongoDB's own semantics is more likely to
+  work than it was before.
+
+
+### Breaking — Paths
+
+- `jsongin`'s path syntax is MongoDB's path syntax, with no extensions and no settings.
+- Reverse indexing is gone. `'a.-1'` no longer addresses the last element of an array.
+  *Was: counted back from the end. Against a document a negative key is an ordinary field
+  name, so `{ a: { '-1': 5 } }` is still reached by `'a.-1'`.*
+- The `PathExtensions` setting is gone.
+  *Was: declared but never read by any released version, so nothing responds differently.*
+- A field name which merely looks numeric is a field name again. Only canonical integer text
+  such as `'0'` and `'7'` is an array index.
+  *Was: `'01'`, `'1e2'`, `'0x10'`, and `'Infinity'` became array indexes, which made a field in
+  any of those forms unreachable.*
+- A path which reaches into an array by field name is no longer a write target. `SetValue()`
+  throws and `DeleteValue()` returns `false`.
+  *Was: applied the key to every element, which corrupted data through `$inc`, `$mul`, and
+  `$rename`. Reading is unchanged and still traverses arrays.*
+- Aggregation expressions and projections no longer index arrays. A field path applies every
+  key to the array's elements, so `'$a.2'` gathers the field `2` from each one.
+  *Was: `Evaluate( { a: [ 1, 2, 3 ] }, '$a.2' )` returned `3` and now returns `[]`. Use
+  `$arrayElemAt` for position. Query paths are unchanged and still index.*
+
+
+### Breaking — Queries
+
+- A malformed query is refused with an error rather than answered with `false`. An unknown
+  operator, an operator written where it cannot appear, an operator value of the wrong type, an
+  `$options` which cannot be applied, and a logical operator given no conditions all throw.
+  *Was: a typo was indistinguishable from an empty result. A query which simply matches nothing
+  still returns `false`, and a `Document` of the wrong type still returns `false`.*
+- `$not` is no longer accepted at the top level of a query. Negate a whole query with `$nor`.
+- `$exists` coerces its value, so `{ $exists: 1 }` and `{ $exists: 0 }` ask the questions
+  MongoDB asks.
+  *Was: both answered `false`, the second one the opposite of the right answer.*
+- `$in` and `$nin` match the way the implicit form does. Each value in the list goes through
+  `$ImplicitEq`, so a regexp pattern matches and everything else goes through `$eq`.
+  *Was: `Array.includes()`, which is `===`, so a sub-document, an array, a date, a missing
+  field against `null`, and any path crossing an array all failed to match.*
+- `$eq` compares structured values with `CompareValues()` rather than by their `JSON.stringify`
+  text.
+  *Was: stringifying discarded the type, so an object holding a `Date` equalled one holding the
+  equivalent ISO string.*
+- `$eqx` and `$nex` resolve candidates, the way `$eq` and `$ne` do.
+  *Was: `{ tags: { $eqx: 'a' } }` did not match `{ tags: [ 'a', 'b' ] }`.*
+- `$gt`, `$gte`, `$lt`, and `$lte` compare objects and arrays, within the operand's own type
+  bracket.
+  *Was: refused both outright, and compared with the raw `>` operator.*
+- A query path which crosses an array means what it means in MongoDB, across `$eq`, `$ne`,
+  `$not`, `$gt`, `$gte`, `$lt`, `$lte`, `$exists`, `$type`, `$size`, `$all`, `$regex`, and the
+  implicit form. Specifically:
+  - `$all` is no longer an array operator. It is an AND of the given values, each tested as
+    ordinary equality, so it works against a field which is not an array. An empty match array
+    selects nothing.
+  - `$regex` applies only to strings. A field which is itself a regexp matches when its source
+    and flags are the same.
+  - `$exists` reports a field holding `undefined` as ***present***.
+  - `$type: 'array'` finds an array field rather than testing its elements.
+  - `$lt` and `$lte` no longer match a numeric array against a string.
+- A regular expression matches an array field when ***any*** one element matches.
+  *Was: required every element to match, so the defect only showed on arrays of two or more.*
+- The `$query` query operator was removed. It matched every document whatever its value, and
+  appeared in no document. `$noop` fills the same role and works at the top level of a query.
+
+
+### Breaking — Updates
+
+- A malformed update is refused with an error. An unknown operator, an update document which is
+  not made of operators, an operator value of the wrong type, and two operators which write to
+  the same path or to a path and one below it all throw. The whole update document is checked
+  before any of it is applied.
+- An update operator which cannot apply itself raises an error — `$inc` against a string,
+  `$push` against a scalar, a malformed `$currentDate` or `$push` modifier.
+  *Was: reported to the `OpLog` and left the field alone, which a caller could not tell from an
+  update that had nothing to do. A field which is not there is still a no-op, not a refusal.*
+- `$inc` and `$mul` are strictly numeric on both sides. A field holding a string, a boolean, a
+  date, or a `null` is refused rather than coerced, and a numeric string operand is refused.
+  *Was: `{ n: 'abc' }` incremented by 1 became `'abc1'`, and `{ n: true }` became `2`.*
+- `$rename` removes the source key.
+  *Was: left it in place holding `undefined`, so a renamed field still answered
+  `{ $exists: true }`. A source field which is not there is now left alone.*
+- `$unset` removes a field rather than setting it to `undefined`, and sets an array element to
+  `null` rather than leaving a hole.
+  *Was: `Object.keys()` still reported an unset field, and a hole is not representable in JSON.*
+- `$min` and `$max` are no longer numeric operators. They compare by the BSON ordering through
+  `CompareValues()`, so strings, dates, booleans, and comparisons between different types all
+  work. A field which is not present is set to the given value.
+  *Was: forced through `AsNumber()`, so both quietly did nothing to a non-numeric field.*
+- `$addToSet` compares values by content rather than by reference, so it is a set operation for
+  every value and not only for primitives. It also stores a copy of the value.
+  *Was: not idempotent for an object, an array, or a date.*
+- `$push` stores a modifier document which has no `$each` as a plain value.
+  *Was: refused it. `$each` is what makes a document a modifier document.*
+- `$currentDate` stores a `Date` object for `true` and for `{ $type: 'date' }`.
+  *Was: stored `Date.toISOString()` and `Date.toDateString()` strings, which did not answer a
+  `{ $type: 'date' }` query. Code which read these fields as strings must change.*
+- `Update()` no longer converts dates to strings.
+- `SetValue()` fills a gap with `null` when it writes past the end of an array, so
+  `{ $set: { 'a.3': 9 } }` against `{ a: [ 1 ] }` gives `[ 1, null, null, 9 ]`.
+  *Was: left Javascript array holes.*
+- `SetValue()` creates a document for a path which is not there, whatever the next key looks
+  like, so `{ $set: { 'a.0': 9 } }` against a document with no `a` gives `{ a: { '0': 9 } }`.
+  *Was: a numeric key created an array. Pass the new `CreateArrays` parameter for the old
+  behavior. An array which already exists is still indexed by a numeric key.*
+
+
+### Breaking — Projection and Aggregation
+
+- `Project( Document, {} )` returns the whole document.
+  *Was: returned an empty one. The `$project` stage has the opposite rule and refuses an empty
+  specification.*
+- An invalid projection throws rather than returning `null`. `null` is reserved for a
+  `Document` or `Projection` parameter of the wrong type.
+- `Sort()` builds its sort key by gathering candidates along the sort path, so a path which
+  crosses an array reduces through every level it crosses.
+  *Was: stopped one level short and sorted by the gathered array, which outranks every number.
+  The `$sort` stage delegates to `Sort()` and inherits this.*
+- `Sort()` orders documents the way MongoDB does. A document missing the sort field sorts as
+  `null`; types order `null` < numbers < strings < objects < arrays < booleans < dates <
+  regular expressions; and an array field sorts by its smallest element ascending and its
+  largest descending.
+  *Was: compared with `>` and `<`, which report every comparison against a missing field as
+  equal, so one such document made the whole order arbitrary.*
+- The empty array rule applies to a field which produces ***no*** sort key at all, not to a sort
+  key which happens to be an empty array. `{ v: [] }` still sorts below every value including
+  `null`, but `{ v: [ [] ] }` sorts by the array type rank.
+
+
+### Breaking — Engine Functions
+
+- `Date` values have their own short type `d`. `ShortType( aDate )` returns `d` and
+  `BsonType( aDate )` returns `9` / `'date'`.
+  *Was: `o` and `3` / `'object'`. A `Date` has no enumerable own properties, so every function
+  which walked it member-wise silently produced an empty object. Code which switches on these
+  values is affected.*
+- `BsonType()` no longer reports a number as a `long`. A number is `int` between `-2147483648`
+  and `2147483647`, and `double` everywhere else, including `NaN` and the infinities.
+  *Was: classified by `Number.isSafeInteger()`, which is not an int32 range test.*
+- `CompareValues()` orders `NaN`, below every other number and equal to itself.
+  *Was: reported as equal to every number, which made any ordering containing one arbitrary.*
+- `StrictEquals()` is symmetric, comparing with `CompareValues()`.
+  *Was: called the `$eq` query operator, whose two parameters are not peers, so
+  `StrictEquals( [ [ 1, 2 ] ], [ 1, 2 ] )` and its reverse disagreed. This also repairs
+  `Diff()`, which reported an empty patch for two documents which differed.*
+- `LooseEquals()` examines the keys of both values, and is an engine function of its own rather
+  than the `$eqx` query operator applied to two whole values.
+  *Was: walked the first value's keys only, so `LooseEquals( {}, { a: 1 } )` was `true` and an
+  empty object loosely equalled everything.*
+- `AsNumber()` no longer applies Javascript's type coercion to non-numeric values.
+  `AsNumber( true )` and `AsNumber( [ 5 ] )` return `null`. Only numbers and numeric strings
+  convert.
+- `Merge( DocumentA, DocumentB )` descends into a field only when ***both*** documents hold a
+  sub-document there. Every other value in `DocumentB` replaces the value in `DocumentA`, and
+  `Merge` is idempotent.
+  *Was: dispatched on `typeof`, so arrays merged by index and could not be narrowed, dates and
+  regular expressions were discarded, and a value which changed type threw. Follows RFC 7386
+  with one difference: `null` is a value rather than a deletion.*
+- `Merge( DocumentA, DocumentB )` requires both parameters to be objects. A `null` or missing
+  document is still treated as an empty one, so `Merge( DEFAULTS, options )` works when no
+  options were supplied. Merging arrays at the top level is no longer supported.
+- `DeleteValue()` reports whether it removed anything, returning `false` when nothing was
+  removed.
+  *Was: returned `true` for any path whose parent resolved, because the Javascript `delete`
+  operator does. `$unset` treats that as a successful no-op, which is what MongoDB reports.*
+- `OperatorType` and `ArgCount` were removed from every operator. Both were declared everywhere
+  and read nowhere, and neither could make the engine refuse anything. An operator checks its
+  own operand count.
+- The two browser globals are one instance. The module publishes its own export rather than
+  building a second engine.
+  *Was: an operator registered through one global was invisible through the other. A browser
+  sees this once `dist/jsongin.min.js` is rebuilt.*
+
+
+### Added
+
+- `Aggregate( Documents, Pipeline )`, which runs an array of documents through a MongoDB
+  aggregation pipeline.
+- 10 pipeline stages, in `jsongin.StageOperators`: `$match`, `$project`, `$addFields`, `$set`,
+  `$unwind`, `$group`, `$sort`, `$limit`, `$skip`, and `$count`. As in MongoDB, `$set` is an
+  alias of `$addFields`, and the `$count` stage produces no document at all for an empty stream.
+- 9 accumulators, in `jsongin.AccumulatorOperators`: `$sum`, `$avg`, `$min`, `$max`, `$count`,
+  `$push`, `$first`, `$last`, and `$addToSet`. `$sum` and `$avg` ignore non-numeric values
+  rather than throwing, which is what MongoDB does and is deliberately unlike `$add`. The order
+  of the `$addToSet` result is not specified.
+- `Evaluate( Document, Expression )`, which evaluates a MongoDB aggregation expression against
+  a document.
+- 30 expression operators, in `jsongin.ExpressionOperators`: `$literal`, `$add`, `$subtract`,
+  `$multiply`, `$divide`, `$mod`, `$abs`, `$ceil`, `$floor`, `$round`, `$trunc`, `$min`, `$max`,
+  `$size`, `$arrayElemAt`, `$concatArrays`, `$in`, `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`,
+  `$cmp`, `$and`, `$or`, `$not`, `$cond`, `$ifNull`, and `$switch`.
+  - `$round` rounds ***half to even***, so `{ $round: [ 2.5 ] }` is `2` while
+    `{ $round: [ 3.5 ] }` is `4`, which is what MongoDB does and not what `Math.round()` does.
+    `$round` and `$trunc` take an optional decimal place, which may be negative.
+  - `$arrayElemAt` is the only way to index an array in an expression. A negative position
+    counts back from the end there, because it is an operand rather than a path element.
+  - The expression `$in` takes the value first and the array second, which is the reverse of the
+    query operator of the same name, and compares by content.
+- The `$expr` query operator, which compares one document field to another.
+  e.g. `Query( entity, { $expr: { $gt: [ '$dmg', '$armor' ] } } )`
+- The `$exprx` query operator, a `jsongin` extension of `$expr` which may also appear within a
+  field of a query, where it evaluates against the sub-document found there.
+- `Diff( Before, After )`, which describes the changes between two documents as an update
+  document. Arrays are atomic, key order is ignored, and a field changed to `null` is `$set`.
   e.g. `Diff( { hp: 10, n: 1 }, { hp: 7 } )` returns `{ $set: { hp: 7 }, $unset: { n: '' } }`
-  - Arrays are atomic: a change anywhere inside an array replaces the whole array. Describing
-    an array element-wise would need a way to shorten one, which the update operators cannot
-    express.
-  - `Diff` compares content and ignores key order, so two documents whose fields appear in a
-    different order produce an empty patch. Note that applying a patch restores content and not
-    key order, because an update document cannot reposition a key.
-  - Values are compared strictly, so a value which changed type is a change. `null` is a value
-    rather than an absence, so a field which changed to `null` is `$set` rather than `$unset`.
-- Added the `Invert( Before, Patch )` function, which returns the update document that undoes
-  `Patch`. See the [Invert](http://jsongin.liquicode.com/#/guides/jsongin/Invert.md) document.
-  It applies the patch and diffs the result back toward the original, so it inverts ***any***
-  update document rather than only the `$set` and `$unset` which `Diff` writes. `$inc`, `$push`,
-  `$rename`, and the rest all invert.
-- Added the `DeleteValue( Document, Path )` function, which removes the field at a document
-  path. It replaces two private copies of the same helper, in `Project()` and in the `$unwind`
-  stage.
-- ***Breaking***: `Update( Document, Updates )` no longer converts dates to strings. It cloned
-  the document with `Clone()`, a stringify/parse round trip, so every `Date` in an updated
-  document came back as an ISO string. It clones with `SafeClone()` now, the same repair
-  `Project()` received earlier in this version.
-- ***Breaking***: the `$unset` update operator now ***removes*** a field rather than setting it
-  to `undefined`. The key previously remained, so `Object.keys()` and the `in` operator still
-  reported a field which had been unset. This is the same defect which was fixed in `Project()`
-  earlier in this version.
-- Fixed a latent `ReferenceError` in six update operators. `$set`, `$unset`, `$addToSet`, `$pop`,
-  `$pullAll`, and `$push` each referred to an undefined `Engine` variable on the failure path
-  which is meant to write to the `OpLog`, so a failed field update threw a `ReferenceError`
-  instead of logging, but only when `OpLog` was enabled.
-  `$addToSet` carried a second undefined reference on the same statement, to a `value` variable
-  which its loop never declared, and now logs the array it was storing.
-  This path needs a failed store and a configured `OpLog` at the same time, which is why it went
-  unnoticed. All twelve update operators are now tested for it.
-- ***Breaking***: fixed matching a regular expression against an array field, which required
-  ***every*** element to match instead of any one of them. An array field matches when any one
-  of its elements matches, which is what MongoDB does and what every other array comparison in
-  `jsongin` already did. A single element array happened to work, so the defect only showed on
-  arrays of two or more.
-  e.g. `Query( { tags: [ 'staff', 'x' ] }, { tags: /^st/ } )` returned `false` and now returns
-  `true`. Queries which relied on the old all-must-match behavior will match more documents.
-- Fixed `Distinct( Documents, DistinctCriteria )`, which reported its failures to the `OpError`
-  log under the name `Sort`.
-- The `$set` aggregation stage now reports errors under its own name. It shares its
-  implementation with `$addFields`, of which it is an alias, and was reporting
-  `$addFields requires an object.` for a malformed `$set`.
-- Added `npm run coverage`, which reports the parts of `src` that the test suite never executes.
-  It uses Node's own coverage collector, so it adds no dependency.
-- Fixed the `$push` update operator, which returned `true` no matter what happened. It tracked
-  its own success in a variable and then ignored it, so pushing onto a field which is not an
-  array reported success while doing nothing. It now returns the result, as the other eleven
-  update operators already did.
-  e.g. `Update( { n: 5 }, { $push: { n: 1 } } )` no longer reports that it worked.
+- `Invert( Before, Patch )`, which returns the update document that undoes `Patch`. It inverts
+  any update document, not only the `$set` and `$unset` which `Diff` writes.
+- `ResolveCandidates( Document, Path )`, which returns the list of values a path can mean rather
+  than one gathered value. It takes an optional `ExpandArrays` parameter.
+- `DeleteValue( Document, Path )`, which removes the field at a document path.
+- `CompareValues( ValueA, ValueB )`, which compares two values using MongoDB's comparison order
+  and returns `-1`, `0`, or `1`.
+- `AsBoolean( Value )`.
+- `Project()` supports computed fields. A projection field whose value is neither `1`/`true` nor
+  `0`/`false` is an expression, evaluated against the document. Such a projection is an
+  inclusion, as it is in MongoDB. `Project()` also accepts `true` and `false` in place of `1`
+  and `0`.
+  e.g. `Project( entity, { net: { $subtract: [ '$dmg', '$armor' ] } } )`
+- The projection operators `$slice` and `$elemMatch`. `$slice` does not make a projection an
+  inclusion, which is what lets it sit beside exclusions, while `$elemMatch` does. `$slice`
+  accepts a count or a `[ skip, limit ]` pair, and leaves a field which is not an array alone.
+- `$push` and `$addToSet` support their modifiers. `$push` takes `$each`, `$position`, `$sort`,
+  and `$slice`, applied in the order MongoDB applies them, and `$addToSet` takes `$each`. The
+  whole modifier document is checked before the first element is inserted.
+- `$regex` accepts `$options`, including MongoDB's `x` mode, which ignores unescaped whitespace
+  in a pattern and everything from an unescaped `#` to the end of the line. An escaped space and
+  whitespace inside a character class are left alone.
+  e.g. `Query( { s: 'ab' }, { s: { $regex: 'a b # a note\n', $options: 'x' } } )` is `true`
+- `SetValue()` takes an optional `CreateArrays` parameter.
+- `npm run coverage`, which reports the parts of `src` the test suite never executes.
+- `npm run check-docs`, which asserts that every code fence parses as Javascript, that every
+  local link resolves, that every page is reachable, and that every operator carries a
+  documentation block. It runs as the last step of `build docs`.
+- `npm run parity-report`, which runs the same suites against `jsongin` and a live MongoDB
+  server and reports where the two disagree.
+- Documentation pages for the functions which had none, an Operator Authoring guide, and a
+  Testing guide.
+
+
+### Fixed
+
+- `$push` and `$addToSet` create the array when the field is not present, rather than refusing
+  the update.
+- `$inc` and `$mul` on a field which is not there no longer write a `NaN`. The field counts as
+  zero, and the path to it is created.
+- `$regex` is no longer stateful across documents. The pattern is rebuilt for each call, so a
+  caller's reused object carrying the `g` flag no longer matches every other document.
+- `$elemMatch` resolves candidates instead of indexing into one gathered value, so
+  `{ 'a.b': { $elemMatch: { $gt: 1 } } }` matches `{ a: [ { b: [ 1, 2 ] } ] }`. An empty
+  condition matches an element which can hold fields and nothing else.
+- `$pullAll` matches by content rather than by reference, so it pulls more than primitives.
+- `$noop` works at the top level of a query, which is where a commented out clause sits.
+- An unsupported projection operator is reported as one. `$` and `$meta` used to be reported as
+  unrecognized ***expression*** operators, which sent the reader to the wrong reference table.
+- Six update operators threw a `ReferenceError` instead of logging, on the failure path which
+  writes to the `OpLog`.
+- `$push` reported success no matter what happened, so pushing onto a field which is not an
+  array reported that it had worked.
+- `$mul`, `$min`, and `$max` silently did nothing when given a value of `0`.
+- `AsNumber( 0 )` returned `null` instead of `0`, and `AsDate( 0 )` returned `null` instead of
+  the epoch. Both were testing their parameter for falsiness.
+- `SafeClone()` destroyed dates, cloning them member-wise into an empty object. This also
+  repairs `Merge()`, which clones with it.
+- `Flatten()` dropped empty objects and arrays, so a round trip through `Expand()` lost them.
+  Two round trip limitations which cannot be fixed this way are now documented.
+- `Format()` escaped only the first quote in a string and did not escape the backslash or the
+  control characters, so its output could not be read back by `JSON.parse()`.
+- `Parse()` dropped the backslash of an escape sequence, turning `\n` into the letter `n`, and
+  threw a raw `TypeError` on truncated input. It is now a forgiving parser which never throws.
+- `Distinct()` built its key by concatenating stringified values with nothing between them, so
+  `{ a: 1, b: 23 }` and `{ a: 12, b: 3 }` produced the same key and one was lost. Its results
+  are cloned, and it no longer reports its failures under the name `Sort`.
+- `Unhybridize()` dropped any string field whose text happened to parse as JSON, and returned
+  `undefined` for the `message` and `source` of an `Error`, a function, and a `Symbol`.
+- `BsonType()` threw whenever it was called as anything other than a method of the engine, as
+  did `Text.SearchReplace()`. The `Text` functions are declared at module scope now, so any of
+  them can be detached or passed as a callback.
+- `Text.SearchReplace()` and `Text.SearchReplacements()` built a regular expression from the
+  search text without escaping it, so searching for `a.b` also matched `axb` and searching for
+  `(` threw. `Text.Matches()` validates its parameters.
+- `$eq` and `$ne` compared two regular expressions with `===`, which is never true for distinct
+  objects. They are compared by their source and flags now.
+- Derived values no longer alias the data they came from — a computed field in `Project()`, a
+  field added by the `$addFields` and `$set` stages, and the `$set` and `$push` update
+  operators.
+- The `$set` stage reports errors under its own name rather than under `$addFields`.
+- The types an operator declares, as `ValueTypes` or `ArgTypes`, are checked by `Query()`,
+  `Evaluate()`, `Update()`, and `Aggregate()` before dispatching. Nothing read them before.
+- `$group` emits its groups in the order they were first seen. MongoDB does not guarantee an
+  order here; `jsongin`'s is deterministic so that a pipeline result is testable.
+- `Aggregate()` never modifies the array it is given, nor the documents within it. Dates survive
+  a pipeline as dates.
+- Every operator carries a documentation block, which `check-docs` enforces.
+- Three documented passages which did not work as written, and the documentation links, roughly
+  half of which were broken in any given context.
+- `src/jsongin/Path/` no longer ships. It held three unfinished sketches which were registered
+  on no engine and required from nowhere, but reached every consumer of the package.
 
 
 v0.0.23 (2024-08-31)

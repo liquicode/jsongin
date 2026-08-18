@@ -35,7 +35,7 @@ If you have an array of objects, you can omit the array index to retrieve values
 A negative number is read as a field name like any other, and an array has no field called
   `-1`, so `GetValue( document, 'a.-1' )` returns `undefined` rather than the last element.
 This matches MongoDB, which reads every path element the same way and has no counterpart to
-  reverse indexing on either side of the engine, verified against MongoDB 6.0.1.
+  reverse indexing on either side of the engine.
 Against a ***document***, `-1` is an ordinary field name and resolves normally: a field may
   legitimately be called that.
 

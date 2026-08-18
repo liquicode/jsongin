@@ -51,10 +51,10 @@ jsongin.Query( { a: 1 }, { $and: [] } );             // throws, an empty list as
 ```
 
 `false` means ***this document did not match***, which is a legitimate answer.
-Returning it for a malformed query gave the caller no way to tell a typo from an empty result:
-  a misspelled operator was read as a field name, that field was never there, and the query
-  reported, quietly, that nothing matched.
-MongoDB refuses every one of these with an error, verified against MongoDB 6.0.1.
+Returning it for a malformed query would leave a caller no way to tell a typo from an empty
+  result: a misspelled operator reads as a field name, that field is never there, and the query
+  reports, quietly, that nothing matched.
+MongoDB refuses every one of these with an error.
 
 A query which is well formed and simply matches nothing still returns `false`:
 

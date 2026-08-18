@@ -59,7 +59,7 @@ jsongin.Query( { n: 42 }, { n: { $type: 16 } } ) === true
 - A number is never a `long`. A Javascript number is a double, and the BSON serializer stores
   it as an `int32` only when it fits that range. This matches MongoDB: inserting `3000000000`
   and reading back `$type` reports `double`, and a `$type: 'long'` query matches no such
-  document. Verified against MongoDB 6.0.1.
+  document.
 
 A ***function*** has no BSON type and returns `null`.
 

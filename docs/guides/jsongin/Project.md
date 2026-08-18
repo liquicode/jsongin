@@ -69,11 +69,7 @@ jsongin.Project( { a: 1 }, { '': 1 } );
 // throws: A projection field name cannot be empty
 ```
 
-Both rules match MongoDB, verified against MongoDB 6.0.1.
-`jsongin` used to hand a nested specification to [`Evaluate()`](./Evaluate.md) as a computed
-  field, which evaluated the specification as an expression and returned the specification
-  itself — so `{ o: { p: 0 } }` projected a document containing `{ o: { p: 0 } }`, a value the
-  source document never held.
+Both rules match MongoDB.
 
 
 ## Inclusion and Exclusion
@@ -81,8 +77,7 @@ Both rules match MongoDB, verified against MongoDB 6.0.1.
 A projection is either an inclusion projection or an exclusion projection, never both.
 Combining them ***throws***, because there is no sensible meaning for it, and MongoDB rejects
   the same combination with an error.
-This used to return `null`, which is a value a caller carries on with.
-A projection which cannot mean anything is now refused the same way a malformed query or update
+A projection which cannot mean anything is refused the same way a malformed query or update
   document is; `null` is reserved for a `Document` or `Projection` parameter of the wrong type.
 
 The `_id` field is the one exception. It is included by default and can be suppressed with
@@ -100,7 +95,7 @@ An ***empty*** projection names nothing to exclude, so it is an exclusion projec
 jsongin.Project( { a: 1, b: 2 }, {} );  // { a: 1, b: 2 }
 ```
 
-This matches MongoDB, verified against MongoDB 6.0.1, and it is the same rule which makes
+This matches MongoDB, and it is the same rule which makes
   `{ _id: 0 }` return every field but `_id`.
 Note that the [`$project`](../Operator-Reference.md) aggregation stage has the ***opposite***
   rule and refuses an empty specification, which MongoDB does too.

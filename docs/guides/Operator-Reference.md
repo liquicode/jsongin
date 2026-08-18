@@ -89,7 +89,7 @@ jsongin.Query( { v: [ 2 ] }, { v: { $gt: [ 1 ] } } );        // true
 jsongin.Query( { v: { a: 1 } }, { v: { $gt: [ 1 ] } } );     // false, still bracketed
 ```
 
-Both behaviors match MongoDB, verified against MongoDB 6.0.1.
+Both behaviors match MongoDB.
 
 
 ***Note on `$regex` and `$options`*** :
@@ -158,8 +158,6 @@ jsongin.Query( { v: [] }, { v: { $elemMatch: { $or: 5 } } } );
 // throws: Operator [$gt] cannot appear at the top level of a $or branch
 jsongin.Query( { v: [ 1, 2 ] }, { v: { $elemMatch: { $or: [ { $gt: 1 } ] } } } );
 ```
-
-All of the above was verified against MongoDB 6.0.1, and there are no known deviations.
 
 
 ## jsongin Extended Query Operators
@@ -569,16 +567,14 @@ jsongin.Project( document, { n: 0, a: { $elemMatch: { x: 2 } } } );
 
 The difference from `$slice` is only what each does on its own: `$elemMatch` alone is an
   inclusion, while `$slice` alone returns the whole document with the slice applied.
-`jsongin` used to refuse `$elemMatch` beside an exclusion, which MongoDB accepts.
-Verified against MongoDB 6.0.1.
+`$elemMatch` may sit beside an exclusion, which is what MongoDB accepts.
 
 When nothing matches, or the field is not an array, the field is omitted rather than coming back
   as an empty array — and dropped from an exclusion projection for the same reason.
 
 ***The two unsupported projection operators are refused by name.***
-`$` and `$meta` raise an error which says they are projection operators, rather than being
-  handed to the expression evaluator and reported as unrecognized ***expression*** operators,
-  which used to send the reader to the wrong table.
+`$` and `$meta` raise an error which says they are projection operators, so the message points
+  at the table above rather than at the expression operators.
 
 
 ## Update Operators
@@ -629,7 +625,7 @@ jsongin.Update( {}, { $min: { n: 5 } } );  // { n: 5 }
 ```
 
 A field holding `null` is compared rather than treated as missing.
-Both behaviors match MongoDB, verified against MongoDB 6.0.1.
+Both behaviors match MongoDB.
 
 
 ***Note on `$inc` and `$mul`*** :
@@ -648,17 +644,15 @@ A field holding a string, a boolean, a date, or a `null` is refused rather than 
   [`AsNumber`](./jsongin/AsNumber.md) would convert but MongoDB rejects:
 
 ```js
-jsongin.Update( { n: 'abc' }, { $inc: { n: 1 } } );   // { n: 'abc' }  refused
-jsongin.Update( { n: true }, { $inc: { n: 1 } } );    // { n: true }   refused
-jsongin.Update( { n: 1 }, { $inc: { n: '5' } } );     // { n: 1 }      refused
+jsongin.Update( { n: 'abc' }, { $inc: { n: 1 } } );   // throws, the stored value is not numeric
+jsongin.Update( { n: true }, { $inc: { n: 1 } } );    // throws
+jsongin.Update( { n: 1 }, { $inc: { n: '5' } } );     // throws, a numeric string is not a number
 ```
 
 A refused update leaves the ***whole document*** untouched.
 Every field is checked before any field is written, so an update naming several fields never
   applies some of them and refuses the rest.
 
-The missing field rules and the numeric rules were verified against MongoDB 6.0.1.
-***How the refusal is reported differs***: MongoDB raises an error, while `jsongin` returns the
-  document unchanged and writes the reason to the [OpLog](./OpLog.md).
-Both refuse the update; only MongoDB tells the caller so through the return path.
+The refusal is raised as an error, as MongoDB raises one.
+The operator writes the reason to the [OpLog](./OpLog.md) and `Update()` raises it.
 

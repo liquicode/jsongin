@@ -43,14 +43,21 @@ Two operators ***conflict*** when they write to the same path, or to a path and 
 The whole update document is checked before any of it is applied, so a refused update leaves the
   document untouched rather than half written.
 
-These used to be reported to the `OpLog` and skipped, which returned a clone of the original
-  document — indistinguishable from a legitimate no-op, so a typo in an operator name was
-  silently nothing at all.
-MongoDB refuses each of them, verified against MongoDB 6.0.1.
+MongoDB refuses each of them.
 
-***An operator which cannot apply itself is a different case.*** `$inc` against a string, or
-  `$pop` against a scalar, is a well formed update meeting a document it does not suit. Those
-  report through the `OpLog` and leave the field alone, and `Update()` returns the document.
+***An operator which cannot apply itself is also refused.*** `$inc` against a string, or `$pop`
+  against a scalar, is a well formed update meeting a document it does not suit. The operator
+  reports the reason through the `OpLog`, and `Update()` raises it as an error:
+
+```js
+jsongin.Update( { a: 'abc' }, { $inc: { a: 1 } } );  // throws, $inc is numeric on both sides
+jsongin.Update( { a: 5 }, { $pop: { a: 1 } } );      // throws, $pop needs an array
+```
+
+Nothing is half written when it happens, because `Update()` works on a clone and discards it.
+
+A field which is ***not there*** is a no-op rather than a refusal, so `$pop`, `$pullAll`,
+  `$unset`, and `$rename` all return the document unchanged, and `$inc` creates the field.
 
 `null` is returned only for a `Document` or `Updates` parameter of the wrong type.
 
