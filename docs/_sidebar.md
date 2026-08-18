@@ -114,7 +114,16 @@
 
 - Examples
 
-	- ***(coming soon)***
+	- [Getting Started](/guides/Examples/Getting-Started.md)
+	- [Reshaping & Updating](/guides/Examples/Reshaping-and-Updating.md)
+	- [First Aggregation Pipeline](/guides/Examples/First-Aggregation-Pipeline.md)
+
+	- **Recipes**
+
+		- [Query & Filter](/guides/Examples/Recipes-Query-Filter.md)
+		- [Project & Update](/guides/Examples/Recipes-Project-Update.md)
+		- [Aggregate](/guides/Examples/Recipes-Aggregate.md)
+		- [Operators & Mechanics](/guides/Examples/Recipes-Operators-Mechanics.md)
 
 <hr>
 
