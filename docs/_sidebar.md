@@ -27,15 +27,17 @@
 	- [`Project()`](/guides/jsongin/Project.md)
 	- [`Update()`](/guides/jsongin/Update.md)
 
-	- **Operators**
+<hr>
 
-		- [Query Operators](/guides/jsongin/Query-Operators.md)
-		- [Expression Operators](/guides/jsongin/Expression-Operators.md)
-		- [Stage Operators](/guides/jsongin/Stage-Operators.md)
-		- [Accumulator Operators](/guides/jsongin/Accumulator-Operators.md)
-		- [Update Operators](/guides/jsongin/Update-Operators.md)
-		- [Projection Operators](/guides/jsongin/Projection-Operators.md)
+- MongoDB Operators
 
+	- [Query Operators](/guides/jsongin/Query-Operators.md)
+	- [Expression Operators](/guides/jsongin/Expression-Operators.md)
+	- [Stage Operators](/guides/jsongin/Stage-Operators.md)
+	- [Accumulator Operators](/guides/jsongin/Accumulator-Operators.md)
+	- [Update Operators](/guides/jsongin/Update-Operators.md)
+	- [Projection Operators](/guides/jsongin/Projection-Operators.md)
+	- ---
 	- [Operator Reference](/guides/Operator-Reference.md)
 	- [Operator Authoring](/guides/Operator-Authoring.md)
 
@@ -102,7 +104,7 @@
 
 <hr>
 
-- Bonus! Text Functions
+- Text Functions
 
 	- [`Compare()`](/guides/Text/Compare.md)
 	- [`FindBetween()`](/guides/Text/FindBetween.md)
@@ -118,17 +120,19 @@
 	- [Reshaping & Updating](/guides/Examples/Reshaping-and-Updating.md)
 	- [First Aggregation Pipeline](/guides/Examples/First-Aggregation-Pipeline.md)
 
-	- **Recipes**
+<hr>
 
-		- [Query & Filter](/guides/Examples/Recipes-Query-Filter.md)
-		- [Project & Update](/guides/Examples/Recipes-Project-Update.md)
-		- [Aggregate](/guides/Examples/Recipes-Aggregate.md)
-		- [Arrays](/guides/Examples/Recipes-Arrays.md)
-		- [Expressions](/guides/Examples/Recipes-Expressions.md)
-		- [Types & Dates](/guides/Examples/Recipes-Types-Dates.md)
-		- [Operators & Mechanics](/guides/Examples/Recipes-Operators-Mechanics.md)
-		- [Patterns](/guides/Examples/Recipes-Patterns.md)
-		- [Debugging](/guides/Examples/Recipes-Debugging.md)
+- Recipes
+
+	- [Query & Filter](/guides/Examples/Recipes-Query-Filter.md)
+	- [Project & Update](/guides/Examples/Recipes-Project-Update.md)
+	- [Aggregate](/guides/Examples/Recipes-Aggregate.md)
+	- [Arrays](/guides/Examples/Recipes-Arrays.md)
+	- [Expressions](/guides/Examples/Recipes-Expressions.md)
+	- [Types & Dates](/guides/Examples/Recipes-Types-Dates.md)
+	- [Operators & Mechanics](/guides/Examples/Recipes-Operators-Mechanics.md)
+	- [Patterns](/guides/Examples/Recipes-Patterns.md)
+	- [Debugging](/guides/Examples/Recipes-Debugging.md)
 
 <hr>
 
