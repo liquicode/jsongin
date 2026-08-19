@@ -30,4 +30,4 @@
 
 <!-- A solid cover background color settles the cover on one color instead of
      docsify v5's default random gradient. -->
-![color](#d6ebf5)
+![color](#cceeff)
