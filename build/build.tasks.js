@@ -11,15 +11,18 @@ module.exports = {
 	run_tests: [
 
 		// Run tests and capture the output.
+		// Runs the unit tests and the jsongin parity tests as two separate
+		// invocations, each with its own heading and summary. The shared script
+		// is also what `npm test` runs, so the two stay in sync. MongoDB-Tests.js
+		// is excluded because it needs a live MongoDB at localhost:27017.
 		{
 			$Shell: {
-				command: 'npx mocha -u bdd "test/Unit Tests/*.js" --timeout 0 --slow 10',
+				command: 'node build/run-tests.js',
 				out: { filename: 'tests.md' },
 				err: { console: true },
 			}
 		},
-		{ $PrependTextFile: { filename: 'tests.md', value: '# ${Package.name}\n\n> Version: ${Package.version}\n\n# Test Results\n\n```\n' } },
-		{ $AppendTextFile: { filename: 'tests.md', value: '```\n' } },
+		{ $PrependTextFile: { filename: 'tests.md', value: '# ${Package.name}\n\n> Version: ${Package.version}\n\n# Test Results\n' } },
 
 	],
 

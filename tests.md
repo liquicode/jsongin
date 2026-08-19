@@ -4,10 +4,10 @@
 
 # Test Results
 
+## Unit Tests
+
 ```
-
-
-  010) Javascript Compatibility Tests
+010) Javascript Compatibility Tests
     ===, !==
       Matching
         ✔ should match two booleans
@@ -909,6 +909,8 @@
       ✔ should match through a path which crosses an array
       ✔ should reach the elements of a field which holds an array
       ✔ should not match a missing field
+      ✔ should match a Date by alias and by number
+      ✔ should distinguish int from double and never report long
     $all Tests
       ✔ should require every value to be present
       ✔ should select against a field which is not an array
@@ -918,6 +920,7 @@
       ✔ should select nothing for an empty match array
       ✔ should not match a missing field
       ✔ should reject a non array match value
+      ✔ should not appear at the top level of a query
     $size Tests
       ✔ should measure an array field
       ✔ should not measure a value which is not an array
@@ -1064,6 +1067,31 @@
       ✔ should return the first matching branch
       ✔ should throw when no branch matches and no default was given
       ✔ should throw when the branches are malformed
+    $ceil and $floor Tests
+      ✔ should round up to the next integer with $ceil
+      ✔ should round down to the previous integer with $floor
+    $round Tests
+      ✔ should round half to even
+      ✔ should round to a positive decimal place
+      ✔ should round to a negative place, left of the decimal point
+    $trunc Tests
+      ✔ should discard the digits past the decimal point
+      ✔ should truncate to a positive decimal place
+      ✔ should truncate to a negative place, left of the decimal point
+    $size (expression) Tests
+      ✔ should return the length of an array
+      ✔ should throw when the operand is not an array
+    $arrayElemAt Tests
+      ✔ should return the element at a position
+      ✔ should count a negative position back from the end
+      ✔ should give a missing value for a position outside the array
+    $concatArrays Tests
+      ✔ should join arrays end to end
+    $in (expression) Tests
+      ✔ should be true when the array holds the value
+    $literal Tests
+      ✔ should return a $-string as text rather than as a field reference
+      ✔ should return an operator-shaped document as data
 
   230) Accumulator Operator Tests
     $sum Tests
@@ -1113,6 +1141,11 @@
       ✔ should return null when the last value is null
       ✔ should return a missing value when the last document does not have the field
       ✔ should return null for an empty group
+    $addToSet Tests
+      ✔ should collect the distinct values, compared by content
+      ✔ should recognize an equal document as already present
+      ✔ should keep a null and skip a missing value
+      ✔ should return an empty array for an empty group
 
   240) Aggregate Stage Tests
     Pipeline Dispatch
@@ -1177,6 +1210,7 @@
       ✔ should sort documents which are missing the sort field as though it were null
       ✔ should sort mixed types by the BSON type order
       ✔ should sort by several fields
+      ✔ should reduce an array sort field to one key, smallest ascending and largest descending
       ✔ should leave the input array ordering untouched
       ✔ should throw when the argument is not an object
     $limit and $skip Tests
@@ -1284,6 +1318,8 @@
         ✔ should reject a malformed modifier rather than storing it
         ✔ should not alias the update document through $each
         ✔ should keep a date pushed through $each
+        ✔ should append a document without $each as a value, not read it as a modifier
+        ✔ should reject an unrecognized $ field within a modifier document
       $pullAll Tests
         ✔ should pull values from the array
         ✔ should pull an object by its content
@@ -1367,6 +1403,617 @@
       ✔ should keep a date through a computed field
 
 
-  1161 passing (232ms)
+  1188 passing (206ms)
+```
+
+## Parity Tests
 
 ```
+jsongin Parity Tests
+    Query Tests
+      Ad-Hoc Query Tests
+        ✔ should not match explicit nested fields
+      Rainbow Tests
+        Nested Fields (explicit)
+          ✔ should not perform matching on nested fields using implicit $eq
+          ✔ should not perform matching on nested fields using explicit $eq
+        Nested Fields (dot notation)
+          ✔ should perform matching on nested fields using implicit $eq and dot notation
+          ✔ should perform matching on nested fields using explicit $eq and dot notation
+        Operator $eq (===)
+          ✔ should perform strict equality (===) on 'bns'
+          ✔ should perform strict equality (===) on 'o'
+          ✔ should perform strict equality (===) on 'a'
+          ✔ should not perform loose equality (==) on 'bns'
+          ✔ should not perform loose equality (==) on 'o'
+          ✔ should not perform loose equality (==) on 'a'
+          ✔ should equate null with an undefined field
+        Operator $ne (!==)
+          ✔ should perform strict inequality (!==) on 'bns'
+          ✔ should perform strict inequality (!==) on 'o'
+          ✔ should perform strict inequality (!==) on 'a'
+          ✔ should not perform loose inequality (!=) on 'bns'
+          ✔ should not perform loose inequality (!=) on 'o'
+          ✔ should not perform loose inequality (!=) on 'a'
+        Operator $gte (>=)
+          ✔ should perform strict comparison (>=) on 'bns'
+          ✔ should not perform loose comparison (>=) on 'bns'
+          ✔ should equate null with an undefined field
+        Operator $gt (>)
+          ✔ should perform strict comparison (>=) on 'bns'
+          ✔ should not perform loose comparison (>=) on 'bns'
+        Operator $lte (<=)
+          ✔ should perform strict comparison (<=) on 'bns'
+          ✔ should not perform loose comparison (<=) on 'bns'
+          ✔ should equate null with an undefined field
+        Operator $lt (<)
+          ✔ should perform strict comparison (<) on 'bns'
+          ✔ should not perform loose comparison (<) on 'bns'
+      MongoDB Reference
+        Comparison Query Operators
+          Comparison Operator: $eq (https://www.mongodb.com/docs/manual/reference/operator/query/eq/)
+            Equals an Array Value
+              ✔ Match an Array Element
+              ✔ Match an Array Element Using Implicit $eq
+            Regex Match Behaviour
+              ✔ $eq match on a string
+              ✔ $eq match on a regular expression
+              ✔ Regular expression matches
+          Comparison Operator: $gt (https://www.mongodb.com/docs/manual/reference/operator/query/gt/)
+            ✔ Match Document Fields
+          Comparison Operator: $gte (https://www.mongodb.com/docs/manual/reference/operator/query/gte/)
+            ✔ Match Document Fields
+          Comparison Operator: $in (https://www.mongodb.com/docs/manual/reference/operator/query/in/)
+            ✔ Use the $in Operator to Match Values
+            ✔ Use the $in Operator to Match Values in an Array
+            ✔ Use the $in Operator with a Regular Expression
+          Comparison Operator: $lt (https://www.mongodb.com/docs/manual/reference/operator/query/lt/)
+            ✔ Match Document Fields
+          Comparison Operator: $lte (https://www.mongodb.com/docs/manual/reference/operator/query/lte/)
+            ✔ Match Document Fields
+          Comparison Operator: $ne (https://www.mongodb.com/docs/manual/reference/operator/query/ne/)
+            ✔ Match Document Fields
+          Comparison Operator: $nin (https://www.mongodb.com/docs/manual/reference/operator/query/nin/)
+            ✔ Select on Unmatching Documents
+            ✔ Select on Elements Not in an Array
+        Logical Query Operators
+          Logical Operator: $and (https://www.mongodb.com/docs/manual/reference/operator/query/and/)
+            ✔ AND Queries With Multiple Expressions Specifying the Same Field
+            ✔ AND Queries With Multiple Expressions Specifying the Same Operator
+          Logical Operator: $not (https://www.mongodb.com/docs/manual/reference/operator/query/not/)
+            ✔ Match Document Fields
+            ✔ $not and Regular Expressions
+          Logical Operator: $nor (https://www.mongodb.com/docs/manual/reference/operator/query/nor/)
+            ✔ $nor Query with Two Expressions
+            ✔ $nor and Additional Comparisons
+            ✔ $nor and $exists
+          Logical Operator: $or (https://www.mongodb.com/docs/manual/reference/operator/query/or/)
+            ✔ Match Document Fields
+            ✔ $or versus $in
+            ✔ Nested $or Clauses
+        Element Query Operators
+          Element Query Operator: $exists (https://www.mongodb.com/docs/manual/reference/operator/query/exists/)
+            ✔ Exists and Not Equal To
+            ✔ Null Values
+          Element Query Operator: $type (https://www.mongodb.com/docs/manual/reference/operator/query/type/)
+            ✔ Querying by Data Type (BSON Code)
+            ✔ Querying by Data Type (BSON Alias)
+            ✔ Querying by Data Type ("number")
+            ✔ Querying by Multiple Data Type (BSON Code)
+            ✔ Querying by Multiple Data Type (BSON Alias)
+        Array Query Operators
+          Array Query Operator: $all (https://www.mongodb.com/docs/manual/reference/operator/query/all/)
+            ✔ Use $all to Match Values
+            ✔ Use $all with $elemMatch
+            ✔ Use $all with Scalar Values
+          Array Query Operator: $elemMatch (https://www.mongodb.com/docs/manual/reference/operator/query/elemMatch/)
+            ✔ Element Match
+            ✔ Array of Embedded Documents
+            ✔ Single Query Condition
+          Array Query Operator: $size (https://www.mongodb.com/docs/manual/reference/operator/query/size/)
+            ✔ Use $size to Match Array Sizes
+      MongoDB Tutorials
+        Query Documents (https://www.mongodb.com/docs/manual/tutorial/query-documents/)
+          Select All Documents in a Collection
+            ✔ Match All Documents with an Empty Object {}
+          Specify Equality Condition
+            ✔ Match Fields with Implicit Equality
+          Specify Conditions Using Query Operators
+            ✔ Match Fields with an Array of Possible Values
+          Specify AND Conditions
+            ✔ Match Fields with an Array of Possible Values
+          Specify OR Conditions
+            ✔ Match Fields against an Array of Possible Values
+          Specify AND as well as OR Conditions
+            ✔ Match Fields Using AND and OR
+        Query on Embedded/Nested Documents (https://www.mongodb.com/docs/manual/tutorial/query-embedded-documents/)
+          Query on Embedded/Nested Documents
+            ✔ Specify Equality Match on a Nested Field
+            ✔ Specify Match using Query Operator
+            ✔ Specify AND Condition
+          Match an Embedded/Nested Document
+            ✔ Specify Equality Match on an Embedded Document
+        Query an Array (https://www.mongodb.com/docs/manual/tutorial/query-arrays/)
+          Match an Array
+            ✔ Match an Array Exactly
+            ✔ Match Array Elements
+          Query an Array for an Element
+            ✔ Match a Single Array Element
+            ✔ Match Array Elements by Comparison
+          Specify Multiple Conditions for Array Elements
+            ✔ Query an Array with Compound Filter Conditions on the Array Elements
+            ✔ Query for an Array Element that Meets Multiple Criteria
+            ✔ Query for an Element by the Array Index Position
+            ✔ Query an Array by Array Length
+        Query an Array of Embedded Documents (https://www.mongodb.com/docs/manual/tutorial/query-array-of-documents/)
+          Query for a Document Nested in an Array
+            ✔ Match a Document Exactly
+          Specify a Query Condition on a Field in an Array of Documents
+            ✔ Specify a Query Condition on a Field Embedded in an Array of Documents
+            ✔ Use the Array Index to Query for a Field in the Embedded Document
+          Specify Multiple Conditions for Array of Documents
+            ✔ A Single Nested Document Meets Multiple Query Conditions on Nested Fields
+            ✔ Combination of Elements Satisfies the Criteria
+        Query for Null or Missing Fields (https://www.mongodb.com/docs/manual/tutorial/query-for-null-fields/)
+          Equality Filter
+            ✔ Match Fields that are Null or Missing
+          Type Check
+            ✔ Match Fields that Exist And are Null
+          Existence Check
+            ✔ Match Fields that are Missing
+      $expr Query Tests
+        ✔ should compare one field to another field
+        ✔ should match documents where two fields are equal
+        ✔ should match computed conditions
+        ✔ should combine field comparisons with arithmetic
+        ✔ should appear within a top level $and
+        ✔ should appear within a top level $or
+        ✔ should combine with the other query operators
+        ✔ should match nothing when the expression is false for every document
+        ✔ should use $cond to select a comparison value
+      Comparison Operator Tests
+        $eq Tests
+          ✔ should equate values of the same primitive type
+          ✔ should not equate values across primitive types
+          ✔ should equate null values
+          ✔ should match null against a field which is not there
+          ✔ should equate object values
+          ✔ should not equate object values with keys in a different order
+          ✔ should equate array values
+          ✔ should not equate arrays with elements in a different order
+          ✔ should equate dates by their time value
+          ✔ should not equate a date with the string or number which represents it
+          ✔ should keep the same rule for a date inside an object
+          ✔ should match an array field by one of its elements
+          ✔ should match an array field as a whole
+          ✔ should not descend into an array inside an array without an index
+          ✔ should match through a path which crosses an array
+          ✔ should match through two levels of array
+          ✔ should tell a gathered value from a real array
+        $ne Tests
+          ✔ should be the negation of $eq
+          ✔ should not match a field which is not there when the value is null
+          ✔ should not match when any element of an array equals the value
+        Range Operator Tests
+          ✔ should compare numbers
+          ✔ should compare strings
+          ✔ should compare dates
+          ✔ should bracket the comparison by type
+          ✔ should compare any element of an array
+          ✔ should compare objects with each other
+          ✔ should compare arrays with each other
+          ✔ should keep the bracket between an object and an array
+          ✔ should compare through a path which crosses an array
+        $in and $nin Tests
+          ✔ should match any of the given values
+          ✔ should match nothing for an empty list
+          ✔ should match when any element of an array field is in the list
+          ✔ should match dates by their time value
+          ✔ should pattern match a string with a regexp in the list
+          ✔ should be negated by $nin
+          ✔ should match a sub-document in the list
+          ✔ should match an array in the list
+          ✔ should match a field which is not there against null
+          ✔ should match through a path which crosses an array
+        $exists Tests
+          ✔ should find a field which is there
+          ✔ should find a field which holds null
+          ✔ should not find a field which is not there
+          ✔ should tell a missing field from a present one through an array
+          ✔ should coerce a non-boolean value to a boolean
+        $type Tests
+          ✔ should select by type name
+          ✔ should select an array by the type of its elements, or as an array
+          ✔ should accept a list of types
+          ✔ should not select a field which is not there
+          ✔ should distinguish an int from a double
+          ✔ should use the int32 range, not the safe-integer range, to tell int from double
+          ✔ should match no plain number with the long type
+          ✔ should treat number as an alias for every numeric type
+        $size Tests
+          ✔ should measure an array field
+          ✔ should not measure a field which is not an array
+          ✔ should measure the field rather than a gathered value
+        $all Tests
+          ✔ should require every value to be present
+          ✔ should match a field which is not an array
+          ✔ should select nothing for an empty list
+        $elemMatch Tests
+          ✔ should require one element to satisfy every condition
+          ✔ should match a field of an element
+          ✔ should not match a field which is not an array
+          ✔ should match an array reached through a path which crosses an array
+          ✔ should not match a crossing path which ends at something other than an array
+          ✔ should read a dotted field within an element
+          ✔ should not read a field of an element which is not a document
+          ✔ should not read a field through an element which is an array
+          ✔ should look inside an element which is an array when nested $elemMatch asks
+          ✔ should not compare into an element which is an array
+          ✔ should not match any operator into an element which is an array
+          ✔ should match an operator against the element itself
+          ✔ should keep the element rule through a logical operator
+          ✔ should keep ordinary array rules below the element
+          ✔ should match an empty criteria against a document or an array element
+          ✔ should not match an empty criteria against a scalar or null element
+          ✔ should apply $or to each element in turn
+          ✔ should require one element to satisfy every branch of $and
+          ✔ should apply $nor to each element in turn
+          ✔ should apply $not with a regexp to each element in turn
+          ✔ should nest a logical operator inside another
+        $regex Tests
+          ✔ should pattern match a string
+          ✔ should not pattern match a value which is not a string
+          ✔ should pattern match any element of an array
+          ✔ should pattern match through a path which crosses an array
+          ✔ should apply the flags given by $options
+          ✔ should test each document independently of the last
+      Path Semantics Tests
+        ✔ should read a numeric path element as an index into an array
+        ✔ should read a numeric path element as a field name on a document
+        ✔ should not index an array from the end
+        ✔ should read a negative path element as a field name on a document
+        ✔ should reach an element of a nested array by index
+        ✔ should not reach into an array inside an array without an index
+        ✔ should equate a nested array element with the value it holds
+        ✔ should match nothing for a path which runs below a scalar
+        ✔ should cross two arrays in one path
+        ✔ should negate a condition on a field which is not there
+        ✔ should anchor a regexp against the whole string
+        ✔ should apply the multiline flag through $options
+        ✔ should apply the dotall flag through $options
+        ✔ should apply the extended flag through $options
+        ✔ should keep whitespace inside a character class under the extended flag
+        ✔ should match every document for an empty query
+      Query Rejection Tests
+        ✔ should refuse $not at the top level of a query
+        ✔ should accept $nor at the top level
+        ✔ should refuse a comparison operator at the top level
+        ✔ should refuse $all at the top level of a query
+        ✔ should refuse an operator it does not know
+        ✔ should refuse an operator value of the wrong type
+        ✔ should refuse a logical operator with no conditions
+        ✔ should refuse a malformed $options
+        ✔ should refuse a query operator nested inside $in
+        ✔ should accept a document which merely looks like a query inside $in
+        ✔ should refuse a malformed logical operator inside $elemMatch
+        ✔ should refuse a field level operator at the top of an $elemMatch logical branch
+        ✔ should refuse a $not inside $elemMatch which is neither a document nor a regexp
+        ✔ should refuse a malformed $elemMatch with no element to examine
+        ✔ should still answer an $elemMatch which is merely unsatisfied
+        ✔ should still answer a query which is merely unsatisfied
+    Update Tests
+      Ad-Hoc Update Tests
+        ✔ should do simple updates
+      Update Operator Tests
+        $set Tests
+          ✔ should set values
+          ✔ should set nested values
+          ✔ should create the path when it is not there
+          ✔ should store a date as a date
+          ✔ should set an element of an array by index
+          ✔ should fill the gap with nulls when it writes past the end of an array
+          ✔ should fill the gap ahead of a document it creates in an array
+          ✔ should create a document for a numeric key rather than an array
+          ✔ should create a document for a numeric key at depth
+          ✔ should index an array which is already there
+        $unset Tests
+          ✔ should remove a field
+          ✔ should remove a nested field
+          ✔ should ignore a field which is not there
+          ✔ should leave a null hole when it removes an array element
+        $rename Tests
+          ✔ should rename a field
+          ✔ should overwrite the target field
+          ✔ should ignore a source field which is not there
+          ✔ should move a value and create the topography
+        $inc Tests
+          ✔ should increment a value
+          ✔ should decrement with a negative value
+          ✔ should increment a nested value
+          ✔ should set a field which is not there to the increment
+          ✔ should create the path for a nested field which is not there
+        $mul Tests
+          ✔ should multiply a value
+          ✔ should set a field which is not there to zero
+        $min and $max Tests
+          ✔ should keep the smaller value for $min
+          ✔ should keep the larger value for $max
+          ✔ should set a field which is not there
+          ✔ should compare strings
+          ✔ should compare across types by the BSON ordering
+          ✔ should treat null as lower than any number
+        $push Tests
+          ✔ should append a value
+          ✔ should create the array when the field is not there
+          ✔ should append each value with $each
+          ✔ should insert at a position with $position
+          ✔ should trim with $slice
+          ✔ should order with $sort
+          ✔ should append a modifier written without $each as a value
+        $addToSet Tests
+          ✔ should add a value which is not present
+          ✔ should not add a value which is already present
+          ✔ should add each value with $each
+          ✔ should create the array when the field is not there
+          ✔ should create the array for $each when the field is not there
+        $pop Tests
+          ✔ should remove the last element for 1
+          ✔ should remove the first element for -1
+        $pullAll Tests
+          ✔ should remove every matching value
+          ✔ should ignore a value which is not present
+          ✔ should remove matching documents
+          ✔ should leave a field which is not there alone
+        $currentDate Tests
+          ✔ should store a date for true
+          ✔ should store a date for the date type
+          ✔ should create the field when it is not there
+          ✔ should give each field its own date
+        Operator Edge Cases
+          ✔ should apply $inc to a fractional value
+          ✔ should rename from a nested path
+          ✔ should accept an empty set of fields
+          ✔ should pop nothing from an empty array
+          ✔ should leave a field which is not there alone for $pop
+          ✔ should not add a document which is already in the set
+          ✔ should not add an array which is already in the set
+          ✔ should keep the last elements for a negative $slice
+          ✔ should order documents with a $sort specification
+          ✔ should append at the end for a $position past the end
+      Update Rejection Tests
+        ✔ should refuse an unknown update operator
+        ✔ should refuse two operators which touch the same path
+        ✔ should refuse $inc against a field which is not numeric
+        ✔ should refuse $inc with an operand which is not numeric
+        ✔ should refuse $mul against a field which is not numeric
+        ✔ should refuse an update document which is not made of operators
+        ✔ should refuse an operator value of the wrong type
+        ✔ should refuse two operators which write to a path and one below it
+        ✔ should refuse a path which reaches into an array by field name
+        ✔ should refuse a negative array index in an update
+        ✔ should refuse an array operator against a field which is not an array
+        ✔ should refuse a malformed $currentDate specification
+        ✔ should refuse a malformed $push modifier
+        ✔ should refuse a $pop which is neither 1 nor -1
+        ✔ should refuse a path which runs below a scalar
+        ✔ should refuse two operators where one path lies below the other
+        ✔ should not mistake a shared prefix for a conflict
+        ✔ should refuse a $pullAll whose values are not an array
+        ✔ should refuse a $rename onto an empty field name
+        ✔ should refuse an operator whose value is not a document of fields
+        ✔ should still apply two operators which touch different paths
+        ✔ should not refuse an operator which simply has nothing to do
+    Projection Tests
+      Ad-Hoc Projection Tests
+        ✔ should do simple projection
+        ✔ should project embedded fields
+        ✔ should supress fields
+        ✔ should supress only the _id field
+        ✔ should supress the _id field and other fields
+        ✔ should supress the _id field but include other fields
+        ✔ should return only the _id field
+        ✔ should supress the _id field while including others
+      Projection Shape Tests
+        ✔ should return the whole document for an empty projection
+        ✔ should keep _id by default
+        ✔ should suppress _id on request
+        ✔ should return everything but _id when only _id is suppressed
+        ✔ should omit a field which is not in the document
+        ✔ should keep the array when a path crosses one
+        ✔ should exclude through an array element by element
+        ✔ should take the first elements of an array with $slice
+        ✔ should take the last elements for a negative $slice
+        ✔ should skip and then take with a two element $slice
+        ✔ should keep the other fields alongside a $slice
+        ✔ should include a sliced field within an inclusion projection
+        ✔ should leave a field which is not an array alone through $slice
+        ✔ should take the first matching element with the projection $elemMatch
+        ✔ should omit the field when the projection $elemMatch matches nothing
+        ✔ should make the projection an inclusion with $elemMatch
+        ✔ should not exclude an array element by index
+        ✔ should take two fields from the same array into one object per element
+        ✔ should keep a nested document shape
+        ✔ should omit the field when the projection $elemMatch names one which is not an array
+        ✔ should omit the field when the projection $elemMatch names one which is absent
+        ✔ should apply the projection $elemMatch within an exclusion projection
+        ✔ should drop the field when a $elemMatch within an exclusion matches nothing
+        ✔ should include a $elemMatch field alongside an inclusion of another field
+        ✔ should read a nested document as a projection specification
+        ✔ should read a nested document with several keys as a specification
+        ✔ should read a nested specification which excludes
+      Computed Field Tests
+        ✔ should compute a field from an expression
+        ✔ should copy a field with a field path
+        ✔ should take a nested field with a field path
+        ✔ should store a literal with $literal
+        ✔ should build a nested document of computed fields
+        ✔ should carry an included field alongside a computed one
+        ✔ should treat a truthy number and true alike
+        ✔ should include a nested path
+        ✔ should exclude a nested path
+        ✔ should ignore an excluded field which is not in the document
+        ✔ should keep _id through an exclusion which does not name it
+        Refused Projections
+          ✔ should refuse an inclusion and an exclusion together
+          ✔ should refuse a computed field within an exclusion
+          ✔ should refuse an empty sub-projection
+          ✔ should refuse a $slice argument which is neither a count nor a skip and a limit
+          ✔ should refuse an empty field name
+    Aggregate Tests
+      Ad-Hoc Aggregate Tests
+        ✔ should score the living players by team
+        ✔ should reshape documents with a computed projection
+        ✔ should build a leaderboard with $addFields, $sort, and $limit
+        ✔ should tally the tags with $unwind and $group
+        ✔ should number the elements of an unwound array
+        ✔ should page through the documents with $skip and $limit
+        ✔ should summarize every document in a single group
+        ✔ should collect values with $push, $first, and $last
+        ✔ should group the teams and list their members
+        ✔ should return an empty result when nothing matches
+      Sort Through Array Tests
+        ✔ should reduce through every array the path crosses
+        ✔ should expand only one level when the path crosses no array
+        ✔ should expand a level for each array the path crosses
+        ✔ should treat an empty array element as an ordinary array value
+        ✔ should sort a field holding only an empty array with the arrays
+        ✔ should sort the existing empty array cases unchanged
+        ✔ should order two empty arrays against each other
+        ✔ should sort an empty array reached through a path below every value
+        ✔ should sort an empty array crossed by a path as null
+        ✔ should order mixed types among the candidates by value order
+        ✔ should sort an empty array beside a string by the array rank
+        ✔ should honor an explicit array index in the sort path
+        ✔ should not index the sort path from the end of an array
+      Expression Operator Tests
+        Field Paths and $literal
+          ✔ should read a field by its path
+          ✔ should read a nested field by its path
+          ✔ should read an array field whole
+          ✔ should omit the field for a path which resolves to nothing
+          ✔ should not index an array, with any numeric key
+          ✔ should read a numeric field name on a document
+          ✔ should return a field path as text with $literal
+        Arithmetic Expression Operators
+          ✔ should add with $add
+          ✔ should subtract with $subtract
+          ✔ should multiply with $multiply
+          ✔ should divide with $divide
+          ✔ should take the remainder with $mod
+          ✔ should take the magnitude with $abs
+          ✔ should give null for an operand which is not there
+        Comparison Expression Operators
+          ✔ should compare for equality with $eq and $ne
+          ✔ should order with $gt, $gte, $lt, and $lte
+          ✔ should rank with $cmp
+          ✔ should compare across types by the BSON ordering
+          ✔ should compare dates by their time value
+        Boolean Expression Operators
+          ✔ should combine with $and and $or
+          ✔ should negate with $not
+          ✔ should treat a value as true unless it is false, zero, null, or missing
+        Conditional Expression Operators
+          ✔ should choose with the $cond array form
+          ✔ should choose with the $cond document form
+          ✔ should substitute a value with $ifNull
+          ✔ should take the first matching branch with $switch
+          ✔ should fall through to the $switch default
+        Expression $min and $max
+          ✔ should take the smallest and largest of a list
+          ✔ should take the smallest and largest within an array field
+        Rounding Expression Operators
+          ✔ should round up with $ceil
+          ✔ should round down with $floor
+          ✔ should give null for a null or missing operand
+          ✔ should round half to even with $round
+          ✔ should round to a place with $round
+          ✔ should truncate toward zero with $trunc
+        Array Expression Operators
+          ✔ should count the elements of an array with $size
+          ✔ should count an empty array as zero with $size
+          ✔ should read one element with $arrayElemAt
+          ✔ should index from the end for a negative $arrayElemAt position
+          ✔ should omit the field for an $arrayElemAt position out of range
+          ✔ should give null for an $arrayElemAt over a null or missing array
+          ✔ should join arrays with $concatArrays
+          ✔ should give null when any $concatArrays operand is null or missing
+          ✔ should test for membership with the $in expression
+          ✔ should compare by content in the $in expression
+          ✔ should not match a null against an array which has none
+        Null Operands
+          ✔ should return null for a null operand to the arithmetic operators
+          ✔ should return null for a null place given to the rounding operators
+          ✔ should return null for a null position given to $arrayElemAt
+          ✔ should return null when a null is subtracted from a date
+        Values Which Are Not Finite
+          ✔ should carry an infinity through the rounding operators
+          ✔ should round a value already in exponential notation
+          ✔ should carry a NaN through arithmetic
+      Stage and Accumulator Tests
+        Stages
+          ✔ should select documents with $match
+          ✔ should select with an operator in $match
+          ✔ should order by one key and by several with $sort
+          ✔ should take and drop documents with $limit and $skip
+          ✔ should add a field with $addFields without removing the others
+          ✔ should count the documents with the $count stage
+          ✔ should count what reaches the $count stage, not what started
+          ✔ should produce nothing for a $count over an empty stream
+          ✔ should compute a field with $addFields
+        $unwind
+          ✔ should produce one document per element
+          ✔ should drop a document whose array is empty or missing
+          ✔ should keep those documents with preserveNullAndEmptyArrays
+          ✔ should number the elements with includeArrayIndex
+          ✔ should index a preserved document as null
+        Refused Stages
+          ✔ should refuse a $count field name which cannot be a field name
+          ✔ should refuse an empty $project specification
+          ✔ should refuse an $unwind with no path after the $
+        $group
+          ✔ should group by a field
+          ✔ should group every document together with a null key
+          ✔ should group by a compound key
+        Accumulators
+          ✔ should total with $sum
+          ✔ should average with $avg
+          ✔ should take the extremes with $min and $max
+          ✔ should take the ends with $first and $last
+          ✔ should collect every value with $push
+          ✔ should collect distinct values with $addToSet
+          ✔ should compare by content in $addToSet
+          ✔ should skip a missing field in $addToSet
+          ✔ should count the group with the $count accumulator
+          ✔ should ignore a field which is not there
+          ✔ should take a NaN into the total rather than skipping it
+          ✔ should skip a value which is not a number
+      Expression Rejection Tests
+        Operators Which Take a Fixed Number of Operands
+          ✔ should refuse too few operands
+          ✔ should refuse too many operands
+          ✔ should accept the count it asks for
+        Operators Which Do Not Take a Fixed Number of Operands
+          ✔ should accept any number of operands for a variadic operator
+          ✔ should accept an empty operand list for $and and $or
+          ✔ should not count the argument of $literal
+          ✔ should accept either form of $cond
+          ✔ should refuse $ifNull with one operand
+        Rounding and Array Operators
+          ✔ should refuse the wrong number of operands
+          ✔ should refuse a non numeric operand to the rounding operators
+          ✔ should refuse $size against anything but an array
+          ✔ should refuse a bad $arrayElemAt operand
+          ✔ should refuse a $concatArrays operand which is not an array
+          ✔ should refuse an $in whose second operand is not an array
+          ✔ should refuse a rounding place which is not an integer
+          ✔ should refuse subtracting a date from a number
+
+
+  480 passing (108ms)
+```
+
+## Summary
+
+- Unit Tests: 1188 passed (passed)
+- Parity Tests: 480 passed (passed)
+- Total: 1668 passed
