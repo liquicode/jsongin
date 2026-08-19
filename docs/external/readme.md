@@ -4,6 +4,12 @@
 >
 > Version: 0.1.0
 
+> ### WARNING:
+>
+> This version represents a significant divergence from the previous version of jsongin (v0.0.23).
+>
+> Please review breaking changes in the [Version History](/docs/external/history.md) before replacing and upgrading.
+
 ### A JSON Engine for MongoDB-Style Queries and Data Structure Manipulation
 
 
