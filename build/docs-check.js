@@ -154,7 +154,12 @@ function resolve_link( Filename, Target )
 	if ( target.startsWith( '/' ) )
 	{
 		// Root absolute, the way docsify resolves it.
-		return LIB_PATH.resolve( DOCS, target.slice( 1 ) );
+		let path = target.slice( 1 );
+		// Mirror the docsify alias in docs/index.html, which rewrites /docs/(.*) to /$1.
+		// A /docs/... link routes within the site as /..., which is docs/... on disk.
+		// Without this, /docs/guides/... would look up docs/docs/guides/... and fail.
+		if ( path.startsWith( 'docs/' ) ) { path = path.slice( 'docs/'.length ); }
+		return LIB_PATH.resolve( DOCS, path );
 	}
 	return LIB_PATH.resolve( LIB_PATH.dirname( Filename ), target );
 }

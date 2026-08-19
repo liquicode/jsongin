@@ -7,26 +7,28 @@
 ### A JSON Engine for MongoDB-Style Queries and Data Structure Manipulation
 
 
-<!-- Note: the links below are absolute on purpose.
-     This file is published to three places which resolve relative links
-     differently: the repository root, the documentation site, and npmjs.com. -->
+<!-- Note: the links below are root-absolute, beginning with /docs/.
+     GitHub resolves a leading slash from the repository root, so these reach
+     docs/guides/... there. The docsify site runs with an alias that rewrites
+     /docs/(.*) to /$1, so the same links route within the site. This keeps one
+     source of truth for a file published to both the repo root and docs/external. -->
 
 
 Quick Reference
 ---------------------------------------------------------------------
 
-- [Library Guide](http://jsongin.liquicode.com/#/guides/Library-Guide.md)
-- [Operator Reference](http://jsongin.liquicode.com/#/guides/Operator-Reference.md)
-- [Operator Authoring](http://jsongin.liquicode.com/#/guides/Operator-Authoring.md)
-- [Document Manipulation](http://jsongin.liquicode.com/#/guides/Document-Manipulation.md)
-- [Project History](http://jsongin.liquicode.com/#/external/history.md)
+- [Library Guide](/docs/guides/Library-Guide.md)
+- [Operator Reference](/docs/guides/Operator-Reference.md)
+- [Operator Authoring](/docs/guides/Operator-Authoring.md)
+- [Document Manipulation](/docs/guides/Document-Manipulation.md)
+- [Project History](/docs/external/history.md)
 
 
 Installation Guides
 ---------------------------------------------------------------------
 
-- [NodeJS Usage](http://jsongin.liquicode.com/#/guides/Usage-NodeJS.md)
-- [Browser Usage](http://jsongin.liquicode.com/#/guides/Usage-Browser.md)
+- [NodeJS Usage](/docs/guides/Usage-NodeJS.md)
+- [Browser Usage](/docs/guides/Usage-Browser.md)
 
 ```bash
 npm install --save @liquicode/jsongin
@@ -42,18 +44,18 @@ Overview
 
 `jsongin` provides a robust implementation of the MongoDB query, projection, and update mechanics.
 It strives to be consistent and easy to use.
-With it you can query and manipulate your own data structures with a MongoDB-style interface.
+Use it to query and manipulate your own data structures with a MongoDB-style interface.
 Each MongoDB feature that is implemented here, operates accurately and in accordance with MongoDB.
 
 I developed `jsongin` to provide a single query interface that could be used against data stored
   in different types of storage mediums (e.g. memory, file, server).
 Now when I develop an application or server, I can work with my data in memory for development
-  and then quickly switch to a full MongoDB server for deployment.
+  and testing. Then, I can quickly switch to a full MongoDB server for further testing and deployment.
 To look at my project which implements a number of storage adapters for many common platforms and mediums,
 see the [@liquicode/jsonstor](https://github.com/liquicode/jsonstor) project.
 
 The sections below introduce each of the main functions.
-See the [Operator Reference](http://jsongin.liquicode.com/#/guides/Operator-Reference.md) for the
+See the [Operator Reference](/docs/guides/Operator-Reference.md) for the
   full list of supported query, expression, update, stage, and accumulator operators.
 
 
@@ -99,7 +101,7 @@ jsongin.Query( document, { 'profile.role': { $in: [ 'admin', 'super' ] } } ) ===
 jsongin.Query( document, { $or: [ { 'user.location': 'East' }, { 'user.location': 'West' } ] } ) === true
 ```
 
-See [Query](http://jsongin.liquicode.com/#/guides/jsongin/Query.md).
+See [Query](/docs/guides/jsongin/Query.md).
 
 
 ### Filter( Documents, QueryCriteria )
@@ -115,7 +117,7 @@ let strong = jsongin.Filter( players, { points: { $gt: 5 } } );
 // strong holds the Alice and Carol documents
 ```
 
-See [Filter](http://jsongin.liquicode.com/#/guides/jsongin/Filter.md).
+See [Filter](/docs/guides/jsongin/Filter.md).
 
 
 ### Sort( Documents, SortCriteria )
@@ -131,7 +133,7 @@ jsongin.Sort( players, { team: 1, points: -1 } );
 // players is now ordered: Carol, Alice, Bob
 ```
 
-See [Sort](http://jsongin.liquicode.com/#/guides/jsongin/Sort.md).
+See [Sort](/docs/guides/jsongin/Sort.md).
 
 
 ### Distinct( Documents, DistinctCriteria )
@@ -146,7 +148,7 @@ let pairs = jsongin.Distinct( players, { team: 1, alive: 1 } );
 // pairs is [ { team: 'red', alive: true }, { team: 'blue', alive: false } ]
 ```
 
-See [Distinct](http://jsongin.liquicode.com/#/guides/jsongin/Distinct.md).
+See [Distinct](/docs/guides/jsongin/Distinct.md).
 
 
 ### Project( Document, Projection )
@@ -170,7 +172,7 @@ jsongin.Project( { dmg: 12, armor: 5 }, { net: { $subtract: [ '$dmg', '$armor' ]
 // returns { net: 7 }
 ```
 
-See [Project](http://jsongin.liquicode.com/#/guides/jsongin/Project.md).
+See [Project](/docs/guides/jsongin/Project.md).
 
 
 ### Update( Document, Updates )
@@ -190,7 +192,7 @@ jsongin.Update( { n: 1 }, { $inc: { n: 5 } } );
 // returns { n: 6 }
 ```
 
-See [Update](http://jsongin.liquicode.com/#/guides/jsongin/Update.md).
+See [Update](/docs/guides/jsongin/Update.md).
 
 
 ### Aggregate( Documents, Pipeline )
@@ -214,7 +216,7 @@ jsongin.Aggregate( players,
 // returns [ { name: 'Carol' }, { name: 'Alice' } ]
 ```
 
-See [Aggregate](http://jsongin.liquicode.com/#/guides/jsongin/Aggregate.md).
+See [Aggregate](/docs/guides/jsongin/Aggregate.md).
 
 
 ### Evaluate( Document, Expression )
@@ -230,7 +232,7 @@ jsongin.Evaluate( document, '$user.name' ) === 'Alice'
 jsongin.Query( { dmg: 12, armor: 5 }, { $expr: { $gt: [ '$dmg', '$armor' ] } } ) === true
 ```
 
-See [Evaluate](http://jsongin.liquicode.com/#/guides/jsongin/Evaluate.md).
+See [Evaluate](/docs/guides/jsongin/Evaluate.md).
 
 
 ### Diff( Before, After )
@@ -242,7 +244,7 @@ jsongin.Diff( { hp: 10, n: 1 }, { hp: 7 } );
 // returns { $set: { hp: 7 }, $unset: { n: '' } }
 ```
 
-See [Diff](http://jsongin.liquicode.com/#/guides/jsongin/Diff.md).
+See [Diff](/docs/guides/jsongin/Diff.md).
 
 
 ### Invert( Before, Patch )
@@ -255,7 +257,7 @@ jsongin.Update( { hp: 10 }, { $inc: { hp: -3 } } );   // returns { hp: 7 }
 jsongin.Invert( { hp: 10 }, { $inc: { hp: -3 } } );   // returns { $set: { hp: 10 } }
 ```
 
-See [Invert](http://jsongin.liquicode.com/#/guides/jsongin/Invert.md).
+See [Invert](/docs/guides/jsongin/Invert.md).
 
 
 ### Document Mechanics
@@ -282,12 +284,12 @@ jsongin.Merge( { a: 1, b: { x: 1 } }, { b: { y: 2 } } );
 // returns { a: 1, b: { x: 1, y: 2 } }
 ```
 
-See [GetValue](http://jsongin.liquicode.com/#/guides/jsongin/GetValue.md),
-[SetValue](http://jsongin.liquicode.com/#/guides/jsongin/SetValue.md),
-[DeleteValue](http://jsongin.liquicode.com/#/guides/jsongin/DeleteValue.md),
-[Flatten](http://jsongin.liquicode.com/#/guides/jsongin/Flatten.md),
-[Expand](http://jsongin.liquicode.com/#/guides/jsongin/Expand.md), and
-[Merge](http://jsongin.liquicode.com/#/guides/jsongin/Merge.md).
+See [GetValue](/docs/guides/jsongin/GetValue.md),
+[SetValue](/docs/guides/jsongin/SetValue.md),
+[DeleteValue](/docs/guides/jsongin/DeleteValue.md),
+[Flatten](/docs/guides/jsongin/Flatten.md),
+[Expand](/docs/guides/jsongin/Expand.md), and
+[Merge](/docs/guides/jsongin/Merge.md).
 
 
 More Functions
@@ -295,45 +297,45 @@ More Functions
 
 **Document Mechanics**
 
-- [SplitPath( Path )](http://jsongin.liquicode.com/#/guides/jsongin/SplitPath.md)
-- [JoinPaths( Path1, Path2, ... )](http://jsongin.liquicode.com/#/guides/jsongin/JoinPaths.md)
-- [GetValue( Document, Path )](http://jsongin.liquicode.com/#/guides/jsongin/GetValue.md)
-- [SetValue( Document, Path, Value )](http://jsongin.liquicode.com/#/guides/jsongin/SetValue.md)
-- [DeleteValue( Document, Path )](http://jsongin.liquicode.com/#/guides/jsongin/DeleteValue.md)
-- [Flatten( Document )](http://jsongin.liquicode.com/#/guides/jsongin/Flatten.md)
-- [Expand( Document )](http://jsongin.liquicode.com/#/guides/jsongin/Expand.md)
-- [Hybridize( Document )](http://jsongin.liquicode.com/#/guides/jsongin/Hybridize.md)
-- [Unhybridize( Document )](http://jsongin.liquicode.com/#/guides/jsongin/Unhybridize.md)
-- [Merge( DocumentA, DocumentB )](http://jsongin.liquicode.com/#/guides/jsongin/Merge.md)
-- [Parse( JsonString )](http://jsongin.liquicode.com/#/guides/jsongin/Parse.md)
-- [Format( Document, WithWhitespace, LikeJavascript )](http://jsongin.liquicode.com/#/guides/jsongin/Format.md)
+- [SplitPath( Path )](/docs/guides/jsongin/SplitPath.md)
+- [JoinPaths( Path1, Path2, ... )](/docs/guides/jsongin/JoinPaths.md)
+- [GetValue( Document, Path )](/docs/guides/jsongin/GetValue.md)
+- [SetValue( Document, Path, Value )](/docs/guides/jsongin/SetValue.md)
+- [DeleteValue( Document, Path )](/docs/guides/jsongin/DeleteValue.md)
+- [Flatten( Document )](/docs/guides/jsongin/Flatten.md)
+- [Expand( Document )](/docs/guides/jsongin/Expand.md)
+- [Hybridize( Document )](/docs/guides/jsongin/Hybridize.md)
+- [Unhybridize( Document )](/docs/guides/jsongin/Unhybridize.md)
+- [Merge( DocumentA, DocumentB )](/docs/guides/jsongin/Merge.md)
+- [Parse( JsonString )](/docs/guides/jsongin/Parse.md)
+- [Format( Document, WithWhitespace, LikeJavascript )](/docs/guides/jsongin/Format.md)
 
 **Object Matching and Cloning**
 
-- [LooseEquals( DocumentA, DocumentB )](http://jsongin.liquicode.com/#/guides/jsongin/LooseEquals.md)
-- [StrictEquals( DocumentA, DocumentB )](http://jsongin.liquicode.com/#/guides/jsongin/StrictEquals.md)
-- [CompareValues( ValueA, ValueB )](http://jsongin.liquicode.com/#/guides/jsongin/CompareValues.md)
-- [Clone( Document )](http://jsongin.liquicode.com/#/guides/jsongin/Clone.md)
-- [SafeClone( Document )](http://jsongin.liquicode.com/#/guides/jsongin/SafeClone.md)
+- [LooseEquals( DocumentA, DocumentB )](/docs/guides/jsongin/LooseEquals.md)
+- [StrictEquals( DocumentA, DocumentB )](/docs/guides/jsongin/StrictEquals.md)
+- [CompareValues( ValueA, ValueB )](/docs/guides/jsongin/CompareValues.md)
+- [Clone( Document )](/docs/guides/jsongin/Clone.md)
+- [SafeClone( Document )](/docs/guides/jsongin/SafeClone.md)
 
 **Data Types and Conversions**
 
-- [ShortType( Value )](http://jsongin.liquicode.com/#/guides/jsongin/ShortType.md)
-- [BsonType( Value, ReturnAlias )](http://jsongin.liquicode.com/#/guides/jsongin/BsonType.md)
-- [AsNumber( Value )](http://jsongin.liquicode.com/#/guides/jsongin/AsNumber.md)
-- [AsDate( Value )](http://jsongin.liquicode.com/#/guides/jsongin/AsDate.md)
-- [AsBoolean( Value )](http://jsongin.liquicode.com/#/guides/jsongin/AsBoolean.md)
+- [ShortType( Value )](/docs/guides/jsongin/ShortType.md)
+- [BsonType( Value, ReturnAlias )](/docs/guides/jsongin/BsonType.md)
+- [AsNumber( Value )](/docs/guides/jsongin/AsNumber.md)
+- [AsDate( Value )](/docs/guides/jsongin/AsDate.md)
+- [AsBoolean( Value )](/docs/guides/jsongin/AsBoolean.md)
 
 **Text Functions**
 
 A small set of string helpers is available at `jsongin.Text`:
-[Compare](http://jsongin.liquicode.com/#/guides/Text/Compare.md),
-[FindBetween](http://jsongin.liquicode.com/#/guides/Text/FindBetween.md),
-[Matches](http://jsongin.liquicode.com/#/guides/Text/Matches.md),
-[SearchReplace](http://jsongin.liquicode.com/#/guides/Text/SearchReplace.md), and
-[SearchReplacements](http://jsongin.liquicode.com/#/guides/Text/SearchReplacements.md).
+[Compare](/docs/guides/Text/Compare.md),
+[FindBetween](/docs/guides/Text/FindBetween.md),
+[Matches](/docs/guides/Text/Matches.md),
+[SearchReplace](/docs/guides/Text/SearchReplace.md), and
+[SearchReplacements](/docs/guides/Text/SearchReplacements.md).
 
-See the [Library Guide](http://jsongin.liquicode.com/#/guides/Library-Guide.md) for more information.
+See the [Library Guide](/docs/guides/Library-Guide.md) for more information.
 
 
 Features
@@ -345,7 +347,7 @@ Features
 	- Single minified file (~70k) for web deployment.
 	- Use the `OpLog` feature to help understand and debug queries.
 	- Extend `jsongin` by developing your own query, projection, and update operators.
-	  See [Operator Authoring](http://jsongin.liquicode.com/#/guides/Operator-Authoring.md).
+	  See [Operator Authoring](/docs/guides/Operator-Authoring.md).
 
 - Object Based Queries:
 	- Compose queries in a structured and logical manner.

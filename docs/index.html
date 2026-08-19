@@ -10,18 +10,178 @@
 	<meta name="viewport" content="width=device-width,initial-scale=1">
 	<meta charset="UTF-8">
 
-	<!-- <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify/lib/themes/vue.css"> -->
-	<!-- <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify/lib/themes/buble.css"> -->
-	<!-- <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify/lib/themes/dark.css"> -->
-	<!-- <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify/lib/themes/pure.css"> -->
+	<!-- docsify v5 core theme. The core-dark add-on is toggled below. -->
+	<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@5/dist/themes/core.min.css">
 
-	<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify-darklight-theme@latest/dist/style.min.css"
-		title="docsify-darklight-theme" type="text/css" />
+	<!-- Pick the theme before first paint to avoid a flash. The core-dark add-on
+	     applies its :root overrides unconditionally, so dark mode is "on" when
+	     this <link> is present and "off" when it is absent. The choice is
+	     remembered in localStorage and falls back to the OS preference. -->
+	<script>
+		( function ()
+		{
+			var saved = localStorage.getItem( 'jsongin-theme' );
+			var dark = saved ? ( saved === 'dark' ) : window.matchMedia( '(prefers-color-scheme: dark)' ).matches;
+			if ( dark )
+			{
+				var link = document.createElement( 'link' );
+				link.id = 'theme-dark';
+				link.rel = 'stylesheet';
+				link.href = '//cdn.jsdelivr.net/npm/docsify@5/dist/themes/addons/core-dark.min.css';
+				document.head.appendChild( link );
+			}
+		} )();
+	</script>
+
+	<style>
+		:root
+		{
+			--theme-color: #2980B9; /* bleu */
+			/* Cover-page art: the engine image placed beside the feature list. */
+			--cover-art-opacity: 0.6;
+			--cover-art-width: 10em;
+		}
+
+		/* ---- Theme toggle button (top-right) ---- */
+		#theme-toggle
+		{
+			position: absolute;
+			top: 12px;
+			/* Sit just inside the docsify "GitHub corner" badge (~70px wide) so the
+			   toggle does not occlude it. */
+			right: 84px;
+			z-index: 100;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 34px;
+			height: 34px;
+			padding: 0;
+			border: 1px solid var( --sidebar-border-color, var( --border-color ) );
+			border-radius: 50%;
+			background: var( --color-bg );
+			color: var( --color-text );
+			cursor: pointer;
+			opacity: 0.65;
+			transition: opacity 0.15s ease;
+		}
+		#theme-toggle:hover { opacity: 1; }
+		#theme-toggle svg { width: 18px; height: 18px; }
+		/* Show the icon for the theme currently in use. */
+		#theme-toggle .icon-moon { display: none; }
+		#theme-toggle[data-theme="dark"] .icon-sun { display: none; }
+		#theme-toggle[data-theme="dark"] .icon-moon { display: inline; }
+
+		/* ---- Sidebar: make group headings clear landing points ----
+		   v5 renders _sidebar.md headings as p.group-title inside li.group.
+		   When many page links expand their TOC, these headings get lost, so
+		   theme them and mark each group's extent with a guide line. */
+		.sidebar-nav .group-title
+		{
+			color: var( --theme-color );
+			font-weight: 700;
+			font-size: 0.82rem;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			padding-bottom: 0.3em;
+			margin-bottom: 0.4em;
+			border-bottom: 1px solid var( --sidebar-border-color, var( --border-color ) );
+		}
+		/* A left guide line marks a group's extent amid its children. */
+		.sidebar-nav li > p.group-title + ul
+		{
+			border-left: 2px solid var( --sidebar-border-color, var( --border-color ) );
+			padding-left: 0.85em;
+			margin-left: 0;
+		}
+		/* Pin the active top-level group's heading while scrolling its children,
+		   so a large expanded group always shows which group you are in. */
+		.sidebar-nav > ul > li.group > p.group-title
+		{
+			position: sticky;
+			top: 0;
+			z-index: 2;
+			margin-top: 0;
+			padding-top: 0.4em;
+			background: var( --sidebar-bg, var( --color-bg ) );
+		}
+		/* Tint the expanded group that holds the current page, so the whole
+		   section you are in stands out from the rest of the sidebar. */
+		.sidebar-nav li:has( > p.group-title ):has( .active )
+		{
+			background: color-mix( in srgb, var( --theme-color ) 6%, transparent );
+			border-radius: 6px;
+		}
+		/* The current page link: a bold row with a colored left accent and a
+		   stronger tint, layered over its group's lighter tint. */
+		.sidebar-nav li.active:has( > a )
+		{
+			background: color-mix( in srgb, var( --theme-color ) 14%, transparent );
+			border-radius: 4px;
+			box-shadow: inset 3px 0 0 var( --theme-color );
+		}
+		.sidebar-nav li.active > a
+		{
+			font-weight: 700;
+		}
+
+		/* ---- Cover page: engine image beside the feature list ----
+		   A flex row: the list sets the row height because the art is a div with
+		   no intrinsic size. The art div stretches to that height (align-items:
+		   stretch) and the image is drawn as a background sized to cover it, so
+		   the image height auto-tracks the text. The row is centered and shrinks
+		   to fit. */
+		.cover-features
+		{
+			display: flex;
+			align-items: stretch;
+			justify-content: center;
+			gap: 1.5em;
+			margin: 0 auto;
+			width: max-content;
+			max-width: 100%;
+		}
+		.cover-art
+		{
+			width: var( --cover-art-width );
+			background-image: url( 'media/engine01-548x421.png' );
+			background-size: cover;
+			background-position: center;
+			background-repeat: no-repeat;
+			opacity: var( --cover-art-opacity );
+			border-radius: 8px;
+		}
+		.cover-feature-list
+		{
+			margin: 0;
+			padding: 0;
+			text-align: center;
+			list-style: none;
+		}
+		.cover-feature-list li
+		{
+			list-style: none;
+			margin: 0.25em 0;
+		}
+		/* A generated marker sits in the text flow, so it centers with the words
+		   instead of hanging in the margin the way a list-style bullet does. */
+		.cover-feature-list li::before
+		{
+			content: "▸ ";
+			color: var( --theme-color );
+		}
+	</style>
 
 </head>
 
-<body>
+<!-- sidebar-chevron-right puts expand/collapse arrows on sidebar page links. -->
+<body class="sidebar-chevron-right">
 	<div id="app"></div>
+
+	<button id="theme-toggle" type="button" aria-label="Toggle light or dark theme" title="Toggle theme">
+		<svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>
+		<svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+	</button>
 
 	<script>
 		window.$docsify = {
@@ -31,29 +191,86 @@
 			// works both on this site and when the file is read on GitHub.
 			// Note: _sidebar.md links must be root-absolute (/guides/...) to survive this.
 			relativePath: true,
+			// The readme is published to both the repo root (for GitHub) and
+			// docs/external/ (as this site's homepage). Its links are root-absolute
+			// /docs/... so they resolve from the repo root on GitHub. Here, strip the
+			// docs/ prefix so the same /docs/... links route within the site.
+			// The _sidebar.md alias keeps one global sidebar: with relativePath, v5
+			// loads _sidebar.md from each page's own folder, so without this the
+			// homepage (external/readme.md) and every nested page 404 on their sidebar.
+			alias: {
+				'/docs/(.*)': '/$1',
+				'/.*/_sidebar.md': '/_sidebar.md',
+			},
 			subMaxLevel: 2,
 			auto2top: true,
-			// themeColor: '#34495E', // grey
-			themeColor: '#2980B9', // bleu
+			// themeColor moved to the --theme-color CSS variable above (deprecated in v5).
 			notFoundPage: '_404.md',
 
 			repo: 'liquicode/jsongin',
 			homepage: 'external/readme.md',
 			logo: 'media/jsongin-banner.png',
 			name: 'jsongin',
+
+			// Full-text search (official v5 plugin).
+			search: {
+				paths: 'auto',
+				placeholder: 'Search the docs...',
+				noData: 'No results found.',
+				depth: 3,
+				namespace: 'jsongin',
+			},
 		}
 	</script>
 
-	<script src="//cdn.jsdelivr.net/npm/docsify/lib/docsify.min.js"></script>
+	<script src="//cdn.jsdelivr.net/npm/docsify@5"></script>
 
-	<script src="//unpkg.com/docsify/lib/plugins/search.min.js"></script>
-	<script src="//unpkg.com/docsify-pagination/dist/docsify-pagination.min.js"></script>
+	<!-- Full-text search. -->
+	<script src="//cdn.jsdelivr.net/npm/docsify@5/dist/plugins/search.min.js"></script>
 
 	<script src="//cdn.jsdelivr.net/npm/prismjs/components/prism-bash.min.js"></script>
 	<script src="//cdn.jsdelivr.net/npm/prismjs/components/prism-javascript.min.js"></script>
 	<script src="//cdn.jsdelivr.net/npm/docsify-copy-code"></script>
 
-	<script src="//cdn.jsdelivr.net/npm/docsify-darklight-theme@latest/dist/index.min.js"></script>
+	<!-- Theme toggle: add/remove the core-dark stylesheet and remember the choice. -->
+	<script>
+		( function ()
+		{
+			var DARK_HREF = '//cdn.jsdelivr.net/npm/docsify@5/dist/themes/addons/core-dark.min.css';
+			function is_dark() { return !!document.getElementById( 'theme-dark' ); }
+			function sync_icon()
+			{
+				var btn = document.getElementById( 'theme-toggle' );
+				if ( btn ) { btn.setAttribute( 'data-theme', is_dark() ? 'dark' : 'light' ); }
+			}
+			function set_theme( dark )
+			{
+				var link = document.getElementById( 'theme-dark' );
+				if ( dark && !link )
+				{
+					link = document.createElement( 'link' );
+					link.id = 'theme-dark';
+					link.rel = 'stylesheet';
+					link.href = DARK_HREF;
+					document.head.appendChild( link );
+				}
+				else if ( !dark && link )
+				{
+					link.remove();
+				}
+				localStorage.setItem( 'jsongin-theme', dark ? 'dark' : 'light' );
+				sync_icon();
+			}
+			document.addEventListener( 'DOMContentLoaded', sync_icon );
+			document.addEventListener( 'click', function ( event )
+			{
+				if ( event.target.closest( '#theme-toggle' ) )
+				{
+					set_theme( !is_dark() );
+				}
+			} );
+		} )();
+	</script>
 
 </body>
 

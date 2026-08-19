@@ -7,26 +7,28 @@
 ### A JSON Engine for MongoDB-Style Queries and Data Structure Manipulation
 
 
-<!-- Note: the links below are absolute on purpose.
-     This file is published to three places which resolve relative links
-     differently: the repository root, the documentation site, and npmjs.com. -->
+<!-- Note: the links below are root-absolute, beginning with /docs/.
+     GitHub resolves a leading slash from the repository root, so these reach
+     docs/guides/... there. The docsify site runs with an alias that rewrites
+     /docs/(.*) to /$1, so the same links route within the site. This keeps one
+     source of truth for a file published to both the repo root and docs/external. -->
 
 
 Quick Reference
 ---------------------------------------------------------------------
 
-- [Library Guide](<%- Context.Package.homepage %>/#/guides/Library-Guide.md)
-- [Operator Reference](<%- Context.Package.homepage %>/#/guides/Operator-Reference.md)
-- [Operator Authoring](<%- Context.Package.homepage %>/#/guides/Operator-Authoring.md)
-- [Document Manipulation](<%- Context.Package.homepage %>/#/guides/Document-Manipulation.md)
-- [Project History](<%- Context.Package.homepage %>/#/external/history.md)
+- [Library Guide](/docs/guides/Library-Guide.md)
+- [Operator Reference](/docs/guides/Operator-Reference.md)
+- [Operator Authoring](/docs/guides/Operator-Authoring.md)
+- [Document Manipulation](/docs/guides/Document-Manipulation.md)
+- [Project History](/docs/external/history.md)
 
 
 Installation Guides
 ---------------------------------------------------------------------
 
-- [NodeJS Usage](<%- Context.Package.homepage %>/#/guides/Usage-NodeJS.md)
-- [Browser Usage](<%- Context.Package.homepage %>/#/guides/Usage-Browser.md)
+- [NodeJS Usage](/docs/guides/Usage-NodeJS.md)
+- [Browser Usage](/docs/guides/Usage-Browser.md)
 
 ```bash
 npm install --save @liquicode/jsongin
@@ -42,18 +44,18 @@ Overview
 
 `jsongin` provides a robust implementation of the MongoDB query, projection, and update mechanics.
 It strives to be consistent and easy to use.
-With it you can query and manipulate your own data structures with a MongoDB-style interface.
+Use it to query and manipulate your own data structures with a MongoDB-style interface.
 Each MongoDB feature that is implemented here, operates accurately and in accordance with MongoDB.
 
 I developed `jsongin` to provide a single query interface that could be used against data stored
   in different types of storage mediums (e.g. memory, file, server).
 Now when I develop an application or server, I can work with my data in memory for development
-  and then quickly switch to a full MongoDB server for deployment.
+  and testing. Then, I can quickly switch to a full MongoDB server for further testing and deployment.
 To look at my project which implements a number of storage adapters for many common platforms and mediums,
 see the [@liquicode/jsonstor](https://github.com/liquicode/jsonstor) project.
 
 The sections below introduce each of the main functions.
-See the [Operator Reference](<%- Context.Package.homepage %>/#/guides/Operator-Reference.md) for the
+See the [Operator Reference](/docs/guides/Operator-Reference.md) for the
   full list of supported query, expression, update, stage, and accumulator operators.
 
 
@@ -99,7 +101,7 @@ jsongin.Query( document, { 'profile.role': { $in: [ 'admin', 'super' ] } } ) ===
 jsongin.Query( document, { $or: [ { 'user.location': 'East' }, { 'user.location': 'West' } ] } ) === true
 ```
 
-See [Query](<%- Context.Package.homepage %>/#/guides/jsongin/Query.md).
+See [Query](/docs/guides/jsongin/Query.md).
 
 
 ### Filter( Documents, QueryCriteria )
@@ -115,7 +117,7 @@ let strong = jsongin.Filter( players, { points: { $gt: 5 } } );
 // strong holds the Alice and Carol documents
 ```
 
-See [Filter](<%- Context.Package.homepage %>/#/guides/jsongin/Filter.md).
+See [Filter](/docs/guides/jsongin/Filter.md).
 
 
 ### Sort( Documents, SortCriteria )
@@ -131,7 +133,7 @@ jsongin.Sort( players, { team: 1, points: -1 } );
 // players is now ordered: Carol, Alice, Bob
 ```
 
-See [Sort](<%- Context.Package.homepage %>/#/guides/jsongin/Sort.md).
+See [Sort](/docs/guides/jsongin/Sort.md).
 
 
 ### Distinct( Documents, DistinctCriteria )
@@ -146,7 +148,7 @@ let pairs = jsongin.Distinct( players, { team: 1, alive: 1 } );
 // pairs is [ { team: 'red', alive: true }, { team: 'blue', alive: false } ]
 ```
 
-See [Distinct](<%- Context.Package.homepage %>/#/guides/jsongin/Distinct.md).
+See [Distinct](/docs/guides/jsongin/Distinct.md).
 
 
 ### Project( Document, Projection )
@@ -170,7 +172,7 @@ jsongin.Project( { dmg: 12, armor: 5 }, { net: { $subtract: [ '$dmg', '$armor' ]
 // returns { net: 7 }
 ```
 
-See [Project](<%- Context.Package.homepage %>/#/guides/jsongin/Project.md).
+See [Project](/docs/guides/jsongin/Project.md).
 
 
 ### Update( Document, Updates )
@@ -190,7 +192,7 @@ jsongin.Update( { n: 1 }, { $inc: { n: 5 } } );
 // returns { n: 6 }
 ```
 
-See [Update](<%- Context.Package.homepage %>/#/guides/jsongin/Update.md).
+See [Update](/docs/guides/jsongin/Update.md).
 
 
 ### Aggregate( Documents, Pipeline )
@@ -214,7 +216,7 @@ jsongin.Aggregate( players,
 // returns [ { name: 'Carol' }, { name: 'Alice' } ]
 ```
 
-See [Aggregate](<%- Context.Package.homepage %>/#/guides/jsongin/Aggregate.md).
+See [Aggregate](/docs/guides/jsongin/Aggregate.md).
 
 
 ### Evaluate( Document, Expression )
@@ -230,7 +232,7 @@ jsongin.Evaluate( document, '$user.name' ) === 'Alice'
 jsongin.Query( { dmg: 12, armor: 5 }, { $expr: { $gt: [ '$dmg', '$armor' ] } } ) === true
 ```
 
-See [Evaluate](<%- Context.Package.homepage %>/#/guides/jsongin/Evaluate.md).
+See [Evaluate](/docs/guides/jsongin/Evaluate.md).
 
 
 ### Diff( Before, After )
@@ -242,7 +244,7 @@ jsongin.Diff( { hp: 10, n: 1 }, { hp: 7 } );
 // returns { $set: { hp: 7 }, $unset: { n: '' } }
 ```
 
-See [Diff](<%- Context.Package.homepage %>/#/guides/jsongin/Diff.md).
+See [Diff](/docs/guides/jsongin/Diff.md).
 
 
 ### Invert( Before, Patch )
@@ -255,7 +257,7 @@ jsongin.Update( { hp: 10 }, { $inc: { hp: -3 } } );   // returns { hp: 7 }
 jsongin.Invert( { hp: 10 }, { $inc: { hp: -3 } } );   // returns { $set: { hp: 10 } }
 ```
 
-See [Invert](<%- Context.Package.homepage %>/#/guides/jsongin/Invert.md).
+See [Invert](/docs/guides/jsongin/Invert.md).
 
 
 ### Document Mechanics
@@ -282,12 +284,12 @@ jsongin.Merge( { a: 1, b: { x: 1 } }, { b: { y: 2 } } );
 // returns { a: 1, b: { x: 1, y: 2 } }
 ```
 
-See [GetValue](<%- Context.Package.homepage %>/#/guides/jsongin/GetValue.md),
-[SetValue](<%- Context.Package.homepage %>/#/guides/jsongin/SetValue.md),
-[DeleteValue](<%- Context.Package.homepage %>/#/guides/jsongin/DeleteValue.md),
-[Flatten](<%- Context.Package.homepage %>/#/guides/jsongin/Flatten.md),
-[Expand](<%- Context.Package.homepage %>/#/guides/jsongin/Expand.md), and
-[Merge](<%- Context.Package.homepage %>/#/guides/jsongin/Merge.md).
+See [GetValue](/docs/guides/jsongin/GetValue.md),
+[SetValue](/docs/guides/jsongin/SetValue.md),
+[DeleteValue](/docs/guides/jsongin/DeleteValue.md),
+[Flatten](/docs/guides/jsongin/Flatten.md),
+[Expand](/docs/guides/jsongin/Expand.md), and
+[Merge](/docs/guides/jsongin/Merge.md).
 
 
 More Functions
@@ -295,45 +297,45 @@ More Functions
 
 **Document Mechanics**
 
-- [SplitPath( Path )](<%- Context.Package.homepage %>/#/guides/jsongin/SplitPath.md)
-- [JoinPaths( Path1, Path2, ... )](<%- Context.Package.homepage %>/#/guides/jsongin/JoinPaths.md)
-- [GetValue( Document, Path )](<%- Context.Package.homepage %>/#/guides/jsongin/GetValue.md)
-- [SetValue( Document, Path, Value )](<%- Context.Package.homepage %>/#/guides/jsongin/SetValue.md)
-- [DeleteValue( Document, Path )](<%- Context.Package.homepage %>/#/guides/jsongin/DeleteValue.md)
-- [Flatten( Document )](<%- Context.Package.homepage %>/#/guides/jsongin/Flatten.md)
-- [Expand( Document )](<%- Context.Package.homepage %>/#/guides/jsongin/Expand.md)
-- [Hybridize( Document )](<%- Context.Package.homepage %>/#/guides/jsongin/Hybridize.md)
-- [Unhybridize( Document )](<%- Context.Package.homepage %>/#/guides/jsongin/Unhybridize.md)
-- [Merge( DocumentA, DocumentB )](<%- Context.Package.homepage %>/#/guides/jsongin/Merge.md)
-- [Parse( JsonString )](<%- Context.Package.homepage %>/#/guides/jsongin/Parse.md)
-- [Format( Document, WithWhitespace, LikeJavascript )](<%- Context.Package.homepage %>/#/guides/jsongin/Format.md)
+- [SplitPath( Path )](/docs/guides/jsongin/SplitPath.md)
+- [JoinPaths( Path1, Path2, ... )](/docs/guides/jsongin/JoinPaths.md)
+- [GetValue( Document, Path )](/docs/guides/jsongin/GetValue.md)
+- [SetValue( Document, Path, Value )](/docs/guides/jsongin/SetValue.md)
+- [DeleteValue( Document, Path )](/docs/guides/jsongin/DeleteValue.md)
+- [Flatten( Document )](/docs/guides/jsongin/Flatten.md)
+- [Expand( Document )](/docs/guides/jsongin/Expand.md)
+- [Hybridize( Document )](/docs/guides/jsongin/Hybridize.md)
+- [Unhybridize( Document )](/docs/guides/jsongin/Unhybridize.md)
+- [Merge( DocumentA, DocumentB )](/docs/guides/jsongin/Merge.md)
+- [Parse( JsonString )](/docs/guides/jsongin/Parse.md)
+- [Format( Document, WithWhitespace, LikeJavascript )](/docs/guides/jsongin/Format.md)
 
 **Object Matching and Cloning**
 
-- [LooseEquals( DocumentA, DocumentB )](<%- Context.Package.homepage %>/#/guides/jsongin/LooseEquals.md)
-- [StrictEquals( DocumentA, DocumentB )](<%- Context.Package.homepage %>/#/guides/jsongin/StrictEquals.md)
-- [CompareValues( ValueA, ValueB )](<%- Context.Package.homepage %>/#/guides/jsongin/CompareValues.md)
-- [Clone( Document )](<%- Context.Package.homepage %>/#/guides/jsongin/Clone.md)
-- [SafeClone( Document )](<%- Context.Package.homepage %>/#/guides/jsongin/SafeClone.md)
+- [LooseEquals( DocumentA, DocumentB )](/docs/guides/jsongin/LooseEquals.md)
+- [StrictEquals( DocumentA, DocumentB )](/docs/guides/jsongin/StrictEquals.md)
+- [CompareValues( ValueA, ValueB )](/docs/guides/jsongin/CompareValues.md)
+- [Clone( Document )](/docs/guides/jsongin/Clone.md)
+- [SafeClone( Document )](/docs/guides/jsongin/SafeClone.md)
 
 **Data Types and Conversions**
 
-- [ShortType( Value )](<%- Context.Package.homepage %>/#/guides/jsongin/ShortType.md)
-- [BsonType( Value, ReturnAlias )](<%- Context.Package.homepage %>/#/guides/jsongin/BsonType.md)
-- [AsNumber( Value )](<%- Context.Package.homepage %>/#/guides/jsongin/AsNumber.md)
-- [AsDate( Value )](<%- Context.Package.homepage %>/#/guides/jsongin/AsDate.md)
-- [AsBoolean( Value )](<%- Context.Package.homepage %>/#/guides/jsongin/AsBoolean.md)
+- [ShortType( Value )](/docs/guides/jsongin/ShortType.md)
+- [BsonType( Value, ReturnAlias )](/docs/guides/jsongin/BsonType.md)
+- [AsNumber( Value )](/docs/guides/jsongin/AsNumber.md)
+- [AsDate( Value )](/docs/guides/jsongin/AsDate.md)
+- [AsBoolean( Value )](/docs/guides/jsongin/AsBoolean.md)
 
 **Text Functions**
 
 A small set of string helpers is available at `jsongin.Text`:
-[Compare](<%- Context.Package.homepage %>/#/guides/Text/Compare.md),
-[FindBetween](<%- Context.Package.homepage %>/#/guides/Text/FindBetween.md),
-[Matches](<%- Context.Package.homepage %>/#/guides/Text/Matches.md),
-[SearchReplace](<%- Context.Package.homepage %>/#/guides/Text/SearchReplace.md), and
-[SearchReplacements](<%- Context.Package.homepage %>/#/guides/Text/SearchReplacements.md).
+[Compare](/docs/guides/Text/Compare.md),
+[FindBetween](/docs/guides/Text/FindBetween.md),
+[Matches](/docs/guides/Text/Matches.md),
+[SearchReplace](/docs/guides/Text/SearchReplace.md), and
+[SearchReplacements](/docs/guides/Text/SearchReplacements.md).
 
-See the [Library Guide](<%- Context.Package.homepage %>/#/guides/Library-Guide.md) for more information.
+See the [Library Guide](/docs/guides/Library-Guide.md) for more information.
 
 
 Features
@@ -345,7 +347,7 @@ Features
 	- Single minified file (~70k) for web deployment.
 	- Use the `OpLog` feature to help understand and debug queries.
 	- Extend `jsongin` by developing your own query, projection, and update operators.
-	  See [Operator Authoring](<%- Context.Package.homepage %>/#/guides/Operator-Authoring.md).
+	  See [Operator Authoring](/docs/guides/Operator-Authoring.md).
 
 - Object Based Queries:
 	- Compose queries in a structured and logical manner.
