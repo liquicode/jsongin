@@ -280,27 +280,27 @@ MongoDB adds operators from one server version to the next, so treat this as a c
 | Custom        |       -       | $function          | Defines a custom function in Javascript.                                                     |
 | Data Size     |      Yes      | [$binarySize](./jsongin/Expression-Operators.md#$binarySize)        | Returns the size of a binary value in bytes.                                                 |
 | Data Size     |      Yes      | [$bsonSize](./jsongin/Expression-Operators.md#$bsonSize)          | Returns the size of a document in bytes.                                                     |
-| Date          |       -       | $dateAdd           | Adds a number of time units to a date.                                                       |
-| Date          |       -       | $dateDiff          | Returns the difference between two dates, in a given time unit.                              |
-| Date          |       -       | $dateFromParts     | Constructs a date from its individual parts.                                                 |
-| Date          |       -       | $dateFromString    | Converts a string to a date.                                                                 |
-| Date          |       -       | $dateSubtract      | Subtracts a number of time units from a date.                                                |
-| Date          |       -       | $dateToParts       | Returns a document containing the individual parts of a date.                                |
-| Date          |       -       | $dateToString      | Converts a date to a formatted string.                                                       |
-| Date          |       -       | $dateTrunc         | Truncates a date to a given time unit.                                                       |
-| Date          |       -       | $dayOfMonth        | Returns the day of the month of a date, from 1 to 31.                                        |
-| Date          |       -       | $dayOfWeek         | Returns the day of the week of a date, from 1 to 7.                                          |
-| Date          |       -       | $dayOfYear         | Returns the day of the year of a date, from 1 to 366.                                        |
-| Date          |       -       | $hour              | Returns the hour of a date, from 0 to 23.                                                    |
-| Date          |       -       | $isoDayOfWeek      | Returns the ISO 8601 day of the week of a date.                                              |
-| Date          |       -       | $isoWeek           | Returns the ISO 8601 week number of a date.                                                  |
-| Date          |       -       | $isoWeekYear       | Returns the ISO 8601 year of a date.                                                         |
-| Date          |       -       | $millisecond       | Returns the milliseconds of a date, from 0 to 999.                                           |
-| Date          |       -       | $minute            | Returns the minute of a date, from 0 to 59.                                                  |
-| Date          |       -       | $month             | Returns the month of a date, from 1 to 12.                                                   |
-| Date          |       -       | $second            | Returns the seconds of a date, from 0 to 60.                                                 |
-| Date          |       -       | $week              | Returns the week number of a date.                                                           |
-| Date          |       -       | $year              | Returns the year of a date.                                                                  |
+| Date          |      Yes      | [$dateAdd](./jsongin/Expression-Operators.md#$dateAdd)           | Adds a number of time units to a date.                                                       |
+| Date          |      Yes      | [$dateDiff](./jsongin/Expression-Operators.md#$dateDiff)          | Returns the difference between two dates, in a given time unit.                              |
+| Date          |      Yes      | [$dateFromParts](./jsongin/Expression-Operators.md#$dateFromParts)     | Constructs a date from its individual parts.                                                 |
+| Date          |      Yes      | [$dateFromString](./jsongin/Expression-Operators.md#$dateFromString)    | Converts a string to a date.                                                                 |
+| Date          |      Yes      | [$dateSubtract](./jsongin/Expression-Operators.md#$dateSubtract)      | Subtracts a number of time units from a date.                                                |
+| Date          |      Yes      | [$dateToParts](./jsongin/Expression-Operators.md#$dateToParts)       | Returns a document containing the individual parts of a date.                                |
+| Date          |      Yes      | [$dateToString](./jsongin/Expression-Operators.md#$dateToString)      | Converts a date to a formatted string.                                                       |
+| Date          |      Yes      | [$dateTrunc](./jsongin/Expression-Operators.md#$dateTrunc)         | Truncates a date to a given time unit.                                                       |
+| Date          |      Yes      | [$dayOfMonth](./jsongin/Expression-Operators.md#$dayOfMonth)        | Returns the day of the month of a date, from 1 to 31.                                        |
+| Date          |      Yes      | [$dayOfWeek](./jsongin/Expression-Operators.md#$dayOfWeek)         | Returns the day of the week of a date, from 1 to 7.                                          |
+| Date          |      Yes      | [$dayOfYear](./jsongin/Expression-Operators.md#$dayOfYear)         | Returns the day of the year of a date, from 1 to 366.                                        |
+| Date          |      Yes      | [$hour](./jsongin/Expression-Operators.md#$hour)              | Returns the hour of a date, from 0 to 23.                                                    |
+| Date          |      Yes      | [$isoDayOfWeek](./jsongin/Expression-Operators.md#$isoDayOfWeek)      | Returns the ISO 8601 day of the week of a date.                                              |
+| Date          |      Yes      | [$isoWeek](./jsongin/Expression-Operators.md#$isoWeek)           | Returns the ISO 8601 week number of a date.                                                  |
+| Date          |      Yes      | [$isoWeekYear](./jsongin/Expression-Operators.md#$isoWeekYear)       | Returns the ISO 8601 year of a date.                                                         |
+| Date          |      Yes      | [$millisecond](./jsongin/Expression-Operators.md#$millisecond)       | Returns the milliseconds of a date, from 0 to 999.                                           |
+| Date          |      Yes      | [$minute](./jsongin/Expression-Operators.md#$minute)            | Returns the minute of a date, from 0 to 59.                                                  |
+| Date          |      Yes      | [$month](./jsongin/Expression-Operators.md#$month)             | Returns the month of a date, from 1 to 12.                                                   |
+| Date          |      Yes      | [$second](./jsongin/Expression-Operators.md#$second)            | Returns the seconds of a date, from 0 to 60.                                                 |
+| Date          |      Yes      | [$week](./jsongin/Expression-Operators.md#$week)              | Returns the week number of a date.                                                           |
+| Date          |      Yes      | [$year](./jsongin/Expression-Operators.md#$year)              | Returns the year of a date.                                                                  |
 | Literal       |      Yes      | [$literal](./jsongin/Expression-Operators.md#$literal)           | Returns a value without evaluating it. Use this for literal strings which begin with a `$`.  |
 | Logical       |      Yes      | [$and](./jsongin/Expression-Operators.md#$and)               | Returns true when all of the expressions are true.                                           |
 | Logical       |      Yes      | [$not](./jsongin/Expression-Operators.md#$not)               | Returns the opposite of an expression's boolean value.                                       |
