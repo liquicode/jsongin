@@ -54,7 +54,7 @@ Read the [`Query()`](./jsongin/Query.md) document to understand how these operat
 | Element       |      Yes      | [$type](./jsongin/Query-Operators.md#$type)          | Selects documents if a field is of the specified type.                                                                                        |
 | Evaluation    |      Yes      | [$expr](./jsongin/Query-Operators.md#$expr)          | Allows use of aggregation expressions within the query language.                                                                              |
 | Evaluation    |       -       | $jsonSchema    | Validate documents against the given JSON Schema.                                                                                             |
-| Evaluation    |       -       | $mod           | Performs a modulo operation on the value of a field and selects documents with a specified result.                                            |
+| Evaluation    |      Yes      | [$mod](./jsongin/Query-Operators.md#$mod)           | Performs a modulo operation on the value of a field and selects documents with a specified result.                                            |
 | Evaluation    |      Yes      | [$regex](./jsongin/Query-Operators.md#$regex)         | Selects documents where values match a specified regular expression. Accepts a sibling `$options` carrying the flags. See the note below.     |
 | Evaluation    |       -       | $text          | Performs text search.                                                                                                                         |
 | Evaluation    |       -       | $where         | Matches documents that satisfy a JavaScript expression.                                                                                       |
@@ -65,13 +65,28 @@ Read the [`Query()`](./jsongin/Query.md) document to understand how these operat
 | Array         |      Yes      | [$elemMatch](./jsongin/Query-Operators.md#$elemMatch)     | Selects documents if a single element of the array field matches all the specified $elemMatch conditions. See the note below.                 |
 | Array         |      Yes      | [$size](./jsongin/Query-Operators.md#$size)          | Selects documents if the array field is a specified size.                                                                                     |
 | Array         |      Yes      | [$all](./jsongin/Query-Operators.md#$all)           | Matches arrays that contain all elements specified in the query.                                                                              |
-| Bitwise       |       -       | $bitsAllClear  | Matches numeric or binary values in which a set of bit positions all have a value of 0.                                                       |
-| Bitwise       |       -       | $bitsAllSet    | Matches numeric or binary values in which a set of bit positions all have a value of 1.                                                       |
-| Bitwise       |       -       | $bitsAnyClear  | Matches numeric or binary values in which any bit from a set of bit positions has a value of 0.                                               |
-| Bitwise       |       -       | $bitsAnySet    | Matches numeric or binary values in which any bit from a set of bit positions has a value of 1.                                               |
-| Miscellaneous |       -       | $comment       | Adds a comment to a query predicate.                                                                                                          |
-| Miscellaneous |       -       | $rand          | Generates a random float between 0 and 1.                                                                                                     |
-| Miscellaneous |       -       | $natural       | A special hint that can be provided via the sort() or hint() methods that can be used to force either a forward or reverse collection scan.   |
+| Bitwise       |      Yes      | [$bitsAllClear](./jsongin/Query-Operators.md#$bitsAllClear)  | Matches numeric or binary values in which a set of bit positions all have a value of 0.                                                       |
+| Bitwise       |      Yes      | [$bitsAllSet](./jsongin/Query-Operators.md#$bitsAllSet)    | Matches numeric or binary values in which a set of bit positions all have a value of 1.                                                       |
+| Bitwise       |      Yes      | [$bitsAnyClear](./jsongin/Query-Operators.md#$bitsAnyClear)  | Matches numeric or binary values in which any bit from a set of bit positions has a value of 0.                                               |
+| Bitwise       |      Yes      | [$bitsAnySet](./jsongin/Query-Operators.md#$bitsAnySet)    | Matches numeric or binary values in which any bit from a set of bit positions has a value of 1.                                               |
+| Miscellaneous |      Yes      | [$comment](./jsongin/Query-Operators.md#$comment)       | Adds a comment to a query predicate.                                                                                                          |
+| Miscellaneous |       -       | $rand          | Generates a random float between 0 and 1. Not a query operator; see the note below.                                                           |
+| Miscellaneous |       -       | $natural       | A hint forcing a forward or reverse collection scan. Not a query operator; see the note below.                                                |
+| Miscellaneous |      Yes      | [$sampleRate](./jsongin/Query-Operators.md#$sampleRate)    | Randomly selects documents at a given rate.                                                                                                   |
+
+***Note on `$rand` and `$natural`*** :
+MongoDB lists these two among the query operators, and ***neither is a predicate***, so neither
+  can be marked supported here however much of it is built. A server refuses `{ $rand: {} }`
+  and `{ $natural: 1 }` as criteria, and so does `jsongin`.
+
+`$rand` is an ***expression***, and it is implemented as one: reach it from a criteria through
+  [`$expr`](./jsongin/Query-Operators.md#$expr), as in
+  `{ $expr: { $lt: [ { $rand: {} }, 0.5 ] } }`. Its row in the Expression Operators section is
+  the one which counts it.
+
+`$natural` names a ***collection scan direction***, which is a property of a collection rather
+  than of a document. `Query()` matches one document at a time and has no scan to direct, so
+  there is nothing here for it to mean.
 
 ***Note on dates*** :
 A `Date` has its own short type `d`, so the comparison operators handle dates directly.
@@ -263,8 +278,8 @@ MongoDB adds operators from one server version to the next, so treat this as a c
 | Conditional   |      Yes      | [$switch](./jsongin/Expression-Operators.md#$switch)            | Returns the value belonging to the first matching branch.                                    |
 | Custom        |       -       | $accumulator       | Defines a custom accumulator in Javascript.                                                  |
 | Custom        |       -       | $function          | Defines a custom function in Javascript.                                                     |
-| Data Size     |       -       | $binarySize        | Returns the size of a binary value in bytes.                                                 |
-| Data Size     |       -       | $bsonSize          | Returns the size of a document in bytes.                                                     |
+| Data Size     |      Yes      | [$binarySize](./jsongin/Expression-Operators.md#$binarySize)        | Returns the size of a binary value in bytes.                                                 |
+| Data Size     |      Yes      | [$bsonSize](./jsongin/Expression-Operators.md#$bsonSize)          | Returns the size of a document in bytes.                                                     |
 | Date          |       -       | $dateAdd           | Adds a number of time units to a date.                                                       |
 | Date          |       -       | $dateDiff          | Returns the difference between two dates, in a given time unit.                              |
 | Date          |       -       | $dateFromParts     | Constructs a date from its individual parts.                                                 |
@@ -290,8 +305,7 @@ MongoDB adds operators from one server version to the next, so treat this as a c
 | Logical       |      Yes      | [$and](./jsongin/Expression-Operators.md#$and)               | Returns true when all of the expressions are true.                                           |
 | Logical       |      Yes      | [$not](./jsongin/Expression-Operators.md#$not)               | Returns the opposite of an expression's boolean value.                                       |
 | Logical       |      Yes      | [$or](./jsongin/Expression-Operators.md#$or)                | Returns true when any of the expressions is true.                                            |
-| Miscellaneous |       -       | $rand              | Generates a random float between 0 and 1.                                                    |
-| Miscellaneous |       -       | $sampleRate        | Randomly selects documents at a given rate.                                                  |
+| Miscellaneous |      Yes      | [$rand](./jsongin/Expression-Operators.md#$rand)              | Generates a random float between 0 and 1.                                                    |
 | Object        |       -       | $getField          | Returns the value of a given field, including fields whose names begin with a `$`.           |
 | Object        |       -       | $mergeObjects      | Merges objects together into a single object.                                                |
 | Object        |       -       | $objectToArray     | Converts an object into an array of key/value pairs.                                         |
@@ -616,7 +630,7 @@ Use the `jsongin.Update( Document, Updates )` function to apply updates to a doc
 | Array    |     -     | $                | Acts as a placeholder to update the first element that matches the query condition.                                                           |
 | Array    |     -     | $[]              | Acts as a placeholder to update all elements in an array for the documents that match the query condition.                                    |
 | Array    |     -     | $[<identifier> ] | Acts as a placeholder to update all elements that match the arrayFilters condition for the documents that match the query condition.          |
-| Bitwise  |     -     | bit              | Performs bitwise AND, OR, and XOR updates of integer values.                                                                                  |
+| Bitwise  |    Yes    | [$bit](./jsongin/Update-Operators.md#$bit)             | Performs bitwise AND, OR, and XOR updates of integer values. The field must already hold an integer, or not be there at all.                  |
 
 
 ***Note on `$min` and `$max`*** :

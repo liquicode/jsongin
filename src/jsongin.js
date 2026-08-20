@@ -65,6 +65,17 @@ function NewJsongin( EngineSettings = {} )
 		// Evaluation Query Operators
 		$regex: require( './Operators/Query/Evaluation/regex' )( Engine ),
 		$expr: require( './Operators/Query/Evaluation/expr' )( Engine ),
+		$mod: require( './Operators/Query/Evaluation/mod' )( Engine ),
+
+		// Bitwise Query Operators
+		$bitsAllSet: require( './Operators/Query/Bitwise/bitsAllSet' )( Engine ),
+		$bitsAllClear: require( './Operators/Query/Bitwise/bitsAllClear' )( Engine ),
+		$bitsAnySet: require( './Operators/Query/Bitwise/bitsAnySet' )( Engine ),
+		$bitsAnyClear: require( './Operators/Query/Bitwise/bitsAnyClear' )( Engine ),
+
+		// Miscellaneous Query Operators
+		$comment: require( './Operators/Query/Miscellaneous/comment' )( Engine ),
+		$sampleRate: require( './Operators/Query/Miscellaneous/sampleRate' )( Engine ),
 
 		// Array Query Operators
 		$elemMatch: require( './Operators/Query/Array/elemMatch' )( Engine ),
@@ -127,6 +138,13 @@ function NewJsongin( EngineSettings = {} )
 		$atanh: require( './Operators/Expression/Trigonometry/atanh' )( Engine ),
 		$degreesToRadians: require( './Operators/Expression/Trigonometry/degreesToRadians' )( Engine ),
 		$radiansToDegrees: require( './Operators/Expression/Trigonometry/radiansToDegrees' )( Engine ),
+
+		// Miscellaneous Expression Operators
+		$rand: require( './Operators/Expression/Miscellaneous/rand' )( Engine ),
+
+		// Data Size Expression Operators
+		$binarySize: require( './Operators/Expression/DataSize/binarySize' )( Engine ),
+		$bsonSize: require( './Operators/Expression/DataSize/bsonSize' )( Engine ),
 
 		// Type Expression Operators
 		$type: require( './Operators/Expression/Type/type' )( Engine ),
@@ -200,6 +218,7 @@ function NewJsongin( EngineSettings = {} )
 		$min: require( './Operators/Update/Field/min' )( Engine ),
 		$max: require( './Operators/Update/Field/max' )( Engine ),
 		$mul: require( './Operators/Update/Field/mul' )( Engine ),
+		$bit: require( './Operators/Update/Field/bit' )( Engine ),
 		$currentDate: require( './Operators/Update/Field/currentDate' )( Engine ),
 		// $setOnInsert: require( './Operators/Update/setOnInsert' )( Engine ),
 

@@ -8,10 +8,10 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
-Parity with MongoDB is ***100%*** across 592 compared behaviors: Query 219, Update 86,
-  Projection 51, and Aggregate 236. Run `npm run parity-report` to measure it.
+Parity with MongoDB is ***100%*** across 608 compared behaviors: Query 230, Update 89,
+  Projection 51, and Aggregate 238. Run `npm run parity-report` to measure it.
 
-Coverage of the operator surface MongoDB documents is ***52.4%***, 133 operators of 254. Run
+Coverage of the operator surface MongoDB documents is ***56.7%***, 144 operators of 254. Run
   `npm run api-coverage` to measure that one. The two numbers answer different questions: parity
   is how faithfully what exists behaves, and coverage is how much exists.
 
@@ -193,6 +193,24 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 ### Added
 
+- The 4 ***bitwise query operators***, in `jsongin.QueryOperators`: `$bitsAllSet`,
+  `$bitsAllClear`, `$bitsAnySet`, and `$bitsAnyClear`. The bits are given either as a bitmask
+  or as an array of bit positions. ***The arithmetic is done in `BigInt`***, so a position
+  beyond the 32nd is not lost and a negative field is read as two's complement.
+  See [Bitwise Operators](./docs/guides/jsongin/Query-Operators.md).
+- The ***query `$mod`***, which takes `[ divisor, remainder ]` and matches. This is not the
+  expression `$mod`, which shares the name and returns a remainder instead.
+- `$comment` and `$sampleRate`, in `jsongin.QueryOperators`. A `$comment` selects everything,
+  and `$sampleRate` selects a random fraction: 0 selects nothing, 1 selects everything.
+- `$rand`, in `jsongin.ExpressionOperators`. ***It is an expression and not a query operator***,
+  as it is in MongoDB, so a criteria reaches it through `$expr`:
+  `{ $expr: { $lt: [ { $rand: {} }, 0.5 ] } }`.
+- `$binarySize` and `$bsonSize`, in `jsongin.ExpressionOperators`. `$bsonSize` counts what a
+  document would occupy once encoded, following the encoding's own arithmetic, and an array is
+  counted as a document whose keys are `'0'`, `'1'`, and so on.
+- The ***`$bit` update operator***, in `jsongin.UpdateOperators`, with `and`, `or`, and `xor`.
+  A field which is not there counts as a zero, as it does for `$inc`. A field holding a
+  fractional number or anything which is not a number is refused rather than coerced.
 - The 9 ***type expression operators***, in `jsongin.ExpressionOperators`: `$type`,
   `$isNumber`, `$convert`, `$toString`, `$toBool`, `$toDate`, `$toInt`, `$toLong`, and
   `$toDouble`. See [Type Operators](./docs/guides/jsongin/Expression-Operators.md).

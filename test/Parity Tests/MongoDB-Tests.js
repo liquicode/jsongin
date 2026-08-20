@@ -47,5 +47,7 @@ describe( 'MongoDB Parity Tests', function ()
 	require( './Aggregate Tests/Aggregate Tests.js' )( Driver );
 
 	// The gap inventory. See the note above: green here, red under jsongin.
+	require( './Query Tests/Query Gaps.js' )( Driver );
+	require( './Update Tests/Update Gaps.js' )( Driver );
 	require( './Aggregate Tests/Aggregate Gaps.js' )( Driver );
 } );

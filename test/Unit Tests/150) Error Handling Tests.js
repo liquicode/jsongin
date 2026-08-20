@@ -259,7 +259,7 @@ describe( '150) Error Handling Tests', () =>
 
 		it( 'should cover every registered update operator', () =>
 		{
-			assert.strictEqual( operators.length, 12 );
+			assert.strictEqual( operators.length, 13 );
 		} );
 
 		for ( let index = 0; index < operators.length; index++ )
@@ -355,7 +355,7 @@ describe( '150) Error Handling Tests', () =>
 		{
 			let reported = sweep( 'UpdateOperators', 'Update.',
 				function ( Engine, Name ) { Engine.UpdateOperators[ Name ].Update( {}, 'abc' ); } );
-			assert.strictEqual( reported, 12 );
+			assert.strictEqual( reported, 13 );
 		} );
 
 		it( 'should report from every accumulator which rejects its argument', () =>

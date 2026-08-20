@@ -25,6 +25,8 @@ An expression is a document, an array, or a scalar:
 | String          | [$concat](#$concat), [$split](#$split), [$toLower](#$toLower), [$toUpper](#$toUpper), [$strcasecmp](#$strcasecmp), [$trim](#$trim), [$ltrim](#$ltrim), [$rtrim](#$rtrim), [$substr](#$substr), [$substrBytes](#$substrBytes), [$substrCP](#$substrCP), [$strLenBytes](#$strLenBytes), [$strLenCP](#$strLenCP), [$indexOfBytes](#$indexOfBytes), [$indexOfCP](#$indexOfCP), [$regexMatch](#$regexMatch), [$regexFind](#$regexFind), [$regexFindAll](#$regexFindAll), [$replaceOne](#$replaceOne), [$replaceAll](#$replaceAll) |
 | Trigonometry    | [$sin](#$sin), [$cos](#$cos), [$tan](#$tan), [$asin](#$asin), [$acos](#$acos), [$atan](#$atan), [$atan2](#$atan2), [$sinh](#$sinh), [$cosh](#$cosh), [$tanh](#$tanh), [$asinh](#$asinh), [$acosh](#$acosh), [$atanh](#$atanh), [$degreesToRadians](#$degreesToRadians), [$radiansToDegrees](#$radiansToDegrees) |
 | Type            | [$type](#$type), [$isNumber](#$isNumber), [$convert](#$convert), [$toString](#$toString), [$toBool](#$toBool), [$toDate](#$toDate), [$toInt](#$toInt), [$toLong](#$toLong), [$toDouble](#$toDouble) |
+| Data Size       | [$binarySize](#$binarySize), [$bsonSize](#$bsonSize)                                                        |
+| Miscellaneous   | [$rand](#$rand)                                                                                             |
 | Logical         | [$and](#$and), [$or](#$or), [$not](#$not)                                                                   |
 | Conditional     | [$cond](#$cond), [$ifNull](#$ifNull), [$switch](#$switch)                                                   |
 | Literal         | [$literal](#$literal)                                                                                       |
@@ -1575,6 +1577,103 @@ jsongin.Evaluate( document, { $convert: { input: '$empty', to: 'int', onError: -
 // returns null
 ```
 
+
+
+# Data Size Operators
+
+
+<a id="$binarySize"></a>$binarySize
+---------------------------------------------------------------------
+
+**Usage** : `{ $binarySize: expression }`
+
+The number of bytes a string occupies.
+
+***A string is measured in bytes, not in characters.***
+The accented letter of `'héllo'` is two bytes, so its binary size is 6 where its length is 5.
+This is the same counting [$strLenBytes](#$strLenBytes) does.
+
+A null or missing operand makes the result null.
+Anything which is not a string has no binary size and throws.
+
+### Example
+```js
+jsongin.Evaluate( document, { $binarySize: 'abc' } );
+// returns 3
+
+jsongin.Evaluate( document, { $binarySize: 'héllo' } );
+// returns 6
+
+jsongin.Evaluate( document, { $binarySize: '$a' } );
+// throws
+```
+
+
+<a id="$bsonSize"></a>$bsonSize
+---------------------------------------------------------------------
+
+**Usage** : `{ $bsonSize: expression }`
+
+The number of bytes a document occupies once encoded as BSON.
+
+The count is the encoding's own arithmetic: 4 bytes for the document's length, then each
+  element as one type byte plus its field name plus a terminating zero plus its value, then 1
+  byte to close the document.
+A value costs 4 bytes as an `int`, 8 as a `double` or a date, 1 as a boolean, nothing as a
+  null, and its length plus 5 as a string.
+
+***An array is encoded as a document whose keys are `'0'`, `'1'`, and so on***, which is why an
+  array of two numbers costs more than the two numbers do.
+
+A null or missing operand makes the result null.
+Anything which is not a document throws.
+
+### Example
+```js
+// 4 for the length + [ 1 type + 2 for 'a\0' + 4 for the int ] + 1.
+jsongin.Evaluate( document, { $bsonSize: { $literal: { a: 1 } } } );
+// returns 12
+
+// A double costs four bytes more than an int.
+jsongin.Evaluate( document, { $bsonSize: { $literal: { a: 3.14 } } } );
+// returns 16
+
+// An empty document is its own length and its terminator.
+jsongin.Evaluate( document, { $bsonSize: { $literal: {} } } );
+// returns 5
+
+jsongin.Evaluate( document, { $bsonSize: '$name' } );
+// throws
+```
+
+
+# Miscellaneous Operators
+
+
+<a id="$rand"></a>$rand
+---------------------------------------------------------------------
+
+**Usage** : `{ $rand: {} }`
+
+Returns a random float from 0 up to but not including 1.
+It takes no operands, and the empty document is how it says so.
+
+***A query reaches it through [$expr](./Query-Operators.md#$expr)***, never on its own.
+`$rand` is not a query operator and cannot stand as one, so
+  `{ $expr: { $lt: [ { $rand: {} }, 0.5 ] } }` is how a criteria selects about half the
+  documents it sees.
+
+### Example
+```js
+// There is no fixed value to show. What holds of every draw is its range.
+let draw = jsongin.Evaluate( document, { $rand: {} } );
+( draw >= 0 ) === true
+( draw < 1 ) === true
+
+// Two draws are two values.
+let selected = jsongin.Query( document, { $expr: { $lt: [ { $rand: {} }, 0.5 ] } } );
+( typeof selected === 'boolean' ) === true
+```
 
 
 # Logical Operators
