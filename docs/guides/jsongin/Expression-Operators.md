@@ -21,7 +21,7 @@ An expression is a document, an array, or a scalar:
 | Rounding        | [$ceil](#$ceil), [$floor](#$floor), [$round](#$round), [$trunc](#$trunc)                                    |
 | Comparison      | [$eq](#$eq), [$ne](#$ne), [$gt](#$gt), [$gte](#$gte), [$lt](#$lt), [$lte](#$lte), [$cmp](#$cmp)              |
 | Smallest/Largest| [$min](#$min), [$max](#$max)                                                                                |
-| Array           | [$size](#$size), [$arrayElemAt](#$arrayElemAt), [$concatArrays](#$concatArrays), [$in](#$in)                 |
+| Array           | [$size](#$size), [$arrayElemAt](#$arrayElemAt), [$concatArrays](#$concatArrays), [$in](#$in), [$isArray](#$isArray), [$reverseArray](#$reverseArray), [$range](#$range), [$indexOfArray](#$indexOfArray), [$slice](#$slice), [$sortArray](#$sortArray), [$zip](#$zip), [$arrayToObject](#$arrayToObject), [$first](#$first), [$last](#$last), [$firstN](#$firstN), [$lastN](#$lastN), [$minN](#$minN), [$maxN](#$maxN) |
 | String          | [$concat](#$concat), [$split](#$split), [$toLower](#$toLower), [$toUpper](#$toUpper), [$strcasecmp](#$strcasecmp), [$trim](#$trim), [$ltrim](#$ltrim), [$rtrim](#$rtrim), [$substr](#$substr), [$substrBytes](#$substrBytes), [$substrCP](#$substrCP), [$strLenBytes](#$strLenBytes), [$strLenCP](#$strLenCP), [$indexOfBytes](#$indexOfBytes), [$indexOfCP](#$indexOfCP), [$regexMatch](#$regexMatch), [$regexFind](#$regexFind), [$regexFindAll](#$regexFindAll), [$replaceOne](#$replaceOne), [$replaceAll](#$replaceAll) |
 | Trigonometry    | [$sin](#$sin), [$cos](#$cos), [$tan](#$tan), [$asin](#$asin), [$acos](#$acos), [$atan](#$atan), [$atan2](#$atan2), [$sinh](#$sinh), [$cosh](#$cosh), [$tanh](#$tanh), [$asinh](#$asinh), [$acosh](#$acosh), [$atanh](#$atanh), [$degreesToRadians](#$degreesToRadians), [$radiansToDegrees](#$radiansToDegrees) |
 | Type            | [$type](#$type), [$isNumber](#$isNumber), [$convert](#$convert), [$toString](#$toString), [$toBool](#$toBool), [$toDate](#$toDate), [$toInt](#$toInt), [$toLong](#$toLong), [$toDouble](#$toDouble) |
@@ -606,6 +606,309 @@ jsongin.Evaluate( document, { $in: [ 20, '$scores' ] } );
 jsongin.Evaluate( document, { $in: [ 99, '$scores' ] } );
 // returns false
 ```
+
+
+<a id="$isArray"></a>$isArray
+---------------------------------------------------------------------
+
+**Usage** : `{ $isArray: expression }`
+
+Whether a value is an array.
+
+***It answers rather than propagating***, so a null gives `false` and not `null`. It is the
+  only operator in this family which does, because the question it asks has an answer for a
+  null.
+
+### Example
+```js
+jsongin.Evaluate( document, { $isArray: '$scores' } );
+// returns true
+
+jsongin.Evaluate( document, { $isArray: '$name' } );
+// returns false
+
+jsongin.Evaluate( document, { $isArray: '$empty' } );
+// returns false
+```
+
+
+<a id="$reverseArray"></a>$reverseArray
+---------------------------------------------------------------------
+
+**Usage** : `{ $reverseArray: expression }`
+
+An array with its elements in reverse order.
+The document's own array is left as it is.
+
+### Example
+```js
+jsongin.Evaluate( document, { $reverseArray: '$scores' } );
+// returns [ 30, 20, 10 ]
+```
+
+
+<a id="$range"></a>$range
+---------------------------------------------------------------------
+
+**Usage** : `{ $range: [ start, end ] }` or `{ $range: [ start, end, step ] }`
+
+An array of numbers from `start` up to but not including `end`.
+
+***The end is never reached***, and a range which runs the wrong way is empty rather than an
+  error.
+A step of zero would never end and is refused.
+
+### Example
+```js
+jsongin.Evaluate( document, { $range: [ 0, 4 ] } );
+// returns [ 0, 1, 2, 3 ]
+
+jsongin.Evaluate( document, { $range: [ 0, 4, 2 ] } );
+// returns [ 0, 2 ]
+
+jsongin.Evaluate( document, { $range: [ 4, 0, -2 ] } );
+// returns [ 4, 2 ]
+
+// The default step of 1 never gets there.
+jsongin.Evaluate( document, { $range: [ 4, 0 ] } );
+// returns []
+```
+
+
+<a id="$indexOfArray"></a>$indexOfArray
+---------------------------------------------------------------------
+
+**Usage** : `{ $indexOfArray: [ array, value ] }`
+  or `{ $indexOfArray: [ array, value, start ] }`
+  or `{ $indexOfArray: [ array, value, start, end ] }`
+
+The index of the first element which matches the value, or `-1` when none does.
+
+Elements are compared by ***content***, so a document or an array can be searched for.
+The search may be narrowed to a range, where `start` is included and `end` is not.
+
+### Example
+```js
+jsongin.Evaluate( document, { $indexOfArray: [ '$scores', 20 ] } );
+// returns 1
+
+jsongin.Evaluate( document, { $indexOfArray: [ '$scores', 99 ] } );
+// returns -1
+
+jsongin.Evaluate( document, { $indexOfArray: [ '$scores', 10, 1 ] } );
+// returns -1
+```
+
+
+<a id="$slice"></a>$slice
+---------------------------------------------------------------------
+
+**Usage** : `{ $slice: [ array, n ] }` or `{ $slice: [ array, position, n ] }`
+
+A subset of an array.
+
+***The two forms read `n` differently:***
+
+- With ***two*** operands, `n` is how many to take from the front, and a ***negative*** `n`
+  takes them from the back instead.
+- With ***three***, `position` is where to start — negative counts back from the end — and `n`
+  is how many to take from there. A negative `n` is refused here, because the direction has
+  already been said.
+
+***There is also a projection operator called `$slice`***, which is a different operator with
+  the same name. Which one applies is decided by where it is written: inside a
+  [`Project()`](./Project.md) projection the name is the projection operator, and inside a
+  `$project` ***stage*** it is this one. See the
+  [Operator Reference](../Operator-Reference.md).
+
+### Example
+```js
+jsongin.Evaluate( document, { $slice: [ '$scores', 2 ] } );
+// returns [ 10, 20 ]
+
+jsongin.Evaluate( document, { $slice: [ '$scores', -2 ] } );
+// returns [ 20, 30 ]
+
+jsongin.Evaluate( document, { $slice: [ '$scores', 1, 2 ] } );
+// returns [ 20, 30 ]
+
+// Asking for more than there is gives what there is.
+jsongin.Evaluate( document, { $slice: [ '$scores', 99 ] } );
+// returns [ 10, 20, 30 ]
+```
+
+
+<a id="$sortArray"></a>$sortArray
+---------------------------------------------------------------------
+
+**Usage** : `{ $sortArray: { input: expression, sortBy: 1 } }`
+  or `{ $sortArray: { input: expression, sortBy: { field: 1, ... } } }`
+
+Sorts the elements of an array.
+
+`sortBy` is either `1` or `-1`, which sorts the elements themselves by BSON order, or a
+  document naming fields, which sorts documents the way [`Sort()`](./Sort.md) does.
+
+### Example
+```js
+jsongin.Evaluate( { v: [ 3, 1, 2 ] }, { $sortArray: { input: '$v', sortBy: 1 } } );
+// returns [ 1, 2, 3 ]
+
+jsongin.Evaluate( { v: [ 3, 1, 2 ] }, { $sortArray: { input: '$v', sortBy: -1 } } );
+// returns [ 3, 2, 1 ]
+
+let people = { p: [ { name: 'Carol' }, { name: 'Alice' } ] };
+jsongin.Evaluate( people, { $sortArray: { input: '$p', sortBy: { name: 1 } } } );
+// returns [ { name: 'Alice' }, { name: 'Carol' } ]
+```
+
+
+<a id="$zip"></a>$zip
+---------------------------------------------------------------------
+
+**Usage** : `{ $zip: { inputs: [ array, ... ], useLongestLength: boolean, defaults: [ value, ... ] } }`
+
+Merges arrays element by element, so the first elements of each become the first element of the
+  result.
+
+***The shortest input decides how many elements come out***, unless `useLongestLength` is true,
+  in which case the longest does and the gaps are filled with `null` — or with the matching
+  entry of `defaults` when one is given.
+`defaults` without `useLongestLength` is refused rather than ignored.
+
+### Example
+```js
+jsongin.Evaluate( document, { $zip: { inputs: [ [ 1, 2 ], [ 'a', 'b' ] ] } } );
+// returns [ [ 1, 'a' ], [ 2, 'b' ] ]
+
+jsongin.Evaluate( document, { $zip: { inputs: [ [ 1, 2, 3 ], [ 'a' ] ] } } );
+// returns [ [ 1, 'a' ] ]
+
+jsongin.Evaluate( document, { $zip: { inputs: [ [ 1, 2 ], [ 'a' ] ], useLongestLength: true } } );
+// returns [ [ 1, 'a' ], [ 2, null ] ]
+```
+
+
+<a id="$arrayToObject"></a>$arrayToObject
+---------------------------------------------------------------------
+
+**Usage** : `{ $arrayToObject: expression }`
+
+Converts an array of key and value pairs into a document.
+
+A pair is written either as a ***two element array***, `[ 'a', 1 ]`, or as a ***document***,
+  `{ k: 'a', v: 1 }`.
+***A repeated key keeps the last value.***
+A key must be a string.
+
+### Example
+```js
+jsongin.Evaluate( document, { $arrayToObject: [ [ [ 'a', 1 ], [ 'b', 2 ] ] ] } );
+// returns { a: 1, b: 2 }
+
+jsongin.Evaluate( document, { $arrayToObject: [ [ { k: 'a', v: 1 } ] ] } );
+// returns { a: 1 }
+
+jsongin.Evaluate( document, { $arrayToObject: [ [ [ 'a', 1 ], [ 'a', 2 ] ] ] } );
+// returns { a: 2 }
+```
+
+
+<a id="$first"></a>$first
+---------------------------------------------------------------------
+
+**Usage** : `{ $first: expression }`
+
+The first element of an array.
+
+***There is also an accumulator called `$first`***, which is a different operator with the same
+  name: that one takes the first document reaching a `$group`. Which one applies is decided by
+  where it is written. See [Accumulator Operators](./Accumulator-Operators.md).
+
+### Example
+```js
+jsongin.Evaluate( document, { $first: '$scores' } );
+// returns 10
+```
+
+
+<a id="$last"></a>$last
+---------------------------------------------------------------------
+
+**Usage** : `{ $last: expression }`
+
+The last element of an array.
+As with [$first](#$first), there is an accumulator of the same name.
+
+### Example
+```js
+jsongin.Evaluate( document, { $last: '$scores' } );
+// returns 30
+```
+
+
+<a id="$firstN"></a>$firstN
+---------------------------------------------------------------------
+
+**Usage** : `{ $firstN: { input: expression, n: number } }`
+
+The first `n` elements of an array, in the order they are in.
+
+***Asking for more than there is is not an error***, and gives what there is.
+`n` must be a whole number of one or more.
+
+### Example
+```js
+jsongin.Evaluate( document, { $firstN: { input: '$scores', n: 2 } } );
+// returns [ 10, 20 ]
+
+jsongin.Evaluate( document, { $firstN: { input: '$scores', n: 99 } } );
+// returns [ 10, 20, 30 ]
+```
+
+
+<a id="$lastN"></a>$lastN
+---------------------------------------------------------------------
+
+**Usage** : `{ $lastN: { input: expression, n: number } }`
+
+The last `n` elements of an array, in the order they are in.
+
+### Example
+```js
+jsongin.Evaluate( document, { $lastN: { input: '$scores', n: 2 } } );
+// returns [ 20, 30 ]
+```
+
+
+<a id="$minN"></a>$minN
+---------------------------------------------------------------------
+
+**Usage** : `{ $minN: { input: expression, n: number } }`
+
+The `n` smallest values of an array, ***smallest first***.
+The result is in BSON order rather than in the order the elements were written.
+
+### Example
+```js
+jsongin.Evaluate( { v: [ 3, 1, 2 ] }, { $minN: { input: '$v', n: 2 } } );
+// returns [ 1, 2 ]
+```
+
+
+<a id="$maxN"></a>$maxN
+---------------------------------------------------------------------
+
+**Usage** : `{ $maxN: { input: expression, n: number } }`
+
+The `n` largest values of an array, ***largest first***.
+
+### Example
+```js
+jsongin.Evaluate( { v: [ 3, 1, 2 ] }, { $maxN: { input: '$v', n: 2 } } );
+// returns [ 3, 2 ]
+```
+
 
 
 # String Operators

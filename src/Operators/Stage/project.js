@@ -45,7 +45,9 @@ module.exports = function ( jsongin )
 				for ( let index = 0; index < Documents.length; index++ )
 				{
 					// Project() clones the document with SafeClone(), so nothing more is needed here.
-					let result = jsongin.Project( Documents[ index ], Args );
+					// The third argument says this is a stage, where $slice and $elemMatch are
+					// expressions rather than projection operators. See Project.js.
+					let result = jsongin.Project( Documents[ index ], Args, true );
 					if ( result === null )
 					{
 						throw new Error( `Unable to project the document at index [${index}].` );

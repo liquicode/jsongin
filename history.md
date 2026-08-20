@@ -8,10 +8,10 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
-Parity with MongoDB is ***100%*** across 660 compared behaviors: Query 230, Update 89,
-  Projection 51, and Aggregate 290. Run `npm run parity-report` to measure it.
+Parity with MongoDB is ***100%*** across 683 compared behaviors: Query 230, Update 89,
+  Projection 51, and Aggregate 313. Run `npm run parity-report` to measure it.
 
-Coverage of the operator surface MongoDB documents is ***67.7%***, 172 operators of 254. Run
+Coverage of the operator surface MongoDB documents is ***73.2%***, 186 operators of 254. Run
   `npm run api-coverage` to measure that one. The two numbers answer different questions: parity
   is how faithfully what exists behaves, and coverage is how much exists.
 
@@ -193,6 +193,24 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 ### Added
 
+- The 14 ***array expression operators which bind no variables***, in
+  `jsongin.ExpressionOperators`: `$isArray`, `$reverseArray`, `$range`, `$indexOfArray`,
+  `$slice`, `$sortArray`, `$zip`, `$arrayToObject`, `$first`, `$last`, `$firstN`, `$lastN`,
+  `$minN`, and `$maxN`. See [Array Operators](./docs/guides/jsongin/Expression-Operators.md).
+  `$map`, `$filter`, and `$reduce` are still missing: each binds a variable over the elements
+  of an array, and `Evaluate()` has no variable scope to bind one in.
+- ***`$slice` and the projection `$slice` are two operators sharing a name, and the stage
+  decides which.*** Inside a `$project` stage there is no projection operator called `$slice`:
+  the name is the expression operator, so `{ $project: { t: { $slice: 2 } } }` is refused for
+  having only one operand, exactly as MongoDB refuses it. The projection form still applies in
+  a projection handed to `Project()` or to a find. ***This is a fix***: the projection form
+  used to shadow the expression form everywhere, so the expression `$slice` could not be
+  reached from a pipeline at all.
+- `$first` and `$last` now exist as ***expression*** operators as well as accumulators. Which
+  one applies is decided by where it is written.
+- ***`$firstN`, `$lastN`, `$minN`, and `$maxN` refuse a null input***, where most of the array
+  family propagates one. `$zip` requires its `inputs` to be written as an array rather than as
+  an expression which produces one. Both are MongoDB's behavior.
 - The 7 ***set expression operators***, in `jsongin.ExpressionOperators`: `$setEquals`,
   `$setIsSubset`, `$setUnion`, `$setIntersection`, `$setDifference`, `$allElementsTrue`, and
   `$anyElementTrue`. See [Set Operators](./docs/guides/jsongin/Expression-Operators.md).

@@ -173,6 +173,28 @@ module.exports = function ( jsongin )
 		if ( keys.length !== 1 ) { return null; }
 		if ( PROJECTION_OPERATORS.includes( keys[ 0 ] ) === false ) { return null; }
 
+		// ***$slice is a projection operator and an expression operator, and the argument is
+		// what tells them apart.*** The projection form takes a count, or a skip and a limit,
+		// and every one of those is a number. The expression form takes an array to slice and
+		// how much of it to take, so its first operand is never a number.
+		//
+		// Without this test the projection form shadowed the expression form completely:
+		// { r: { $slice: [ '$letters', 2 ] } } inside a $project was read as a projection of
+		// the field r and refused, where MongoDB computes a new field from the expression.
+		if ( keys[ 0 ] === '$slice' )
+		{
+			let argument = Value.$slice;
+			let argument_type = jsongin.ShortType( argument );
+			if ( argument_type === 'n' ) { return '$slice'; }
+			if ( ( argument_type === 'a' ) && ( argument.length === 2 )
+				&& ( jsongin.ShortType( argument[ 0 ] ) === 'n' )
+				&& ( jsongin.ShortType( argument[ 1 ] ) === 'n' ) )
+			{
+				return '$slice';
+			}
+			return null;
+		}
+
 		return keys[ 0 ];
 	};
 
@@ -303,7 +325,15 @@ module.exports = function ( jsongin )
 
 
 	//---------------------------------------------------------------------
-	function Project( Document, Projection )
+	// IsStage says whether this projection is the `$project` ***stage*** of a pipeline rather
+	// than the projection of a find.
+	//
+	// ***There are no projection operators in a stage.*** $slice, $elemMatch, $, and $meta
+	// belong to a find projection; inside a $project stage the same names are expressions, or
+	// nothing at all. MongoDB refuses `{ $project: { t: { $slice: 2 } } }` with "Expression
+	// $slice takes at least 2 arguments, and at most 3, but 1 were passed in" - reading it as
+	// the expression operator and finding it short of operands.
+	function Project( Document, Projection, IsStage = false )
 	{
 		// Validate the parameters.
 		if ( jsongin.ShortType( Document ) !== 'o' )
@@ -354,7 +384,7 @@ module.exports = function ( jsongin )
 				// share the '$name' shape and a projection operator is not an expression:
 				// $slice and $elemMatch both exist in the expression and query languages
 				// meaning something else.
-				let operator_name = projection_operator_name( value );
+				let operator_name = IsStage ? null : projection_operator_name( value );
 				if ( operator_name === '$slice' ) { slice_keys.push( { Path: key, Argument: value.$slice } ); }
 				else if ( operator_name === '$elemMatch' ) { elem_match_keys.push( { Path: key, Argument: value.$elemMatch } ); }
 				else if ( operator_name !== null )
