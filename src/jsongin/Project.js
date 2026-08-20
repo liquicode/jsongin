@@ -270,6 +270,10 @@ module.exports = function ( jsongin )
 	// the end, and a negative skip counts back from the end before taking forward.
 	// A field which is not an array is left exactly as it is, which is what MongoDB does.
 	// Verified against MongoDB 6.0.1.
+	//
+	// ***The argument arrives already validated.*** projection_operator_name() only reads a
+	// { $slice: ... } as the projection operator when the argument is a number, or two of
+	// them, so there is no third shape to refuse here.
 	function apply_slice( Node, Path, Argument )
 	{
 		let values = jsongin.GetValue( Node, Path );
@@ -277,21 +281,16 @@ module.exports = function ( jsongin )
 
 		let skip = 0;
 		let limit = null;
-		let argument_type = jsongin.ShortType( Argument );
-		if ( argument_type === 'n' )
+		if ( jsongin.ShortType( Argument ) === 'n' )
 		{
 			if ( Argument < 0 ) { skip = Math.max( values.length + Argument, 0 ); }
 			else { limit = Argument; }
 		}
-		else if ( ( argument_type === 'a' ) && ( Argument.length === 2 ) )
+		else
 		{
 			skip = Argument[ 0 ];
 			if ( skip < 0 ) { skip = Math.max( values.length + skip, 0 ); }
 			limit = Argument[ 1 ];
-		}
-		else
-		{
-			refuse( `The projection operator [$slice] takes a count, or a skip and a limit.` );
 		}
 
 		let sliced = values.slice( skip );

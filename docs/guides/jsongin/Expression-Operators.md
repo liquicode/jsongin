@@ -26,6 +26,7 @@ An expression is a document, an array, or a scalar:
 | Trigonometry    | [$sin](#$sin), [$cos](#$cos), [$tan](#$tan), [$asin](#$asin), [$acos](#$acos), [$atan](#$atan), [$atan2](#$atan2), [$sinh](#$sinh), [$cosh](#$cosh), [$tanh](#$tanh), [$asinh](#$asinh), [$acosh](#$acosh), [$atanh](#$atanh), [$degreesToRadians](#$degreesToRadians), [$radiansToDegrees](#$radiansToDegrees) |
 | Type            | [$type](#$type), [$isNumber](#$isNumber), [$convert](#$convert), [$toString](#$toString), [$toBool](#$toBool), [$toDate](#$toDate), [$toInt](#$toInt), [$toLong](#$toLong), [$toDouble](#$toDouble) |
 | Set             | [$setEquals](#$setEquals), [$setIsSubset](#$setIsSubset), [$setUnion](#$setUnion), [$setIntersection](#$setIntersection), [$setDifference](#$setDifference), [$allElementsTrue](#$allElementsTrue), [$anyElementTrue](#$anyElementTrue) |
+| Object          | [$mergeObjects](#$mergeObjects), [$objectToArray](#$objectToArray), [$getField](#$getField), [$setField](#$setField), [$unsetField](#$unsetField) |
 | Date            | [$year](#$year), [$month](#$month), [$dayOfMonth](#$dayOfMonth), [$dayOfWeek](#$dayOfWeek), [$dayOfYear](#$dayOfYear), [$hour](#$hour), [$minute](#$minute), [$second](#$second), [$millisecond](#$millisecond), [$week](#$week), [$isoWeek](#$isoWeek), [$isoDayOfWeek](#$isoDayOfWeek), [$isoWeekYear](#$isoWeekYear), [$dateToParts](#$dateToParts), [$dateFromParts](#$dateFromParts), [$dateToString](#$dateToString), [$dateFromString](#$dateFromString), [$dateAdd](#$dateAdd), [$dateSubtract](#$dateSubtract), [$dateDiff](#$dateDiff), [$dateTrunc](#$dateTrunc) |
 | Data Size       | [$binarySize](#$binarySize), [$bsonSize](#$bsonSize)                                                        |
 | Miscellaneous   | [$rand](#$rand)                                                                                             |
@@ -2057,6 +2058,198 @@ jsongin.Evaluate( document, { $anyElementTrue: [ [ false, 0, null ] ] } );
 
 jsongin.Evaluate( document, { $anyElementTrue: [ [] ] } );
 // returns false
+```
+
+
+# Object Operators
+
+
+***These operators work on field names, which is what makes them different from everything
+  else here.*** [$getField](#$getField), [$setField](#$setField), and
+  [$unsetField](#$unsetField) name one field of one document, and ***a dot in that name is
+  part of the name***: `{ field: 'a.b' }` means a field literally called `a.b`, not the `b` of
+  the `a`. That is the reason the three exist, because no dotted-path syntax can reach such a
+  field at all.
+
+***The name must be a constant***, written either as a plain string or as a
+  [$literal](#$literal). A computed name is refused however simple it is, even one whose
+  operands are all constants. A name which begins with a `$` has to be written
+  `{ field: { $literal: '$price' } }`, since a bare `'$price'` is a field reference.
+
+***The three disagree about an input which is not a document***, and `jsongin` reproduces that
+  rather than tidying it up:
+
+| **Operator** | **A null input** | **A missing input, or one which is not a document** |
+|--------------|------------------|-----------------------------------------------------|
+| [$getField](#$getField) | `null` | no value at all — the field is left out |
+| [$setField](#$setField), [$unsetField](#$unsetField) | `null` | `null` for a missing input; anything else is refused |
+
+***The shorthand forms are not supported.*** MongoDB lets `{ $getField: 'name' }` read the
+  field from `$$CURRENT`, and `{ $setField: { ..., value: '$$REMOVE' } }` remove one, and both
+  of those are system variables which `jsongin` has no expression variable scope for. Write
+  the `input` out, and use [$unsetField](#$unsetField) to remove.
+
+
+<a id="$mergeObjects"></a>$mergeObjects
+---------------------------------------------------------------------
+
+**Usage** : `{ $mergeObjects: [ document, document, ... ] }`
+
+Combines several documents into one, where a later document wins a field the two share.
+A single document may be given without a list.
+
+***The merge is one level deep.*** A shared field whose value is itself a document is replaced
+  whole rather than merged into.
+
+***A null or missing operand is ignored*** rather than making the result null, which is what
+  makes this safe to fold over documents which may not all be there.
+
+### Example
+```js
+jsongin.Evaluate( document, { $mergeObjects: [ { a: 1 }, { b: 2 } ] } );
+// returns { a: 1, b: 2 }
+
+// A replaced field keeps its position and a new one is appended.
+jsongin.Evaluate( document, { $mergeObjects: [ { a: 1, b: 2 }, { a: 9 } ] } );
+// returns { a: 9, b: 2 }
+
+// A null operand is ignored, and nothing at all is an empty document.
+jsongin.Evaluate( document, { $mergeObjects: [ '$user', '$empty' ] } );
+// returns { role: 'admin' }
+
+jsongin.Evaluate( document, { $mergeObjects: [] } );
+// returns {}
+
+// The merge does not reach into a sub-document.
+jsongin.Evaluate( document, { $mergeObjects: [ { a: { x: 1 } }, { a: { y: 2 } } ] } );
+// returns { a: { y: 2 } }
+```
+
+***There is also an accumulator called `$mergeObjects`***, which is a different operator with
+  the same name. See [Accumulator Operators](./Accumulator-Operators.md).
+
+
+<a id="$objectToArray"></a>$objectToArray
+---------------------------------------------------------------------
+
+**Usage** : `{ $objectToArray: document }`
+
+Turns a document into an array of `{ k: name, v: value }` pairs, one per field.
+
+***The pairs come back in the order the document holds its fields***, not sorted, which is
+  what makes this the inverse of [$arrayToObject](#$arrayToObject).
+
+A null or missing operand makes the result `null`. Anything else which is not a document throws.
+
+### Example
+```js
+jsongin.Evaluate( document, { $objectToArray: '$user' } );
+// returns [ { k: 'role', v: 'admin' } ]
+
+// The fields come back in the order they were written, not in sorted order.
+jsongin.Evaluate( document, { $objectToArray: { z: 1, a: 2 } } );
+// returns [ { k: 'z', v: 1 }, { k: 'a', v: 2 } ]
+
+jsongin.Evaluate( document, { $objectToArray: '$empty' } );
+// returns null
+
+jsongin.Evaluate( document, { $objectToArray: '$scores' } );   // throws
+```
+
+
+<a id="$getField"></a>$getField
+---------------------------------------------------------------------
+
+**Usage** : `{ $getField: { field: name, input: document } }`
+
+Reads one named field of a document.
+
+***A null input and a missing one part company here***, which they do almost nowhere else in
+  the expression language: a null input answers `null`, while a missing one — or an array, or
+  a number, or anything else which is not a document — answers no value at all, the same
+  nothing that reading an absent field gives.
+
+### Example
+```js
+jsongin.Evaluate( document, { $getField: { field: 'role', input: '$user' } } );
+// returns 'admin'
+
+// The name is a name and not a path. This reads the field called 'a.b',
+// leaving the b of the a alone.
+jsongin.Evaluate( { d: { 'a.b': 1, a: { b: 2 } } }, { $getField: { field: 'a.b', input: '$d' } } );
+// returns 1
+
+// A name beginning with a '$' is written as a $literal.
+jsongin.Evaluate( document, { $getField: { field: { $literal: '$price' }, input: { $literal: { '$price': 5 } } } } );
+// returns 5
+
+// A null input answers null.
+jsongin.Evaluate( document, { $getField: { field: 'role', input: '$empty' } } );
+// returns null
+
+// A computed field name is refused, however simple it is.
+jsongin.Evaluate( document, { $getField: { field: { $concat: [ 'role' ] }, input: '$user' } } );   // throws
+```
+
+
+<a id="$setField"></a>$setField
+---------------------------------------------------------------------
+
+**Usage** : `{ $setField: { field: name, input: document, value: expression } }`
+
+Answers a copy of a document with one named field added or replaced.
+***The input document is not modified.***
+
+***A replaced field keeps its position*** and a new one is appended after the fields already
+  present, which matters because a document is compared field by field in the order it holds
+  them.
+
+A null or missing `input` makes the result `null`; any other non-document throws.
+A null `value` is written as a null rather than being ignored.
+
+### Example
+```js
+jsongin.Evaluate( document, { $setField: { field: 'active', input: '$user', value: true } } );
+// returns { role: 'admin', active: true }
+
+// A field already there is replaced where it stands.
+jsongin.Evaluate( document, { $setField: { field: 'role', input: '$user', value: 'guest' } } );
+// returns { role: 'guest' }
+
+// A field whose name contains a dot is written as one field, not as a path.
+jsongin.Evaluate( document, { $setField: { field: 'a.b', input: {}, value: 1 } } );
+// returns { 'a.b': 1 }
+
+jsongin.Evaluate( document, { $setField: { field: 'active', input: '$empty', value: true } } );
+// returns null
+
+jsongin.Evaluate( document, { $setField: { field: 'active', input: '$scores', value: true } } );   // throws
+```
+
+
+<a id="$unsetField"></a>$unsetField
+---------------------------------------------------------------------
+
+**Usage** : `{ $unsetField: { field: name, input: document } }`
+
+Answers a copy of a document with one named field removed.
+The fields which remain keep their order, and a document which does not have the field is
+  answered unchanged rather than refused.
+
+### Example
+```js
+jsongin.Evaluate( document, { $unsetField: { field: 'role', input: '$user' } } );
+// returns {}
+
+jsongin.Evaluate( document, { $unsetField: { field: 'nope', input: '$user' } } );
+// returns { role: 'admin' }
+
+// Removing 'a.b' removes the field of that name and leaves the nested one alone.
+jsongin.Evaluate( { d: { 'a.b': 1, a: { b: 2 } } }, { $unsetField: { field: 'a.b', input: '$d' } } );
+// returns { a: { b: 2 } }
+
+jsongin.Evaluate( document, { $unsetField: { field: 'role', input: '$empty' } } );
+// returns null
 ```
 
 

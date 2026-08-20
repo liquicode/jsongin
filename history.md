@@ -8,10 +8,10 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
-Parity with MongoDB is ***100%*** across 683 compared behaviors: Query 230, Update 89,
-  Projection 51, and Aggregate 313. Run `npm run parity-report` to measure it.
+Parity with MongoDB is ***100%*** across 728 compared behaviors: Query 230, Update 89,
+  Projection 51, and Aggregate 358. Run `npm run parity-report` to measure it.
 
-Coverage of the operator surface MongoDB documents is ***73.2%***, 186 operators of 254. Run
+Coverage of the operator surface MongoDB documents is ***75.2%***, 191 operators of 254. Run
   `npm run api-coverage` to measure that one. The two numbers answer different questions: parity
   is how faithfully what exists behaves, and coverage is how much exists.
 
@@ -193,6 +193,33 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 ### Added
 
+- The 5 ***object expression operators***, in `jsongin.ExpressionOperators`: `$mergeObjects`,
+  `$objectToArray`, `$getField`, `$setField`, and `$unsetField`. See
+  [Object Operators](./docs/guides/jsongin/Expression-Operators.md).
+- ***`$getField`, `$setField`, and `$unsetField` name a field rather than a path***, and a dot
+  in that name is part of the name: `{ field: 'a.b' }` means a field literally called `a.b` and
+  not the `b` of the `a`. That is the reason the three exist, since no dotted-path syntax can
+  reach such a field. The name must be a ***constant***, written as a string or as a
+  `$literal`; a computed name is refused however simple it is. A name beginning with a `$` is
+  written `{ field: { $literal: '$price' } }`, since a bare `'$price'` is a field reference.
+- ***The shorthand forms are not supported.*** `{ $getField: 'name' }` reads the field from
+  `$$CURRENT` and `{ $setField: { ..., value: '$$REMOVE' } }` removes it, and both need an
+  expression variable scope which `Evaluate()` does not have. Both are refused by name rather
+  than read as something else. Write the `input` out, and use `$unsetField` to remove.
+- ***A null input and a missing one part company in `$getField`***, which they do almost
+  nowhere else in the expression language: a null answers null, while a missing input — or an
+  array, or a number — answers no value at all, so the field is left out of the result.
+  `$setField` and `$unsetField` answer either one with a null, and refuse any other
+  non-document.
+- ***`$mergeObjects` ignores a null or missing operand*** rather than making the result null,
+  and answers no operands at all with an empty document, which is what makes it safe to fold
+  over documents that may not all be there. The merge is ***one level deep***: a shared field
+  holding a document is replaced whole rather than merged into.
+- ***Field order is preserved by all five.*** An overwritten or replaced field keeps its
+  original position and a new one is appended, which is observable because a document is
+  compared field by field in the order it holds them.
+- `$objectToArray` returns `{ k, v }` pairs ***in the order the document holds its fields***,
+  not sorted, which makes it the inverse of `$arrayToObject`.
 - The 14 ***array expression operators which bind no variables***, in
   `jsongin.ExpressionOperators`: `$isArray`, `$reverseArray`, `$range`, `$indexOfArray`,
   `$slice`, `$sortArray`, `$zip`, `$arrayToObject`, `$first`, `$last`, `$firstN`, `$lastN`,

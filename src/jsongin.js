@@ -209,6 +209,13 @@ function NewJsongin( EngineSettings = {} )
 		$concatArrays: require( './Operators/Expression/Array/concatArrays' )( Engine ),
 		$in: require( './Operators/Expression/Array/in' )( Engine ),
 
+		// Object Expression Operators
+		$mergeObjects: require( './Operators/Expression/Object/mergeObjects' )( Engine ),
+		$objectToArray: require( './Operators/Expression/Object/objectToArray' )( Engine ),
+		$getField: require( './Operators/Expression/Object/getField' )( Engine ),
+		$setField: require( './Operators/Expression/Object/setField' )( Engine ),
+		$unsetField: require( './Operators/Expression/Object/unsetField' )( Engine ),
+
 		// Comparison Expression Operators
 		$eq: require( './Operators/Expression/Comparison/eq' )( Engine ),
 		$ne: require( './Operators/Expression/Comparison/ne' )( Engine ),

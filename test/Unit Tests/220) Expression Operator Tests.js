@@ -805,4 +805,56 @@ describe( '220) Expression Operator Tests', () =>
 	} );
 
 
+	//---------------------------------------------------------------------
+	// The shorthand forms of the object field operators, which read a system variable.
+	//
+	// MongoDB lets { $getField: 'name' } stand for reading the field from $$CURRENT, and
+	// { $setField: { ..., value: '$$REMOVE' } } stand for removing it. Both need an
+	// expression variable scope, which jsongin does not have, so there is no behavior to
+	// compare and these are unit tests rather than parity tests - the same reason the numeric
+	// conversion boundary above is one.
+	//
+	// What is asserted is that they are ***refused by name***, and not quietly read as
+	// something else. A '$$CURRENT' silently treated as a literal string, or a '$$REMOVE'
+	// written into a field as text, would be the bad outcome here.
+	describe( 'Object Field Operator Shorthand Tests', () =>
+	{
+
+		it( 'should refuse the $getField shorthand rather than guessing at it', () =>
+		{
+			assert.throws( function () { jsongin.Evaluate( { a: 1 }, { $getField: 'a' } ); } );
+		} );
+
+		it( 'should say which form to write instead', () =>
+		{
+			try
+			{
+				jsongin.Evaluate( { a: 1 }, { $getField: 'a' } );
+				assert.fail( 'expected a refusal' );
+			}
+			catch ( error )
+			{
+				assert.ok( error.message.includes( '$$CURRENT' ) );
+				assert.ok( error.message.includes( 'input' ) );
+			}
+		} );
+
+		it( 'should refuse a $setField which removes with $$REMOVE', () =>
+		{
+			assert.throws(
+				function () { jsongin.Evaluate( {}, { $setField: { field: 'a', input: { a: 1 }, value: '$$REMOVE' } } ); },
+				/system variables are not supported/ );
+		} );
+
+		it( 'should remove a field with $unsetField instead', () =>
+		{
+			// The supported way to do what $$REMOVE does.
+			assert.deepEqual(
+				jsongin.Evaluate( {}, { $unsetField: { field: 'a', input: { a: 1, b: 2 } } } ),
+				{ b: 2 } );
+		} );
+
+	} );
+
+
 } );
