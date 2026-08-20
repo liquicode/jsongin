@@ -11,6 +11,21 @@
 	is a parity gap. A test which fails under MongoDB is not a jsongin defect at all: it means
 	the test asserts something MongoDB does not actually do, and the test is what needs fixing.
 
+	The report ends on two numbers, and they answer two different questions:
+
+		parity     of the operators jsongin ***does*** implement, how many behave exactly as
+		           MongoDB behaves. It is expected to read 100%, and a drop is a regression.
+
+		coverage   of ***all*** the operators MongoDB documents, how many jsongin implements at
+		           all. It is expected to read well under 100% and rises only when an operator
+		           is built. Computed by build/api-coverage.js from the operator reference.
+
+	Between them sits the ROADMAP section: the gap inventory, which states what MongoDB does
+	with operators jsongin has not built yet. Those tests are ***expected*** to fail under
+	jsongin, so they are reported apart from the parity gaps and never counted into the parity
+	number - measuring a missing operator must not be able to make parity look like a
+	regression. See test/Parity Tests/Aggregate Tests/Aggregate Gaps.js.
+
 	Usage:
 		npm run parity-report
 		npm run parity-report -- --verbose      (list every compared test, not just the gaps)
@@ -26,6 +41,8 @@
 const LIB_FS = require( 'fs' );
 const LIB_PATH = require( 'path' );
 const LIB_CHILD_PROCESS = require( 'child_process' );
+
+const LIB_API_COVERAGE = require( './api-coverage.js' );
 
 const REPO = LIB_PATH.resolve( __dirname, '..' );
 const PARITY = LIB_PATH.join( REPO, 'test', 'Parity Tests' );
@@ -45,8 +62,26 @@ const AREAS = [
 	{ Name: 'Aggregate', Folder: 'Aggregate Tests', File: 'Aggregate Tests.js' },
 ];
 
+// The gap areas, compared the same way and reported separately. An area with no gap file yet
+// is skipped rather than being an error, so a family can be written down the day it is
+// measured instead of every area needing a placeholder first.
+const GAP_AREAS = [
+	{ Name: 'Query', Folder: 'Query Tests', File: 'Query Gaps.js' },
+	{ Name: 'Update', Folder: 'Update Tests', File: 'Update Gaps.js' },
+	{ Name: 'Projection', Folder: 'Projection Tests', File: 'Projection Gaps.js' },
+	{ Name: 'Aggregate', Folder: 'Aggregate Tests', File: 'Aggregate Gaps.js' },
+];
+
 // The jsongin driver is deliberately given no settings, so it uses the engine the package
 // exports rather than a configured one. Parity is a claim about the defaults.
+
+
+//---------------------------------------------------------------------
+// Answers whether an area's file is present. Only the gap areas can be absent.
+function area_exists( Area )
+{
+	return LIB_FS.existsSync( LIB_PATH.join( PARITY, Area.Folder, Area.File ) );
+}
 
 
 //---------------------------------------------------------------------
@@ -70,7 +105,8 @@ function write_runner( Area, DriverName )
 
 	lines.push( `require( './${Area.File}' )( Driver );` );
 
-	let filename = LIB_PATH.join( PARITY, Area.Folder, `~parity-${DriverName}.js` );
+	let basename = Area.File.replace( /\.js$/, '' );
+	let filename = LIB_PATH.join( PARITY, Area.Folder, `~parity-${basename}-${DriverName}.js` );
 	LIB_FS.writeFileSync( filename, lines.join( NEWLINE ) + NEWLINE );
 	return filename;
 }
@@ -121,12 +157,17 @@ function run_suite( Filename )
 
 
 //---------------------------------------------------------------------
+// Runs one area under both drivers and sorts every test into one of four outcomes.
+//
+// The same comparison serves both inventories. What changes between them is what the outcomes
+// are called: for a parity area, a test which fails under jsongin is a defect; for a gap area,
+// it is the gap the suite was written to record. main() does that naming.
 function compare_area( Area, Verbose )
 {
 	let jsongin_file = write_runner( Area, 'jsongin' );
 	let mongodb_file = write_runner( Area, 'MongoDB' );
 
-	let summary = { Area: Area.Name, Compared: 0, Agree: 0, Gaps: [], TestBugs: [], Missing: [] };
+	let summary = { Area: Area.Name, Compared: 0, Agree: 0, AgreeTitles: [], Gaps: [], TestBugs: [], Missing: [] };
 	try
 	{
 		let jsongin_results = run_suite( jsongin_file );
@@ -161,6 +202,7 @@ function compare_area( Area, Verbose )
 				continue;
 			}
 			summary.Agree++;
+			summary.AgreeTitles.push( title );
 			if ( Verbose ) { console.log( `      ok   ${title}` ); }
 		}
 	}
@@ -175,35 +217,28 @@ function compare_area( Area, Verbose )
 
 
 //---------------------------------------------------------------------
-function main()
+// Prints one area-by-area table and returns the totals under it.
+function print_table( Summaries, MatchLabel, GapLabel )
 {
-	let verbose = process.argv.includes( '--verbose' );
-
-	console.log( '' );
-	console.log( 'Measuring jsongin against MongoDB ...' );
-	console.log( '' );
-
 	let totals = { Compared: 0, Agree: 0, Gaps: 0, TestBugs: 0, Missing: 0 };
-	let summaries = [];
 
-	for ( let index = 0; index < AREAS.length; index++ )
+	// Built from the same widths the rows below use, so the two tables line up with each
+	// other even though their middle columns are named differently.
+	console.log(
+		`   ` + `area`.padEnd( 14 )
+		+ `compared`.padStart( 8 )
+		+ MatchLabel.padStart( 8 )
+		+ GapLabel.padStart( 7 )
+		+ `test bugs`.padStart( 12 ) );
+	console.log( '   ----------------------------------------------------' );
+	for ( let index = 0; index < Summaries.length; index++ )
 	{
-		let area = AREAS[ index ];
-		if ( verbose ) { console.log( `   ${area.Name}` ); }
-		let summary = compare_area( area, verbose );
-		summaries.push( summary );
+		let summary = Summaries[ index ];
 		totals.Compared += summary.Compared;
 		totals.Agree += summary.Agree;
 		totals.Gaps += summary.Gaps.length;
 		totals.TestBugs += summary.TestBugs.length;
 		totals.Missing += summary.Missing.length;
-	}
-
-	console.log( '   area          compared   agree   gaps   test bugs' );
-	console.log( '   ----------------------------------------------------' );
-	for ( let index = 0; index < summaries.length; index++ )
-	{
-		let summary = summaries[ index ];
 		console.log(
 			'   ' + summary.Area.padEnd( 14 )
 			+ String( summary.Compared ).padStart( 8 )
@@ -220,9 +255,49 @@ function main()
 		+ String( totals.TestBugs ).padStart( 12 ) );
 	console.log( '' );
 
+	return totals;
+}
+
+
+//---------------------------------------------------------------------
+function main()
+{
+	let verbose = process.argv.includes( '--verbose' );
+
+	console.log( '' );
+	console.log( 'Measuring jsongin against MongoDB ...' );
+	console.log( '' );
+
+	let summaries = [];
+	for ( let index = 0; index < AREAS.length; index++ )
+	{
+		let area = AREAS[ index ];
+		if ( verbose ) { console.log( `   ${area.Name}` ); }
+		summaries.push( compare_area( area, verbose ) );
+	}
+
+	let gap_summaries = [];
+	for ( let index = 0; index < GAP_AREAS.length; index++ )
+	{
+		let area = GAP_AREAS[ index ];
+		if ( !area_exists( area ) ) { continue; }
+		if ( verbose ) { console.log( `   ${area.Name} gaps` ); }
+		let gap_summary = compare_area( area, verbose );
+		// An area whose gap inventory is empty - every family in it built - has nothing to
+		// report, and a table of zeroes would only be noise.
+		if ( gap_summary.Compared === 0 ) { continue; }
+		gap_summaries.push( gap_summary );
+	}
+
+	//---------------------------------------------------------------------
+	// The implemented surface.
+	console.log( '   The implemented surface' );
+	console.log( '' );
+	let totals = print_table( summaries, 'agree', 'gaps' );
+
 	let parity = 100;
 	if ( totals.Compared > 0 ) { parity = ( totals.Agree / totals.Compared ) * 100; }
-	console.log( `   parity   ${parity.toFixed( 1 )}%   (${totals.Agree} of ${totals.Compared} compared behaviors agree)` );
+	console.log( `   parity     ${parity.toFixed( 1 )}%   (${totals.Agree} of ${totals.Compared} compared behaviors agree)` );
 	console.log( '' );
 
 	// Nothing is excluded from the comparison. Every parity suite asserts behavior MongoDB
@@ -246,7 +321,60 @@ function main()
 		}
 	}
 
-	if ( ( totals.Gaps > 0 ) || ( totals.TestBugs > 0 ) ) { process.exitCode = 1; }
+	//---------------------------------------------------------------------
+	// The unimplemented surface.
+	let gap_totals = { Compared: 0, Agree: 0, Gaps: 0, TestBugs: 0, Missing: 0 };
+	if ( gap_summaries.length > 0 )
+	{
+		console.log( '' );
+		console.log( '   The unimplemented surface' );
+		console.log( '' );
+		gap_totals = print_table( gap_summaries, 'built', 'to do' );
+
+		for ( let index = 0; index < gap_summaries.length; index++ )
+		{
+			let summary = gap_summaries[ index ];
+			let agree_titles = summary.AgreeTitles;
+			for ( let built_index = 0; built_index < agree_titles.length; built_index++ )
+			{
+				// A gap test which passes is an operator which now exists. It has stopped
+				// measuring a gap and started measuring behavior, so it belongs in the
+				// parity inventory where a later regression in it would be caught.
+				console.log( `   IMPLEMENTED  ${agree_titles[ built_index ]}   (move this test into test-suite/)` );
+			}
+			for ( let bug_index = 0; bug_index < summary.TestBugs.length; bug_index++ )
+			{
+				console.log( `   TEST BUG     ${summary.TestBugs[ bug_index ]}   (fails against MongoDB)` );
+			}
+			for ( let missing_index = 0; missing_index < summary.Missing.length; missing_index++ )
+			{
+				console.log( `   NOT RUN      ${summary.Missing[ missing_index ]}   (absent under the jsongin driver)` );
+			}
+			if ( verbose )
+			{
+				for ( let gap_index = 0; gap_index < summary.Gaps.length; gap_index++ )
+				{
+					console.log( `   ROADMAP      ${summary.Gaps[ gap_index ]}` );
+				}
+			}
+		}
+
+		if ( !verbose && ( gap_totals.Gaps > 0 ) )
+		{
+			console.log( `   ${gap_totals.Gaps} gap tests are still red, as expected. Run with --verbose to list them.` );
+		}
+		console.log( '' );
+	}
+
+	//---------------------------------------------------------------------
+	// How much of the surface exists at all.
+	console.log( LIB_API_COVERAGE.FormatSummary( LIB_API_COVERAGE.Measure() ) );
+	console.log( '' );
+
+	// A red gap test is expected work, never a failure of this report. Only the implemented
+	// surface can fail it - plus a gap test which is wrong about MongoDB, because a suite
+	// which misreports the source of truth is a defect wherever it lives.
+	if ( ( totals.Gaps > 0 ) || ( totals.TestBugs > 0 ) || ( gap_totals.TestBugs > 0 ) ) { process.exitCode = 1; }
 }
 
 

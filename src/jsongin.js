@@ -130,6 +130,28 @@ function NewJsongin( EngineSettings = {} )
 		$ifNull: require( './Operators/Expression/Conditional/ifNull' )( Engine ),
 		$switch: require( './Operators/Expression/Conditional/switch' )( Engine ),
 
+		// String Expression Operators
+		$concat: require( './Operators/Expression/String/concat' )( Engine ),
+		$split: require( './Operators/Expression/String/split' )( Engine ),
+		$toLower: require( './Operators/Expression/String/toLower' )( Engine ),
+		$toUpper: require( './Operators/Expression/String/toUpper' )( Engine ),
+		$strcasecmp: require( './Operators/Expression/String/strcasecmp' )( Engine ),
+		$trim: require( './Operators/Expression/String/trim' )( Engine ),
+		$ltrim: require( './Operators/Expression/String/ltrim' )( Engine ),
+		$rtrim: require( './Operators/Expression/String/rtrim' )( Engine ),
+		$substr: require( './Operators/Expression/String/substr' )( Engine ),
+		$substrBytes: require( './Operators/Expression/String/substrBytes' )( Engine ),
+		$substrCP: require( './Operators/Expression/String/substrCP' )( Engine ),
+		$strLenBytes: require( './Operators/Expression/String/strLenBytes' )( Engine ),
+		$strLenCP: require( './Operators/Expression/String/strLenCP' )( Engine ),
+		$indexOfBytes: require( './Operators/Expression/String/indexOfBytes' )( Engine ),
+		$indexOfCP: require( './Operators/Expression/String/indexOfCP' )( Engine ),
+		$regexMatch: require( './Operators/Expression/String/regexMatch' )( Engine ),
+		$regexFind: require( './Operators/Expression/String/regexFind' )( Engine ),
+		$regexFindAll: require( './Operators/Expression/String/regexFindAll' )( Engine ),
+		$replaceOne: require( './Operators/Expression/String/replaceOne' )( Engine ),
+		$replaceAll: require( './Operators/Expression/String/replaceAll' )( Engine ),
+
 	};
 
 	//---------------------------------------------------------------------

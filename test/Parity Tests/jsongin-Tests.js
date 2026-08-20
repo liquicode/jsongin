@@ -11,6 +11,11 @@
 	here: they have no baseline to be measured against, so they are unit tests instead.
 	See test/Unit Tests/260) Extension Operator Tests.js.
 
+	***The gap inventory is deliberately not here.*** <Area> Gaps.js states what MongoDB does
+	with the operators jsongin has not built yet, so every test in one fails under this engine
+	by design. Loading them here would make `npm test` red and cost it its only meaning: that a
+	red `npm test` is a regression. MongoDB-Tests.js and build/parity.js run them instead.
+
 	Needs no server. Run it directly, or measure it against the baseline:
 
 		npm run parity-test-jsongin

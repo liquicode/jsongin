@@ -28,6 +28,7 @@ module.exports = function ( Driver )
 		require( './test-suite/Ad-Hoc Tests.js' )( Driver );
 		require( './test-suite/Sort Parity Tests.js' )( Driver );
 		require( './test-suite/Expression Operator Tests.js' )( Driver );
+		require( './test-suite/String Operator Tests.js' )( Driver );
 		require( './test-suite/Stage and Accumulator Tests.js' )( Driver );
 		require( './test-suite/Expression Rejection Tests.js' )( Driver );
 	} );

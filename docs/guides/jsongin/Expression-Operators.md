@@ -22,6 +22,7 @@ An expression is a document, an array, or a scalar:
 | Comparison      | [$eq](#$eq), [$ne](#$ne), [$gt](#$gt), [$gte](#$gte), [$lt](#$lt), [$lte](#$lte), [$cmp](#$cmp)              |
 | Smallest/Largest| [$min](#$min), [$max](#$max)                                                                                |
 | Array           | [$size](#$size), [$arrayElemAt](#$arrayElemAt), [$concatArrays](#$concatArrays), [$in](#$in)                 |
+| String          | [$concat](#$concat), [$split](#$split), [$toLower](#$toLower), [$toUpper](#$toUpper), [$strcasecmp](#$strcasecmp), [$trim](#$trim), [$ltrim](#$ltrim), [$rtrim](#$rtrim), [$substr](#$substr), [$substrBytes](#$substrBytes), [$substrCP](#$substrCP), [$strLenBytes](#$strLenBytes), [$strLenCP](#$strLenCP), [$indexOfBytes](#$indexOfBytes), [$indexOfCP](#$indexOfCP), [$regexMatch](#$regexMatch), [$regexFind](#$regexFind), [$regexFindAll](#$regexFindAll), [$replaceOne](#$replaceOne), [$replaceAll](#$replaceAll) |
 | Logical         | [$and](#$and), [$or](#$or), [$not](#$not)                                                                   |
 | Conditional     | [$cond](#$cond), [$ifNull](#$ifNull), [$switch](#$switch)                                                   |
 | Literal         | [$literal](#$literal)                                                                                       |
@@ -479,6 +480,451 @@ jsongin.Evaluate( document, { $in: [ 20, '$scores' ] } );
 jsongin.Evaluate( document, { $in: [ 99, '$scores' ] } );
 // returns false
 ```
+
+
+# String Operators
+
+Twenty operators, and what separates them is mostly their ***operand rules*** rather than the
+  string function underneath. Three rules recur, and the family is not consistent about which it
+  uses, so each operator below says which one it follows:
+
+| **Rule**            | **A null or missing operand**              | **Operators**                                                   |
+|---------------------|--------------------------------------------|-----------------------------------------------------------------|
+| null propagates     | makes the whole result null                | `$concat`, `$split`, the three trims, the two index-ofs, the two replaces |
+| null is empty       | is read as an empty string                 | `$toLower`, `$toUpper`, `$strcasecmp`, the three substrings      |
+| null is refused     | is an error                                | `$strLenBytes`, `$strLenCP`                                      |
+
+The dividing line is ***MongoDB 3.4***: the operators which predate it also render a number
+  instead of refusing it, and everything added since refuses one. `jsongin` follows MongoDB here
+  rather than making the family consistent, because a query written against one has to mean the
+  same thing against the other.
+
+***Six operators come in a byte form and a code point form.***
+The byte forms count UTF-8 bytes and the code point forms count characters as a reader would.
+They differ only where the text is not ASCII: `'héllo'` is five code points and six bytes,
+  because the accented letter takes two.
+Prefer the `CP` forms for text which may not be ASCII — a byte range which starts or ends inside
+  a character is refused, since those bytes do not spell a string.
+
+
+<a id="$concat"></a>$concat
+---------------------------------------------------------------------
+
+**Usage** : `{ $concat: [ expression, ... ] }`
+
+Joins strings end to end.
+***A null or missing operand makes the whole result null***, rather than contributing an empty
+  string, and every other operand must be a string.
+
+### Example
+```js
+jsongin.Evaluate( document, { $concat: [ 'Hello, ', '$name', '!' ] } );
+// returns 'Hello, Alice!'
+
+// One null operand makes the whole result null.
+jsongin.Evaluate( document, { $concat: [ '$name', '$empty' ] } );
+// returns null
+
+// A number is refused rather than rendered.
+jsongin.Evaluate( document, { $concat: [ '$name', '$a' ] } );   // throws
+```
+
+
+<a id="$split"></a>$split
+---------------------------------------------------------------------
+
+**Usage** : `{ $split: [ expression, delimiter ] }`
+
+Cuts a string into an array wherever the delimiter occurs.
+A delimiter which does not occur gives the whole string as a single element, and one at an end
+  leaves an empty element there.
+An empty delimiter is refused rather than cutting between every character.
+
+### Example
+```js
+jsongin.Evaluate( document, { $split: [ 'a-b-c', '-' ] } );
+// returns [ 'a', 'b', 'c' ]
+
+// A delimiter which does not occur gives one element.
+jsongin.Evaluate( document, { $split: [ '$name', '-' ] } );
+// returns [ 'Alice' ]
+
+// A delimiter at an end leaves an empty element there.
+jsongin.Evaluate( document, { $split: [ '-a-', '-' ] } );
+// returns [ '', 'a', '' ]
+```
+
+
+<a id="$toLower"></a>$toLower
+---------------------------------------------------------------------
+
+**Usage** : `{ $toLower: expression }`
+
+Lowercases a string.
+***A null or missing operand is an empty string here***, not a null result, and a number is
+  rendered rather than refused.
+
+### Example
+```js
+jsongin.Evaluate( document, { $toLower: '$name' } );
+// returns 'alice'
+
+// A missing field is an empty string, not a null.
+jsongin.Evaluate( document, { $toLower: '$nope' } );
+// returns ''
+```
+
+
+<a id="$toUpper"></a>$toUpper
+---------------------------------------------------------------------
+
+**Usage** : `{ $toUpper: expression }`
+
+Uppercases a string. Reads a null the same way [$toLower](#$toLower) does.
+
+### Example
+```js
+jsongin.Evaluate( document, { $toUpper: '$name' } );
+// returns 'ALICE'
+```
+
+
+<a id="$strcasecmp"></a>$strcasecmp
+---------------------------------------------------------------------
+
+**Usage** : `{ $strcasecmp: [ expression, expression ] }`
+
+Compares two strings without regard to case.
+Returns `-1` when the first sorts before the second, `1` when it sorts after, and `0` when they
+  are the same.
+
+### Example
+```js
+jsongin.Evaluate( document, { $strcasecmp: [ '$name', 'ALICE' ] } );
+// returns 0
+
+jsongin.Evaluate( document, { $strcasecmp: [ '$name', 'Bob' ] } );
+// returns -1
+```
+
+
+<a id="$trim"></a>$trim
+---------------------------------------------------------------------
+
+**Usage** : `{ $trim: { input: expression, chars: expression } }`
+
+Removes characters from both ends of a string.
+
+***`chars` is a set of characters***, each of which is removed in any order, rather than a
+  sequence to match. Without it, whitespace is removed.
+A null `input`, or a null `chars`, gives null rather than falling back to whitespace.
+
+### Example
+```js
+jsongin.Evaluate( { padded: '  hi  ' }, { $trim: { input: '$padded' } } );
+// returns 'hi'
+
+// chars is a set: every one of its characters is removed, in any order.
+jsongin.Evaluate( document, { $trim: { input: 'xyhixy', chars: 'yx' } } );
+// returns 'hi'
+
+// A misspelled argument is refused rather than ignored.
+jsongin.Evaluate( document, { $trim: { input: '$name', char: 'A' } } );   // throws
+```
+
+
+<a id="$ltrim"></a>$ltrim
+---------------------------------------------------------------------
+
+**Usage** : `{ $ltrim: { input: expression, chars: expression } }`
+
+Removes characters from the left end of a string. See [$trim](#$trim).
+
+### Example
+```js
+jsongin.Evaluate( { padded: '  hi  ' }, { $ltrim: { input: '$padded' } } );
+// returns 'hi  '
+```
+
+
+<a id="$rtrim"></a>$rtrim
+---------------------------------------------------------------------
+
+**Usage** : `{ $rtrim: { input: expression, chars: expression } }`
+
+Removes characters from the right end of a string. See [$trim](#$trim).
+
+### Example
+```js
+jsongin.Evaluate( { padded: '  hi  ' }, { $rtrim: { input: '$padded' } } );
+// returns '  hi'
+```
+
+
+<a id="$substr"></a>$substr
+---------------------------------------------------------------------
+
+**Usage** : `{ $substr: [ expression, start, length ] }`
+
+***Deprecated by MongoDB.***
+This is another name for [$substrBytes](#$substrBytes) and behaves identically.
+Use [$substrCP](#$substrCP) for text which is not ASCII.
+
+### Example
+```js
+jsongin.Evaluate( document, { $substr: [ '$name', 0, 3 ] } );
+// returns 'Ali'
+```
+
+
+<a id="$substrBytes"></a>$substrBytes
+---------------------------------------------------------------------
+
+**Usage** : `{ $substrBytes: [ expression, start, length ] }`
+
+Part of a string, counted in ***UTF-8 bytes***.
+
+A length below zero means "to the end", and a fractional position is truncated.
+***A range which starts or ends inside a multi-byte character is refused***, because those bytes
+  do not spell a string. That is the cost of counting bytes, and the reason
+  [$substrCP](#$substrCP) exists.
+
+### Example
+```js
+jsongin.Evaluate( document, { $substrBytes: [ '$name', 1, 3 ] } );
+// returns 'lic'
+
+// A length below zero means to the end.
+jsongin.Evaluate( document, { $substrBytes: [ '$name', 3, -1 ] } );
+// returns 'ce'
+
+// The accented letter is two bytes, so this range ends inside it.
+jsongin.Evaluate( { w: 'héllo' }, { $substrBytes: [ '$w', 1, 1 ] } );   // throws
+```
+
+
+<a id="$substrCP"></a>$substrCP
+---------------------------------------------------------------------
+
+**Usage** : `{ $substrCP: [ expression, start, length ] }`
+
+Part of a string, counted in ***code points***.
+This is the operator to reach for when the text may not be ASCII: it cannot split a character,
+  because it never counts in bytes.
+
+***It is stricter about its positions than [$substrBytes](#$substrBytes)***, which is MongoDB's
+  behavior rather than a choice made here: a fractional position and a negative length are both
+  refused, where the byte form truncates the one and reads the other as "to the end".
+
+### Example
+```js
+jsongin.Evaluate( { w: 'héllo' }, { $substrCP: [ '$w', 0, 2 ] } );
+// returns 'hé'
+
+// The same two units taken as bytes would split the accent.
+jsongin.Evaluate( { w: 'héllo' }, { $substrCP: [ '$w', 1, 1 ] } );
+// returns 'é'
+
+// A fractional position is refused here and truncated by $substrBytes.
+jsongin.Evaluate( document, { $substrCP: [ '$name', 1.5, 2 ] } );   // throws
+```
+
+
+<a id="$strLenBytes"></a>$strLenBytes
+---------------------------------------------------------------------
+
+**Usage** : `{ $strLenBytes: expression }`
+
+The length of a string in ***UTF-8 bytes***.
+***A null or missing operand is refused***, which is unlike the substring operators, where it is
+  read as an empty string.
+
+### Example
+```js
+jsongin.Evaluate( { w: 'héllo' }, { $strLenBytes: '$w' } );
+// returns 6
+
+// A null operand is refused here, unlike $substrBytes.
+jsongin.Evaluate( document, { $strLenBytes: '$empty' } );   // throws
+```
+
+
+<a id="$strLenCP"></a>$strLenCP
+---------------------------------------------------------------------
+
+**Usage** : `{ $strLenCP: expression }`
+
+The length of a string in ***code points*** — the count a reader would give.
+
+### Example
+```js
+jsongin.Evaluate( { w: 'héllo' }, { $strLenCP: '$w' } );
+// returns 5
+
+// The same string in bytes.
+jsongin.Evaluate( { w: 'héllo' }, { $strLenBytes: '$w' } );
+// returns 6
+```
+
+
+<a id="$indexOfBytes"></a>$indexOfBytes
+---------------------------------------------------------------------
+
+**Usage** : `{ $indexOfBytes: [ expression, search, start, end ] }`
+
+Where a substring first occurs, counted in ***UTF-8 bytes***, or `-1` when it does not.
+
+`start` and `end` are optional and bound the search, and are counted in bytes too.
+The whole of a match has to fall inside that window.
+
+### Example
+```js
+jsongin.Evaluate( document, { $indexOfBytes: [ '$name', 'i' ] } );
+// returns 2
+
+jsongin.Evaluate( document, { $indexOfBytes: [ '$name', 'z' ] } );
+// returns -1
+
+// The window bounds the search, and a match must fall entirely inside it.
+jsongin.Evaluate( document, { $indexOfBytes: [ '$name', 'i', 0, 2 ] } );
+// returns -1
+```
+
+
+<a id="$indexOfCP"></a>$indexOfCP
+---------------------------------------------------------------------
+
+**Usage** : `{ $indexOfCP: [ expression, search, start, end ] }`
+
+Where a substring first occurs, counted in ***code points***, or `-1` when it does not.
+The same search as [$indexOfBytes](#$indexOfBytes), counted the way a reader counts.
+
+### Example
+```js
+jsongin.Evaluate( { w: 'héllo' }, { $indexOfCP: [ '$w', 'l' ] } );
+// returns 2
+
+// The same search in bytes is moved along by the accent.
+jsongin.Evaluate( { w: 'héllo' }, { $indexOfBytes: [ '$w', 'l' ] } );
+// returns 3
+```
+
+
+<a id="$regexMatch"></a>$regexMatch
+---------------------------------------------------------------------
+
+**Usage** : `{ $regexMatch: { input: expression, regex: pattern, options: flags } }`
+
+Whether a pattern matches a string.
+
+`regex` is a pattern ***string*** rather than a Javascript `RegExp`, so that the same expression
+  means the same thing in process and over the wire. A `RegExp` is accepted too.
+`options` accepts the MongoDB flags `i`, `m`, `s`, and `x`, the last of which is applied to the
+  pattern rather than passed along, exactly as the query
+  [`$regex`](./Query-Operators.md#$regex) does.
+
+***A null or missing input is `false`***, not null: this operator answers a question which has a
+  false answer even when there is nothing to match.
+
+### Example
+```js
+jsongin.Evaluate( document, { $regexMatch: { input: '$name', regex: '^A' } } );
+// returns true
+
+jsongin.Evaluate( document, { $regexMatch: { input: '$name', regex: 'alice', options: 'i' } } );
+// returns true
+
+// A missing input is false rather than null.
+jsongin.Evaluate( document, { $regexMatch: { input: '$nope', regex: 'a' } } );
+// returns false
+```
+
+
+<a id="$regexFind"></a>$regexFind
+---------------------------------------------------------------------
+
+**Usage** : `{ $regexFind: { input: expression, regex: pattern, options: flags } }`
+
+The first match of a pattern, as `{ match, idx, captures }`, or null when there is none.
+
+***`idx` is counted in code points***, not in bytes, so a match after an accented letter reports
+  the offset a reader would give.
+A capture group which did not participate is a `null` in `captures` rather than being left out.
+
+### Example
+```js
+jsongin.Evaluate( document, { $regexFind: { input: '$name', regex: 'l' } } );
+// returns { match: 'l', idx: 1, captures: [] }
+
+// The groups of the pattern are reported alongside the match.
+jsongin.Evaluate( document, { $regexFind: { input: '$name', regex: '(A)(l)' } } );
+// returns { match: 'Al', idx: 0, captures: [ 'A', 'l' ] }
+
+// No match is a null, where $regexFindAll gives an empty array.
+jsongin.Evaluate( document, { $regexFind: { input: '$name', regex: 'zzz' } } );
+// returns null
+```
+
+
+<a id="$regexFindAll"></a>$regexFindAll
+---------------------------------------------------------------------
+
+**Usage** : `{ $regexFindAll: { input: expression, regex: pattern, options: flags } }`
+
+Every match of a pattern, as an array of `{ match, idx, captures }`.
+***No match is an empty array***, where [$regexFind](#$regexFind) gives null for the same input.
+
+### Example
+```js
+jsongin.Evaluate( { s: 'abab' }, { $regexFindAll: { input: '$s', regex: 'a' } } );
+// returns [ { match: 'a', idx: 0, captures: [] }, { match: 'a', idx: 2, captures: [] } ]
+
+// No match is an empty array, not a null.
+jsongin.Evaluate( document, { $regexFindAll: { input: '$name', regex: 'zzz' } } );
+// returns []
+```
+
+
+<a id="$replaceOne"></a>$replaceOne
+---------------------------------------------------------------------
+
+**Usage** : `{ $replaceOne: { input: expression, find: expression, replacement: expression } }`
+
+Replaces the first occurrence of a substring.
+
+***`find` is literal text, not a pattern***, so a `.` is a full stop. Use
+  [$regexFind](#$regexFind) to search by pattern.
+A find which does not occur returns the input unchanged, and a null in any of the three
+  arguments gives null.
+
+### Example
+```js
+jsongin.Evaluate( { s: 'aa' }, { $replaceOne: { input: '$s', find: 'a', replacement: 'b' } } );
+// returns 'ba'
+
+// A find which does not occur returns the input unchanged.
+jsongin.Evaluate( document, { $replaceOne: { input: '$name', find: 'z', replacement: 'Z' } } );
+// returns 'Alice'
+```
+
+
+<a id="$replaceAll"></a>$replaceAll
+---------------------------------------------------------------------
+
+**Usage** : `{ $replaceAll: { input: expression, find: expression, replacement: expression } }`
+
+Replaces every occurrence of a substring. See [$replaceOne](#$replaceOne).
+
+### Example
+```js
+jsongin.Evaluate( { s: 'aa' }, { $replaceAll: { input: '$s', find: 'a', replacement: 'b' } } );
+// returns 'bb'
+
+// The find is literal text, so a '.' is a full stop rather than a pattern.
+jsongin.Evaluate( { s: 'a.b' }, { $replaceAll: { input: '$s', find: '.', replacement: '-' } } );
+// returns 'a-b'
+```
+
 
 
 # Logical Operators

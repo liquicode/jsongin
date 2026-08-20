@@ -10,7 +10,7 @@
 		npm run check-docs
 		npm run check-docs -- --verbose      (list every finding rather than the first few)
 
-	Five checks are performed:
+	Six checks are performed:
 
 		fences      Every ```js block must parse as Javascript.
 		            A result belongs in a comment, not in a bare expression, so that what sits
@@ -30,6 +30,12 @@
 
 		operators   Every registered operator must carry an /*md block describing its usage,
 		            so that an operator cannot be added without being written up.
+
+		inventory   Every 'Yes' row of the Operator Reference must name an operator which is
+		            actually registered, and every registered operator must have a 'Yes' row.
+		            The reference is the inventory build/api-coverage.js counts to report how
+		            much of the surface is implemented, and a number is only worth having if
+		            the table it is counted from is checked.
 
 		examples    Every ```js block is executed against the engine, and the claims its
 		            comments make are checked:
@@ -308,6 +314,116 @@ function check_operator_blocks()
 	}
 
 	return { Checked: files.length, Findings: findings, Unit: 'operators' };
+}
+
+
+//---------------------------------------------------------------------
+// The Operator Reference must agree with the operators which are actually registered.
+//
+// The reference is the project's inventory of the MongoDB surface: build/api-coverage.js counts
+// its 'Yes' and '-' rows to report how much of that surface is implemented. That number means
+// nothing if the table can claim an operator which is not there, or omit one which is, so both
+// directions are checked here.
+//
+// Only the sections which have a registry behind them can be checked. Projection operators are
+// handled inside Project.js rather than registered, so that section has nothing to compare
+// against and is skipped rather than reported as missing.
+function check_operator_inventory()
+{
+	const SECTION_REGISTRIES = {
+		'Query Operators': 'QueryOperators',
+		'Expression Operators': 'ExpressionOperators',
+		'Aggregation Pipeline Stages': 'StageOperators',
+		'Accumulators': 'AccumulatorOperators',
+		'Update Operators': 'UpdateOperators',
+	};
+
+	// The jsongin extensions are registered on purpose and have no row in these tables, which
+	// list what MongoDB documents. They are described under 'jsongin Extended Query Operators'
+	// and measured by test/Unit Tests/260) Extension Operator Tests.js.
+	const EXTENSIONS = [ '$ImplicitEq', '$eqx', '$nex', '$exprx', '$noop' ];
+
+	// The implicit form is a row with no operator behind it: it is the shape '<field>: value'
+	// rather than a name the engine registers.
+	const NOT_AN_OPERATOR = [ '<field>: value' ];
+
+	let reference = LIB_PATH.join( DOCS, 'guides', 'Operator-Reference.md' );
+	let lines = LIB_FS.readFileSync( reference, 'utf8' ).split( /\r?\n/ );
+
+	let findings = [];
+	let checked = 0;
+	let section = '';
+	let documented = {};
+
+	for ( let index = 0; index < lines.length; index++ )
+	{
+		let line = lines[ index ];
+
+		let heading = line.match( /^##\s+(.*)$/ );
+		if ( heading ) { section = heading[ 1 ].trim(); continue; }
+
+		let registry_name = SECTION_REGISTRIES[ section ];
+		if ( !registry_name ) { continue; }
+		if ( !line.startsWith( '|' ) ) { continue; }
+
+		let cells = line.split( '|' );
+		if ( cells.length < 4 ) { continue; }
+
+		let supported = cells[ 2 ].trim();
+		if ( ( supported !== 'Yes' ) && ( supported !== '-' ) ) { continue; }
+
+		let operator = cells[ 3 ].trim();
+		let link = operator.match( /^\[([^\]]+)\]/ );
+		if ( link ) { operator = link[ 1 ]; }
+
+		if ( NOT_AN_OPERATOR.indexOf( operator ) >= 0 ) { continue; }
+
+		checked++;
+		if ( !documented[ registry_name ] ) { documented[ registry_name ] = {}; }
+		documented[ registry_name ][ operator ] = supported;
+
+		let registry = LIB_JSONGIN[ registry_name ];
+		let registered = ( typeof registry[ operator ] !== 'undefined' );
+
+		if ( ( supported === 'Yes' ) && !registered )
+		{
+			findings.push( {
+				Path: LIB_PATH.relative( REPO, reference ),
+				Line: index + 1,
+				Detail: `${section} marks ${operator} supported, but it is not registered in ${registry_name}.`,
+			} );
+		}
+		if ( ( supported === '-' ) && registered )
+		{
+			findings.push( {
+				Path: LIB_PATH.relative( REPO, reference ),
+				Line: index + 1,
+				Detail: `${operator} is registered in ${registry_name}, but ${section} still marks it unsupported.`,
+			} );
+		}
+	}
+
+	// The other direction: an operator which exists and which the reference never mentions.
+	let section_names = Object.keys( SECTION_REGISTRIES );
+	for ( let index = 0; index < section_names.length; index++ )
+	{
+		let registry_name = SECTION_REGISTRIES[ section_names[ index ] ];
+		let registry = LIB_JSONGIN[ registry_name ];
+		let operators = Object.keys( registry );
+		for ( let found = 0; found < operators.length; found++ )
+		{
+			let operator = operators[ found ];
+			if ( EXTENSIONS.indexOf( operator ) >= 0 ) { continue; }
+			if ( documented[ registry_name ] && documented[ registry_name ][ operator ] ) { continue; }
+			findings.push( {
+				Path: LIB_PATH.relative( REPO, reference ),
+				Line: 0,
+				Detail: `${operator} is registered in ${registry_name}, but has no row under ${section_names[ index ]}.`,
+			} );
+		}
+	}
+
+	return { Checked: checked, Findings: findings, Unit: 'rows' };
 }
 
 
@@ -631,6 +747,7 @@ function main()
 	failures += report( 'links', check_links( all_files ) );
 	failures += report( 'orphans', check_orphans( doc_files ) );
 	failures += report( 'operators', check_operator_blocks() );
+	failures += report( 'inventory', check_operator_inventory() );
 	failures += report( 'examples', check_examples( all_files ) );
 	console.log( '' );
 

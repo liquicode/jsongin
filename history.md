@@ -8,8 +8,12 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
-Parity with MongoDB is ***100%*** across 475 compared behaviors: Query 214, Update 86,
-  Projection 51, and Aggregate 124. Run `npm run parity-report` to measure it.
+Parity with MongoDB is ***100%*** across 546 compared behaviors: Query 219, Update 86,
+  Projection 51, and Aggregate 190. Run `npm run parity-report` to measure it.
+
+Coverage of the operator surface MongoDB documents is ***40.6%***, 103 operators of 254. Run
+  `npm run api-coverage` to measure that one. The two numbers answer different questions: parity
+  is how faithfully what exists behaves, and coverage is how much exists.
 
 This version carries many breaking changes. Nearly all of them correct a behavior which
   disagreed with MongoDB, so code written against MongoDB's own semantics is more likely to
@@ -189,6 +193,23 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 ### Added
 
+- The 20 ***string expression operators***, in `jsongin.ExpressionOperators`: `$concat`,
+  `$split`, `$toLower`, `$toUpper`, `$strcasecmp`, `$trim`, `$ltrim`, `$rtrim`, `$substr`,
+  `$substrBytes`, `$substrCP`, `$strLenBytes`, `$strLenCP`, `$indexOfBytes`, `$indexOfCP`,
+  `$regexMatch`, `$regexFind`, `$regexFindAll`, `$replaceOne`, and `$replaceAll`.
+  See [String Operators](./docs/guides/jsongin/Expression-Operators.md).
+- ***The string family's operand rules are MongoDB's, inconsistencies included.*** A null makes
+  the result null in most of them, is read as an empty string in `$toLower`, `$toUpper`,
+  `$strcasecmp` and the three substring operators, and is refused by `$strLenBytes` and
+  `$strLenCP`. The operators which predate MongoDB 3.4 also render a number where the newer
+  ones refuse it. None of this was made consistent, because a query written against MongoDB has
+  to mean the same thing here.
+- ***Byte forms and code point forms are genuinely different.*** `$substrBytes`,
+  `$strLenBytes`, and `$indexOfBytes` count UTF-8 bytes; `$substrCP`, `$strLenCP`, and
+  `$indexOfCP` count characters. A byte range which starts or ends inside a character is
+  refused, since those bytes do not spell a string.
+- `npm run api-coverage`, which reports how much of the documented operator surface is
+  implemented, per section. It reads `docs/guides/Operator-Reference.md` and needs no server.
 - `Aggregate( Documents, Pipeline )`, which runs an array of documents through a MongoDB
   aggregation pipeline.
 - 10 pipeline stages, in `jsongin.StageOperators`: `$match`, `$project`, `$addFields`, `$set`,
