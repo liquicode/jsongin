@@ -448,26 +448,34 @@ See the *Operators Which Share a Name* section below.
 | Accumulator   |       -       | $accumulator   | Accumulates values using custom Javascript functions.                      |
 | Accumulator   |      Yes      | [$addToSet](./jsongin/Accumulator-Operators.md#$addToSet)      | Collects the unique values of a field.                                     |
 | Accumulator   |      Yes      | [$avg](./jsongin/Accumulator-Operators.md#$avg)           | Returns the average of numeric values.                                     |
-| Accumulator   |       -       | $bottom        | Returns the last value in a given ordering.                                |
-| Accumulator   |       -       | $bottomN       | Returns the last N values in a given ordering.                             |
+| Accumulator   |      Yes      | [$bottom](./jsongin/Accumulator-Operators.md#$bottom)        | Returns the last value in a given ordering.                                |
+| Accumulator   |      Yes      | [$bottomN](./jsongin/Accumulator-Operators.md#$bottomN)       | Returns the last N values in a given ordering.                             |
 | Accumulator   |      Yes      | [$count](./jsongin/Accumulator-Operators.md#$count)         | Returns the number of documents.                                           |
 | Accumulator   |      Yes      | [$first](./jsongin/Accumulator-Operators.md#$first)         | Returns the value from the first document.                                 |
-| Accumulator   |       -       | $firstN        | Returns the values from the first N documents.                             |
+| Accumulator   |      Yes      | [$firstN](./jsongin/Accumulator-Operators.md#$firstN)        | Returns the values from the first N documents.                             |
 | Accumulator   |      Yes      | [$last](./jsongin/Accumulator-Operators.md#$last)          | Returns the value from the last document.                                  |
-| Accumulator   |       -       | $lastN         | Returns the values from the last N documents.                              |
+| Accumulator   |      Yes      | [$lastN](./jsongin/Accumulator-Operators.md#$lastN)         | Returns the values from the last N documents.                              |
 | Accumulator   |      Yes      | [$max](./jsongin/Accumulator-Operators.md#$max)           | Returns the largest value. See the note below.                             |
-| Accumulator   |       -       | $maxN          | Returns the N largest values.                                              |
-| Accumulator   |       -       | $median        | Returns the median value.                                                  |
-| Accumulator   |       -       | $mergeObjects  | Merges documents together into a single document.                          |
+| Accumulator   |      Yes      | [$maxN](./jsongin/Accumulator-Operators.md#$maxN)          | Returns the N largest values.                                              |
+| Accumulator   |       -       | $median        | Returns the median value. MongoDB 7.0. See the note below.                 |
+| Accumulator   |      Yes      | [$mergeObjects](./jsongin/Accumulator-Operators.md#$mergeObjects)  | Merges documents together into a single document.                          |
 | Accumulator   |      Yes      | [$min](./jsongin/Accumulator-Operators.md#$min)           | Returns the smallest value. See the note below.                            |
-| Accumulator   |       -       | $minN          | Returns the N smallest values.                                             |
-| Accumulator   |       -       | $percentile    | Returns values at given percentiles.                                       |
+| Accumulator   |      Yes      | [$minN](./jsongin/Accumulator-Operators.md#$minN)          | Returns the N smallest values.                                             |
+| Accumulator   |       -       | $percentile    | Returns values at given percentiles. MongoDB 7.0. See the note below.      |
 | Accumulator   |      Yes      | [$push](./jsongin/Accumulator-Operators.md#$push)          | Collects the values of a field into an array.                              |
-| Accumulator   |       -       | $stdDevPop     | Returns the population standard deviation of numeric values.               |
-| Accumulator   |       -       | $stdDevSamp    | Returns the sample standard deviation of numeric values.                   |
+| Accumulator   |      Yes      | [$stdDevPop](./jsongin/Accumulator-Operators.md#$stdDevPop)     | Returns the population standard deviation of numeric values.               |
+| Accumulator   |      Yes      | [$stdDevSamp](./jsongin/Accumulator-Operators.md#$stdDevSamp)    | Returns the sample standard deviation of numeric values.                   |
 | Accumulator   |      Yes      | [$sum](./jsongin/Accumulator-Operators.md#$sum)           | Returns the sum of numeric values.                                         |
-| Accumulator   |       -       | $top           | Returns the first value in a given ordering.                               |
-| Accumulator   |       -       | $topN          | Returns the first N values in a given ordering.                            |
+| Accumulator   |      Yes      | [$top](./jsongin/Accumulator-Operators.md#$top)           | Returns the first value in a given ordering.                               |
+| Accumulator   |      Yes      | [$topN](./jsongin/Accumulator-Operators.md#$topN)          | Returns the first N values in a given ordering.                            |
+
+***Note on `$median` and `$percentile`*** :
+These two were introduced in ***MongoDB 7.0*** and the parity baseline is a 6.0.1 server, which
+  refuses them. They are the only unimplemented accumulators, and they are unimplemented for
+  that reason rather than because they are hard: there is nothing to measure an implementation
+  against. Building them means bringing up a 7.0 baseline first and re-running the whole parity
+  suite there. See `test/Parity Tests/Aggregate Tests/test-suite/Accumulator Operator Tests.js`,
+  which records the refusal so the boundary is measured rather than remembered.
 
 ***Note on non-numeric values*** :
 `$sum` and `$avg` ignore the values which are not numbers, while the expression operators throw
@@ -515,7 +523,9 @@ There is also a difference in shape which makes them easy to tell apart at a gla
 |--------------------|------------------------------------------------------------------------|---------------------------------------------------------------------------|
 | `$first` `$last`   | `{ $group: { _id: '$k', f: { $first: '$v' } } }` takes the value from the first document of a group. | `{ $first: '$tags' }` takes the first element of an array. |
 | `$min` `$max`      | `{ $group: { _id: '$k', m: { $min: '$v' } } }` takes the smallest value in a group. | `{ $min: [ '$a', '$b' ] }` selects the smaller of two values. |
-| `$mergeObjects`    | `{ $group: { _id: '$k', d: { $mergeObjects: '$v' } } }` merges every document reaching the group. *(not supported)* | `{ $mergeObjects: [ '$a', '$b' ] }` merges the documents given to it, within one document. |
+| `$mergeObjects`    | `{ $group: { _id: '$k', d: { $mergeObjects: '$v' } } }` merges every document reaching the group. | `{ $mergeObjects: [ '$a', '$b' ] }` merges the documents given to it, within one document. |
+| `$firstN` `$lastN` | `{ $group: { _id: '$k', f: { $firstN: { input: '$v', n: 2 } } } }` takes values from one end of a group, and takes an argument document. | `{ $firstN: { input: '$tags', n: 2 } }` takes elements from one end of an array. |
+| `$minN` `$maxN`    | `{ $group: { _id: '$k', m: { $minN: { input: '$v', n: 2 } } } }` takes the smallest values in a group. | `{ $minN: { input: '$tags', n: 2 } }` takes the smallest elements of an array. |
 
 | **Operator**   | **As an Update Operator**                                              | **As an Expression Operator**                                          |
 |----------------|------------------------------------------------------------------------|-------------------------------------------------------------------------|
@@ -533,8 +543,12 @@ An ***accumulator*** is written inside a `$group` stage, as the single field of 
 | `$sum`           | `{ total: { $sum: '$points' } }` totals a field across a group.             | The expression counterpart is `$add`, which throws on a non-numeric operand rather than ignoring it. |
 | `$min` `$max`    | `{ top: { $max: '$points' } }` selects across a group.                      | Also an expression operator and an update operator.                      |
 | `$push`          | `{ names: { $push: '$name' } }` collects a value from every document in a group. | Also an update operator, which appends to an array field within one document. |
-| `$first` `$last` | `{ opener: { $first: '$name' } }` takes the value from one end of a group.  | No counterpart of either name elsewhere.                                 |
+| `$first` `$last` | `{ opener: { $first: '$name' } }` takes the value from one end of a group.  | Also expression operators, which take an element from one end of an array. |
+| `$firstN` `$lastN` | `{ openers: { $firstN: { input: '$name', n: 2 } } }` takes values from one end of a group. | Also expression operators, over an array. Both forms take an argument document. |
+| `$minN` `$maxN`  | `{ low: { $minN: { input: '$points', n: 2 } } }` takes the extremes of a group. | Also expression operators, over an array.                                |
+| `$mergeObjects`  | `{ all: { $mergeObjects: '$doc' } }` merges every document in a group.      | Also an expression operator, which merges the documents given to it within one document. |
 | `$count`         | `{ n: { $count: {} } }` counts the documents in a group.                    | Also a pipeline stage, `{ $count: 'total' }`, which replaces the stream with one document. |
+| `$top` `$bottom` | `{ best: { $top: { sortBy: { points: -1 }, output: '$name' } } }` takes a document by a sort of its own. | No counterpart of either name elsewhere. These are the only accumulators which sort. |
 
 `$min` and `$max` are the most easily confused, because the same two names carry three
   different meanings: an update operator, an expression operator, and an accumulator.
