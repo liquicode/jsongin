@@ -382,7 +382,7 @@ describe( '150) Error Handling Tests', () =>
 					// MongoDB, which does not complain either - see the parity suite.
 					Engine.StageOperators[ Name ].Stage( [ { n: 1 } ], bad );
 				} );
-			assert.strictEqual( reported, 18 );
+			assert.strictEqual( reported, 20 );
 		} );
 
 		it( 'should report from the query operators which reject their argument', () =>
@@ -452,7 +452,7 @@ describe( '150) Error Handling Tests', () =>
 			// object to, and MongoDB does not object either - which makes this a statement
 			// about when a stage validates, not about whether it does. See the parity suite.
 			let names = Object.keys( jsongin.StageOperators );
-			assert.strictEqual( names.length, 18 );
+			assert.strictEqual( names.length, 20 );
 			for ( let index = 0; index < names.length; index++ )
 			{
 				let name = names[ index ];

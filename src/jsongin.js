@@ -308,6 +308,8 @@ function NewJsongin( EngineSettings = {} )
 		$facet: require( './Operators/Stage/facet' )( Engine ),
 		$bucket: require( './Operators/Stage/bucket' )( Engine ),
 		$bucketAuto: require( './Operators/Stage/bucketAuto' )( Engine ),
+		$fill: require( './Operators/Stage/fill' )( Engine ),
+		$densify: require( './Operators/Stage/densify' )( Engine ),
 
 	};
 

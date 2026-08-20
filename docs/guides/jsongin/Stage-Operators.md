@@ -31,6 +31,8 @@ See [`Aggregate()`](./Aggregate.md) for the pipeline rules and
 | [`$facet`](#$facet)                | `{ $facet: { name: [ stage, ... ], ... } }`                          |
 | [`$bucket`](#$bucket)              | `{ $bucket: { groupBy: expression, boundaries: [ ... ], ... } }`     |
 | [`$bucketAuto`](#$bucketAuto)      | `{ $bucketAuto: { groupBy: expression, buckets: count, ... } }`      |
+| [`$fill`](#$fill)                  | `{ $fill: { output: { field: { value: ... } \| { method: ... } } } }` |
+| [`$densify`](#$densify)            | `{ $densify: { field: 'name', range: { step: ..., bounds: ... } } }` |
 
 
 
@@ -437,6 +439,126 @@ jsongin.Aggregate( players, [
 ] );
 // returns [ { _id: { min: 3, max: 9 }, total: 19 } ]
 ```
+
+
+<a id="$fill"></a>$fill
+---------------------------------------------------------------------
+
+**Usage** : `{ $fill: { partitionBy: expression, partitionByFields: [ 'field', ... ], sortBy: { field: 1 | -1 }, output: { field: { value: expression } | { method: 'locf' | 'linear' } } } }`
+
+Supplies a value for a field which has none.
+
+***A null counts as having none***, which is unusual: almost everywhere else in this engine a
+  null is a value and only a missing field is absent. `$fill` replaces both.
+
+| **Written** | **Fills with** |
+|-------------|-----------------|
+| `{ value: expression }` | the expression, evaluated against the document being filled |
+| `{ method: 'locf' }` | the ***l***ast ***o***bserved ***c***arried ***f***orward |
+| `{ method: 'linear' }` | a value interpolated between the ones on either side |
+
+***A method writes its field for every document***, even where it has nothing to write: a gap
+  before the first observed value, or at either end of a `linear` series, becomes a `null`
+  rather than staying missing.
+
+***An output field naming neither fills nothing***, and is accepted; naming ***both*** is
+  refused. `linear` requires the `sortBy` field to hold no repeated values, and numbers on
+  both sides of a gap.
+
+`partitionBy` takes a document rather than a path, so `{ k: '$k' }` and not `'$k'`.
+
+### Example
+```js
+let readings = [
+	{ t: 1, v: 10 },
+	{ t: 2 },
+	{ t: 3, v: 30 },
+];
+
+jsongin.Aggregate( readings, [ { $fill: { output: { v: { value: 0 } } } } ] );
+// returns [ { t: 1, v: 10 }, { t: 2, v: 0 }, { t: 3, v: 30 } ]
+
+jsongin.Aggregate( readings, [ { $fill: { sortBy: { t: 1 }, output: { v: { method: 'locf' } } } } ] );
+// returns [ { t: 1, v: 10 }, { t: 2, v: 10 }, { t: 3, v: 30 } ]
+
+jsongin.Aggregate( readings, [ { $fill: { sortBy: { t: 1 }, output: { v: { method: 'linear' } } } } ] );
+// returns [ { t: 1, v: 10 }, { t: 2, v: 20 }, { t: 3, v: 30 } ]
+
+// Naming both a value and a method is refused.
+jsongin.Aggregate( readings, [ { $fill: { output: { v: { value: 0, method: 'locf' } } } } ] );   // throws
+```
+
+
+<a id="$densify"></a>$densify
+---------------------------------------------------------------------
+
+**Usage** : `{ $densify: { field: 'name', partitionByFields: [ 'field', ... ], range: { step: number, unit: string, bounds: 'full' | 'partition' | [ lower, upper ] } } }`
+
+Adds documents to close the gaps in a sequence, so that the values of `field` step evenly.
+
+***An added document holds the field and its partition, and nothing else.*** It stands for a
+  point in the sequence which had no data.
+
+***Densifying only ever adds.*** A document whose value does not sit on the series is kept
+  where it is rather than moved or removed.
+
+| **`bounds`** | **Runs from** |
+|--------------|----------------|
+| `'full'` | the smallest value in the whole stream to the largest |
+| `'partition'` | the smallest to the largest within each partition |
+| `[ lower, upper ]` | the values given, with `upper` excluded |
+
+***A date field needs a `unit`*** and a numeric field must not have one. A field which is
+  neither a number nor a date is refused, since there is no step from one value to the next.
+
+### Example
+```js
+let readings = [ { t: 1 }, { t: 2 }, { t: 4 } ];
+
+jsongin.Aggregate( readings, [
+	{ $densify: { field: 't', range: { step: 1, bounds: 'full' } } },
+	{ $sort: { t: 1 } },
+] );
+// returns [ { t: 1 }, { t: 2 }, { t: 3 }, { t: 4 } ]
+
+// The upper bound is excluded.
+jsongin.Aggregate( readings, [
+	{ $densify: { field: 't', range: { step: 1, bounds: [ 0, 2 ] } } },
+	{ $sort: { t: 1 } },
+] );
+// returns [ { t: 0 }, { t: 1 }, { t: 2 }, { t: 4 } ]
+
+// A step which skips over an existing value leaves it where it is.
+jsongin.Aggregate( readings, [
+	{ $densify: { field: 't', range: { step: 2, bounds: 'full' } } },
+	{ $sort: { t: 1 } },
+] );
+// returns [ { t: 1 }, { t: 2 }, { t: 3 }, { t: 4 } ]
+```
+
+
+## Stages Which Are Not Implemented
+
+`$redact` and `$documents` are the only two of the twelve stages this project set out to build
+  which are not here, and for two different reasons.
+
+***`$redact` needs expression system variables.*** It walks a document level by level and asks
+  an expression what to do with each one, and the expression answers by evaluating to
+  `$$DESCEND`, `$$PRUNE`, or `$$KEEP`. [`Evaluate()`](./Evaluate.md) has no system variables at
+  all, so the answers cannot be expressed. It becomes buildable with the same change that
+  brings `$let`, `$map`, `$filter`, and `$reduce`, and until then it is measured as a gap by
+  `test/Parity Tests/Aggregate Tests/test-suite/Redact Gap Tests.js`.
+
+***`$documents` is a source stage of a database-level aggregation.*** It replaces the input
+  rather than transforming it, which is why MongoDB allows it in `db.aggregate()` and refuses
+  it against a collection. [`Aggregate()`](./Aggregate.md) always takes the documents it works
+  on, so there is no position for such a stage to occupy.
+
+The other stages MongoDB documents and `jsongin` does not implement — `$lookup`, `$graphLookup`,
+  `$merge`, `$out`, `$unionWith`, `$geoNear`, `$collStats`, `$indexStats`, `$setWindowFields`,
+  and `$vectorSearch` — need a collection, an index, or a second collection to join against, and
+  `jsongin` works on an array of documents. See the
+  [Operator Reference](../Operator-Reference.md).
 
 
 ## See Also
