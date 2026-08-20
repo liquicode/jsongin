@@ -22,6 +22,17 @@ See [`Aggregate()`](./Aggregate.md) for the pipeline rules and
 | [`$addToSet`](#$addToSet)   | Every ***distinct*** value, compared by content. Order is not specified.         |
 | [`$first`](#$first)         | The value from the first document in the group.                                  |
 | [`$last`](#$last)           | The value from the last document in the group.                                   |
+| [`$stdDevPop`](#$stdDevPop) | Standard deviation over the count. `0` for one value.                            |
+| [`$stdDevSamp`](#$stdDevSamp) | Standard deviation over one less than the count. `null` for one value.         |
+| [`$mergeObjects`](#$mergeObjects) | Every document merged into one, later winning a shared field.              |
+| [`$firstN`](#$firstN)       | The first `n` values, in group order, keeping a missing one as null.             |
+| [`$lastN`](#$lastN)         | The last `n` values, still in group order.                                       |
+| [`$minN`](#$minN)           | The `n` smallest values, ascending, ignoring null and missing.                   |
+| [`$maxN`](#$maxN)           | The `n` largest values, ***descending***, ignoring null and missing.             |
+| [`$top`](#$top)             | The `output` of the first document by the accumulator's own `sortBy`.            |
+| [`$bottom`](#$bottom)       | The `output` of the last document by that same order.                            |
+| [`$topN`](#$topN)           | The `output` of the first `n` documents by `sortBy`.                             |
+| [`$bottomN`](#$bottomN)     | The `output` of the last `n` documents, in `sortBy` order.                       |
 
 ***`$sum` and `$avg` ignore what the expression operators throw on, and this is deliberate.***
 The expression operator `$add` throws when an operand is not numeric, because an expression is
@@ -231,6 +242,211 @@ The value from the last document in the group, and the mirror of [`$first`](#$fi
 ```js
 jsongin.Aggregate( players, [ { $group: { _id: '$team', last: { $last: '$name' } } } ] );
 // returns [ { _id: 'red', last: 'Bob' }, { _id: 'blue', last: 'Carol' } ]
+```
+
+
+<a id="$stdDevPop"></a>$stdDevPop
+---------------------------------------------------------------------
+
+**Usage** : `{ field: { $stdDevPop: expression } }`
+
+The population standard deviation of the numeric values: the squared deviations divided by the
+  ***count***.
+Non-numeric values are ignored, the same rule [`$sum`](#$sum) and [`$avg`](#$avg) follow, and a
+  group with nothing numeric in it answers `null`.
+
+### Example
+```js
+jsongin.Aggregate( players, [ { $group: { _id: '$team', spread: { $stdDevPop: '$points' } } } ] );
+// returns [ { _id: 'red', spread: 2 }, { _id: 'blue', spread: 0 } ]
+```
+
+
+<a id="$stdDevSamp"></a>$stdDevSamp
+---------------------------------------------------------------------
+
+**Usage** : `{ field: { $stdDevSamp: expression } }`
+
+The sample standard deviation: the squared deviations divided by ***one less than the count***.
+
+***A single value answers `null`*** where [`$stdDevPop`](#$stdDevPop) answers `0`. That follows
+  from the divisor: a population of one has no spread, and a sample of one cannot say what the
+  spread is.
+
+### Example
+```js
+jsongin.Aggregate( players, [ { $group: { _id: '$team', spread: { $stdDevSamp: '$points' } } } ] );
+// returns [ { _id: 'red', spread: Math.sqrt( 8 ) }, { _id: 'blue', spread: null } ]
+```
+
+
+<a id="$mergeObjects"></a>$mergeObjects
+---------------------------------------------------------------------
+
+**Usage** : `{ field: { $mergeObjects: expression } }`
+
+Merges every document in the group into one, where a later document wins a field the two share.
+"Later" is the order the group arrived in, so pair it with a
+  [`$sort`](./Stage-Operators.md#$sort) when it matters.
+
+A null or missing value is ignored rather than making the result null; any other non-document
+  value throws.
+
+***There is also an expression operator called `$mergeObjects`***, which merges the documents
+  given to it within a single document. See
+  [Expression Operators](./Expression-Operators.md#$mergeObjects).
+
+### Example
+```js
+jsongin.Aggregate( players, [ { $group: { _id: '$team', who: { $mergeObjects: { name: '$name', points: '$points' } } } } ] );
+// returns [ { _id: 'red', who: { name: 'Bob', points: 3 } }, { _id: 'blue', who: { name: 'Carol', points: 9 } } ]
+```
+
+
+<a id="$firstN"></a>$firstN
+---------------------------------------------------------------------
+
+**Usage** : `{ field: { $firstN: { input: expression, n: count } } }`
+
+The first `n` values of the group, in the order it arrived in.
+
+***This is positional and not comparative***, so it depends on a `$sort` earlier in the
+  pipeline, and ***a missing value is reported as a null*** rather than left out.
+  [`$minN`](#$minN) does the opposite on both counts.
+
+A group with fewer than `n` values answers all of them.
+
+### Example
+```js
+jsongin.Aggregate( players, [ { $group: { _id: '$team', names: { $firstN: { input: '$name', n: 2 } } } } ] );
+// returns [ { _id: 'red', names: [ 'Alice', 'Bob' ] }, { _id: 'blue', names: [ 'Carol' ] } ]
+```
+
+
+<a id="$lastN"></a>$lastN
+---------------------------------------------------------------------
+
+**Usage** : `{ field: { $lastN: { input: expression, n: count } } }`
+
+The last `n` values of the group, ***still in group order***, so the very last value is last in
+  the result rather than first.
+
+Positional in the same way [`$firstN`](#$firstN) is, and with the same treatment of a missing
+  value.
+
+### Example
+```js
+jsongin.Aggregate( players, [ { $group: { _id: '$team', names: { $lastN: { input: '$name', n: 1 } } } } ] );
+// returns [ { _id: 'red', names: [ 'Bob' ] }, { _id: 'blue', names: [ 'Carol' ] } ]
+```
+
+
+<a id="$minN"></a>$minN
+---------------------------------------------------------------------
+
+**Usage** : `{ field: { $minN: { input: expression, n: count } } }`
+
+The `n` smallest values of the group, in ascending order.
+
+***This is comparative and not positional***, so the order the group arrived in does not matter
+  and ***a null or missing value is left out*** rather than reported — there is nothing to
+  compare it with. Values are ordered by [`CompareValues()`](./CompareValues.md), the same way
+  [`$min`](#$min) orders them.
+
+### Example
+```js
+jsongin.Aggregate( players, [ { $group: { _id: '$team', low: { $minN: { input: '$points', n: 2 } } } } ] );
+// returns [ { _id: 'red', low: [ 3, 7 ] }, { _id: 'blue', low: [ 9 ] } ]
+```
+
+
+<a id="$maxN"></a>$maxN
+---------------------------------------------------------------------
+
+**Usage** : `{ field: { $maxN: { input: expression, n: count } } }`
+
+The `n` largest values of the group, in ***descending*** order.
+
+***The largest comes first***, which makes this the mirror of [`$minN`](#$minN) rather than a
+  sorted list of the same values: the first element of either result is the most extreme one.
+
+### Example
+```js
+jsongin.Aggregate( players, [ { $group: { _id: '$team', high: { $maxN: { input: '$points', n: 2 } } } } ] );
+// returns [ { _id: 'red', high: [ 7, 3 ] }, { _id: 'blue', high: [ 9 ] } ]
+```
+
+
+<a id="$top"></a>$top
+---------------------------------------------------------------------
+
+**Usage** : `{ field: { $top: { sortBy: specification, output: expression } } }`
+
+Sorts the group by `sortBy` and returns the `output` expression of the first document.
+
+***This carries its own sort***, so unlike [`$first`](#$first) it does not depend on a `$sort`
+  earlier in the pipeline, and unlike [`$max`](#$max) it can ***sort by one field and answer
+  with another***. That is the whole reason it exists.
+
+`sortBy` names fields and gives each a direction of `1` or `-1`. An empty `sortBy` is accepted
+  and sorts nothing, in which case which document answers is not specified.
+
+### Example
+```js
+jsongin.Aggregate( players, [ { $group: { _id: '$team', best: { $top: { sortBy: { points: -1 }, output: '$name' } } } } ] );
+// returns [ { _id: 'red', best: 'Alice' }, { _id: 'blue', best: 'Carol' } ]
+
+// output is any expression, so it may gather several fields.
+jsongin.Aggregate( players, [ { $group: { _id: '$team', best: { $top: { sortBy: { points: -1 }, output: [ '$name', '$points' ] } } } } ] );
+// returns [ { _id: 'red', best: [ 'Alice', 7 ] }, { _id: 'blue', best: [ 'Carol', 9 ] } ]
+```
+
+
+<a id="$bottom"></a>$bottom
+---------------------------------------------------------------------
+
+**Usage** : `{ field: { $bottom: { sortBy: specification, output: expression } } }`
+
+Sorts the group by `sortBy` and returns the `output` expression of the ***last*** document.
+
+***The sort is not reversed*** — this reads the far end of the same order [`$top`](#$top) reads
+  the near end of, so the two with the same `sortBy` answer opposite documents.
+
+### Example
+```js
+jsongin.Aggregate( players, [ { $group: { _id: '$team', worst: { $bottom: { sortBy: { points: -1 }, output: '$name' } } } } ] );
+// returns [ { _id: 'red', worst: 'Bob' }, { _id: 'blue', worst: 'Carol' } ]
+```
+
+
+<a id="$topN"></a>$topN
+---------------------------------------------------------------------
+
+**Usage** : `{ field: { $topN: { n: count, sortBy: specification, output: expression } } }`
+
+Sorts the group by `sortBy` and returns the `output` expression of the first `n` documents, in
+  that sort order.
+A group with fewer than `n` documents answers all of them.
+
+### Example
+```js
+jsongin.Aggregate( players, [ { $group: { _id: '$team', best: { $topN: { n: 2, sortBy: { points: -1 }, output: '$name' } } } } ] );
+// returns [ { _id: 'red', best: [ 'Alice', 'Bob' ] }, { _id: 'blue', best: [ 'Carol' ] } ]
+```
+
+
+<a id="$bottomN"></a>$bottomN
+---------------------------------------------------------------------
+
+**Usage** : `{ field: { $bottomN: { n: count, sortBy: specification, output: expression } } }`
+
+Sorts the group by `sortBy` and returns the `output` expression of the last `n` documents,
+  ***in that sort order*** rather than reversed.
+
+### Example
+```js
+jsongin.Aggregate( players, [ { $group: { _id: '$team', worst: { $bottomN: { n: 1, sortBy: { points: -1 }, output: '$name' } } } } ] );
+// returns [ { _id: 'red', worst: [ 'Bob' ] }, { _id: 'blue', worst: [ 'Carol' ] } ]
 ```
 
 

@@ -362,7 +362,7 @@ describe( '150) Error Handling Tests', () =>
 		{
 			let reported = sweep( 'AccumulatorOperators', 'Accumulator.',
 				function ( Engine, Name ) { Engine.AccumulatorOperators[ Name ].Accumulate( 'abc', '$n' ); } );
-			assert.strictEqual( reported, 9 );
+			assert.strictEqual( reported, 20 );
 		} );
 
 		it( 'should report from every stage which rejects its argument', () =>
@@ -395,15 +395,28 @@ describe( '150) Error Handling Tests', () =>
 	describe( 'Aggregation Argument Validation', () =>
 	{
 
+		// A valid argument for each accumulator, so that the test below is answered by the
+		// Documents check and not by argument validation happening to run first. The N and
+		// ranked accumulators take an argument document rather than a bare expression, and
+		// giving them a bare one would make them throw for the wrong reason - which would
+		// leave a non-array group untested for exactly the operators added last.
+		function valid_args( Name )
+		{
+			if ( Name === '$count' ) { return {}; }
+			if ( [ '$firstN', '$lastN', '$minN', '$maxN' ].includes( Name ) ) { return { input: '$n', n: 1 }; }
+			if ( [ '$top', '$bottom' ].includes( Name ) ) { return { sortBy: { n: 1 }, output: '$n' }; }
+			if ( [ '$topN', '$bottomN' ].includes( Name ) ) { return { n: 1, sortBy: { n: 1 }, output: '$n' }; }
+			return '$n';
+		}
+
 		it( 'should reject a non-array Documents to every accumulator', () =>
 		{
 			let names = Object.keys( jsongin.AccumulatorOperators );
-			assert.strictEqual( names.length, 9 );
+			assert.strictEqual( names.length, 20 );
 			for ( let index = 0; index < names.length; index++ )
 			{
-				let args = ( names[ index ] === '$count' ) ? {} : '$n';
 				assert.throws(
-					function () { jsongin.AccumulatorOperators[ names[ index ] ].Accumulate( 'abc', args ); },
+					function () { jsongin.AccumulatorOperators[ names[ index ] ].Accumulate( 'abc', valid_args( names[ index ] ) ); },
 					/Documents must be an array/,
 					`${names[ index ]} accepted a non-array.` );
 			}

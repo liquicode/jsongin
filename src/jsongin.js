@@ -316,6 +316,17 @@ function NewJsongin( EngineSettings = {} )
 		$addToSet: require( './Operators/Accumulator/addToSet' )( Engine ),
 		$first: require( './Operators/Accumulator/first' )( Engine ),
 		$last: require( './Operators/Accumulator/last' )( Engine ),
+		$stdDevPop: require( './Operators/Accumulator/stdDevPop' )( Engine ),
+		$stdDevSamp: require( './Operators/Accumulator/stdDevSamp' )( Engine ),
+		$mergeObjects: require( './Operators/Accumulator/mergeObjects' )( Engine ),
+		$firstN: require( './Operators/Accumulator/firstN' )( Engine ),
+		$lastN: require( './Operators/Accumulator/lastN' )( Engine ),
+		$minN: require( './Operators/Accumulator/minN' )( Engine ),
+		$maxN: require( './Operators/Accumulator/maxN' )( Engine ),
+		$top: require( './Operators/Accumulator/top' )( Engine ),
+		$bottom: require( './Operators/Accumulator/bottom' )( Engine ),
+		$topN: require( './Operators/Accumulator/topN' )( Engine ),
+		$bottomN: require( './Operators/Accumulator/bottomN' )( Engine ),
 
 	};
 

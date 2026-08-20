@@ -8,10 +8,10 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
-Parity with MongoDB is ***100%*** across 728 compared behaviors: Query 230, Update 89,
-  Projection 51, and Aggregate 358. Run `npm run parity-report` to measure it.
+Parity with MongoDB is ***100%*** across 753 compared behaviors: Query 230, Update 89,
+  Projection 51, and Aggregate 383. Run `npm run parity-report` to measure it.
 
-Coverage of the operator surface MongoDB documents is ***75.2%***, 191 operators of 254. Run
+Coverage of the operator surface MongoDB documents is ***79.5%***, 202 operators of 254. Run
   `npm run api-coverage` to measure that one. The two numbers answer different questions: parity
   is how faithfully what exists behaves, and coverage is how much exists.
 
@@ -193,6 +193,31 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 ### Added
 
+- The 11 ***remaining accumulators***, in `jsongin.AccumulatorOperators`: `$stdDevPop`,
+  `$stdDevSamp`, `$mergeObjects`, `$firstN`, `$lastN`, `$minN`, `$maxN`, `$top`, `$bottom`,
+  `$topN`, and `$bottomN`. See
+  [Accumulator Operators](./docs/guides/jsongin/Accumulator-Operators.md).
+- ***Three kinds of accumulator now read a group three different ways***, and the difference
+  decides what they answer. `$first`, `$last`, `$firstN`, and `$lastN` are ***positional***:
+  they read the group in the order it arrived, so they depend on a `$sort` earlier in the
+  pipeline, and they report a missing value as a null. `$min`, `$max`, `$minN`, and `$maxN` are
+  ***comparative***: they ignore the order entirely and leave a null or missing value out,
+  having nothing to compare it with. `$top`, `$bottom`, `$topN`, and `$bottomN` are ***ranked***:
+  they carry a `sortBy` of their own, and they are the only accumulators which can sort by one
+  field and answer with another.
+- ***`$maxN` counts down.*** It returns its values in descending order, making it the mirror of
+  `$minN` rather than a sorted list of the same values, so the first element of either result is
+  the most extreme one. `$bottomN` does not mirror `$topN` the same way: it returns its values in
+  `sortBy` order rather than reversed.
+- ***`$stdDevSamp` answers a single value with `null`*** where `$stdDevPop` answers `0`, which
+  follows from the divisor: a population of one has no spread, and a sample of one cannot say
+  what the spread is. Both ignore non-numeric values, the rule `$sum` and `$avg` already follow.
+- ***An empty `sortBy` is accepted rather than refused.*** A specification naming no field sorts
+  nothing, so the operator still answers — it just answers something the sort had no say in.
+- `$median` and `$percentile` are ***not*** implemented. They were introduced in MongoDB 7.0 and
+  the parity baseline is a 6.0.1 server which refuses them, so there is nothing to measure an
+  implementation against. The parity suite records that refusal so the boundary is measured
+  rather than remembered. `$accumulator`, which runs custom Javascript, remains out of scope.
 - The 5 ***object expression operators***, in `jsongin.ExpressionOperators`: `$mergeObjects`,
   `$objectToArray`, `$getField`, `$setField`, and `$unsetField`. See
   [Object Operators](./docs/guides/jsongin/Expression-Operators.md).
