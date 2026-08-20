@@ -246,26 +246,26 @@ MongoDB adds operators from one server version to the next, so treat this as a c
 | Arithmetic    |      Yes      | [$subtract](./jsongin/Expression-Operators.md#$subtract)          | Subtracts two numbers, two dates, or milliseconds from a date.                               |
 | Arithmetic    |      Yes      | [$trunc](./jsongin/Expression-Operators.md#$trunc)             | Truncates a number to a given number of decimal places.                                      |
 | Array         |      Yes      | [$arrayElemAt](./jsongin/Expression-Operators.md#$arrayElemAt)       | Returns the element of an array at a given index.                                            |
-| Array         |       -       | $arrayToObject     | Converts an array of key/value pairs into an object.                                         |
+| Array         |      Yes      | [$arrayToObject](./jsongin/Expression-Operators.md#$arrayToObject)     | Converts an array of key/value pairs into an object.                                         |
 | Array         |      Yes      | [$concatArrays](./jsongin/Expression-Operators.md#$concatArrays)      | Joins arrays together.                                                                       |
 | Array         |       -       | $filter            | Returns the elements of an array which satisfy a condition.                                  |
-| Array         |       -       | $first             | Returns the first element of an array.                                                       |
-| Array         |       -       | $firstN            | Returns the first N elements of an array.                                                    |
+| Array         |      Yes      | [$first](./jsongin/Expression-Operators.md#$first)             | Returns the first element of an array.                                                       |
+| Array         |      Yes      | [$firstN](./jsongin/Expression-Operators.md#$firstN)            | Returns the first N elements of an array.                                                    |
 | Array         |      Yes      | [$in](./jsongin/Expression-Operators.md#$in)                | Returns true when a value is found within an array.                                          |
-| Array         |       -       | $indexOfArray      | Returns the index of the first array element which matches a value.                          |
-| Array         |       -       | $isArray           | Returns true when a value is an array.                                                       |
-| Array         |       -       | $last              | Returns the last element of an array.                                                        |
-| Array         |       -       | $lastN             | Returns the last N elements of an array.                                                     |
+| Array         |      Yes      | [$indexOfArray](./jsongin/Expression-Operators.md#$indexOfArray)      | Returns the index of the first array element which matches a value.                          |
+| Array         |      Yes      | [$isArray](./jsongin/Expression-Operators.md#$isArray)           | Returns true when a value is an array.                                                       |
+| Array         |      Yes      | [$last](./jsongin/Expression-Operators.md#$last)              | Returns the last element of an array.                                                        |
+| Array         |      Yes      | [$lastN](./jsongin/Expression-Operators.md#$lastN)             | Returns the last N elements of an array.                                                     |
 | Array         |       -       | $map               | Applies an expression to each element of an array.                                           |
-| Array         |       -       | $maxN              | Returns the N largest values from an array.                                                  |
-| Array         |       -       | $minN              | Returns the N smallest values from an array.                                                 |
-| Array         |       -       | $range             | Generates an array of numbers.                                                               |
+| Array         |      Yes      | [$maxN](./jsongin/Expression-Operators.md#$maxN)              | Returns the N largest values from an array.                                                  |
+| Array         |      Yes      | [$minN](./jsongin/Expression-Operators.md#$minN)              | Returns the N smallest values from an array.                                                 |
+| Array         |      Yes      | [$range](./jsongin/Expression-Operators.md#$range)             | Generates an array of numbers.                                                               |
 | Array         |       -       | $reduce            | Reduces the elements of an array to a single value.                                          |
-| Array         |       -       | $reverseArray      | Returns an array with its elements in reverse order.                                         |
+| Array         |      Yes      | [$reverseArray](./jsongin/Expression-Operators.md#$reverseArray)      | Returns an array with its elements in reverse order.                                         |
 | Array         |      Yes      | [$size](./jsongin/Expression-Operators.md#$size)              | Returns the number of elements in an array.                                                  |
-| Array         |       -       | $slice             | Returns a subset of an array.                                                                |
-| Array         |       -       | $sortArray         | Sorts the elements of an array.                                                              |
-| Array         |       -       | $zip               | Merges arrays together, element by element.                                                  |
+| Array         |      Yes      | [$slice](./jsongin/Expression-Operators.md#$slice)             | Returns a subset of an array.                                                                |
+| Array         |      Yes      | [$sortArray](./jsongin/Expression-Operators.md#$sortArray)         | Sorts the elements of an array.                                                              |
+| Array         |      Yes      | [$zip](./jsongin/Expression-Operators.md#$zip)               | Merges arrays together, element by element.                                                  |
 | Comparison    |      Yes      | [$cmp](./jsongin/Expression-Operators.md#$cmp)               | Returns -1, 0, or 1 from the comparison of two values.                                       |
 | Comparison    |      Yes      | [$eq](./jsongin/Expression-Operators.md#$eq)                | Returns true when two values are equal.                                                      |
 | Comparison    |      Yes      | [$gt](./jsongin/Expression-Operators.md#$gt)                | Returns true when the first value is greater than the second.                                |
@@ -496,11 +496,25 @@ There is also a difference in shape which makes them easy to tell apart at a gla
 | `$eq` `$ne` `$gt` `$gte` `$lt` `$lte` | `{ hp: { $gt: 5 } }` compares one field to a constant.                 | `{ $gt: [ '$dmg', '$armor' ] }` compares two computed values.              |
 | `$and` `$or`                          | `{ $and: [ { a: 1 }, { b: 2 } ] }` joins query clauses together.       | `{ $and: [ { $gt: [ '$hp', 0 ] }, '$alive' ] }` combines boolean values.   |
 | `$not`                                | `{ hp: { $not: { $gt: 5 } } }` inverts a query expression on a field.  | `{ $not: '$alive' }` inverts a boolean value.                              |
-| `$mod`                                | `{ n: { $mod: [ 4, 0 ] } }` matches when `n % 4` equals `0`. *(not supported)* | `{ $mod: [ '$n', 4 ] }` returns the remainder itself.               |
+| `$mod`                                | `{ n: { $mod: [ 4, 0 ] } }` matches when `n % 4` equals `0`.                      | `{ $mod: [ '$n', 4 ] }` returns the remainder itself.               |
 | `$size`                               | `{ tags: { $size: 3 } }` matches arrays of that length.               | `{ $size: '$tags' }` returns the length.                                   |
-| `$type`                               | `{ n: { $type: 'number' } }` matches fields of that type.             | `{ $type: '$n' }` returns the type name. *(not supported)*                 |
+| `$type`                               | `{ n: { $type: 'number' } }` matches fields of that type.             | `{ $type: '$n' }` returns the type name.                                  |
 | `$in`                                 | `{ role: { $in: [ 'admin', 'super' ] } }` matches any listed value.   | `{ $in: [ '$role', '$allowed' ] }` returns a boolean. Note that the array is the ***second*** operand here and the value is the first, which is the reverse of the query form. |
-| `$rand`                               | Generates a random float. *(not supported)*                           | Generates a random float. *(not supported)*                                |
+| `$rand`                               | Not a query operator; reach it through `$expr`.                       | `{ $rand: {} }` returns a random float from 0 up to 1.                     |
+
+| **Operator**       | **As a Projection Operator**                                          | **As an Expression Operator**                                            |
+|--------------------|------------------------------------------------------------------------|---------------------------------------------------------------------------|
+| `$slice`           | `{ tags: { $slice: 2 } }` keeps the first two elements of a field, in a [`Project()`](./jsongin/Project.md) projection. | `{ $slice: [ '$tags', 2 ] }` returns those two elements as a value. |
+
+***Inside a `$project` stage there are no projection operators at all***, which is what decides
+  `$slice` there: the name is always the expression operator, and `{ $project: { t: { $slice: 2 } } }`
+  is refused for having only one operand. The projection form belongs to a projection handed to
+  `Project()` or to a find.
+
+| **Operator**       | **As an Accumulator**                                                 | **As an Expression Operator**                                            |
+|--------------------|------------------------------------------------------------------------|---------------------------------------------------------------------------|
+| `$first` `$last`   | `{ $group: { _id: '$k', f: { $first: '$v' } } }` takes the value from the first document of a group. | `{ $first: '$tags' }` takes the first element of an array. |
+| `$min` `$max`      | `{ $group: { _id: '$k', m: { $min: '$v' } } }` takes the smallest value in a group. | `{ $min: [ '$a', '$b' ] }` selects the smaller of two values. |
 
 | **Operator**   | **As an Update Operator**                                              | **As an Expression Operator**                                          |
 |----------------|------------------------------------------------------------------------|-------------------------------------------------------------------------|
