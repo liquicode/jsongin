@@ -394,7 +394,7 @@ See the [`Aggregate()`](jsongin/Aggregate.md) guide for the details of each stag
 | Stage         |      Yes      | [$count](./jsongin/Stage-Operators.md#$count)           | Returns the number of documents, as a stage. See the note below.         |
 | Stage         |       -       | $densify         | Fills in gaps in a sequence of documents.                                |
 | Stage         |       -       | $documents       | Returns literal documents, as a pipeline source.                         |
-| Stage         |       -       | $facet           | Runs several pipelines over the same documents.                          |
+| Stage         |      Yes      | [$facet](./jsongin/Stage-Operators.md#$facet)       | Runs several pipelines over the same documents. |
 | Stage         |       -       | $fill            | Populates missing field values.                                          |
 | Stage         |       -       | $geoNear         | Orders documents by proximity to a point.                                |
 | Stage         |       -       | $graphLookup     | Performs a recursive search across a collection.                         |
@@ -407,16 +407,16 @@ See the [`Aggregate()`](jsongin/Aggregate.md) guide for the details of each stag
 | Stage         |       -       | $out             | Writes the results into a new collection.                                |
 | Stage         |      Yes      | [$project](./jsongin/Stage-Operators.md#$project)         | Includes, excludes, and computes document fields.                        |
 | Stage         |       -       | $redact          | Restricts the content of documents based on their content.               |
-| Stage         |       -       | $replaceRoot     | Promotes a sub-document to the top level.                                |
-| Stage         |       -       | $replaceWith     | An alias of $replaceRoot.                                                |
-| Stage         |       -       | $sample          | Selects a random sample of documents.                                    |
+| Stage         |      Yes      | [$replaceRoot](./jsongin/Stage-Operators.md#$replaceRoot)       | Promotes a sub-document to the top level. |
+| Stage         |      Yes      | [$replaceWith](./jsongin/Stage-Operators.md#$replaceWith)       | An alias of $replaceRoot. |
+| Stage         |      Yes      | [$sample](./jsongin/Stage-Operators.md#$sample)       | Selects a random sample of documents. |
 | Stage         |      Yes      | [$set](./jsongin/Stage-Operators.md#$set)             | An alias of $addFields.                                                  |
 | Stage         |       -       | $setWindowFields | Computes values over a window of documents.                              |
 | Stage         |      Yes      | [$skip](./jsongin/Stage-Operators.md#$skip)            | Discards the first N documents.                                          |
 | Stage         |      Yes      | [$sort](./jsongin/Stage-Operators.md#$sort)            | Sorts the documents by one or more fields.                               |
-| Stage         |       -       | $sortByCount     | Groups documents and sorts the groups by count.                          |
+| Stage         |      Yes      | [$sortByCount](./jsongin/Stage-Operators.md#$sortByCount)       | Groups documents and sorts the groups by count. |
 | Stage         |       -       | $unionWith       | Appends the documents of another collection.                             |
-| Stage         |       -       | $unset           | Removes fields from each document, as a stage. See the note below.       |
+| Stage         |      Yes      | [$unset](./jsongin/Stage-Operators.md#$unset)       | Removes fields from each document, as a stage. See the note below. |
 | Stage         |      Yes      | [$unwind](./jsongin/Stage-Operators.md#$unwind)          | Emits one document per element of an array field.                        |
 | Stage         |       -       | $vectorSearch    | Performs a vector similarity search.                                     |
 
@@ -532,6 +532,17 @@ There is also a difference in shape which makes them easy to tell apart at a gla
 | `$min` `$max`  | `{ $min: { hp: 0 } }` lowers `hp` to `0`, but only if it is currently greater. | `{ $min: [ '$hp', 0 ] }` selects the smaller of the two values.  |
 | `$set`         | `{ $set: { hp: 5 } }` sets a document field, by dotted path.          | `{ $setField: { field: 'hp', input: '$s', value: 5 } }` answers a copy with the field set, and names the field rather than a path. |
 | `$unset`       | `{ $unset: { hp: 0 } }` removes a document field, by dotted path.     | `{ $unsetField: { field: 'hp', input: '$s' } }` answers a copy without it, and names the field rather than a path. |
+
+***`$unset` carries three meanings***, which is one more than `$set`: an update operator, a
+  ***pipeline stage*** which removes fields from every document in a stream, and — under the
+  name `$unsetField` — an expression operator. The update operator and the stage both take a
+  dotted ***path***; only `$unsetField` takes a field ***name***.
+
+| **Operator**   | **As a Pipeline Stage**                                                | **Elsewhere**                                                          |
+|----------------|------------------------------------------------------------------------|-------------------------------------------------------------------------|
+| `$set`         | `{ $set: { total: { $add: [ '$a', '$b' ] } } }` adds computed fields to every document, and is an alias of `$addFields`. | Also an update operator, which sets a field of one document being updated. |
+| `$unset`       | `{ $unset: [ 'a', 'b' ] }` removes fields from every document.        | Also an update operator. The expression counterpart is `$unsetField`, which names a field rather than a path. |
+| `$count`       | `{ $count: 'total' }` replaces the stream with one document holding the count. | Also an accumulator, `{ n: { $count: {} } }`, which counts one group. |
 | `$push`        | `{ $push: { tags: 'new' } }` appends to an array field.               | `$push` is an accumulator, not an expression operator.                 |
 | `$addToSet`    | `{ $addToSet: { tags: 'new' } }` appends only if not already present. | `$addToSet` is an accumulator, not an expression operator. Both compare by content rather than by reference. |
 
