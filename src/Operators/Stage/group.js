@@ -13,7 +13,9 @@ A group key which evaluates to a missing value is treated as `null`, so the docu
 Use `_id: null` to gather every document into a single group.
 
 Every other field names an accumulator which reduces the group's documents to a single value.
-An accumulator whose value is missing omits its field from the group's output document.
+***An accumulator whose value is missing writes a null***, rather than omitting its field. A
+  `$group` output field is always written, which is unlike [$project](#$project), where an
+  expression producing no value leaves its field out.
 
 Groups are emitted in the order in which they were first seen.
 MongoDB does not guarantee an order here, and jsongin's order is deterministic on purpose:
@@ -123,8 +125,13 @@ module.exports = function ( jsongin )
 
 						let value = accumulator.Accumulate( group.Documents, field[ accumulator_name ] );
 
-						// An accumulated value which is missing omits the field.
-						if ( typeof value === 'undefined' ) { continue; }
+						// ***An accumulated value which is missing is written as a null***, not
+						// left out. This used to omit the field, on the reasonable-looking
+						// analogy with $project, where an expression producing no value leaves
+						// its field out - but a $group output field is always written, and
+						// MongoDB answers { $first: '$nope' } with a null. Found by the
+						// bucketing suite, which reduces its buckets through this stage.
+						if ( typeof value === 'undefined' ) { value = null; }
 
 						jsongin.SetValue( result, field_name, value );
 					}

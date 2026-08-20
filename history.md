@@ -8,10 +8,10 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
-Parity with MongoDB is ***100%*** across 785 compared behaviors: Query 230, Update 89,
-  Projection 51, and Aggregate 415. Run `npm run parity-report` to measure it.
+Parity with MongoDB is ***100%*** across 805 compared behaviors: Query 230, Update 89,
+  Projection 51, and Aggregate 435. Run `npm run parity-report` to measure it.
 
-Coverage of the operator surface MongoDB documents is ***81.9%***, 208 operators of 254. Run
+Coverage of the operator surface MongoDB documents is ***82.7%***, 210 operators of 254. Run
   `npm run api-coverage` to measure that one. The two numbers answer different questions: parity
   is how faithfully what exists behaves, and coverage is how much exists.
 
@@ -192,6 +192,20 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 
 ### Added
+
+- The 2 ***bucketing pipeline stages***, in `jsongin.StageOperators`: `$bucket` and
+  `$bucketAuto`. See [Stage Operators](./docs/guides/jsongin/Stage-Operators.md).
+- ***Bucket ranges are half open.*** A value equal to a boundary belongs to the bucket above it,
+  so `[ 0, 10, 20 ]` makes `0 <= n < 10` and `10 <= n < 20`. A value outside every bucket needs
+  a `default` and throws without one.
+- ***A bucket nothing fell into is left out entirely***, rather than reported with a count of
+  zero, and so is the `default` bucket.
+- ***`$bucketAuto` gives an odd document to the earlier bucket***, and never splits documents
+  which share a value across a boundary, which is why fewer buckets than asked for can come
+  back. A bucket's `_id` is a `{ min, max }` range rather than a single boundary.
+- ***The two stages disagree about an empty `output`***, and that is reproduced rather than
+  tidied: `$bucket` takes it literally and answers the `_id` alone, while `$bucketAuto` reads it
+  as no output at all and falls back to counting.
 
 - The 6 ***reshaping pipeline stages***, in `jsongin.StageOperators`: `$unset`, `$replaceRoot`,
   `$replaceWith`, `$sortByCount`, `$sample`, and `$facet`. See
@@ -449,6 +463,11 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 ### Fixed
 
+- ***`$group` wrote no field at all when an accumulator produced no value; it now writes a
+  null.*** `{ $first: '$missing' }` left its field out of the group's output document, on the
+  analogy with `$project`, where an expression producing no value does exactly that. A `$group`
+  output field is always written, and MongoDB answers such a field with a null.
+  *Was: the field was absent from the result.*
 - `$push` and `$addToSet` create the array when the field is not present, rather than refusing
   the update.
 - `$inc` and `$mul` on a field which is not there no longer write a `NaN`. The field counts as

@@ -306,6 +306,8 @@ function NewJsongin( EngineSettings = {} )
 		$sortByCount: require( './Operators/Stage/sortByCount' )( Engine ),
 		$sample: require( './Operators/Stage/sample' )( Engine ),
 		$facet: require( './Operators/Stage/facet' )( Engine ),
+		$bucket: require( './Operators/Stage/bucket' )( Engine ),
+		$bucketAuto: require( './Operators/Stage/bucketAuto' )( Engine ),
 
 	};
 

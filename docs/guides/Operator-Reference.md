@@ -388,8 +388,8 @@ See the [`Aggregate()`](jsongin/Aggregate.md) guide for the details of each stag
 | **Category**  | **Supported** | **Operator**     | **Description**                                                          |
 |---------------|:-------------:|------------------|----------------------------------------------------------------------------|
 | Stage         |      Yes      | [$addFields](./jsongin/Stage-Operators.md#$addFields)       | Adds computed fields to each document.                                   |
-| Stage         |       -       | $bucket          | Groups documents into buckets by given boundaries.                       |
-| Stage         |       -       | $bucketAuto      | Groups documents into a given number of buckets.                         |
+| Stage         |      Yes      | [$bucket](./jsongin/Stage-Operators.md#$bucket)       | Groups documents into buckets by given boundaries. |
+| Stage         |      Yes      | [$bucketAuto](./jsongin/Stage-Operators.md#$bucketAuto)       | Groups documents into a given number of buckets. |
 | Stage         |       -       | $collStats       | Returns statistics about a collection.                                   |
 | Stage         |      Yes      | [$count](./jsongin/Stage-Operators.md#$count)           | Returns the number of documents, as a stage. See the note below.         |
 | Stage         |       -       | $densify         | Fills in gaps in a sequence of documents.                                |
