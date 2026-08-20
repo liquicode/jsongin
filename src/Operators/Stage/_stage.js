@@ -65,5 +65,55 @@ module.exports = function ( jsongin )
 
 
 	//---------------------------------------------------------------------
+	// Reduces a list of buckets to one document each, the way $group reduces a group.
+	//
+	// ***A bucket nothing fell into is left out entirely***, rather than reported with a count
+	// of zero, which is what MongoDB does and is the opposite of what an empty $group key would
+	// suggest. Both bucketing stages follow the rule, so it is written here once.
+	//
+	// The accumulators are run through the $group stage rather than reimplemented, so that a
+	// bucket and a group cannot disagree about what an accumulator means or which of them are
+	// recognized.
+	helper.ReduceBuckets = function ( Buckets, Accumulators, OperatorName )
+	{
+		if ( jsongin.ShortType( Accumulators ) !== 'o' )
+		{
+			throw new Error( `${OperatorName}: requires [output] to be a document of accumulators.` );
+		}
+
+		// ***An empty output is allowed***, and answers the _id alone. The two stages disagree
+		// about what it means and each settles that before calling here: $bucket takes it
+		// literally, and $bucketAuto reads it as no output at all and counts instead.
+
+		let results = [];
+		for ( let index = 0; index < Buckets.length; index++ )
+		{
+			if ( Buckets[ index ].Documents.length === 0 ) { continue; }
+
+			// _id is fixed here rather than computed, so $group is asked for a single group.
+			let specification = { _id: null };
+			let names = Object.keys( Accumulators );
+			for ( let name = 0; name < names.length; name++ )
+			{
+				specification[ names[ name ] ] = Accumulators[ names[ name ] ];
+			}
+
+			let grouped = jsongin.StageOperators.$group.Stage( Buckets[ index ].Documents, specification );
+
+			let reduced = { _id: jsongin.SafeClone( Buckets[ index ].Key ) };
+			for ( let name = 0; name < names.length; name++ )
+			{
+				if ( ( names[ name ] in grouped[ 0 ] ) === false ) { continue; }
+				reduced[ names[ name ] ] = grouped[ 0 ][ names[ name ] ];
+			}
+
+			results.push( reduced );
+		}
+
+		return results;
+	};
+
+
+	//---------------------------------------------------------------------
 	return helper;
 };

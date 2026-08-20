@@ -271,6 +271,21 @@ module.exports = function ( Driver )
 				assert.strictEqual( await accumulated( { $last: '$n' } ), 4 );
 			} );
 
+			it( 'should write a null when $first or $last finds no value', async () =>
+			{
+				// ***The field is written as a null, not left out.*** An expression which
+				// produces no value leaves its field out of a $project, and it would be
+				// reasonable to expect the same here - but a $group output field is always
+				// written, and a missing value becomes a null.
+				await Driver.SetData( documents );
+				let result = await Driver.Aggregate( [
+					{ $group: { _id: null, f: { $first: '$nope' }, l: { $last: '$nope' } } },
+				] );
+				assert.strictEqual( 'f' in result[ 0 ], true );
+				assert.strictEqual( result[ 0 ].f, null );
+				assert.strictEqual( result[ 0 ].l, null );
+			} );
+
 			it( 'should collect every value with $push', async () =>
 			{
 				assert.deepStrictEqual( await accumulated( { $push: '$n' } ), [ 1, 2, 3, 4 ] );

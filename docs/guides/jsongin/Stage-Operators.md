@@ -29,6 +29,8 @@ See [`Aggregate()`](./Aggregate.md) for the pipeline rules and
 | [`$sortByCount`](#$sortByCount)    | `{ $sortByCount: expression }`                                       |
 | [`$sample`](#$sample)              | `{ $sample: { size: count } }`                                       |
 | [`$facet`](#$facet)                | `{ $facet: { name: [ stage, ... ], ... } }`                          |
+| [`$bucket`](#$bucket)              | `{ $bucket: { groupBy: expression, boundaries: [ ... ], ... } }`     |
+| [`$bucketAuto`](#$bucketAuto)      | `{ $bucketAuto: { groupBy: expression, buckets: count, ... } }`      |
 
 
 
@@ -127,7 +129,9 @@ A group key which evaluates to a missing value is treated as `null`, so the docu
 Use `_id: null` to gather every document into a single group.
 
 Every other field names an accumulator which reduces the group's documents to a single value.
-An accumulator whose value is missing omits its field from the group's output document.
+***An accumulator whose value is missing writes a null***, rather than omitting its field. A
+  `$group` output field is always written, which is unlike [`$project`](#$project), where an
+  expression producing no value leaves its field out.
 
 Two values group together only when they are of the same type, so the number `5` and the string
   `'5'` produce two groups, as they do in MongoDB.
@@ -354,6 +358,84 @@ jsongin.Aggregate( players, [ {
 	}
 } ] );
 // returns [ { first: [ { name: 'Alice' } ], total: [ { n: 3 } ] } ]
+```
+
+
+<a id="$bucket"></a>$bucket
+---------------------------------------------------------------------
+
+**Usage** : `{ $bucket: { groupBy: expression, boundaries: [ ... ], default: value, output: { ... } } }`
+
+Groups the documents into buckets whose edges are given, reducing each bucket the way
+  [`$group`](#$group) reduces a group.
+
+***The ranges are half open.*** A value equal to a boundary belongs to the bucket ***above***
+  it, so `[ 0, 10, 20 ]` makes the buckets `0 <= n < 10` and `10 <= n < 20`. A bucket's `_id`
+  is its lower boundary.
+
+***A bucket nothing fell into is left out entirely***, rather than reported with a count of
+  zero, and the same is true of the `default` bucket.
+
+***A value outside every bucket needs a `default`***, and throws without one.
+
+`output` replaces the default of `{ count: { $sum: 1 } }` entirely rather than adding to it.
+`boundaries` must hold at least two values, in ascending order.
+
+### Example
+```js
+jsongin.Aggregate( players, [
+	{ $bucket: { groupBy: '$points', boundaries: [ 0, 5, 10 ] } },
+] );
+// returns [ { _id: 0, count: 1 }, { _id: 5, count: 2 } ]
+
+// output replaces the count rather than adding to it.
+jsongin.Aggregate( players, [
+	{ $bucket: { groupBy: '$points', boundaries: [ 0, 10 ], output: { names: { $push: '$name' } } } },
+] );
+// returns [ { _id: 0, names: [ 'Alice', 'Bob', 'Carol' ] } ]
+
+// A value outside every bucket needs a default.
+jsongin.Aggregate( players, [ { $bucket: { groupBy: '$points', boundaries: [ 0, 5 ] } } ] );   // throws
+
+jsongin.Aggregate( players, [
+	{ $bucket: { groupBy: '$points', boundaries: [ 0, 5 ], default: 'high' } },
+] );
+// returns [ { _id: 0, count: 1 }, { _id: 'high', count: 2 } ]
+```
+
+
+<a id="$bucketAuto"></a>$bucketAuto
+---------------------------------------------------------------------
+
+**Usage** : `{ $bucketAuto: { groupBy: expression, buckets: count, output: { ... } } }`
+
+Groups the documents into a given number of buckets, choosing the boundaries so that each holds
+  about the same number of documents.
+
+***A bucket's `_id` is a range***, `{ min, max }`, which is the visible difference from
+  [`$bucket`](#$bucket). The `max` of one bucket is the `min` of the next, except the last,
+  whose `max` is the largest value rather than one past it.
+
+***An odd document goes to the earlier bucket***, so five values across two buckets is three
+  and then two.
+
+***Fewer buckets than asked for may come back***, because documents sharing a value are never
+  split across a boundary.
+
+***An empty `output` counts, where `$bucket`'s empty `output` does not.*** The two stages
+  disagree about this and `jsongin` reproduces it rather than tidying it up.
+
+### Example
+```js
+// Three values across two buckets is two and then one, and the max of the first
+// bucket is the min of the second.
+jsongin.Aggregate( players, [ { $bucketAuto: { groupBy: '$points', buckets: 2 } } ] );
+// returns [ { _id: { min: 3, max: 9 }, count: 2 }, { _id: { min: 9, max: 9 }, count: 1 } ]
+
+jsongin.Aggregate( players, [
+	{ $bucketAuto: { groupBy: '$points', buckets: 1, output: { total: { $sum: '$points' } } } },
+] );
+// returns [ { _id: { min: 3, max: 9 }, total: 19 } ]
 ```
 
 

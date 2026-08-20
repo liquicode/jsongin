@@ -406,11 +406,20 @@ describe( '240) Aggregate Stage Tests', () =>
 			} ] ) );
 		} );
 
-		it( 'should omit a field whose accumulated value is missing', () =>
+		// ***This asserted the opposite until 2026-08-20, and was wrong the whole time.***
+		// It claimed the field was omitted, on the reasonable-looking analogy with $project,
+		// where an expression producing no value leaves its field out. MongoDB writes a null.
+		//
+		// It survived because it was a ***unit*** test making a claim about behavior MongoDB
+		// has an opinion on, which is exactly what the parity rule exists to prevent: a unit
+		// test can only ever confirm what jsongin already does. The parity test which now
+		// covers it is in Stage and Accumulator Tests.js, and this one is kept because it
+		// pins the shape a caller sees from Aggregate() directly.
+		it( 'should write a null for a field whose accumulated value is missing', () =>
 		{
 			let documents = [ {}, { n: 1 } ];
 			let result = jsongin.Aggregate( documents, [ { $group: { _id: null, first: { $first: '$n' } } } ] );
-			assert.ok( jsongin.StrictEquals( result, [ { _id: null } ] ) );
+			assert.ok( jsongin.StrictEquals( result, [ { _id: null, first: null } ] ) );
 		} );
 
 		it( 'should not alias the documents it grouped', () =>
