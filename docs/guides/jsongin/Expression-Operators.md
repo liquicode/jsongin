@@ -25,6 +25,7 @@ An expression is a document, an array, or a scalar:
 | String          | [$concat](#$concat), [$split](#$split), [$toLower](#$toLower), [$toUpper](#$toUpper), [$strcasecmp](#$strcasecmp), [$trim](#$trim), [$ltrim](#$ltrim), [$rtrim](#$rtrim), [$substr](#$substr), [$substrBytes](#$substrBytes), [$substrCP](#$substrCP), [$strLenBytes](#$strLenBytes), [$strLenCP](#$strLenCP), [$indexOfBytes](#$indexOfBytes), [$indexOfCP](#$indexOfCP), [$regexMatch](#$regexMatch), [$regexFind](#$regexFind), [$regexFindAll](#$regexFindAll), [$replaceOne](#$replaceOne), [$replaceAll](#$replaceAll) |
 | Trigonometry    | [$sin](#$sin), [$cos](#$cos), [$tan](#$tan), [$asin](#$asin), [$acos](#$acos), [$atan](#$atan), [$atan2](#$atan2), [$sinh](#$sinh), [$cosh](#$cosh), [$tanh](#$tanh), [$asinh](#$asinh), [$acosh](#$acosh), [$atanh](#$atanh), [$degreesToRadians](#$degreesToRadians), [$radiansToDegrees](#$radiansToDegrees) |
 | Type            | [$type](#$type), [$isNumber](#$isNumber), [$convert](#$convert), [$toString](#$toString), [$toBool](#$toBool), [$toDate](#$toDate), [$toInt](#$toInt), [$toLong](#$toLong), [$toDouble](#$toDouble) |
+| Date            | [$year](#$year), [$month](#$month), [$dayOfMonth](#$dayOfMonth), [$dayOfWeek](#$dayOfWeek), [$dayOfYear](#$dayOfYear), [$hour](#$hour), [$minute](#$minute), [$second](#$second), [$millisecond](#$millisecond), [$week](#$week), [$isoWeek](#$isoWeek), [$isoDayOfWeek](#$isoDayOfWeek), [$isoWeekYear](#$isoWeekYear), [$dateToParts](#$dateToParts), [$dateFromParts](#$dateFromParts), [$dateToString](#$dateToString), [$dateFromString](#$dateFromString), [$dateAdd](#$dateAdd), [$dateSubtract](#$dateSubtract), [$dateDiff](#$dateDiff), [$dateTrunc](#$dateTrunc) |
 | Data Size       | [$binarySize](#$binarySize), [$bsonSize](#$bsonSize)                                                        |
 | Miscellaneous   | [$rand](#$rand)                                                                                             |
 | Logical         | [$and](#$and), [$or](#$or), [$not](#$not)                                                                   |
@@ -1577,6 +1578,455 @@ jsongin.Evaluate( document, { $convert: { input: '$empty', to: 'int', onError: -
 // returns null
 ```
 
+
+
+# Date Operators
+
+
+***Every operator here reads a date in UTC unless it is given a time zone.***
+This is worth knowing before anything else, because Javascript does the opposite: `getFullYear()`
+  and its relatives read a date in whatever zone the machine happens to be in, so the same
+  document would answer differently on a laptop in New York than on a server in London.
+Nothing in `jsongin` reads a date that way.
+
+A `timezone` is either an IANA zone name such as `'America/New_York'` or an offset such as
+  `'+05:30'`. Each of the part operators takes one in its object form:
+
+```js
+let when = new Date( '2020-01-02T03:04:05.678Z' );
+let doc = { when: when };
+
+jsongin.Evaluate( doc, { $hour: '$when' } );
+// returns 3
+
+jsongin.Evaluate( doc, { $hour: { date: '$when', timezone: 'America/New_York' } } );
+// returns 22
+
+jsongin.Evaluate( doc, { $hour: { date: '$when', timezone: '+05:30' } } );
+// returns 8
+```
+
+A null or missing date makes the result null, and so does a `timezone` which is null.
+***A null timezone is not the same as no timezone***: leaving it out means UTC, and writing
+  `null` makes the whole result null.
+An operand which is not a date throws — a number is not converted for these, even though
+  [$toDate](#$toDate) would read one.
+
+***Three of them exist because ISO 8601 counts weeks differently***, and the difference is not
+  small. [$week](#$week) begins its weeks on Sunday and calls the days before the year's first
+  Sunday week 0. [$isoWeek](#$isoWeek) begins on Monday and puts a week entirely in the year
+  holding its Thursday, so the first days of January can belong to the ***previous*** year:
+
+```js
+let turn = new Date( '2021-01-01T00:00:00.000Z' );
+
+jsongin.Evaluate( { turn: turn }, { $year: '$turn' } );
+// returns 2021
+
+jsongin.Evaluate( { turn: turn }, { $isoWeekYear: '$turn' } );
+// returns 2020
+
+jsongin.Evaluate( { turn: turn }, { $isoWeek: '$turn' } );
+// returns 53
+```
+
+
+<a id="$year"></a>$year
+---------------------------------------------------------------------
+
+**Usage** : `{ $year: expression }` or `{ $year: { date: expression, timezone: string } }`
+
+The year of a date.
+
+### Example
+```js
+jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $year: '$when' } );
+// returns 2020
+```
+
+
+<a id="$month"></a>$month
+---------------------------------------------------------------------
+
+**Usage** : `{ $month: expression }` or `{ $month: { date: expression, timezone: string } }`
+
+The month of a date, from 1 to 12.
+***Months count from 1***, unlike Javascript's own `getUTCMonth()`.
+
+### Example
+```js
+jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $month: '$when' } );
+// returns 1
+```
+
+
+<a id="$dayOfMonth"></a>$dayOfMonth
+---------------------------------------------------------------------
+
+**Usage** : `{ $dayOfMonth: expression }` or the object form.
+
+The day of the month, from 1 to 31.
+
+### Example
+```js
+jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $dayOfMonth: '$when' } );
+// returns 2
+```
+
+
+<a id="$dayOfWeek"></a>$dayOfWeek
+---------------------------------------------------------------------
+
+**Usage** : `{ $dayOfWeek: expression }` or the object form.
+
+The day of the week, from 1 to 7.
+***Sunday is 1 and Saturday is 7.***
+See [$isoDayOfWeek](#$isoDayOfWeek), which starts its week on Monday instead.
+
+### Example
+```js
+// The 2nd of January 2020 was a Thursday.
+jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $dayOfWeek: '$when' } );
+// returns 5
+```
+
+
+<a id="$dayOfYear"></a>$dayOfYear
+---------------------------------------------------------------------
+
+**Usage** : `{ $dayOfYear: expression }` or the object form.
+
+The day of the year, from 1 to 366.
+
+### Example
+```js
+jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $dayOfYear: '$when' } );
+// returns 2
+```
+
+
+<a id="$hour"></a>$hour
+---------------------------------------------------------------------
+
+**Usage** : `{ $hour: expression }` or the object form.
+
+The hour of a date, from 0 to 23.
+
+### Example
+```js
+jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $hour: '$when' } );
+// returns 3
+```
+
+
+<a id="$minute"></a>$minute
+---------------------------------------------------------------------
+
+**Usage** : `{ $minute: expression }` or the object form.
+
+The minute of a date, from 0 to 59.
+A zone whose offset is not a whole hour moves this too.
+
+### Example
+```js
+jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $minute: '$when' } );
+// returns 4
+
+jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) },
+	{ $minute: { date: '$when', timezone: '+05:30' } } );
+// returns 34
+```
+
+
+<a id="$second"></a>$second
+---------------------------------------------------------------------
+
+**Usage** : `{ $second: expression }` or the object form.
+
+The seconds of a date, from 0 to 59.
+
+### Example
+```js
+jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $second: '$when' } );
+// returns 5
+```
+
+
+<a id="$millisecond"></a>$millisecond
+---------------------------------------------------------------------
+
+**Usage** : `{ $millisecond: expression }` or the object form.
+
+The milliseconds of a date, from 0 to 999.
+
+### Example
+```js
+jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $millisecond: '$when' } );
+// returns 678
+```
+
+
+<a id="$week"></a>$week
+---------------------------------------------------------------------
+
+**Usage** : `{ $week: expression }` or the object form.
+
+The week of the year, from 0 to 53.
+
+***Weeks begin on Sunday, and the days before the first Sunday of the year are week 0.***
+See [$isoWeek](#$isoWeek) for the ISO 8601 reckoning, which differs.
+
+### Example
+```js
+// 2020 opened on a Wednesday, so the 2nd is still week 0.
+jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $week: '$when' } );
+// returns 0
+```
+
+
+<a id="$isoWeek"></a>$isoWeek
+---------------------------------------------------------------------
+
+**Usage** : `{ $isoWeek: expression }` or the object form.
+
+The ISO 8601 week of the year, from 1 to 53.
+Week 1 is the week holding the year's first Thursday.
+
+### Example
+```js
+jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $isoWeek: '$when' } );
+// returns 1
+
+// The same date is week 0 by the $week reckoning and week 1 by this one.
+jsongin.Evaluate( { turn: new Date( '2021-01-01T00:00:00.000Z' ) }, { $isoWeek: '$turn' } );
+// returns 53
+```
+
+
+<a id="$isoDayOfWeek"></a>$isoDayOfWeek
+---------------------------------------------------------------------
+
+**Usage** : `{ $isoDayOfWeek: expression }` or the object form.
+
+The ISO 8601 day of the week, from 1 to 7.
+***Monday is 1 and Sunday is 7***, where [$dayOfWeek](#$dayOfWeek) starts at Sunday.
+
+### Example
+```js
+jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $isoDayOfWeek: '$when' } );
+// returns 4
+```
+
+
+<a id="$isoWeekYear"></a>$isoWeekYear
+---------------------------------------------------------------------
+
+**Usage** : `{ $isoWeekYear: expression }` or the object form.
+
+The ISO 8601 year a date's week belongs to.
+
+***This is not always the calendar year.***
+ISO 8601 puts a week entirely in the year holding its Thursday, so the 1st of January 2021
+  belongs to 2020.
+
+### Example
+```js
+jsongin.Evaluate( { turn: new Date( '2021-01-01T00:00:00.000Z' ) }, { $isoWeekYear: '$turn' } );
+// returns 2020
+```
+
+
+<a id="$dateToParts"></a>$dateToParts
+---------------------------------------------------------------------
+
+**Usage** : `{ $dateToParts: { date: expression, timezone: string, iso8601: boolean } }`
+
+A document holding the individual parts of a date.
+
+***The ISO form answers with different fields***, not merely different values: an ISO 8601 week
+  date has a week year, a week, and a day of the week, and no month or day of the month at all.
+
+### Example
+```js
+jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $dateToParts: { date: '$when' } } );
+// returns { year: 2020, month: 1, day: 2, hour: 3, minute: 4, second: 5, millisecond: 678 }
+```
+
+
+<a id="$dateFromParts"></a>$dateFromParts
+---------------------------------------------------------------------
+
+**Usage** : `{ $dateFromParts: { year, month, day, hour, minute, second, millisecond, timezone } }`
+  or `{ $dateFromParts: { isoWeekYear, isoWeek, isoDayOfWeek, ... } }`
+
+Constructs a date from its individual parts.
+A part left out defaults to the start of its range.
+
+***A part outside its range rolls over*** rather than being refused.
+
+### Example
+```js
+jsongin.Evaluate( {}, { $dateFromParts: { year: 2020, month: 1, day: 2 } } );
+// returns new Date( '2020-01-02T00:00:00.000Z' )
+
+// Month 13 of 2020 is January of 2021.
+jsongin.Evaluate( {}, { $dateFromParts: { year: 2020, month: 13 } } );
+// returns new Date( '2021-01-01T00:00:00.000Z' )
+
+// The parts are read in the zone given.
+jsongin.Evaluate( {}, { $dateFromParts: { year: 2020, month: 1, day: 1, hour: 19, timezone: 'America/New_York' } } );
+// returns new Date( '2020-01-02T00:00:00.000Z' )
+```
+
+
+<a id="$dateToString"></a>$dateToString
+---------------------------------------------------------------------
+
+**Usage** : `{ $dateToString: { date: expression, format: string, timezone: string, onNull: expression } }`
+
+Writes a date as a string through a format.
+With no `format`, the whole ISO 8601 string.
+
+| **Specifier** | **Means** | **Specifier** | **Means** |
+|---------------|-----------|---------------|-----------|
+| `%Y`          | year      | `%j`          | day of the year |
+| `%m`          | month, from 01 | `%w`     | day of the week, Sunday is 1 |
+| `%d`          | day of the month | `%U`   | week of the year |
+| `%H`          | hour, 00 to 23 | `%G`     | ISO 8601 week year |
+| `%M`          | minute    | `%V`          | ISO 8601 week |
+| `%S`          | second    | `%u`          | ISO 8601 day of the week |
+| `%L`          | millisecond | `%z`        | zone offset, as `+HHMM` |
+| `%%`          | a literal `%` | `%Z`      | zone offset, in minutes |
+
+***Every field is padded to its width***, which is why the second of January is written `02`.
+A specifier which is not in the table throws.
+
+### Example
+```js
+let day = { when: new Date( '2020-01-02T03:04:05.678Z' ) };
+
+jsongin.Evaluate( day, { $dateToString: { date: '$when' } } );
+// returns '2020-01-02T03:04:05.678Z'
+
+jsongin.Evaluate( day, { $dateToString: { date: '$when', format: '%Y-%m-%d' } } );
+// returns '2020-01-02'
+
+jsongin.Evaluate( day, { $dateToString: { date: '$when', format: '%Y-%m-%d', timezone: 'America/New_York' } } );
+// returns '2020-01-01'
+```
+
+
+<a id="$dateFromString"></a>$dateFromString
+---------------------------------------------------------------------
+
+**Usage** : `{ $dateFromString: { dateString: expression, format: string, timezone: string, onError: expression, onNull: expression } }`
+
+Reads a date from a string.
+With no `format`, the string is read as ISO 8601; with one, through the numeric specifiers
+  `%Y`, `%m`, `%d`, `%H`, `%M`, `%S`, and `%L`.
+
+***A string carrying no zone is read in the `timezone` given***, and in UTC when none was.
+
+### Example
+```js
+jsongin.Evaluate( {}, { $dateFromString: { dateString: '2020-01-02T03:04:05.678Z' } } );
+// returns new Date( '2020-01-02T03:04:05.678Z' )
+
+jsongin.Evaluate( {}, { $dateFromString: { dateString: '02/01/2020', format: '%d/%m/%Y' } } );
+// returns new Date( '2020-01-02T00:00:00.000Z' )
+
+jsongin.Evaluate( {}, { $dateFromString: { dateString: 'not a date', onError: 'bad' } } );
+// returns 'bad'
+```
+
+
+<a id="$dateAdd"></a>$dateAdd
+---------------------------------------------------------------------
+
+**Usage** : `{ $dateAdd: { startDate: expression, unit: string, amount: number, timezone: string } }`
+
+Adds a number of time units to a date.
+A `unit` is one of `year`, `quarter`, `month`, `week`, `day`, `hour`, `minute`, `second`, or
+  `millisecond`.
+
+***The calendar units are added to the calendar, not as a length of time.***
+A day of the month which the target month does not have is pulled back to the last day it does.
+
+### Example
+```js
+let day = { when: new Date( '2020-01-02T03:04:05.678Z' ) };
+
+jsongin.Evaluate( day, { $dateAdd: { startDate: '$when', unit: 'day', amount: 1 } } );
+// returns new Date( '2020-01-03T03:04:05.678Z' )
+
+// The 31st of January plus one month is not the 2nd of March.
+jsongin.Evaluate( {}, { $dateAdd: { startDate: new Date( '2020-01-31T00:00:00Z' ), unit: 'month', amount: 1 } } );
+// returns new Date( '2020-02-29T00:00:00.000Z' )
+```
+
+
+<a id="$dateSubtract"></a>$dateSubtract
+---------------------------------------------------------------------
+
+**Usage** : `{ $dateSubtract: { startDate: expression, unit: string, amount: number, timezone: string } }`
+
+Subtracts a number of time units from a date, by the same rules as [$dateAdd](#$dateAdd).
+
+### Example
+```js
+jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) },
+	{ $dateSubtract: { startDate: '$when', unit: 'day', amount: 1 } } );
+// returns new Date( '2020-01-01T03:04:05.678Z' )
+```
+
+
+<a id="$dateDiff"></a>$dateDiff
+---------------------------------------------------------------------
+
+**Usage** : `{ $dateDiff: { startDate: expression, endDate: expression, unit: string, timezone: string, startOfWeek: string } }`
+
+The difference between two dates, in a given time unit.
+
+***This counts boundaries crossed, not elapsed time.***
+One second before midnight to one second after is one day, and two dates eleven months apart
+  can be one year apart. That is what makes it useful for grouping and surprising for measuring.
+
+### Example
+```js
+// One millisecond apart, and one day apart.
+jsongin.Evaluate( {}, { $dateDiff: {
+	startDate: new Date( '2020-01-01T23:59:59.999Z' ),
+	endDate: new Date( '2020-01-02T00:00:00.000Z' ),
+	unit: 'day' } } );
+// returns 1
+```
+
+
+<a id="$dateTrunc"></a>$dateTrunc
+---------------------------------------------------------------------
+
+**Usage** : `{ $dateTrunc: { date: expression, unit: string, binSize: number, timezone: string, startOfWeek: string } }`
+
+Truncates a date to the start of the unit it falls in.
+
+`binSize` groups several units into one bin, so `{ unit: 'hour', binSize: 2 }` truncates to even
+  hours. ***The bins are counted from a fixed reference instant***, not from the date itself, so
+  every date in a collection falls into the same bins and can be grouped by them.
+
+### Example
+```js
+let day = { when: new Date( '2020-01-02T03:04:05.678Z' ) };
+
+jsongin.Evaluate( day, { $dateTrunc: { date: '$when', unit: 'day' } } );
+// returns new Date( '2020-01-02T00:00:00.000Z' )
+
+jsongin.Evaluate( day, { $dateTrunc: { date: '$when', unit: 'hour', binSize: 2 } } );
+// returns new Date( '2020-01-02T02:00:00.000Z' )
+
+// A week is truncated to its start day, which defaults to Sunday.
+jsongin.Evaluate( day, { $dateTrunc: { date: '$when', unit: 'week' } } );
+// returns new Date( '2019-12-29T00:00:00.000Z' )
+```
 
 
 # Data Size Operators

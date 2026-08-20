@@ -142,6 +142,29 @@ function NewJsongin( EngineSettings = {} )
 		// Miscellaneous Expression Operators
 		$rand: require( './Operators/Expression/Miscellaneous/rand' )( Engine ),
 
+		// Date Expression Operators
+		$year: require( './Operators/Expression/Date/year' )( Engine ),
+		$month: require( './Operators/Expression/Date/month' )( Engine ),
+		$dayOfMonth: require( './Operators/Expression/Date/dayOfMonth' )( Engine ),
+		$dayOfWeek: require( './Operators/Expression/Date/dayOfWeek' )( Engine ),
+		$dayOfYear: require( './Operators/Expression/Date/dayOfYear' )( Engine ),
+		$hour: require( './Operators/Expression/Date/hour' )( Engine ),
+		$minute: require( './Operators/Expression/Date/minute' )( Engine ),
+		$second: require( './Operators/Expression/Date/second' )( Engine ),
+		$millisecond: require( './Operators/Expression/Date/millisecond' )( Engine ),
+		$week: require( './Operators/Expression/Date/week' )( Engine ),
+		$isoWeek: require( './Operators/Expression/Date/isoWeek' )( Engine ),
+		$isoDayOfWeek: require( './Operators/Expression/Date/isoDayOfWeek' )( Engine ),
+		$isoWeekYear: require( './Operators/Expression/Date/isoWeekYear' )( Engine ),
+		$dateToParts: require( './Operators/Expression/Date/dateToParts' )( Engine ),
+		$dateFromParts: require( './Operators/Expression/Date/dateFromParts' )( Engine ),
+		$dateToString: require( './Operators/Expression/Date/dateToString' )( Engine ),
+		$dateFromString: require( './Operators/Expression/Date/dateFromString' )( Engine ),
+		$dateAdd: require( './Operators/Expression/Date/dateAdd' )( Engine ),
+		$dateSubtract: require( './Operators/Expression/Date/dateSubtract' )( Engine ),
+		$dateDiff: require( './Operators/Expression/Date/dateDiff' )( Engine ),
+		$dateTrunc: require( './Operators/Expression/Date/dateTrunc' )( Engine ),
+
 		// Data Size Expression Operators
 		$binarySize: require( './Operators/Expression/DataSize/binarySize' )( Engine ),
 		$bsonSize: require( './Operators/Expression/DataSize/bsonSize' )( Engine ),

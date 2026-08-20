@@ -8,10 +8,10 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
-Parity with MongoDB is ***100%*** across 608 compared behaviors: Query 230, Update 89,
-  Projection 51, and Aggregate 238. Run `npm run parity-report` to measure it.
+Parity with MongoDB is ***100%*** across 649 compared behaviors: Query 230, Update 89,
+  Projection 51, and Aggregate 279. Run `npm run parity-report` to measure it.
 
-Coverage of the operator surface MongoDB documents is ***56.7%***, 144 operators of 254. Run
+Coverage of the operator surface MongoDB documents is ***65.0%***, 165 operators of 254. Run
   `npm run api-coverage` to measure that one. The two numbers answer different questions: parity
   is how faithfully what exists behaves, and coverage is how much exists.
 
@@ -193,6 +193,27 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 ### Added
 
+- The 21 ***date expression operators***, in `jsongin.ExpressionOperators`: `$year`, `$month`,
+  `$dayOfMonth`, `$dayOfWeek`, `$dayOfYear`, `$hour`, `$minute`, `$second`, `$millisecond`,
+  `$week`, `$isoWeek`, `$isoDayOfWeek`, `$isoWeekYear`, `$dateToParts`, `$dateFromParts`,
+  `$dateToString`, `$dateFromString`, `$dateAdd`, `$dateSubtract`, `$dateDiff`, and
+  `$dateTrunc`. See [Date Operators](./docs/guides/jsongin/Expression-Operators.md).
+- ***Every one of them reads a date in UTC unless given a `timezone`.*** Javascript's
+  `getFullYear()` and its relatives read a date in the machine's own zone, which would make the
+  same stored document answer differently on a laptop in New York than on a server in London.
+  A `timezone` is either an IANA zone name such as `'America/New_York'` or an offset such as
+  `'+05:30'`. A null `timezone` is not the same as no `timezone`: leaving it out means UTC, and
+  writing `null` makes the whole result null.
+- ***The ISO 8601 week operators do not agree with the calendar ones, on purpose.*** `$week`
+  begins its weeks on Sunday and calls the days before the year's first Sunday week 0, while
+  `$isoWeek` begins on Monday and puts a week entirely in the year holding its Thursday. So
+  `2021-01-01` is week 53 of ***2020*** by `$isoWeek` and `$isoWeekYear`, and week 0 of 2021
+  by `$week`.
+- ***`$dateAdd` and `$dateSubtract` add calendar units to the calendar***, not as a length of
+  time, and a day of the month which the target month does not have is pulled back to the last
+  day it does: the 31st of January plus one month is the 28th or 29th of February.
+- ***`$dateDiff` counts boundaries crossed, not elapsed time.*** One second before midnight to
+  one second after is one day.
 - The 4 ***bitwise query operators***, in `jsongin.QueryOperators`: `$bitsAllSet`,
   `$bitsAllClear`, `$bitsAnySet`, and `$bitsAnyClear`. The bits are given either as a bitmask
   or as an array of bit positions. ***The arithmetic is done in `BigInt`***, so a position
