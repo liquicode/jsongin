@@ -198,16 +198,20 @@ This generates a runner for each engine over the same suite list, runs both, and
   results test by test:
 
 ```
+   The implemented surface
+
    area          compared   agree   gaps   test bugs
    ----------------------------------------------------
-   Query              214     214      0           0
-   Update              86      86      0           0
+   Query              230     230      0           0
+   Update              89      89      0           0
    Projection          51      51      0           0
-   Aggregate          124     124      0           0
+   Aggregate          358     358      0           0
    ----------------------------------------------------
-   total              475     475      0           0
+   total              728     728      0           0
 
-   parity   100.0%   (475 of 475 compared behaviors agree)
+   parity     100.0%   (728 of 728 compared behaviors agree)
+
+   coverage   75.2%   (191 of 254 documented operators are implemented)
 ```
 
 It exits non-zero when there is a gap, so it can gate a build.

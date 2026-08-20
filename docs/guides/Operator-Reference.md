@@ -306,11 +306,11 @@ MongoDB adds operators from one server version to the next, so treat this as a c
 | Logical       |      Yes      | [$not](./jsongin/Expression-Operators.md#$not)               | Returns the opposite of an expression's boolean value.                                       |
 | Logical       |      Yes      | [$or](./jsongin/Expression-Operators.md#$or)                | Returns true when any of the expressions is true.                                            |
 | Miscellaneous |      Yes      | [$rand](./jsongin/Expression-Operators.md#$rand)              | Generates a random float between 0 and 1.                                                    |
-| Object        |       -       | $getField          | Returns the value of a given field, including fields whose names begin with a `$`.           |
-| Object        |       -       | $mergeObjects      | Merges objects together into a single object.                                                |
-| Object        |       -       | $objectToArray     | Converts an object into an array of key/value pairs.                                         |
-| Object        |       -       | $setField          | Adds or updates a field within an object.                                                    |
-| Object        |       -       | $unsetField        | Removes a field from an object.                                                              |
+| Object        |      Yes      | [$getField](./jsongin/Expression-Operators.md#$getField)          | Returns the value of a given field, including fields whose names begin with a `$`.           |
+| Object        |      Yes      | [$mergeObjects](./jsongin/Expression-Operators.md#$mergeObjects)      | Merges objects together into a single object.                                                |
+| Object        |      Yes      | [$objectToArray](./jsongin/Expression-Operators.md#$objectToArray)     | Converts an object into an array of key/value pairs.                                         |
+| Object        |      Yes      | [$setField](./jsongin/Expression-Operators.md#$setField)          | Adds or updates a field within an object.                                                    |
+| Object        |      Yes      | [$unsetField](./jsongin/Expression-Operators.md#$unsetField)        | Removes a field from an object.                                                              |
 | Set           |      Yes      | [$allElementsTrue](./jsongin/Expression-Operators.md#$allElementsTrue)   | Returns true when every element of an array is true.                                         |
 | Set           |      Yes      | [$anyElementTrue](./jsongin/Expression-Operators.md#$anyElementTrue)    | Returns true when any element of an array is true.                                           |
 | Set           |      Yes      | [$setDifference](./jsongin/Expression-Operators.md#$setDifference)     | Returns the elements of the first set which are not in the second set.                       |
@@ -515,12 +515,13 @@ There is also a difference in shape which makes them easy to tell apart at a gla
 |--------------------|------------------------------------------------------------------------|---------------------------------------------------------------------------|
 | `$first` `$last`   | `{ $group: { _id: '$k', f: { $first: '$v' } } }` takes the value from the first document of a group. | `{ $first: '$tags' }` takes the first element of an array. |
 | `$min` `$max`      | `{ $group: { _id: '$k', m: { $min: '$v' } } }` takes the smallest value in a group. | `{ $min: [ '$a', '$b' ] }` selects the smaller of two values. |
+| `$mergeObjects`    | `{ $group: { _id: '$k', d: { $mergeObjects: '$v' } } }` merges every document reaching the group. *(not supported)* | `{ $mergeObjects: [ '$a', '$b' ] }` merges the documents given to it, within one document. |
 
 | **Operator**   | **As an Update Operator**                                              | **As an Expression Operator**                                          |
 |----------------|------------------------------------------------------------------------|-------------------------------------------------------------------------|
 | `$min` `$max`  | `{ $min: { hp: 0 } }` lowers `hp` to `0`, but only if it is currently greater. | `{ $min: [ '$hp', 0 ] }` selects the smaller of the two values.  |
-| `$set`         | `{ $set: { hp: 5 } }` sets a document field.                          | The expression equivalent is `$setField`. *(not supported)*            |
-| `$unset`       | `{ $unset: { hp: 0 } }` removes a document field.                     | The expression equivalent is `$unsetField`. *(not supported)*          |
+| `$set`         | `{ $set: { hp: 5 } }` sets a document field, by dotted path.          | `{ $setField: { field: 'hp', input: '$s', value: 5 } }` answers a copy with the field set, and names the field rather than a path. |
+| `$unset`       | `{ $unset: { hp: 0 } }` removes a document field, by dotted path.     | `{ $unsetField: { field: 'hp', input: '$s' } }` answers a copy without it, and names the field rather than a path. |
 | `$push`        | `{ $push: { tags: 'new' } }` appends to an array field.               | `$push` is an accumulator, not an expression operator.                 |
 | `$addToSet`    | `{ $addToSet: { tags: 'new' } }` appends only if not already present. | `$addToSet` is an accumulator, not an expression operator. Both compare by content rather than by reference. |
 
