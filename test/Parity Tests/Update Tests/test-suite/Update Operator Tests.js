@@ -521,6 +521,56 @@ module.exports = function ( Driver )
 		} );
 
 
+		//---------------------------------------------------------------------
+		// ***A second pass of the migration this file's header describes.***
+		//
+		// Each of these was asserted only in test/Unit Tests/250), where a test can confirm
+		// what jsongin does but never disagree with it. They are the ones whose answers a
+		// reasonable implementation could get wrong.
+		describe( 'Swept In From the Unit Tests', () =>
+		{
+
+			it( 'should add a value repeated within one $each only once', async () =>
+			{
+				// ***The set rule applies within the $each as well as against the array.***
+				let document = await applied( { a: [] }, { $addToSet: { a: { $each: [ 1, 1, 2 ] } } } );
+				assert.deepStrictEqual( document.a, [ 1, 2 ] );
+			} );
+
+			it( 'should compare strictly in $addToSet, without coercing a type', async () =>
+			{
+				let document = await applied( { a: [ 1 ] }, { $addToSet: { a: '1' } } );
+				assert.strictEqual( document.a.length, 2 );
+			} );
+
+			it( 'should apply a $push $sort before its $slice', async () =>
+			{
+				// ***The order of the two modifiers is the whole answer here.*** Sorting first
+				// gives [ 1, 2, 3 ] and keeps [ 1, 2 ]; slicing first would keep [ 3, 1 ] and
+				// answer [ 1, 3 ]. Both are defensible and only one is MongoDB.
+				let document = await applied( { a: [] },
+					{ $push: { a: { $each: [ 3, 1, 2 ], $sort: 1, $slice: 2 } } } );
+				assert.deepStrictEqual( document.a, [ 1, 2 ] );
+			} );
+
+			it( 'should remove a numeric key from a document rather than nulling it', async () =>
+			{
+				// ***A numeric key against a document is a field name***, so it is removed the
+				// way any other field is. Nulling is what happens to an array element, and the
+				// difference is decided by what the path reaches, not by how the key looks.
+				let document = await applied( { o: { '0': 1, b: 2 } }, { $unset: { 'o.0': '' } } );
+				assert.deepStrictEqual( document.o, { b: 2 } );
+			} );
+
+			it( 'should leave an array alone for an index which is out of range', async () =>
+			{
+				let document = await applied( { a: [ 1, 2 ] }, { $unset: { 'a.5': '' } } );
+				assert.deepStrictEqual( document.a, [ 1, 2 ] );
+			} );
+
+		} );
+
+
 	} );
 
 };

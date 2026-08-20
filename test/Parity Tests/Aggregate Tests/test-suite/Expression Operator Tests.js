@@ -75,6 +75,67 @@ module.exports = function ( Driver )
 				assert.strictEqual( await produced_a_field( '$nope' ), false );
 			} );
 
+			// ***Gathering through an array was asserted only by unit tests until 2026-08-20.***
+			// It is MongoDB-defined, it is the behavior a whole breaking change was written
+			// around, and a unit test could only ever have confirmed whatever jsongin did.
+			// Swept in here, where the server has a say.
+
+			it( 'should gather a field reference through an array', async () =>
+			{
+				await Driver.SetData( [ { _id: 1, a: [ { x: 1 }, { x: 2 } ] } ] );
+				let result = await Driver.Aggregate( [ { $project: { _id: 0, r: '$a.x' } } ] );
+				assert.deepStrictEqual( result[ 0 ].r, [ 1, 2 ] );
+			} );
+
+			it( 'should leave out an element which does not have the field', async () =>
+			{
+				// ***An element without the field contributes nothing***, rather than a
+				// placeholder standing in for it, so the gathered array can be shorter than
+				// the one it came from - or empty.
+				await Driver.SetData( [
+					{ _id: 1, a: [ { x: 5 }, { y: 9 } ] },
+					{ _id: 2, a: [ { y: 9 } ] },
+					{ _id: 3, a: [] },
+				] );
+				let result = await Driver.Aggregate( [
+					{ $sort: { _id: 1 } },
+					{ $project: { _id: 0, r: '$a.x' } },
+				] );
+				assert.deepStrictEqual( result[ 0 ].r, [ 5 ] );
+				assert.deepStrictEqual( result[ 1 ].r, [] );
+				assert.deepStrictEqual( result[ 2 ].r, [] );
+			} );
+
+			it( 'should tell an empty gather from a path which traversed nothing', async () =>
+			{
+				// ***An empty array and no field at all are different answers.*** The first
+				// says an array was walked and held nothing matching; the second says the path
+				// never reached an array to walk.
+				await Driver.SetData( [ { _id: 1, b: 1 }, { _id: 2, a: 5 } ] );
+				let result = await Driver.Aggregate( [
+					{ $sort: { _id: 1 } },
+					{ $project: { _id: 0, r: '$a.x' } },
+				] );
+				assert.strictEqual( 'r' in result[ 0 ], false );
+				assert.strictEqual( 'r' in result[ 1 ], false );
+			} );
+
+			it( 'should keep a gathered value which is itself an array whole', async () =>
+			{
+				await Driver.SetData( [ { _id: 1, a: [ { x: [ 5, 6 ] } ] } ] );
+				let result = await Driver.Aggregate( [ { $project: { _id: 0, r: '$a.x' } } ] );
+				assert.deepStrictEqual( result[ 0 ].r, [ [ 5, 6 ] ] );
+			} );
+
+			it( 'should nest rather than flatten when gathering through two arrays', async () =>
+			{
+				// ***One level of nesting per array crossed.*** Flattening would lose which
+				// element each value came from, and is the obvious wrong implementation.
+				await Driver.SetData( [ { _id: 1, a: [ { b: [ { c: 1 } ] } ] } ] );
+				let result = await Driver.Aggregate( [ { $project: { _id: 0, r: '$a.b.c' } } ] );
+				assert.deepStrictEqual( result[ 0 ].r, [ [ 1 ] ] );
+			} );
+
 			it( 'should not index an array, with any numeric key', async () =>
 			{
 				// An aggregation field path never indexes an array. Every key applies to the
@@ -135,6 +196,22 @@ module.exports = function ( Driver )
 				assert.strictEqual( await evaluated( { $divide: [ 10, 4 ] } ), 2.5 );
 			} );
 
+			it( 'should refuse to divide by zero, in $divide and $mod', async () =>
+			{
+				// ***Swept in from the unit tests on 2026-08-20.*** Refusing rather than
+				// answering an infinity or a NaN is MongoDB's choice, not an obvious one, and
+				// only a unit test had ever said so.
+				let divided = false;
+				try { await evaluated( { $divide: [ 12, 0 ] } ); }
+				catch ( error ) { divided = true; }
+				assert.strictEqual( divided, true );
+
+				let remainder = false;
+				try { await evaluated( { $mod: [ 13, 0 ] } ); }
+				catch ( error ) { remainder = true; }
+				assert.strictEqual( remainder, true );
+			} );
+
 			it( 'should take the remainder with $mod', async () =>
 			{
 				assert.strictEqual( await evaluated( { $mod: [ 10, 3 ] } ), 1 );
@@ -160,6 +237,46 @@ module.exports = function ( Driver )
 		//---------------------------------------------------------------------
 		describe( 'Comparison Expression Operators', () =>
 		{
+
+			it( 'should rank a missing value below a null, not equal to it', async () =>
+			{
+				// ***Swept in from the unit tests on 2026-08-20, and it found a defect.*** A
+				// unit test asserted that the expression $eq equates a null and a missing
+				// value - which is the ***query*** rule - and no parity test had ever put the
+				// question to a server. jsongin answered true and MongoDB answers false.
+				//
+				// ***MongoDB is inconsistent about this on purpose.*** In an expression a
+				// missing value ranks below a null and equals only another missing one, while
+				// $sort still orders a document missing the sort field as though it held a
+				// null. Both rules are measured, here and in Stage and Accumulator Tests.
+				assert.strictEqual( await evaluated( { $eq: [ '$nope', null ] } ), false );
+				assert.strictEqual( await evaluated( { $eq: [ '$l', '$nope' ] } ), false );
+				assert.strictEqual( await evaluated( { $ne: [ '$nope', null ] } ), true );
+
+				// A missing value equals only another missing one.
+				assert.strictEqual( await evaluated( { $eq: [ '$nope', '$nope2' ] } ), true );
+				assert.strictEqual( await evaluated( { $eq: [ '$l', null ] } ), true );
+			} );
+
+			it( 'should order a missing value below everything with the ranking operators', async () =>
+			{
+				assert.strictEqual( await evaluated( { $cmp: [ '$nope', null ] } ), -1 );
+				assert.strictEqual( await evaluated( { $cmp: [ '$l', '$nope' ] } ), 1 );
+				assert.strictEqual( await evaluated( { $cmp: [ '$nope', '$nope2' ] } ), 0 );
+				assert.strictEqual( await evaluated( { $cmp: [ '$nope', 5 ] } ), -1 );
+
+				assert.strictEqual( await evaluated( { $lt: [ '$nope', null ] } ), true );
+				assert.strictEqual( await evaluated( { $gt: [ '$l', '$nope' ] } ), true );
+				assert.strictEqual( await evaluated( { $lt: [ '$nope', 5 ] } ), true );
+			} );
+
+			it( 'should select a zero rather than reading it as no value', async () =>
+			{
+				// Swept in from the unit tests. A zero is falsy in Javascript, which is
+				// exactly the mistake this guards against.
+				assert.strictEqual( await evaluated( { $min: [ 3, 0 ] } ), 0 );
+				assert.strictEqual( await evaluated( { $max: [ -3, 0 ] } ), 0 );
+			} );
 
 			it( 'should compare for equality with $eq and $ne', async () =>
 			{

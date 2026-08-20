@@ -214,13 +214,13 @@ This generates a runner for each engine over the same suite list, runs both, and
    area          compared   agree   gaps   test bugs
    ----------------------------------------------------
    Query              230     230      0           0
-   Update              89      89      0           0
-   Projection          51      51      0           0
-   Aggregate          471     471      0           0
+   Update              94      94      0           0
+   Projection          56      56      0           0
+   Aggregate          489     489      0           0
    ----------------------------------------------------
-   total              841     841      0           0
+   total              869     869      0           0
 
-   parity     100.0%   (841 of 841 compared behaviors agree)
+   parity     100.0%   (869 of 869 compared behaviors agree)
 
    coverage   83.5%   (212 of 254 documented operators are implemented)
 ```

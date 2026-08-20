@@ -377,6 +377,27 @@ Each of these compares two operands with [`CompareValues()`](./CompareValues.md)
   MongoDB's BSON type order, so values of different types still compare.
 All seven share one implementation and differ only in what they make of the comparison.
 
+***A missing operand ranks below a null and equals only another missing one.***
+This is the one place these operators depart from `CompareValues()`, which ranks the two
+  together, and it is worth stating because the neighbouring mechanisms disagree with it:
+
+| **Mechanism** | **A missing value against a null** |
+|---------------|-------------------------------------|
+| an expression comparison, here | ***below*** it — `{ $cmp: [ '$nope', null ] }` is `-1` |
+| a [query](./Query-Operators.md), `{ field: null }` | ***matches*** it |
+| [`$sort`](./Stage-Operators.md#$sort) | sorts ***as*** it |
+
+MongoDB is inconsistent between the three on purpose, and `jsongin` reproduces each rather than
+  picking one. So `{ $eq: [ '$nope', null ] }` is `false` while a query for `{ nope: null }`
+  matches, and both are correct.
+
+```js
+jsongin.Evaluate( {}, { $eq: [ '$nope', null ] } ) === false;
+jsongin.Evaluate( {}, { $eq: [ '$nope', '$gone' ] } ) === true;
+jsongin.Evaluate( {}, { $cmp: [ '$nope', null ] } ) === -1;
+jsongin.Evaluate( { a: null }, { $eq: [ '$a', null ] } ) === true;
+```
+
 
 <a id="$eq"></a>$eq
 ---------------------------------------------------------------------

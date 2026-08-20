@@ -363,10 +363,23 @@ describe( '220) Expression Operator Tests', () =>
 			assert.ok( jsongin.Evaluate( {}, { $eq: [ 0, false ] } ) === false );
 		} );
 
-		it( 'should equate null and missing values', () =>
+		// ***This asserted the opposite until 2026-08-20, and was wrong the whole time.***
+		// It claimed the expression $eq equates a null and a missing value, which is the
+		// ***query*** rule; in an expression a missing value ranks below a null and equals
+		// only another missing one.
+		//
+		// It survived because it was a unit test making a claim about behavior MongoDB has a
+		// definite opinion on, which is exactly what the parity rule exists to prevent. The
+		// sweep that found it also found nothing else of the kind. The parity tests which now
+		// cover it are in Aggregate Tests/test-suite/Expression Operator Tests.js.
+		it( 'should not equate a null and a missing value', () =>
 		{
-			assert.ok( jsongin.Evaluate( {}, { $eq: [ '$missing', null ] } ) === true );
-			assert.ok( jsongin.Evaluate( { a: null }, { $eq: [ '$a', '$missing' ] } ) === true );
+			assert.ok( jsongin.Evaluate( {}, { $eq: [ '$missing', null ] } ) === false );
+			assert.ok( jsongin.Evaluate( { a: null }, { $eq: [ '$a', '$missing' ] } ) === false );
+
+			// A missing value equals only another missing one.
+			assert.ok( jsongin.Evaluate( {}, { $eq: [ '$missing', '$gone' ] } ) === true );
+			assert.ok( jsongin.Evaluate( { a: null }, { $eq: [ '$a', null ] } ) === true );
 		} );
 
 		it( 'should compare document fields to each other', () =>

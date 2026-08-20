@@ -319,6 +319,61 @@ module.exports = function ( Driver )
 				assert.deepStrictEqual( await accumulated( { $addToSet: '$nope' } ), [] );
 			} );
 
+			// ***These four were asserted only by unit tests until 2026-08-20.*** Each states
+			// something MongoDB has a definite opinion about, which a unit test can only ever
+			// confirm rather than check - the blind spot which hid the $group defect. Written
+			// as parity tests during the sweep for others of the same kind.
+
+			it( 'should keep a null but drop a missing value in $push', async () =>
+			{
+				// ***The two part company here***, which is the interesting half: a null is a
+				// value and is collected, while a document with no such field contributes
+				// nothing at all rather than a null standing in for it.
+				await Driver.SetData( [
+					{ _id: 1, n: 1 }, { _id: 2, n: null }, { _id: 3 }, { _id: 4, n: 2 },
+				] );
+				let result = await Driver.Aggregate( [
+					{ $sort: { _id: 1 } },
+					{ $group: { _id: null, r: { $push: '$n' } } },
+				] );
+				assert.deepStrictEqual( result[ 0 ].r, [ 1, null, 2 ] );
+			} );
+
+			it( 'should keep a null but drop a missing value in $addToSet', async () =>
+			{
+				await Driver.SetData( [ { _id: 1, a: 1 }, { _id: 2, a: null }, { _id: 3 } ] );
+				let result = await Driver.Aggregate( [
+					{ $group: { _id: null, r: { $addToSet: '$a' } } },
+				] );
+				assert.strictEqual( result[ 0 ].r.length, 2 );
+				assert.ok( result[ 0 ].r.includes( null ) );
+				assert.ok( result[ 0 ].r.includes( 1 ) );
+			} );
+
+			it( 'should order mixed types by the BSON type order in $min and $max', async () =>
+			{
+				// A number sorts before a string, and a string before a boolean.
+				await Driver.SetData( [
+					{ _id: 1, n: 'abc' }, { _id: 2, n: true }, { _id: 3, n: 5 },
+				] );
+				let result = await Driver.Aggregate( [
+					{ $group: { _id: null, low: { $min: '$n' }, high: { $max: '$n' } } },
+				] );
+				assert.strictEqual( result[ 0 ].low, 5 );
+				assert.strictEqual( result[ 0 ].high, true );
+			} );
+
+			it( 'should ignore a null as well as a missing value in $min and $max', async () =>
+			{
+				await Driver.SetData( [
+					{ _id: 1, n: 3 }, { _id: 2, n: null }, { _id: 3 }, { _id: 4, n: 2 },
+				] );
+				let result = await Driver.Aggregate( [
+					{ $group: { _id: null, low: { $min: '$n' } } },
+				] );
+				assert.strictEqual( result[ 0 ].low, 2 );
+			} );
+
 			it( 'should count the group with the $count accumulator', async () =>
 			{
 				assert.strictEqual( await accumulated( { $count: {} } ), 4 );
@@ -353,6 +408,82 @@ module.exports = function ( Driver )
 
 				let averaged = await Driver.Aggregate( [ { $group: { _id: null, r: { $avg: '$n' } } } ] );
 				assert.strictEqual( averaged[ 0 ].r, 2 );
+			} );
+
+		} );
+
+
+		//---------------------------------------------------------------------
+		// ***Behavior which only the unit tests had an opinion about.***
+		//
+		// Each of these states something MongoDB defines, and each was asserted only in
+		// test/Unit Tests/, where a test can confirm what jsongin does but never disagree with
+		// it. That is the blind spot which let $group drop a field for seven families. Written
+		// here during the sweep for others of the same kind.
+		describe( 'Swept In From the Unit Tests', () =>
+		{
+
+			it( 'should group a missing key with the nulls', async () =>
+			{
+				// A document which has no group key at all lands with the ones holding a null,
+				// rather than forming a group of its own.
+				await Driver.SetData( [
+					{ _id: 1, g: null }, { _id: 2 }, { _id: 3, g: 'x' },
+				] );
+				let result = await Driver.Aggregate( [
+					{ $group: { _id: '$g', n: { $sum: 1 } } },
+					{ $sort: { n: -1 } },
+				] );
+				assert.strictEqual( result.length, 2 );
+				assert.strictEqual( result[ 0 ]._id, null );
+				assert.strictEqual( result[ 0 ].n, 2 );
+			} );
+
+			it( 'should not group values of different types together', async () =>
+			{
+				// ***The type is part of the key.*** A number and the string of that number
+				// serialize alike and are still two groups.
+				await Driver.SetData( [ { _id: 1, g: 1 }, { _id: 2, g: '1' } ] );
+				let result = await Driver.Aggregate( [ { $group: { _id: '$g', n: { $sum: 1 } } } ] );
+				assert.strictEqual( result.length, 2 );
+			} );
+
+			it( 'should not add a field whose expression produces no value in $addFields', async () =>
+			{
+				// ***Here the field is left out***, which is the opposite of what $group does
+				// with an accumulator that produced nothing. The two rules sit next to each
+				// other and disagree, which is exactly why assuming one from the other is how
+				// the $group defect was written in the first place.
+				await Driver.SetData( [ { _id: 1, a: 1 } ] );
+				let result = await Driver.Aggregate( [ { $addFields: { x: '$nope' } } ] );
+				assert.strictEqual( 'x' in result[ 0 ], false );
+			} );
+
+			it( 'should sort a document missing the sort field as though it were null', async () =>
+			{
+				await Driver.SetData( [
+					{ _id: 1, s: 2 }, { _id: 2 }, { _id: 3, s: null }, { _id: 4, s: 1 },
+				] );
+				let result = await Driver.Aggregate( [
+					{ $sort: { s: 1, _id: 1 } },
+					{ $project: { _id: 1 } },
+				] );
+				// The missing one and the null one sort together, ahead of the numbers.
+				assert.deepStrictEqual(
+					result.map( function ( D ) { return D._id; } ), [ 2, 3, 4, 1 ] );
+			} );
+
+			it( 'should sort mixed types by the BSON type order', async () =>
+			{
+				await Driver.SetData( [
+					{ _id: 1, s: 'abc' }, { _id: 2, s: true }, { _id: 3, s: 5 },
+				] );
+				let result = await Driver.Aggregate( [
+					{ $sort: { s: 1 } },
+					{ $project: { _id: 1 } },
+				] );
+				assert.deepStrictEqual(
+					result.map( function ( D ) { return D._id; } ), [ 3, 1, 2 ] );
 			} );
 
 		} );
