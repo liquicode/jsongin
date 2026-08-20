@@ -300,6 +300,12 @@ function NewJsongin( EngineSettings = {} )
 		$limit: require( './Operators/Stage/limit' )( Engine ),
 		$skip: require( './Operators/Stage/skip' )( Engine ),
 		$count: require( './Operators/Stage/count' )( Engine ),
+		$unset: require( './Operators/Stage/unset' )( Engine ),
+		$replaceRoot: require( './Operators/Stage/replaceRoot' )( Engine ),
+		$replaceWith: require( './Operators/Stage/replaceWith' )( Engine ),
+		$sortByCount: require( './Operators/Stage/sortByCount' )( Engine ),
+		$sample: require( './Operators/Stage/sample' )( Engine ),
+		$facet: require( './Operators/Stage/facet' )( Engine ),
 
 	};
 

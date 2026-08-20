@@ -23,6 +23,12 @@ See [`Aggregate()`](./Aggregate.md) for the pipeline rules and
 | [`$limit`](#$limit)                | `{ $limit: count }`                                                  |
 | [`$skip`](#$skip)                  | `{ $skip: count }`                                                   |
 | [`$count`](#$count)                | `{ $count: 'field_name' }`                                           |
+| [`$unset`](#$unset)                | `{ $unset: 'path' \| [ 'path', ... ] }`                              |
+| [`$replaceRoot`](#$replaceRoot)    | `{ $replaceRoot: { newRoot: expression } }`                          |
+| [`$replaceWith`](#$replaceWith)    | `{ $replaceWith: expression }`                                       |
+| [`$sortByCount`](#$sortByCount)    | `{ $sortByCount: expression }`                                       |
+| [`$sample`](#$sample)              | `{ $sample: { size: count } }`                                       |
+| [`$facet`](#$facet)                | `{ $facet: { name: [ stage, ... ], ... } }`                          |
 
 
 
@@ -196,6 +202,158 @@ jsongin.Aggregate( players, [ { $match: { alive: 'nope' } }, { $count: 'n' } ] )
 
 jsongin.Aggregate( players, [ { $count: '' } ] );   // throws, the field name cannot be empty
 jsongin.Aggregate( players, [ { $count: 5 } ] );    // throws, $count takes a string
+```
+
+
+<a id="$unset"></a>$unset
+---------------------------------------------------------------------
+
+**Usage** : `{ $unset: 'path' }` or `{ $unset: [ 'path', 'path', ... ] }`
+
+Removes fields from every document. A shorthand for a [`$project`](#$project) of exclusions,
+  and built as one, so the two cannot disagree.
+
+***A path here, not a name.*** A dot steps into a sub-document, which is the opposite of the
+  expression operator
+  [`$unsetField`](./Expression-Operators.md#$unsetField), where a dot is part of the field's
+  name.
+
+A document which does not have the field passes through unchanged, and `_id` may be removed
+  like any other field. An empty specification is refused.
+
+### Example
+```js
+jsongin.Aggregate( players, [ { $unset: [ 'dmg', 'armor', 'alive' ] } ] );
+// returns [ { team: 'red', name: 'Alice', points: 7 }, { team: 'red', name: 'Bob', points: 3 }, { team: 'blue', name: 'Carol', points: 9 } ]
+
+// A dot steps into a sub-document.
+jsongin.Aggregate( [ { a: { b: 1, c: 2 } } ], [ { $unset: 'a.b' } ] );
+// returns [ { a: { c: 2 } } ]
+
+jsongin.Aggregate( players, [ { $unset: [] } ] );   // throws, at least one path is required
+```
+
+
+<a id="$replaceRoot"></a><a id="$replaceWith"></a>$replaceRoot and $replaceWith
+---------------------------------------------------------------------
+
+**Usage** : `{ $replaceRoot: { newRoot: expression } }` or `{ $replaceWith: expression }`
+
+Replaces each document with the document the expression produces.
+The two are the same stage; `$replaceWith` simply omits the `newRoot` wrapper.
+
+***The document is replaced rather than merged into***, so `_id` does not survive unless the
+  new root carries one of its own.
+
+***A new root which is missing or is not a document fails the pipeline***, rather than dropping
+  that one document, which is why [`$ifNull`](./Expression-Operators.md#$ifNull) is the usual
+  guard on a field which may not be there.
+
+### Example
+```js
+jsongin.Aggregate( players, [
+	{ $match: { name: 'Alice' } },
+	{ $replaceRoot: { newRoot: { who: '$name', net: { $subtract: [ '$dmg', '$armor' ] } } } },
+] );
+// returns [ { who: 'Alice', net: 7 } ]
+
+jsongin.Aggregate( players, [ { $match: { name: 'Alice' } }, { $replaceWith: { who: '$name' } } ] );
+// returns [ { who: 'Alice' } ]
+
+// A new root which is not a document fails the pipeline.
+jsongin.Aggregate( players, [ { $replaceWith: '$name' } ] );   // throws
+
+// Which is why a field that may be missing is guarded.
+jsongin.Aggregate( players, [ { $replaceWith: { $ifNull: [ '$gear', { none: true } ] } } ] );
+// returns [ { none: true }, { none: true }, { none: true } ]
+```
+
+
+<a id="$sortByCount"></a>$sortByCount
+---------------------------------------------------------------------
+
+**Usage** : `{ $sortByCount: expression }`
+
+Groups the documents by the expression and emits one document per group, holding the group's
+  value as `_id` and how many documents it held as `count`, ***most frequent first***.
+
+A shorthand for the [`$group`](#$group) and [`$sort`](#$sort) it stands for, and built as them.
+
+***The argument is narrower than an expression.*** It must be a `$`-prefixed path or a document
+  naming an operator. `$group` would take `{ team: 1 }` as an expression object and gather every
+  document under it, which answers a question nobody asked, so this stage refuses it.
+
+### Example
+```js
+jsongin.Aggregate( players, [ { $sortByCount: '$team' } ] );
+// returns [ { _id: 'red', count: 2 }, { _id: 'blue', count: 1 } ]
+
+jsongin.Aggregate( players, [ { $sortByCount: { $toUpper: '$team' } } ] );
+// returns [ { _id: 'RED', count: 2 }, { _id: 'BLUE', count: 1 } ]
+
+jsongin.Aggregate( players, [ { $sortByCount: 'team' } ] );   // throws, a path must begin with a '$'
+```
+
+
+<a id="$sample"></a>$sample
+---------------------------------------------------------------------
+
+**Usage** : `{ $sample: { size: count } }`
+
+Selects `size` documents at random, ***without replacement***, so no document is selected twice.
+
+A `size` larger than the stream takes the whole stream, and a `size` of `0` takes nothing.
+***A fractional size is truncated rather than refused***, which is worth knowing because the
+  N accumulators do require a whole number. A negative size throws.
+
+***The order of the result is not specified.*** Pair this with a [`$sort`](#$sort) when the
+  order matters.
+
+### Example
+```js
+let sampled = jsongin.Aggregate( players, [ { $sample: { size: 2 } } ] );
+let took_two = ( sampled.length === 2 );
+
+// A size larger than the stream takes all of it.
+let all = jsongin.Aggregate( players, [ { $sample: { size: 99 } } ] );
+let took_all = ( all.length === 3 );
+
+jsongin.Aggregate( players, [ { $sample: { size: -1 } } ] );   // throws
+```
+
+
+<a id="$facet"></a>$facet
+---------------------------------------------------------------------
+
+**Usage** : `{ $facet: { name: [ stage, ... ], ... } }`
+
+Runs several pipelines over the same input and gathers their results into one document, one
+  field per branch.
+
+***Every branch sees the whole input***, not what another branch left behind, which is the
+  point of the stage: it answers several questions about one set of documents in a single pass.
+
+***One document comes out*** however many went in. A branch which selects nothing answers an
+  empty array, and an empty branch pipeline answers everything.
+
+### Example
+```js
+jsongin.Aggregate( players, [ {
+	$facet: {
+		total: [ { $count: 'n' } ],
+		best: [ { $sort: { points: -1 } }, { $limit: 1 }, { $project: { _id: 0, name: 1 } } ],
+	}
+} ] );
+// returns [ { total: [ { n: 3 } ], best: [ { name: 'Carol' } ] } ]
+
+// Each branch is given the whole input. If they shared a stream, the count would be 1.
+jsongin.Aggregate( players, [ {
+	$facet: {
+		first: [ { $limit: 1 }, { $project: { _id: 0, name: 1 } } ],
+		total: [ { $count: 'n' } ],
+	}
+} ] );
+// returns [ { first: [ { name: 'Alice' } ], total: [ { n: 3 } ] } ]
 ```
 
 

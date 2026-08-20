@@ -8,10 +8,10 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
-Parity with MongoDB is ***100%*** across 753 compared behaviors: Query 230, Update 89,
-  Projection 51, and Aggregate 383. Run `npm run parity-report` to measure it.
+Parity with MongoDB is ***100%*** across 785 compared behaviors: Query 230, Update 89,
+  Projection 51, and Aggregate 415. Run `npm run parity-report` to measure it.
 
-Coverage of the operator surface MongoDB documents is ***79.5%***, 202 operators of 254. Run
+Coverage of the operator surface MongoDB documents is ***81.9%***, 208 operators of 254. Run
   `npm run api-coverage` to measure that one. The two numbers answer different questions: parity
   is how faithfully what exists behaves, and coverage is how much exists.
 
@@ -193,6 +193,27 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 ### Added
 
+- The 6 ***reshaping pipeline stages***, in `jsongin.StageOperators`: `$unset`, `$replaceRoot`,
+  `$replaceWith`, `$sortByCount`, `$sample`, and `$facet`. See
+  [Stage Operators](./docs/guides/jsongin/Stage-Operators.md).
+- ***`$unset` takes a path and `$unsetField` takes a name***, which is the same distinction the
+  object expression operators draw. The stage removes `'sub.q'` by stepping into `sub`; the
+  expression operator removes a field literally called `sub.q`. `$unset` now carries three
+  meanings — an update operator, a pipeline stage, and `$unsetField` as the expression form.
+- ***`$replaceRoot` and `$replaceWith` fail the pipeline*** when the new root is missing or is
+  not a document, rather than dropping that document, which is why `$ifNull` is the usual guard.
+  `_id` does not survive either stage unless the new root carries one.
+- ***`$replaceWith` takes any expression and only the result has to be a document***, so over an
+  empty stream there is nothing for it to object to. `$replaceRoot` is refused up front when its
+  argument document is malformed, because that is wrong whatever flows through.
+- ***`$sortByCount` takes a narrower argument than an expression***: a `$`-prefixed path or a
+  document naming an operator. `{ $sortByCount: { team: 1 } }` is refused rather than gathering
+  every document under one key, which is what a plain `$group` would do with it.
+- ***`$sample` truncates a fractional size*** rather than refusing it, unlike the N accumulators,
+  which require a whole number. It draws without replacement, and the order of the result is not
+  specified.
+- ***Every `$facet` branch is given the whole input***, not what another branch left behind, and
+  the stage emits exactly one document however many went in.
 - The 11 ***remaining accumulators***, in `jsongin.AccumulatorOperators`: `$stdDevPop`,
   `$stdDevSamp`, `$mergeObjects`, `$firstN`, `$lastN`, `$minN`, `$maxN`, `$top`, `$bottom`,
   `$topN`, and `$bottomN`. See

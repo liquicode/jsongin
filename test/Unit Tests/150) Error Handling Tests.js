@@ -374,9 +374,15 @@ describe( '150) Error Handling Tests', () =>
 					// valid argument to $unwind, so no single bad value suits every stage.
 					let bad = 3;
 					if ( ( Name === '$limit' ) || ( Name === '$skip' ) ) { bad = 'abc'; }
-					Engine.StageOperators[ Name ].Stage( [], bad );
+
+					// ***The stream has a document in it***, which matters for $replaceWith:
+					// it takes any expression and only the result has to be a document, so
+					// with an empty stream there is nothing for it to object to and it would
+					// be the one stage in the sweep which never reported. Verified against
+					// MongoDB, which does not complain either - see the parity suite.
+					Engine.StageOperators[ Name ].Stage( [ { n: 1 } ], bad );
 				} );
-			assert.strictEqual( reported, 10 );
+			assert.strictEqual( reported, 16 );
 		} );
 
 		it( 'should report from the query operators which reject their argument', () =>
@@ -436,17 +442,23 @@ describe( '150) Error Handling Tests', () =>
 
 		it( 'should reject a malformed argument to every stage', () =>
 		{
-			// Each stage rejects a string where its own argument type is required. $unwind and
-			// $count are the exceptions: a string is one of $unwind's two valid forms and is
-			// the only form $count takes, so both are given a number instead.
+			// Each stage rejects a string where its own argument type is required. $unwind,
+			// $count and $unset are the exceptions: a string is one of $unwind's two valid
+			// forms, is the only form $count takes, and is a single field path to $unset, so
+			// all three are given a number instead.
+			//
+			// ***The stream has a document in it***, because $replaceWith takes any expression
+			// and only the result has to be a document. Over an empty stream it has nothing to
+			// object to, and MongoDB does not object either - which makes this a statement
+			// about when a stage validates, not about whether it does. See the parity suite.
 			let names = Object.keys( jsongin.StageOperators );
-			assert.strictEqual( names.length, 10 );
+			assert.strictEqual( names.length, 16 );
 			for ( let index = 0; index < names.length; index++ )
 			{
 				let name = names[ index ];
-				let bad = ( ( name === '$unwind' ) || ( name === '$count' ) ) ? 3 : 'abc';
+				let bad = [ '$unwind', '$count', '$unset' ].includes( name ) ? 3 : 'abc';
 				assert.throws(
-					function () { jsongin.StageOperators[ name ].Stage( [], bad ); },
+					function () { jsongin.StageOperators[ name ].Stage( [ { n: 1 } ], bad ); },
 					`${name} accepted a malformed argument.` );
 			}
 		} );

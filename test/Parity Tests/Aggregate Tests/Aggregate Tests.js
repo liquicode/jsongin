@@ -37,6 +37,7 @@ module.exports = function ( Driver )
 		require( './test-suite/Array Operator Tests.js' )( Driver );
 		require( './test-suite/Object Operator Tests.js' )( Driver );
 		require( './test-suite/Accumulator Operator Tests.js' )( Driver );
+		require( './test-suite/Reshaping Stage Tests.js' )( Driver );
 		require( './test-suite/Stage and Accumulator Tests.js' )( Driver );
 		require( './test-suite/Expression Rejection Tests.js' )( Driver );
 	} );

@@ -462,13 +462,17 @@ function check_shared_names()
 		'As an Expression Operator': 'ExpressionOperators',
 		'As an Accumulator': 'AccumulatorOperators',
 		'As an Update Operator': 'UpdateOperators',
+		'As a Pipeline Stage': 'StageOperators',
 		// A projection operator is handled inside Project.js rather than registered, and
 		// 'Elsewhere' is free text by design. Neither has a registry to be checked against.
 		'As a Projection Operator': null,
 		'Elsewhere': null,
 	};
 
-	const REGISTRIES = [ 'QueryOperators', 'ExpressionOperators', 'AccumulatorOperators', 'UpdateOperators' ];
+	// ***Stages count as a role.*** $set, $count, and $unset each name a stage and something
+	// else, so leaving StageOperators out would have let exactly the collisions this section
+	// exists for go unnoticed.
+	const REGISTRIES = [ 'QueryOperators', 'ExpressionOperators', 'AccumulatorOperators', 'UpdateOperators', 'StageOperators' ];
 
 	const NOT_SUPPORTED = '*(not supported)*';
 
