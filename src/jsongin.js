@@ -128,6 +128,17 @@ function NewJsongin( EngineSettings = {} )
 		$degreesToRadians: require( './Operators/Expression/Trigonometry/degreesToRadians' )( Engine ),
 		$radiansToDegrees: require( './Operators/Expression/Trigonometry/radiansToDegrees' )( Engine ),
 
+		// Type Expression Operators
+		$type: require( './Operators/Expression/Type/type' )( Engine ),
+		$isNumber: require( './Operators/Expression/Type/isNumber' )( Engine ),
+		$convert: require( './Operators/Expression/Type/convert' )( Engine ),
+		$toString: require( './Operators/Expression/Type/toString' )( Engine ),
+		$toBool: require( './Operators/Expression/Type/toBool' )( Engine ),
+		$toDate: require( './Operators/Expression/Type/toDate' )( Engine ),
+		$toInt: require( './Operators/Expression/Type/toInt' )( Engine ),
+		$toLong: require( './Operators/Expression/Type/toLong' )( Engine ),
+		$toDouble: require( './Operators/Expression/Type/toDouble' )( Engine ),
+
 		// Array Expression Operators
 		$size: require( './Operators/Expression/Array/size' )( Engine ),
 		$arrayElemAt: require( './Operators/Expression/Array/arrayElemAt' )( Engine ),

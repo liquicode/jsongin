@@ -8,10 +8,10 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
-Parity with MongoDB is ***100%*** across 574 compared behaviors: Query 219, Update 86,
-  Projection 51, and Aggregate 218. Run `npm run parity-report` to measure it.
+Parity with MongoDB is ***100%*** across 592 compared behaviors: Query 219, Update 86,
+  Projection 51, and Aggregate 236. Run `npm run parity-report` to measure it.
 
-Coverage of the operator surface MongoDB documents is ***48.8%***, 124 operators of 254. Run
+Coverage of the operator surface MongoDB documents is ***52.4%***, 133 operators of 254. Run
   `npm run api-coverage` to measure that one. The two numbers answer different questions: parity
   is how faithfully what exists behaves, and coverage is how much exists.
 
@@ -193,6 +193,24 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 ### Added
 
+- The 9 ***type expression operators***, in `jsongin.ExpressionOperators`: `$type`,
+  `$isNumber`, `$convert`, `$toString`, `$toBool`, `$toDate`, `$toInt`, `$toLong`, and
+  `$toDouble`. See [Type Operators](./docs/guides/jsongin/Expression-Operators.md).
+- ***These follow MongoDB's conversion rules, not Javascript's***, which disagree more often
+  than they agree. A numeric string must be numeric in its entirety, so `' 5'` and `''` are
+  refused where `Number()` reads them as `5` and `0`. Every string converts to `true`,
+  including the empty one. `$toInt` truncates a fractional number but refuses a fractional
+  string. A date string carrying no time zone is read as ***UTC***, where `Date.parse()` would
+  read it as local time and give a different instant on every machine.
+- `$convert` adds `onError` and `onNull`, which the `$toX` shorthands cannot express. A null
+  input takes the `onNull` path even when an `onError` is also given, and a `to` which names no
+  type throws rather than being caught by `onError`.
+- ***One boundary is worth knowing before relying on `$type`.*** MongoDB has `int`, `long`, and
+  `double` as separate BSON types and tags a converted number with the one it was converted to,
+  so `{ $type: { $toLong: 42 } }` is `'long'` there and `'int'` here. jsongin holds JSON, which
+  has one number kind, and reports a number's type from its value. The converted values agree
+  in every case; only what `$type` says about a number afterwards differs. `$toDecimal` and
+  `$toObjectId` are absent for the same reason.
 - The 15 ***trigonometry expression operators***, in `jsongin.ExpressionOperators`: `$sin`,
   `$cos`, `$tan`, `$asin`, `$acos`, `$atan`, `$atan2`, `$sinh`, `$cosh`, `$tanh`, `$asinh`,
   `$acosh`, `$atanh`, `$degreesToRadians`, and `$radiansToDegrees`.

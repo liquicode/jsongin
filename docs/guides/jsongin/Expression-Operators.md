@@ -24,6 +24,7 @@ An expression is a document, an array, or a scalar:
 | Array           | [$size](#$size), [$arrayElemAt](#$arrayElemAt), [$concatArrays](#$concatArrays), [$in](#$in)                 |
 | String          | [$concat](#$concat), [$split](#$split), [$toLower](#$toLower), [$toUpper](#$toUpper), [$strcasecmp](#$strcasecmp), [$trim](#$trim), [$ltrim](#$ltrim), [$rtrim](#$rtrim), [$substr](#$substr), [$substrBytes](#$substrBytes), [$substrCP](#$substrCP), [$strLenBytes](#$strLenBytes), [$strLenCP](#$strLenCP), [$indexOfBytes](#$indexOfBytes), [$indexOfCP](#$indexOfCP), [$regexMatch](#$regexMatch), [$regexFind](#$regexFind), [$regexFindAll](#$regexFindAll), [$replaceOne](#$replaceOne), [$replaceAll](#$replaceAll) |
 | Trigonometry    | [$sin](#$sin), [$cos](#$cos), [$tan](#$tan), [$asin](#$asin), [$acos](#$acos), [$atan](#$atan), [$atan2](#$atan2), [$sinh](#$sinh), [$cosh](#$cosh), [$tanh](#$tanh), [$asinh](#$asinh), [$acosh](#$acosh), [$atanh](#$atanh), [$degreesToRadians](#$degreesToRadians), [$radiansToDegrees](#$radiansToDegrees) |
+| Type            | [$type](#$type), [$isNumber](#$isNumber), [$convert](#$convert), [$toString](#$toString), [$toBool](#$toBool), [$toDate](#$toDate), [$toInt](#$toInt), [$toLong](#$toLong), [$toDouble](#$toDouble) |
 | Logical         | [$and](#$and), [$or](#$or), [$not](#$not)                                                                   |
 | Conditional     | [$cond](#$cond), [$ifNull](#$ifNull), [$switch](#$switch)                                                   |
 | Literal         | [$literal](#$literal)                                                                                       |
@@ -1315,6 +1316,263 @@ jsongin.Evaluate( document, { $radiansToDegrees: 3.141592653589793 } );
 
 jsongin.Evaluate( document, { $radiansToDegrees: { $asin: 1 } } );
 // returns 90
+```
+
+
+
+# Type Operators
+
+
+[$convert](#$convert) is the operator these are built on, and the six `$toX` operators are
+  shorthands for it.
+Each converts a value to one type, returns null for a null or missing operand, and throws when
+  the value has no reading in that type or has one which does not fit.
+Only `$convert` can answer a failure with a value instead of throwing.
+
+***Javascript's own conversions are not these conversions.***
+Where the two disagree, `jsongin` follows MongoDB:
+
+| **Expression**              | **Javascript** | **Here**                  |
+|-----------------------------|----------------|---------------------------|
+| `Number( ' 5' )`            | `5`            | throws; no whitespace is consumed |
+| `Number( '' )`              | `0`            | throws                    |
+| `Boolean( '' )`             | `false`        | `true`; every string is true |
+| `Date.parse( '2020' )`      | a date         | throws                    |
+| a date and time with no zone | read as local  | read as UTC              |
+
+***One difference cannot be followed, and it is worth knowing before you rely on `$type`.***
+MongoDB has `int`, `long`, and `double` as separate BSON types and tags a converted number with
+  the one it was converted to, so `{ $type: { $toLong: 42 } }` is `'long'` there and `'int'`
+  here. `jsongin` holds JSON, which has one number kind, and reports a number's type from its
+  value. The converted ***values*** agree in every case; only what `$type` says about a number
+  afterwards differs. `$toDecimal` and `$toObjectId` are absent for the same reason.
+
+
+<a id="$type"></a>$type
+---------------------------------------------------------------------
+
+**Usage** : `{ $type: expression }`
+
+The BSON type of a value, by name.
+
+***A missing field has a type of its own, and it is not null.***
+A field which is not there is `'missing'`, where a field holding a null is `'null'`.
+
+A number is an `int` when it is whole and inside the 32 bit range, and a `double` otherwise -
+  fractional, larger, `NaN`, or infinite.
+
+### Example
+```js
+jsongin.Evaluate( document, { $type: '$a' } );
+// returns 'int'
+
+jsongin.Evaluate( document, { $type: '$name' } );
+// returns 'string'
+
+jsongin.Evaluate( document, { $type: '$scores' } );
+// returns 'array'
+
+jsongin.Evaluate( document, { $type: '$empty' } );
+// returns 'null'
+
+jsongin.Evaluate( document, { $type: '$nowhere' } );
+// returns 'missing'
+```
+
+
+<a id="$isNumber"></a>$isNumber
+---------------------------------------------------------------------
+
+**Usage** : `{ $isNumber: expression }`
+
+Whether a value is a number.
+
+***A null is answered rather than propagated.***
+Most of this family returns null for a null operand; this one returns false, because the
+  question it is asked has an answer.
+
+### Example
+```js
+jsongin.Evaluate( document, { $isNumber: '$a' } );
+// returns true
+
+jsongin.Evaluate( document, { $isNumber: '$name' } );
+// returns false
+
+jsongin.Evaluate( document, { $isNumber: '$empty' } );
+// returns false
+```
+
+
+<a id="$toString"></a>$toString
+---------------------------------------------------------------------
+
+**Usage** : `{ $toString: expression }`
+
+Converts a value to a string.
+A date becomes an ISO 8601 string. An array or an object throws.
+
+### Example
+```js
+jsongin.Evaluate( document, { $toString: '$a' } );
+// returns '5'
+
+jsongin.Evaluate( document, { $toString: true } );
+// returns 'true'
+
+jsongin.Evaluate( document, { $toString: '$scores' } );
+// throws
+```
+
+
+<a id="$toBool"></a>$toBool
+---------------------------------------------------------------------
+
+**Usage** : `{ $toBool: expression }`
+
+Converts a value to a boolean.
+
+***Every string is true, the empty one included***, and so is every array, object, and date.
+Only the number zero and the boolean false are false, which makes this the one conversion with
+  no failing case.
+
+### Example
+```js
+jsongin.Evaluate( document, { $toBool: '$a' } );
+// returns true
+
+jsongin.Evaluate( document, { $toBool: 0 } );
+// returns false
+
+jsongin.Evaluate( document, { $toBool: '' } );
+// returns true
+```
+
+
+<a id="$toDate"></a>$toDate
+---------------------------------------------------------------------
+
+**Usage** : `{ $toDate: expression }`
+
+Converts a value to a date.
+A number is read as milliseconds since the epoch, and a string is parsed.
+
+***A string carrying no time zone is read as UTC***, so the same document means the same
+  instant on every machine.
+
+### Example
+```js
+jsongin.Evaluate( document, { $toDate: 0 } );
+// returns new Date( '1970-01-01T00:00:00.000Z' )
+
+jsongin.Evaluate( document, { $toDate: '2020-01-02T03:04:05Z' } );
+// returns new Date( '2020-01-02T03:04:05.000Z' )
+
+jsongin.Evaluate( document, { $toDate: '$name' } );
+// throws
+```
+
+
+<a id="$toInt"></a>$toInt
+---------------------------------------------------------------------
+
+**Usage** : `{ $toInt: expression }`
+
+Converts a value to a 32 bit integer.
+
+***A fractional number is truncated rather than rounded, and a fractional string is refused.***
+A string is read as a whole integer or not at all.
+A value outside the int32 range throws, and so do `NaN`, the infinities, and a date.
+
+### Example
+```js
+jsongin.Evaluate( document, { $toInt: '42' } );
+// returns 42
+
+jsongin.Evaluate( document, { $toInt: 3.9 } );
+// returns 3
+
+jsongin.Evaluate( document, { $toInt: '3.9' } );
+// throws
+
+jsongin.Evaluate( document, { $toInt: 2147483648 } );
+// throws
+```
+
+
+<a id="$toLong"></a>$toLong
+---------------------------------------------------------------------
+
+**Usage** : `{ $toLong: expression }`
+
+Converts a value to a 64 bit integer.
+
+It differs from [$toInt](#$toInt) in two ways: the range is far wider, and a date reads as
+  milliseconds since the epoch instead of throwing.
+
+### Example
+```js
+jsongin.Evaluate( document, { $toLong: 3000000000 } );
+// returns 3000000000
+
+jsongin.Evaluate( document, { $toLong: new Date( '2020-01-02T03:04:05.678Z' ) } );
+// returns 1577934245678
+```
+
+
+<a id="$toDouble"></a>$toDouble
+---------------------------------------------------------------------
+
+**Usage** : `{ $toDouble: expression }`
+
+Converts a value to a double.
+
+Unlike [$toInt](#$toInt) it does not truncate, it reads a fractional string, and it accepts
+  `NaN` and the infinities, all of which a double can hold.
+
+### Example
+```js
+jsongin.Evaluate( document, { $toDouble: '3.14' } );
+// returns 3.14
+
+jsongin.Evaluate( document, { $toDouble: true } );
+// returns 1
+```
+
+
+<a id="$convert"></a>$convert
+---------------------------------------------------------------------
+
+**Usage** : `{ $convert: { input: expression, to: type, onError: expression, onNull: expression } }`
+
+Converts a value to a given type.
+`to` is a type name - `double`, `string`, `bool`, `date`, `int`, or `long` - or the BSON type
+  number which stands for one.
+
+***`onError` and `onNull` are what this operator has and the shorthands do not.***
+They are not interchangeable, and a null input takes the `onNull` path even when an `onError`
+  is also given:
+
+- `onNull` answers a null or missing input. Without it, a null input gives null.
+- `onError` answers a conversion which failed. Without it, the failure throws.
+
+`onError` covers the conversion and nothing else.
+A `to` which names no type is a malformed expression rather than a failed conversion, and
+  throws whether or not an `onError` is given.
+
+### Example
+```js
+jsongin.Evaluate( document, { $convert: { input: '$a', to: 'string' } } );
+// returns '5'
+
+jsongin.Evaluate( document, { $convert: { input: '$name', to: 'int', onError: -1 } } );
+// returns -1
+
+jsongin.Evaluate( document, { $convert: { input: '$empty', to: 'int', onNull: 0 } } );
+// returns 0
+
+jsongin.Evaluate( document, { $convert: { input: '$empty', to: 'int', onError: -1 } } );
+// returns null
 ```
 
 

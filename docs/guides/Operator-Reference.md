@@ -342,17 +342,17 @@ MongoDB adds operators from one server version to the next, so treat this as a c
 | Trigonometry  |      Yes      | [$sinh](./jsongin/Expression-Operators.md#$sinh)              | Returns the hyperbolic sine of an angle.                                                     |
 | Trigonometry  |      Yes      | [$tan](./jsongin/Expression-Operators.md#$tan)               | Returns the tangent of an angle.                                                             |
 | Trigonometry  |      Yes      | [$tanh](./jsongin/Expression-Operators.md#$tanh)              | Returns the hyperbolic tangent of an angle.                                                  |
-| Type          |       -       | $convert           | Converts a value to a given type.                                                            |
-| Type          |       -       | $isNumber          | Returns true when a value is a number.                                                       |
-| Type          |       -       | $toBool            | Converts a value to a boolean.                                                               |
-| Type          |       -       | $toDate            | Converts a value to a date.                                                                  |
+| Type          |      Yes      | [$convert](./jsongin/Expression-Operators.md#$convert)           | Converts a value to a given type.                                                            |
+| Type          |      Yes      | [$isNumber](./jsongin/Expression-Operators.md#$isNumber)          | Returns true when a value is a number.                                                       |
+| Type          |      Yes      | [$toBool](./jsongin/Expression-Operators.md#$toBool)            | Converts a value to a boolean.                                                               |
+| Type          |      Yes      | [$toDate](./jsongin/Expression-Operators.md#$toDate)            | Converts a value to a date.                                                                  |
 | Type          |       -       | $toDecimal         | Converts a value to a decimal.                                                               |
-| Type          |       -       | $toDouble          | Converts a value to a double.                                                                |
-| Type          |       -       | $toInt             | Converts a value to an integer.                                                              |
-| Type          |       -       | $toLong            | Converts a value to a long.                                                                  |
+| Type          |      Yes      | [$toDouble](./jsongin/Expression-Operators.md#$toDouble)          | Converts a value to a double.                                                                |
+| Type          |      Yes      | [$toInt](./jsongin/Expression-Operators.md#$toInt)             | Converts a value to an integer.                                                              |
+| Type          |      Yes      | [$toLong](./jsongin/Expression-Operators.md#$toLong)            | Converts a value to a long.                                                                  |
 | Type          |       -       | $toObjectId        | Converts a value to an ObjectId.                                                             |
-| Type          |       -       | $toString          | Converts a value to a string.                                                                |
-| Type          |       -       | $type              | Returns the type of a value.                                                                 |
+| Type          |      Yes      | [$toString](./jsongin/Expression-Operators.md#$toString)          | Converts a value to a string.                                                                |
+| Type          |      Yes      | [$type](./jsongin/Expression-Operators.md#$type)              | Returns the type of a value.                                                                 |
 | Variable      |       -       | $let               | Binds variables for use within a sub-expression.                                             |
 
 ***Note on missing values*** :
