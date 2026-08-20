@@ -124,6 +124,17 @@ Nothing below the top level names an engine, so ***adding a suite is a one line 
 Every driver exposes the same interface — `SetData`, `Find`, `Update`, `Aggregate`, and so on —
   so the ***same test suite*** can be pointed at `jsongin` or at a real database.
 
+***The MongoDB driver holds one client for the whole run.*** It used to connect and close around
+  every call, which is two connections per test; past a few hundred tests that exhausts the
+  machine's ephemeral ports, because a closed connection sits in `TIME_WAIT` for minutes. A full
+  baseline run began failing a scattering of unrelated tests with `EADDRINUSE` — always a network
+  error and never an assertion, but a baseline which is only usually green is not a baseline.
+  A `MongoClient` is already a connection pool, so one is opened on first use and reused.
+
+The driver closes it from a mocha `after` hook it registers itself, rather than each runner
+  remembering to. That matters because `build/parity.js` writes its runners fresh on every
+  report. Required outside mocha there is no hook to register, and the caller calls `Close()`.
+
 > ***Note*** : an area file takes its `Driver` as a parameter, and it has to. `describe()` runs
   its callback while the file is being required, so the suites capture whatever `Driver` holds
   at that moment. Assigning a driver to the module afterwards cannot reach them — the suites
