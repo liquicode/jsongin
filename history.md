@@ -8,10 +8,10 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
-Parity with MongoDB is ***100%*** across 546 compared behaviors: Query 219, Update 86,
-  Projection 51, and Aggregate 190. Run `npm run parity-report` to measure it.
+Parity with MongoDB is ***100%*** across 574 compared behaviors: Query 219, Update 86,
+  Projection 51, and Aggregate 218. Run `npm run parity-report` to measure it.
 
-Coverage of the operator surface MongoDB documents is ***40.6%***, 103 operators of 254. Run
+Coverage of the operator surface MongoDB documents is ***48.8%***, 124 operators of 254. Run
   `npm run api-coverage` to measure that one. The two numbers answer different questions: parity
   is how faithfully what exists behaves, and coverage is how much exists.
 
@@ -193,6 +193,19 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 ### Added
 
+- The 15 ***trigonometry expression operators***, in `jsongin.ExpressionOperators`: `$sin`,
+  `$cos`, `$tan`, `$asin`, `$acos`, `$atan`, `$atan2`, `$sinh`, `$cosh`, `$tanh`, `$asinh`,
+  `$acosh`, `$atanh`, `$degreesToRadians`, and `$radiansToDegrees`.
+  See [Trigonometry Operators](./docs/guides/jsongin/Expression-Operators.md).
+- 6 more ***arithmetic expression operators***: `$sqrt`, `$pow`, `$exp`, `$ln`, `$log`, and
+  `$log10`.
+- ***Each of the 21 has a domain, and an operand outside it throws.*** `$sqrt` refuses a
+  negative, `$asin` and `$acos` refuse anything beyond -1 through 1, `$acosh` refuses anything
+  below 1, and `$sin`, `$cos`, and `$tan` refuse an infinite angle. Two boundaries return an
+  infinity instead of throwing: `$atanh` at -1 and 1, and `$exp` on overflow.
+- ***The logarithms refuse zero***, where Javascript's `Math.log( 0 )` answers `-Infinity`.
+  This is MongoDB's behavior and the one place in the family where the operator is not simply
+  the `Math` function underneath.
 - The 20 ***string expression operators***, in `jsongin.ExpressionOperators`: `$concat`,
   `$split`, `$toLower`, `$toUpper`, `$strcasecmp`, `$trim`, `$ltrim`, `$rtrim`, `$substr`,
   `$substrBytes`, `$substrCP`, `$strLenBytes`, `$strLenCP`, `$indexOfBytes`, `$indexOfCP`,

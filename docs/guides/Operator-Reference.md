@@ -216,18 +216,18 @@ MongoDB adds operators from one server version to the next, so treat this as a c
 | Arithmetic    |      Yes      | [$add](./jsongin/Expression-Operators.md#$add)               | Adds numbers together. Adds milliseconds to a date.                                          |
 | Arithmetic    |      Yes      | [$ceil](./jsongin/Expression-Operators.md#$ceil)              | Returns the smallest integer which is greater than or equal to a number.                     |
 | Arithmetic    |      Yes      | [$divide](./jsongin/Expression-Operators.md#$divide)            | Divides one number by another. Throws when dividing by zero.                                 |
-| Arithmetic    |       -       | $exp               | Raises Euler's number to a power.                                                            |
+| Arithmetic    |      Yes      | [$exp](./jsongin/Expression-Operators.md#$exp)               | Raises Euler's number to a power.                                                            |
 | Arithmetic    |      Yes      | [$floor](./jsongin/Expression-Operators.md#$floor)             | Returns the largest integer which is less than or equal to a number.                         |
-| Arithmetic    |       -       | $ln                | Returns the natural logarithm of a number.                                                   |
-| Arithmetic    |       -       | $log               | Returns the logarithm of a number in a given base.                                           |
-| Arithmetic    |       -       | $log10             | Returns the base 10 logarithm of a number.                                                   |
+| Arithmetic    |      Yes      | [$ln](./jsongin/Expression-Operators.md#$ln)                | Returns the natural logarithm of a number.                                                   |
+| Arithmetic    |      Yes      | [$log](./jsongin/Expression-Operators.md#$log)               | Returns the logarithm of a number in a given base.                                           |
+| Arithmetic    |      Yes      | [$log10](./jsongin/Expression-Operators.md#$log10)             | Returns the base 10 logarithm of a number.                                                   |
 | Arithmetic    |      Yes      | [$max](./jsongin/Expression-Operators.md#$max)               | Returns the largest of several values, ignoring null and missing values.                     |
 | Arithmetic    |      Yes      | [$min](./jsongin/Expression-Operators.md#$min)               | Returns the smallest of several values, ignoring null and missing values.                    |
 | Arithmetic    |      Yes      | [$mod](./jsongin/Expression-Operators.md#$mod)               | Divides one number by another and returns the remainder.                                     |
 | Arithmetic    |      Yes      | [$multiply](./jsongin/Expression-Operators.md#$multiply)          | Multiplies numbers together.                                                                 |
-| Arithmetic    |       -       | $pow               | Raises a number to a power.                                                                  |
+| Arithmetic    |      Yes      | [$pow](./jsongin/Expression-Operators.md#$pow)               | Raises a number to a power.                                                                  |
 | Arithmetic    |      Yes      | [$round](./jsongin/Expression-Operators.md#$round)             | Rounds a number to a given number of decimal places.                                         |
-| Arithmetic    |       -       | $sqrt              | Returns the square root of a number.                                                         |
+| Arithmetic    |      Yes      | [$sqrt](./jsongin/Expression-Operators.md#$sqrt)              | Returns the square root of a number.                                                         |
 | Arithmetic    |      Yes      | [$subtract](./jsongin/Expression-Operators.md#$subtract)          | Subtracts two numbers, two dates, or milliseconds from a date.                               |
 | Arithmetic    |      Yes      | [$trunc](./jsongin/Expression-Operators.md#$trunc)             | Truncates a number to a given number of decimal places.                                      |
 | Array         |      Yes      | [$arrayElemAt](./jsongin/Expression-Operators.md#$arrayElemAt)       | Returns the element of an array at a given index.                                            |
@@ -327,21 +327,21 @@ MongoDB adds operators from one server version to the next, so treat this as a c
 | Text          |       -       | $meta              | Returns the metadata belonging to a document, such as its text search score.                 |
 | Timestamp     |       -       | $tsIncrement       | Returns the incrementing ordinal of a timestamp.                                             |
 | Timestamp     |       -       | $tsSecond          | Returns the seconds of a timestamp.                                                          |
-| Trigonometry  |       -       | $acos              | Returns the inverse cosine of a value.                                                       |
-| Trigonometry  |       -       | $acosh             | Returns the inverse hyperbolic cosine of a value.                                            |
-| Trigonometry  |       -       | $asin              | Returns the inverse sine of a value.                                                         |
-| Trigonometry  |       -       | $asinh             | Returns the inverse hyperbolic sine of a value.                                              |
-| Trigonometry  |       -       | $atan              | Returns the inverse tangent of a value.                                                      |
-| Trigonometry  |       -       | $atan2             | Returns the inverse tangent of a coordinate pair.                                            |
-| Trigonometry  |       -       | $atanh             | Returns the inverse hyperbolic tangent of a value.                                           |
-| Trigonometry  |       -       | $cos               | Returns the cosine of an angle.                                                              |
-| Trigonometry  |       -       | $cosh              | Returns the hyperbolic cosine of an angle.                                                   |
-| Trigonometry  |       -       | $degreesToRadians  | Converts degrees to radians.                                                                 |
-| Trigonometry  |       -       | $radiansToDegrees  | Converts radians to degrees.                                                                 |
-| Trigonometry  |       -       | $sin               | Returns the sine of an angle.                                                                |
-| Trigonometry  |       -       | $sinh              | Returns the hyperbolic sine of an angle.                                                     |
-| Trigonometry  |       -       | $tan               | Returns the tangent of an angle.                                                             |
-| Trigonometry  |       -       | $tanh              | Returns the hyperbolic tangent of an angle.                                                  |
+| Trigonometry  |      Yes      | [$acos](./jsongin/Expression-Operators.md#$acos)              | Returns the inverse cosine of a value.                                                       |
+| Trigonometry  |      Yes      | [$acosh](./jsongin/Expression-Operators.md#$acosh)             | Returns the inverse hyperbolic cosine of a value.                                            |
+| Trigonometry  |      Yes      | [$asin](./jsongin/Expression-Operators.md#$asin)              | Returns the inverse sine of a value.                                                         |
+| Trigonometry  |      Yes      | [$asinh](./jsongin/Expression-Operators.md#$asinh)             | Returns the inverse hyperbolic sine of a value.                                              |
+| Trigonometry  |      Yes      | [$atan](./jsongin/Expression-Operators.md#$atan)              | Returns the inverse tangent of a value.                                                      |
+| Trigonometry  |      Yes      | [$atan2](./jsongin/Expression-Operators.md#$atan2)             | Returns the inverse tangent of a coordinate pair.                                            |
+| Trigonometry  |      Yes      | [$atanh](./jsongin/Expression-Operators.md#$atanh)             | Returns the inverse hyperbolic tangent of a value.                                           |
+| Trigonometry  |      Yes      | [$cos](./jsongin/Expression-Operators.md#$cos)               | Returns the cosine of an angle.                                                              |
+| Trigonometry  |      Yes      | [$cosh](./jsongin/Expression-Operators.md#$cosh)              | Returns the hyperbolic cosine of an angle.                                                   |
+| Trigonometry  |      Yes      | [$degreesToRadians](./jsongin/Expression-Operators.md#$degreesToRadians)  | Converts degrees to radians.                                                                 |
+| Trigonometry  |      Yes      | [$radiansToDegrees](./jsongin/Expression-Operators.md#$radiansToDegrees)  | Converts radians to degrees.                                                                 |
+| Trigonometry  |      Yes      | [$sin](./jsongin/Expression-Operators.md#$sin)               | Returns the sine of an angle.                                                                |
+| Trigonometry  |      Yes      | [$sinh](./jsongin/Expression-Operators.md#$sinh)              | Returns the hyperbolic sine of an angle.                                                     |
+| Trigonometry  |      Yes      | [$tan](./jsongin/Expression-Operators.md#$tan)               | Returns the tangent of an angle.                                                             |
+| Trigonometry  |      Yes      | [$tanh](./jsongin/Expression-Operators.md#$tanh)              | Returns the hyperbolic tangent of an angle.                                                  |
 | Type          |       -       | $convert           | Converts a value to a given type.                                                            |
 | Type          |       -       | $isNumber          | Returns true when a value is a number.                                                       |
 | Type          |       -       | $toBool            | Converts a value to a boolean.                                                               |
