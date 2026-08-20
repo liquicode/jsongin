@@ -65,6 +65,58 @@ module.exports = function ( jsongin )
 
 
 	//---------------------------------------------------------------------
+	// Evaluates an operator which takes one number and returns one number.
+	//
+	// Twenty of the arithmetic and trigonometry operators are this shape and differ only in
+	// the Compute function: the operand count, the null propagation, and the type refusal are
+	// identical in all of them. Compute receives a number which is known to be a number, and
+	// throws when that number is outside the operator's domain - Math.sqrt answers NaN for a
+	// negative and MongoDB refuses it, so the domain cannot be left to Javascript.
+	helper.UnaryNumber = function ( Document, Args, OperatorName, Compute )
+	{
+		let operands = helper.Operands( Document, Args, OperatorName, 1, 1 );
+
+		let number = helper.AsOperandNumber( operands[ 0 ], OperatorName );
+		if ( number === null ) { return null; }
+
+		return Compute( number );
+	};
+
+
+	//---------------------------------------------------------------------
+	// Throws when the value is an infinity, and allows a NaN through.
+	//
+	// The periodic functions - $sin, $cos, $tan - need this and their inverses do not. A sine
+	// has no limit at an infinite angle, so there is no value to return and MongoDB refuses;
+	// an $atan does have one and answers with it.
+	//
+	// ***A NaN is deliberately not refused here.*** MongoDB computes with a NaN throughout this
+	// family and returns a NaN, so only the two infinities are the error.
+	helper.RequireFinite = function ( Value, OperatorName )
+	{
+		if ( ( Value === Infinity ) || ( Value === -Infinity ) )
+		{
+			throw new Error( `${OperatorName}: requires a finite operand but found ${Value} instead.` );
+		}
+	};
+
+
+	//---------------------------------------------------------------------
+	// Evaluates an operator which takes two numbers and returns one number.
+	// A null in either operand makes the result null, as it does everywhere else here.
+	helper.BinaryNumber = function ( Document, Args, OperatorName, Compute )
+	{
+		let operands = helper.Operands( Document, Args, OperatorName, 2, 2 );
+
+		let number_a = helper.AsOperandNumber( operands[ 0 ], OperatorName );
+		let number_b = helper.AsOperandNumber( operands[ 1 ], OperatorName );
+		if ( ( number_a === null ) || ( number_b === null ) ) { return null; }
+
+		return Compute( number_a, number_b );
+	};
+
+
+	//---------------------------------------------------------------------
 	// Returns the operand as a Date, or null when the operand is not a date.
 	helper.AsOperandDate = function ( Operand )
 	{

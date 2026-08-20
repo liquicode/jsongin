@@ -21,14 +21,17 @@
 		                                        number.
 
 	***It is empty, and that is the finished state of a family rather than a missing file.***
-	The String family was written here on 2026-08-20 and graduated on the same day: the
-	twenty operators were built, the suite went green under jsongin, and it moved to
-	`test-suite/String Operator Tests.js` where a later regression in it would be caught. A
-	gap suite is retired by implementing the operators it names, and by nothing else.
+	A family leaves this file by being built. Two have, both on 2026-08-20: the String family
+	graduated to `test-suite/String Operator Tests.js`, and the twenty-one arithmetic and
+	trigonometry operators to `test-suite/Arithmetic and Trigonometry Operator Tests.js`. In
+	each case the suite was written here against the server first, the operators were built
+	until it went green under jsongin, and only then did it move to where a later regression
+	in it would be caught. A gap suite is retired by implementing the operators it names, and
+	by nothing else.
 
-	The next family to be measured is added below. `.reviews/2026-08-19/review.md` classifies
-	the 151 operators still unimplemented into what is buildable now, what needs care, what
-	waits on variable scope in Evaluate, and what the single-document model rules out.
+	`.reviews/2026-08-19/review.md` classifies the 151 operators still unimplemented into what
+	is buildable now, what needs care, what waits on variable scope in Evaluate, and what the
+	single-document model rules out.
 */
 
 module.exports = function ( Driver )

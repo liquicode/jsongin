@@ -17,12 +17,13 @@ An expression is a document, an array, or a scalar:
 
 | **Category**    | **Operators**                                                                                               |
 |-----------------|-------------------------------------------------------------------------------------------------------------|
-| Arithmetic      | [$add](#$add), [$subtract](#$subtract), [$multiply](#$multiply), [$divide](#$divide), [$mod](#$mod), [$abs](#$abs) |
+| Arithmetic      | [$add](#$add), [$subtract](#$subtract), [$multiply](#$multiply), [$divide](#$divide), [$mod](#$mod), [$abs](#$abs), [$sqrt](#$sqrt), [$pow](#$pow), [$exp](#$exp), [$ln](#$ln), [$log](#$log), [$log10](#$log10) |
 | Rounding        | [$ceil](#$ceil), [$floor](#$floor), [$round](#$round), [$trunc](#$trunc)                                    |
 | Comparison      | [$eq](#$eq), [$ne](#$ne), [$gt](#$gt), [$gte](#$gte), [$lt](#$lt), [$lte](#$lte), [$cmp](#$cmp)              |
 | Smallest/Largest| [$min](#$min), [$max](#$max)                                                                                |
 | Array           | [$size](#$size), [$arrayElemAt](#$arrayElemAt), [$concatArrays](#$concatArrays), [$in](#$in)                 |
 | String          | [$concat](#$concat), [$split](#$split), [$toLower](#$toLower), [$toUpper](#$toUpper), [$strcasecmp](#$strcasecmp), [$trim](#$trim), [$ltrim](#$ltrim), [$rtrim](#$rtrim), [$substr](#$substr), [$substrBytes](#$substrBytes), [$substrCP](#$substrCP), [$strLenBytes](#$strLenBytes), [$strLenCP](#$strLenCP), [$indexOfBytes](#$indexOfBytes), [$indexOfCP](#$indexOfCP), [$regexMatch](#$regexMatch), [$regexFind](#$regexFind), [$regexFindAll](#$regexFindAll), [$replaceOne](#$replaceOne), [$replaceAll](#$replaceAll) |
+| Trigonometry    | [$sin](#$sin), [$cos](#$cos), [$tan](#$tan), [$asin](#$asin), [$acos](#$acos), [$atan](#$atan), [$atan2](#$atan2), [$sinh](#$sinh), [$cosh](#$cosh), [$tanh](#$tanh), [$asinh](#$asinh), [$acosh](#$acosh), [$atanh](#$atanh), [$degreesToRadians](#$degreesToRadians), [$radiansToDegrees](#$radiansToDegrees) |
 | Logical         | [$and](#$and), [$or](#$or), [$not](#$not)                                                                   |
 | Conditional     | [$cond](#$cond), [$ifNull](#$ifNull), [$switch](#$switch)                                                   |
 | Literal         | [$literal](#$literal)                                                                                       |
@@ -163,6 +164,126 @@ jsongin.Evaluate( document, { $abs: -7 } );
 jsongin.Evaluate( document, { $abs: [ -7 ] } );
 // returns 7
 ```
+
+
+<a id="$sqrt"></a>$sqrt
+---------------------------------------------------------------------
+
+**Usage** : `{ $sqrt: expression }`
+
+The square root of a number.
+The operand must be zero or greater.
+
+### Example
+```js
+jsongin.Evaluate( document, { $sqrt: 25 } );
+// returns 5
+
+jsongin.Evaluate( document, { $sqrt: { $add: [ '$a', 11 ] } } );
+// returns 4
+
+jsongin.Evaluate( document, { $sqrt: -1 } );
+// throws
+```
+
+
+<a id="$pow"></a>$pow
+---------------------------------------------------------------------
+
+**Usage** : `{ $pow: [ expression, exponent ] }`
+
+Raises a number to a power.
+A base of zero cannot carry a negative exponent, because the result is unbounded.
+
+### Example
+```js
+jsongin.Evaluate( document, { $pow: [ '$a', 2 ] } );
+// returns 25
+
+jsongin.Evaluate( document, { $pow: [ 2, -1 ] } );
+// returns 0.5
+
+jsongin.Evaluate( document, { $pow: [ 0, -1 ] } );
+// throws
+```
+
+
+<a id="$exp"></a>$exp
+---------------------------------------------------------------------
+
+**Usage** : `{ $exp: expression }`
+
+Raises Euler's number to the given power.
+Every number is in the domain, so a large operand returns `Infinity` rather than throwing.
+
+### Example
+```js
+jsongin.Evaluate( document, { $exp: 0 } );
+// returns 1
+
+jsongin.Evaluate( document, { $exp: 1 } );
+// returns 2.718281828459045
+```
+
+
+<a id="$ln"></a>$ln
+---------------------------------------------------------------------
+
+**Usage** : `{ $ln: expression }`
+
+The natural logarithm of a number.
+
+***The operand must be greater than zero, and zero itself throws.***
+This is the one place in the arithmetic family where the operator is not simply the Javascript
+  function underneath: `Math.log( 0 )` answers `-Infinity`, and both MongoDB and `jsongin`
+  refuse it.
+
+### Example
+```js
+jsongin.Evaluate( document, { $ln: 1 } );
+// returns 0
+
+jsongin.Evaluate( document, { $ln: 0 } );
+// throws
+```
+
+
+<a id="$log"></a>$log
+---------------------------------------------------------------------
+
+**Usage** : `{ $log: [ expression, base ] }`
+
+The logarithm of a number in the given base.
+The number must be greater than zero, and the base must be greater than zero and not one.
+A base of one has no logarithm, because raising one to any power gives one back.
+
+### Example
+```js
+jsongin.Evaluate( document, { $log: [ 8, '$b' ] } );
+// returns 3
+
+jsongin.Evaluate( document, { $log: [ 100, 10 ] } );
+// returns 2
+
+jsongin.Evaluate( document, { $log: [ 100, 1 ] } );
+// throws
+```
+
+
+<a id="$log10"></a>$log10
+---------------------------------------------------------------------
+
+**Usage** : `{ $log10: expression }`
+
+The base 10 logarithm of a number.
+The operand must be greater than zero, as in [$ln](#$ln).
+
+### Example
+```js
+jsongin.Evaluate( document, { $log10: 1000 } );
+// returns 3
+```
+
 
 
 # Rounding Operators
@@ -923,6 +1044,277 @@ jsongin.Evaluate( { s: 'aa' }, { $replaceAll: { input: '$s', find: 'a', replacem
 // The find is literal text, so a '.' is a full stop rather than a pattern.
 jsongin.Evaluate( { s: 'a.b' }, { $replaceAll: { input: '$s', find: '.', replacement: '-' } } );
 // returns 'a-b'
+```
+
+
+
+# Trigonometry Operators
+
+
+***Angles are measured in radians***, never in degrees.
+Use [$degreesToRadians](#$degreesToRadians) to feed an angle written in degrees to any of these,
+  and [$radiansToDegrees](#$radiansToDegrees) to read a result back as degrees.
+
+Each operator has a ***domain***, and an operand outside it throws rather than returning a
+  meaningless number:
+
+| **Operator**                                              | **Domain**                                    |
+|-----------------------------------------------------------|-----------------------------------------------|
+| [$sin](#$sin), [$cos](#$cos), [$tan](#$tan)               | any finite number; an infinite angle throws   |
+| [$asin](#$asin), [$acos](#$acos), [$atanh](#$atanh)       | -1 through 1                                  |
+| [$acosh](#$acosh)                                         | 1 and above                                   |
+| [$atan](#$atan), [$atan2](#$atan2), the hyperbolics       | any number at all                             |
+
+A null or missing operand makes the result null, and an operand which is not a number throws.
+Every one of them answers a `NaN` with a `NaN`.
+
+
+<a id="$sin"></a>$sin
+---------------------------------------------------------------------
+
+**Usage** : `{ $sin: expression }`
+
+The sine of an angle given in radians.
+
+### Example
+```js
+jsongin.Evaluate( document, { $sin: 0 } );
+// returns 0
+
+jsongin.Evaluate( document, { $sin: { $degreesToRadians: 90 } } );
+// returns 1
+```
+
+
+<a id="$cos"></a>$cos
+---------------------------------------------------------------------
+
+**Usage** : `{ $cos: expression }`
+
+The cosine of an angle given in radians.
+
+### Example
+```js
+jsongin.Evaluate( document, { $cos: 0 } );
+// returns 1
+```
+
+
+<a id="$tan"></a>$tan
+---------------------------------------------------------------------
+
+**Usage** : `{ $tan: expression }`
+
+The tangent of an angle given in radians.
+
+### Example
+```js
+jsongin.Evaluate( document, { $tan: 0 } );
+// returns 0
+```
+
+
+<a id="$asin"></a>$asin
+---------------------------------------------------------------------
+
+**Usage** : `{ $asin: expression }`
+
+The inverse sine of a value, in radians.
+The operand must lie between -1 and 1, because no angle has a sine beyond those bounds.
+
+### Example
+```js
+jsongin.Evaluate( document, { $asin: 1 } );
+// returns 1.5707963267948966
+
+jsongin.Evaluate( document, { $asin: 2 } );
+// throws
+```
+
+
+<a id="$acos"></a>$acos
+---------------------------------------------------------------------
+
+**Usage** : `{ $acos: expression }`
+
+The inverse cosine of a value, in radians.
+The operand must lie between -1 and 1.
+
+### Example
+```js
+jsongin.Evaluate( document, { $acos: 1 } );
+// returns 0
+```
+
+
+<a id="$atan"></a>$atan
+---------------------------------------------------------------------
+
+**Usage** : `{ $atan: expression }`
+
+The inverse tangent of a value, in radians.
+Every number is in the domain, unlike [$asin](#$asin) and [$acos](#$acos), because a tangent is
+  unbounded.
+
+### Example
+```js
+jsongin.Evaluate( document, { $atan: 1 } );
+// returns 0.7853981633974483
+```
+
+
+<a id="$atan2"></a>$atan2
+---------------------------------------------------------------------
+
+**Usage** : `{ $atan2: [ y, x ] }`
+
+The inverse tangent of a coordinate pair, in radians.
+
+***The two operands are not the same as their ratio.***
+Their signs name the quadrant, which a single divided value could not do.
+
+### Example
+```js
+jsongin.Evaluate( document, { $atan2: [ 0, 1 ] } );
+// returns 0
+
+jsongin.Evaluate( document, { $atan2: [ 0, -1 ] } );
+// returns 3.141592653589793
+```
+
+
+<a id="$sinh"></a>$sinh
+---------------------------------------------------------------------
+
+**Usage** : `{ $sinh: expression }`
+
+The hyperbolic sine of a value.
+
+### Example
+```js
+jsongin.Evaluate( document, { $sinh: 0 } );
+// returns 0
+```
+
+
+<a id="$cosh"></a>$cosh
+---------------------------------------------------------------------
+
+**Usage** : `{ $cosh: expression }`
+
+The hyperbolic cosine of a value.
+It never falls below one, which is what makes [$acosh](#$acosh) refuse anything smaller.
+
+### Example
+```js
+jsongin.Evaluate( document, { $cosh: 0 } );
+// returns 1
+```
+
+
+<a id="$tanh"></a>$tanh
+---------------------------------------------------------------------
+
+**Usage** : `{ $tanh: expression }`
+
+The hyperbolic tangent of a value.
+The result always lies between -1 and 1.
+
+### Example
+```js
+jsongin.Evaluate( document, { $tanh: 0 } );
+// returns 0
+```
+
+
+<a id="$asinh"></a>$asinh
+---------------------------------------------------------------------
+
+**Usage** : `{ $asinh: expression }`
+
+The inverse hyperbolic sine of a value.
+Every number is in the domain; it is the only one of the three inverse hyperbolics for which
+  that is true.
+
+### Example
+```js
+jsongin.Evaluate( document, { $asinh: 0 } );
+// returns 0
+```
+
+
+<a id="$acosh"></a>$acosh
+---------------------------------------------------------------------
+
+**Usage** : `{ $acosh: expression }`
+
+The inverse hyperbolic cosine of a value.
+
+***The domain begins at one, not at zero***, because a [$cosh](#$cosh) never returns anything
+  smaller than one.
+
+### Example
+```js
+jsongin.Evaluate( document, { $acosh: 1 } );
+// returns 0
+
+jsongin.Evaluate( document, { $acosh: 0 } );
+// throws
+```
+
+
+<a id="$atanh"></a>$atanh
+---------------------------------------------------------------------
+
+**Usage** : `{ $atanh: expression }`
+
+The inverse hyperbolic tangent of a value.
+The operand must lie between -1 and 1, the bounds a [$tanh](#$tanh) result never leaves.
+
+***The bounds themselves are answerable.***
+-1 and 1 return `-Infinity` and `Infinity`, and only values beyond them throw.
+
+### Example
+```js
+jsongin.Evaluate( document, { $atanh: 0 } );
+// returns 0
+
+jsongin.Evaluate( document, { $atanh: 2 } );
+// throws
+```
+
+
+<a id="$degreesToRadians"></a>$degreesToRadians
+---------------------------------------------------------------------
+
+**Usage** : `{ $degreesToRadians: expression }`
+
+Converts an angle from degrees to radians.
+This is what feeds an angle written in degrees to the operators above, all of which expect
+  radians.
+
+### Example
+```js
+jsongin.Evaluate( document, { $degreesToRadians: 180 } );
+// returns 3.141592653589793
+```
+
+
+<a id="$radiansToDegrees"></a>$radiansToDegrees
+---------------------------------------------------------------------
+
+**Usage** : `{ $radiansToDegrees: expression }`
+
+Converts an angle from radians to degrees.
+This is what makes the result of an inverse function readable as an angle.
+
+### Example
+```js
+jsongin.Evaluate( document, { $radiansToDegrees: 3.141592653589793 } );
+// returns 180
+
+jsongin.Evaluate( document, { $radiansToDegrees: { $asin: 1 } } );
+// returns 90
 ```
 
 
