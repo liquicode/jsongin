@@ -25,6 +25,7 @@ An expression is a document, an array, or a scalar:
 | String          | [$concat](#$concat), [$split](#$split), [$toLower](#$toLower), [$toUpper](#$toUpper), [$strcasecmp](#$strcasecmp), [$trim](#$trim), [$ltrim](#$ltrim), [$rtrim](#$rtrim), [$substr](#$substr), [$substrBytes](#$substrBytes), [$substrCP](#$substrCP), [$strLenBytes](#$strLenBytes), [$strLenCP](#$strLenCP), [$indexOfBytes](#$indexOfBytes), [$indexOfCP](#$indexOfCP), [$regexMatch](#$regexMatch), [$regexFind](#$regexFind), [$regexFindAll](#$regexFindAll), [$replaceOne](#$replaceOne), [$replaceAll](#$replaceAll) |
 | Trigonometry    | [$sin](#$sin), [$cos](#$cos), [$tan](#$tan), [$asin](#$asin), [$acos](#$acos), [$atan](#$atan), [$atan2](#$atan2), [$sinh](#$sinh), [$cosh](#$cosh), [$tanh](#$tanh), [$asinh](#$asinh), [$acosh](#$acosh), [$atanh](#$atanh), [$degreesToRadians](#$degreesToRadians), [$radiansToDegrees](#$radiansToDegrees) |
 | Type            | [$type](#$type), [$isNumber](#$isNumber), [$convert](#$convert), [$toString](#$toString), [$toBool](#$toBool), [$toDate](#$toDate), [$toInt](#$toInt), [$toLong](#$toLong), [$toDouble](#$toDouble) |
+| Set             | [$setEquals](#$setEquals), [$setIsSubset](#$setIsSubset), [$setUnion](#$setUnion), [$setIntersection](#$setIntersection), [$setDifference](#$setDifference), [$allElementsTrue](#$allElementsTrue), [$anyElementTrue](#$anyElementTrue) |
 | Date            | [$year](#$year), [$month](#$month), [$dayOfMonth](#$dayOfMonth), [$dayOfWeek](#$dayOfWeek), [$dayOfYear](#$dayOfYear), [$hour](#$hour), [$minute](#$minute), [$second](#$second), [$millisecond](#$millisecond), [$week](#$week), [$isoWeek](#$isoWeek), [$isoDayOfWeek](#$isoDayOfWeek), [$isoWeekYear](#$isoWeekYear), [$dateToParts](#$dateToParts), [$dateFromParts](#$dateFromParts), [$dateToString](#$dateToString), [$dateFromString](#$dateFromString), [$dateAdd](#$dateAdd), [$dateSubtract](#$dateSubtract), [$dateDiff](#$dateDiff), [$dateTrunc](#$dateTrunc) |
 | Data Size       | [$binarySize](#$binarySize), [$bsonSize](#$bsonSize)                                                        |
 | Miscellaneous   | [$rand](#$rand)                                                                                             |
@@ -1578,6 +1579,182 @@ jsongin.Evaluate( document, { $convert: { input: '$empty', to: 'int', onError: -
 // returns null
 ```
 
+
+
+# Set Operators
+
+
+***These read an array as a set, and that changes what it means.***
+Order stops mattering and repeats stop counting, so `[ 1, 1, 2 ]` and `[ 2, 1 ]` are the same
+  set.
+
+***A set is handed back in BSON order***, not in the order its elements were written.
+A set has no order of its own, so sorting is the only choice which gives the same answer for
+  the same set however it was written. Across types that order is: `null`, then numbers, then
+  strings, then objects, then arrays, then booleans, then dates.
+
+***Two elements are the same when their contents are.***
+Documents and arrays compare by content, so `[ { a: 1 } ]` and `[ { a: 1 } ]` hold the same
+  element. A number and the string of that number do not, and neither do `{ a: 1, b: 2 }` and
+  `{ b: 2, a: 1 }` — a document is compared field by field in the order it holds them.
+
+***The family disagrees with itself about a null operand***, and `jsongin` reproduces that
+  rather than tidying it up, because an expression has to mean the same thing against both
+  engines:
+
+| **Operator** | **A null operand** |
+|--------------|--------------------|
+| [$setUnion](#$setUnion), [$setIntersection](#$setIntersection), [$setDifference](#$setDifference) | makes the result `null` |
+| [$setEquals](#$setEquals), [$setIsSubset](#$setIsSubset), [$allElementsTrue](#$allElementsTrue), [$anyElementTrue](#$anyElementTrue) | is refused |
+
+
+<a id="$setEquals"></a>$setEquals
+---------------------------------------------------------------------
+
+**Usage** : `{ $setEquals: [ array, array, ... ] }`
+
+Whether every set given holds the same elements.
+Two or more sets are required.
+
+### Example
+```js
+jsongin.Evaluate( document, { $setEquals: [ [ 1, 2 ], [ 2, 1 ] ] } );
+// returns true
+
+jsongin.Evaluate( document, { $setEquals: [ [ 1, 1, 2 ], [ 1, 2 ] ] } );
+// returns true
+
+jsongin.Evaluate( document, { $setEquals: [ [ 1, 2 ], [ 1, 3 ] ] } );
+// returns false
+```
+
+
+<a id="$setIsSubset"></a>$setIsSubset
+---------------------------------------------------------------------
+
+**Usage** : `{ $setIsSubset: [ array, array ] }`
+
+Whether every element of the first set appears in the second.
+Exactly two sets are required.
+The empty set is a subset of every set, including itself.
+
+### Example
+```js
+jsongin.Evaluate( document, { $setIsSubset: [ [ 1, 2 ], [ 1, 2, 3 ] ] } );
+// returns true
+
+jsongin.Evaluate( document, { $setIsSubset: [ [ 1, 4 ], [ 1, 2, 3 ] ] } );
+// returns false
+
+jsongin.Evaluate( document, { $setIsSubset: [ [], [ 1 ] ] } );
+// returns true
+```
+
+
+<a id="$setUnion"></a>$setUnion
+---------------------------------------------------------------------
+
+**Usage** : `{ $setUnion: [ array, array, ... ] }`
+
+The elements which appear in any of the sets given.
+
+### Example
+```js
+jsongin.Evaluate( document, { $setUnion: [ [ 1, 2 ], [ 2, 3 ] ] } );
+// returns [ 1, 2, 3 ]
+
+// The result is sorted, not left in the order it was written.
+jsongin.Evaluate( document, { $setUnion: [ [ 3, 1, 2 ], [ 2 ] ] } );
+// returns [ 1, 2, 3 ]
+```
+
+
+<a id="$setIntersection"></a>$setIntersection
+---------------------------------------------------------------------
+
+**Usage** : `{ $setIntersection: [ array, array, ... ] }`
+
+The elements which appear in every one of the sets given.
+
+### Example
+```js
+jsongin.Evaluate( document, { $setIntersection: [ [ 3, 1, 2 ], [ 3, 4 ] ] } );
+// returns [ 3 ]
+
+jsongin.Evaluate( document, { $setIntersection: [ [ 1, 2 ], [ 3 ] ] } );
+// returns []
+```
+
+
+<a id="$setDifference"></a>$setDifference
+---------------------------------------------------------------------
+
+**Usage** : `{ $setDifference: [ array, array ] }`
+
+The elements of the first set which are not in the second.
+***Exactly two sets***, unlike [$setUnion](#$setUnion) and
+  [$setIntersection](#$setIntersection), which take any number.
+
+### Example
+```js
+jsongin.Evaluate( document, { $setDifference: [ [ 3, 1, 2 ], [ 3, 4 ] ] } );
+// returns [ 1, 2 ]
+
+jsongin.Evaluate( document, { $setDifference: [ [ 1 ], [] ] } );
+// returns [ 1 ]
+```
+
+
+<a id="$allElementsTrue"></a>$allElementsTrue
+---------------------------------------------------------------------
+
+**Usage** : `{ $allElementsTrue: [ array ] }`
+
+Whether every element of an array is true.
+
+***Only `false`, zero, `null`, and a missing value count as false.***
+An empty string and an empty array are true, which is not Javascript's rule for either.
+
+***All of nothing is true***, so an empty array satisfies it.
+
+### Example
+```js
+jsongin.Evaluate( document, { $allElementsTrue: [ [ true, 1, 'x' ] ] } );
+// returns true
+
+jsongin.Evaluate( document, { $allElementsTrue: [ [ true, 0 ] ] } );
+// returns false
+
+// An empty string is an element like any other, and it is true.
+jsongin.Evaluate( document, { $allElementsTrue: [ [ '', [] ] ] } );
+// returns true
+
+jsongin.Evaluate( document, { $allElementsTrue: [ [] ] } );
+// returns true
+```
+
+
+<a id="$anyElementTrue"></a>$anyElementTrue
+---------------------------------------------------------------------
+
+**Usage** : `{ $anyElementTrue: [ array ] }`
+
+Whether at least one element of an array is true.
+
+***Any of nothing is false***, where [$allElementsTrue](#$allElementsTrue) answers an empty
+  array with true.
+
+### Example
+```js
+jsongin.Evaluate( document, { $anyElementTrue: [ [ false, 1 ] ] } );
+// returns true
+
+jsongin.Evaluate( document, { $anyElementTrue: [ [ false, 0, null ] ] } );
+// returns false
+
+jsongin.Evaluate( document, { $anyElementTrue: [ [] ] } );
+// returns false
+```
 
 
 # Date Operators

@@ -311,13 +311,13 @@ MongoDB adds operators from one server version to the next, so treat this as a c
 | Object        |       -       | $objectToArray     | Converts an object into an array of key/value pairs.                                         |
 | Object        |       -       | $setField          | Adds or updates a field within an object.                                                    |
 | Object        |       -       | $unsetField        | Removes a field from an object.                                                              |
-| Set           |       -       | $allElementsTrue   | Returns true when every element of an array is true.                                         |
-| Set           |       -       | $anyElementTrue    | Returns true when any element of an array is true.                                           |
-| Set           |       -       | $setDifference     | Returns the elements of the first set which are not in the second set.                       |
-| Set           |       -       | $setEquals         | Returns true when two sets contain the same elements.                                        |
-| Set           |       -       | $setIntersection   | Returns the elements which appear in every set.                                              |
-| Set           |       -       | $setIsSubset       | Returns true when every element of the first set appears in the second set.                  |
-| Set           |       -       | $setUnion          | Returns the elements which appear in any set.                                                |
+| Set           |      Yes      | [$allElementsTrue](./jsongin/Expression-Operators.md#$allElementsTrue)   | Returns true when every element of an array is true.                                         |
+| Set           |      Yes      | [$anyElementTrue](./jsongin/Expression-Operators.md#$anyElementTrue)    | Returns true when any element of an array is true.                                           |
+| Set           |      Yes      | [$setDifference](./jsongin/Expression-Operators.md#$setDifference)     | Returns the elements of the first set which are not in the second set.                       |
+| Set           |      Yes      | [$setEquals](./jsongin/Expression-Operators.md#$setEquals)         | Returns true when two sets contain the same elements.                                        |
+| Set           |      Yes      | [$setIntersection](./jsongin/Expression-Operators.md#$setIntersection)   | Returns the elements which appear in every set.                                              |
+| Set           |      Yes      | [$setIsSubset](./jsongin/Expression-Operators.md#$setIsSubset)       | Returns true when every element of the first set appears in the second set.                  |
+| Set           |      Yes      | [$setUnion](./jsongin/Expression-Operators.md#$setUnion)          | Returns the elements which appear in any set.                                                |
 | String        |      Yes      | [$concat](./jsongin/Expression-Operators.md#$concat)         | Joins strings end to end. A null operand makes the whole result null.                        |
 | String        |      Yes      | [$indexOfBytes](./jsongin/Expression-Operators.md#$indexOfBytes) | The UTF-8 byte position of a substring, or -1. Takes an optional start and end.              |
 | String        |      Yes      | [$indexOfCP](./jsongin/Expression-Operators.md#$indexOfCP)   | The code point position of a substring, or -1. Takes an optional start and end.              |

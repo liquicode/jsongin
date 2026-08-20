@@ -8,10 +8,10 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
-Parity with MongoDB is ***100%*** across 649 compared behaviors: Query 230, Update 89,
-  Projection 51, and Aggregate 279. Run `npm run parity-report` to measure it.
+Parity with MongoDB is ***100%*** across 660 compared behaviors: Query 230, Update 89,
+  Projection 51, and Aggregate 290. Run `npm run parity-report` to measure it.
 
-Coverage of the operator surface MongoDB documents is ***65.0%***, 165 operators of 254. Run
+Coverage of the operator surface MongoDB documents is ***67.7%***, 172 operators of 254. Run
   `npm run api-coverage` to measure that one. The two numbers answer different questions: parity
   is how faithfully what exists behaves, and coverage is how much exists.
 
@@ -193,6 +193,19 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 ### Added
 
+- The 7 ***set expression operators***, in `jsongin.ExpressionOperators`: `$setEquals`,
+  `$setIsSubset`, `$setUnion`, `$setIntersection`, `$setDifference`, `$allElementsTrue`, and
+  `$anyElementTrue`. See [Set Operators](./docs/guides/jsongin/Expression-Operators.md).
+- ***These read an array as a set***, so order stops mattering and repeats stop counting:
+  `[ 1, 1, 2 ]` and `[ 2, 1 ]` are the same set. Elements are compared by content, the same way
+  `$eq` and `Sort()` compare, so two documents are the same element when their contents are —
+  though `{ a: 1, b: 2 }` and `{ b: 2, a: 1 }` are not, because a document is compared field by
+  field in the order it holds them.
+- ***A set is returned in BSON order***, not in the order its elements were written, since a
+  set has no order of its own.
+- ***The family disagrees with itself about a null operand, and that is reproduced.***
+  `$setUnion`, `$setIntersection`, and `$setDifference` answer a null with a null, while
+  `$setEquals`, `$setIsSubset`, `$allElementsTrue`, and `$anyElementTrue` refuse one.
 - The 21 ***date expression operators***, in `jsongin.ExpressionOperators`: `$year`, `$month`,
   `$dayOfMonth`, `$dayOfWeek`, `$dayOfYear`, `$hour`, `$minute`, `$second`, `$millisecond`,
   `$week`, `$isoWeek`, `$isoDayOfWeek`, `$isoWeekYear`, `$dateToParts`, `$dateFromParts`,

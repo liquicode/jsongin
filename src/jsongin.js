@@ -142,6 +142,15 @@ function NewJsongin( EngineSettings = {} )
 		// Miscellaneous Expression Operators
 		$rand: require( './Operators/Expression/Miscellaneous/rand' )( Engine ),
 
+		// Set Expression Operators
+		$setEquals: require( './Operators/Expression/Set/setEquals' )( Engine ),
+		$setIsSubset: require( './Operators/Expression/Set/setIsSubset' )( Engine ),
+		$setUnion: require( './Operators/Expression/Set/setUnion' )( Engine ),
+		$setIntersection: require( './Operators/Expression/Set/setIntersection' )( Engine ),
+		$setDifference: require( './Operators/Expression/Set/setDifference' )( Engine ),
+		$allElementsTrue: require( './Operators/Expression/Set/allElementsTrue' )( Engine ),
+		$anyElementTrue: require( './Operators/Expression/Set/anyElementTrue' )( Engine ),
+
 		// Date Expression Operators
 		$year: require( './Operators/Expression/Date/year' )( Engine ),
 		$month: require( './Operators/Expression/Date/month' )( Engine ),
