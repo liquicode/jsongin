@@ -10,9 +10,24 @@
 
 	Requires a server at localhost:27017. See Drivers/MongoDB-Driver.js for the settings.
 
-	Not part of `npm test`, which runs only test/Unit Tests/*.js. Run it deliberately:
+	This runner loads two inventories, and the difference between them matters:
 
-		npm run test-parity
+		<Area> Tests.js     the parity inventory - behavior jsongin implements. Also run by
+		                    jsongin-Tests.js, and therefore by `npm test`, where it is
+		                    expected green.
+
+		<Area> Gaps.js      the gap inventory - behavior MongoDB has and jsongin has not built
+		                    yet. Expected green here and red under jsongin, which is the whole
+		                    point. jsongin-Tests.js does not load it, so `npm test` stays a
+		                    regression signal rather than a to-do list.
+
+	Everything here must be green. A gap test which fails here is wrong about MongoDB, which is
+	a test bug, and is fixed before anything else.
+
+	Not part of `npm test`, which runs the unit tests and the jsongin parity inventory without
+	needing a server. Run this one deliberately:
+
+		npm run parity-test-mongodb
 		npx mocha -u bdd "test/Parity Tests/MongoDB-Tests.js" --timeout 0
 
 	To measure jsongin against this baseline:
@@ -30,4 +45,7 @@ describe( 'MongoDB Parity Tests', function ()
 	require( './Update Tests/Update Tests.js' )( Driver );
 	require( './Projection Tests/Projection Tests.js' )( Driver );
 	require( './Aggregate Tests/Aggregate Tests.js' )( Driver );
+
+	// The gap inventory. See the note above: green here, red under jsongin.
+	require( './Aggregate Tests/Aggregate Gaps.js' )( Driver );
 } );

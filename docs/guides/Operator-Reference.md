@@ -304,26 +304,26 @@ MongoDB adds operators from one server version to the next, so treat this as a c
 | Set           |       -       | $setIntersection   | Returns the elements which appear in every set.                                              |
 | Set           |       -       | $setIsSubset       | Returns true when every element of the first set appears in the second set.                  |
 | Set           |       -       | $setUnion          | Returns the elements which appear in any set.                                                |
-| String        |       -       | $concat            | Joins strings together.                                                                      |
-| String        |       -       | $indexOfBytes      | Returns the byte position of a substring.                                                    |
-| String        |       -       | $indexOfCP         | Returns the code point position of a substring.                                              |
-| String        |       -       | $ltrim             | Removes whitespace from the beginning of a string.                                           |
-| String        |       -       | $regexFind         | Returns information about the first regular expression match within a string.                |
-| String        |       -       | $regexFindAll      | Returns information about every regular expression match within a string.                    |
-| String        |       -       | $regexMatch        | Returns true when a string matches a regular expression.                                     |
-| String        |       -       | $replaceAll        | Replaces every occurrence of a substring.                                                    |
-| String        |       -       | $replaceOne        | Replaces the first occurrence of a substring.                                                |
-| String        |       -       | $rtrim             | Removes whitespace from the end of a string.                                                 |
-| String        |       -       | $split             | Splits a string into an array of substrings.                                                 |
-| String        |       -       | $strLenBytes       | Returns the length of a string in bytes.                                                     |
-| String        |       -       | $strLenCP          | Returns the length of a string in code points.                                               |
-| String        |       -       | $strcasecmp        | Compares two strings without regard to case.                                                 |
-| String        |       -       | $substr            | Returns a substring. Deprecated in favor of $substrBytes and $substrCP.                      |
-| String        |       -       | $substrBytes       | Returns a substring, using byte positions.                                                   |
-| String        |       -       | $substrCP          | Returns a substring, using code point positions.                                             |
-| String        |       -       | $toLower           | Converts a string to lowercase.                                                              |
-| String        |       -       | $toUpper           | Converts a string to uppercase.                                                              |
-| String        |       -       | $trim              | Removes whitespace from both ends of a string.                                               |
+| String        |      Yes      | [$concat](./jsongin/Expression-Operators.md#$concat)         | Joins strings end to end. A null operand makes the whole result null.                        |
+| String        |      Yes      | [$indexOfBytes](./jsongin/Expression-Operators.md#$indexOfBytes) | The UTF-8 byte position of a substring, or -1. Takes an optional start and end.              |
+| String        |      Yes      | [$indexOfCP](./jsongin/Expression-Operators.md#$indexOfCP)   | The code point position of a substring, or -1. Takes an optional start and end.              |
+| String        |      Yes      | [$ltrim](./jsongin/Expression-Operators.md#$ltrim)           | Removes characters from the left end of a string.                                            |
+| String        |      Yes      | [$regexFind](./jsongin/Expression-Operators.md#$regexFind)   | The first match of a pattern, as { match, idx, captures }, or null. idx counts code points.  |
+| String        |      Yes      | [$regexFindAll](./jsongin/Expression-Operators.md#$regexFindAll) | Every match of a pattern, as an array. No match is an empty array, not a null.               |
+| String        |      Yes      | [$regexMatch](./jsongin/Expression-Operators.md#$regexMatch) | Whether a pattern matches a string. A null input is false rather than null.                  |
+| String        |      Yes      | [$replaceAll](./jsongin/Expression-Operators.md#$replaceAll) | Replaces every occurrence of a substring. The find is literal text, not a pattern.           |
+| String        |      Yes      | [$replaceOne](./jsongin/Expression-Operators.md#$replaceOne) | Replaces the first occurrence of a substring. The find is literal text, not a pattern.       |
+| String        |      Yes      | [$rtrim](./jsongin/Expression-Operators.md#$rtrim)           | Removes characters from the right end of a string.                                           |
+| String        |      Yes      | [$split](./jsongin/Expression-Operators.md#$split)           | Cuts a string into an array on a delimiter. An empty delimiter is refused.                   |
+| String        |      Yes      | [$strLenBytes](./jsongin/Expression-Operators.md#$strLenBytes) | The length of a string in UTF-8 bytes. A null operand is refused.                            |
+| String        |      Yes      | [$strLenCP](./jsongin/Expression-Operators.md#$strLenCP)     | The length of a string in code points. A null operand is refused.                            |
+| String        |      Yes      | [$strcasecmp](./jsongin/Expression-Operators.md#$strcasecmp) | Compares two strings without regard to case, giving -1, 0, or 1.                             |
+| String        |      Yes      | [$substr](./jsongin/Expression-Operators.md#$substr)         | Deprecated by MongoDB. Another name for $substrBytes.                                        |
+| String        |      Yes      | [$substrBytes](./jsongin/Expression-Operators.md#$substrBytes) | Part of a string, counted in UTF-8 bytes. A range which splits a character is refused.       |
+| String        |      Yes      | [$substrCP](./jsongin/Expression-Operators.md#$substrCP)     | Part of a string, counted in code points. Stricter about its positions than $substrBytes.    |
+| String        |      Yes      | [$toLower](./jsongin/Expression-Operators.md#$toLower)       | Lowercases a string. A null operand is an empty string, and a number is rendered.            |
+| String        |      Yes      | [$toUpper](./jsongin/Expression-Operators.md#$toUpper)       | Uppercases a string. A null operand is an empty string, and a number is rendered.            |
+| String        |      Yes      | [$trim](./jsongin/Expression-Operators.md#$trim)             | Removes characters from both ends of a string. chars is a set, not a sequence.               |
 | Text          |       -       | $meta              | Returns the metadata belonging to a document, such as its text search score.                 |
 | Timestamp     |       -       | $tsIncrement       | Returns the incrementing ordinal of a timestamp.                                             |
 | Timestamp     |       -       | $tsSecond          | Returns the seconds of a timestamp.                                                          |
