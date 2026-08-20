@@ -46,7 +46,7 @@ module.exports = function ( Driver )
 	//---------------------------------------------------------------------
 	describe( 'Aggregate Gaps', function ()
 	{
-		// No family is currently measured as a gap. See the note above.
+		require( './test-suite/Redact Gap Tests.js' )( Driver );
 	} );
 
 };

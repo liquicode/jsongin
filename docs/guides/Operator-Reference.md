@@ -392,10 +392,10 @@ See the [`Aggregate()`](jsongin/Aggregate.md) guide for the details of each stag
 | Stage         |      Yes      | [$bucketAuto](./jsongin/Stage-Operators.md#$bucketAuto)       | Groups documents into a given number of buckets. |
 | Stage         |       -       | $collStats       | Returns statistics about a collection.                                   |
 | Stage         |      Yes      | [$count](./jsongin/Stage-Operators.md#$count)           | Returns the number of documents, as a stage. See the note below.         |
-| Stage         |       -       | $densify         | Fills in gaps in a sequence of documents.                                |
+| Stage         |      Yes      | [$densify](./jsongin/Stage-Operators.md#$densify)       | Fills in gaps in a sequence of documents. |
 | Stage         |       -       | $documents       | Returns literal documents, as a pipeline source.                         |
 | Stage         |      Yes      | [$facet](./jsongin/Stage-Operators.md#$facet)       | Runs several pipelines over the same documents. |
-| Stage         |       -       | $fill            | Populates missing field values.                                          |
+| Stage         |      Yes      | [$fill](./jsongin/Stage-Operators.md#$fill)       | Populates missing field values. |
 | Stage         |       -       | $geoNear         | Orders documents by proximity to a point.                                |
 | Stage         |       -       | $graphLookup     | Performs a recursive search across a collection.                         |
 | Stage         |      Yes      | [$group](./jsongin/Stage-Operators.md#$group)           | Groups documents and reduces each group with accumulators.               |

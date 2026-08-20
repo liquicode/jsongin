@@ -8,10 +8,10 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
-Parity with MongoDB is ***100%*** across 805 compared behaviors: Query 230, Update 89,
-  Projection 51, and Aggregate 435. Run `npm run parity-report` to measure it.
+Parity with MongoDB is ***100%*** across 841 compared behaviors: Query 230, Update 89,
+  Projection 51, and Aggregate 471. Run `npm run parity-report` to measure it.
 
-Coverage of the operator surface MongoDB documents is ***82.7%***, 210 operators of 254. Run
+Coverage of the operator surface MongoDB documents is ***83.5%***, 212 operators of 254. Run
   `npm run api-coverage` to measure that one. The two numbers answer different questions: parity
   is how faithfully what exists behaves, and coverage is how much exists.
 
@@ -193,6 +193,24 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 ### Added
 
+- The 2 ***filling pipeline stages***, in `jsongin.StageOperators`: `$fill` and `$densify`. See
+  [Stage Operators](./docs/guides/jsongin/Stage-Operators.md).
+- ***`$fill` treats a null as a value which is not there***, which is unusual: almost everywhere
+  else in this engine a null is a value and only a missing field is absent. It replaces both.
+- ***A `$fill` method writes its field for every document***, even where it has nothing to
+  write. A gap before the first observed value, or at either end of a `linear` series, becomes a
+  `null` rather than staying missing. `linear` refuses a `sortBy` field holding repeated values,
+  since the interpolation has nothing to advance along.
+- ***An output field naming neither a `value` nor a `method` fills nothing***, and is accepted;
+  naming both is refused. `partitionBy` takes a document rather than a path.
+- ***`$densify` only ever adds documents.*** A value which does not sit on the series is kept
+  where it is, so a step which skips over existing values leaves them alone. A date field
+  requires a `unit` and a numeric field must not have one.
+- ***`$redact` and `$documents` are not implemented***, and for two different reasons. `$redact`
+  answers with `$$DESCEND`, `$$PRUNE`, or `$$KEEP`, and `Evaluate()` has no expression system
+  variables; it is measured as a gap and becomes buildable with the same change that brings
+  `$let` and `$map`. `$documents` is a source stage of a ***database-level*** aggregation, and
+  `Aggregate()` always takes the documents it works on, so there is no position for it.
 - The 2 ***bucketing pipeline stages***, in `jsongin.StageOperators`: `$bucket` and
   `$bucketAuto`. See [Stage Operators](./docs/guides/jsongin/Stage-Operators.md).
 - ***Bucket ranges are half open.*** A value equal to a boundary belongs to the bucket above it,

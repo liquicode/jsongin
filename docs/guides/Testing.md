@@ -205,13 +205,13 @@ This generates a runner for each engine over the same suite list, runs both, and
    Query              230     230      0           0
    Update              89      89      0           0
    Projection          51      51      0           0
-   Aggregate          435     435      0           0
+   Aggregate          471     471      0           0
    ----------------------------------------------------
-   total              805     805      0           0
+   total              841     841      0           0
 
-   parity     100.0%   (805 of 805 compared behaviors agree)
+   parity     100.0%   (841 of 841 compared behaviors agree)
 
-   coverage   82.7%   (210 of 254 documented operators are implemented)
+   coverage   83.5%   (212 of 254 documented operators are implemented)
 ```
 
 It exits non-zero when there is a gap, so it can gate a build.
