@@ -8,8 +8,8 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
-Parity with MongoDB is ***100%*** across 841 compared behaviors: Query 230, Update 89,
-  Projection 51, and Aggregate 471. Run `npm run parity-report` to measure it.
+Parity with MongoDB is ***100%*** across 869 compared behaviors: Query 230, Update 94,
+  Projection 56, and Aggregate 489. Run `npm run parity-report` to measure it.
 
 Coverage of the operator surface MongoDB documents is ***83.5%***, 212 operators of 254. Run
   `npm run api-coverage` to measure that one. The two numbers answer different questions: parity
@@ -481,6 +481,17 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 ### Fixed
 
+- ***The expression comparison operators equated a missing value with a null; they no longer
+  do.*** `{ $eq: [ '$missing', null ] }` answered `true`, which is the ***query*** language's
+  rule wrongly applied to the expression language. In an expression a missing value ranks
+  ***below*** a null and equals only another missing one, so `$cmp` answers `-1` rather than
+  `0` and `$lt` answers `true`. This affects `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, and
+  `$cmp`.
+  *Was: a missing operand compared equal to a null, so `$ne` against a null answered `false`
+  for a field which was not there.*
+  ***`$sort` is unchanged***, and still orders a document missing the sort field as though it
+  held a null. MongoDB is inconsistent between the two on purpose, and both rules are now
+  measured.
 - ***`$group` wrote no field at all when an accumulator produced no value; it now writes a
   null.*** `{ $first: '$missing' }` left its field out of the group's output document, on the
   analogy with `$project`, where an expression producing no value does exactly that. A `$group`

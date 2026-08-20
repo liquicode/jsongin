@@ -250,6 +250,72 @@ module.exports = function ( Driver )
 			assert.deepStrictEqual( await projected( document, { o: { p: 0 } } ), { n: 5, o: { q: 2 } } );
 		} );
 
+
+		//---------------------------------------------------------------------
+		// ***Behavior which only the unit tests had an opinion about.***
+		//
+		// Each of these was asserted in test/Unit Tests/510) by calling Project() directly,
+		// where a test can confirm what jsongin does but never disagree with it. Swept in on
+		// 2026-08-20, after the same kind of test was found hiding a defect in the expression
+		// comparison operators.
+		describe( 'Swept In From the Unit Tests', () =>
+		{
+
+			it( 'should give an empty document for an element which lacks the field', async () =>
+			{
+				// ***The element stays in the array***, emptied rather than dropped, so the
+				// positions still line up with the source array.
+				assert.deepStrictEqual(
+					await projected( { a: [ { x: 1 }, { y: 9 } ] }, { 'a.x': 1 } ),
+					{ a: [ { x: 1 }, {} ] } );
+			} );
+
+			it( 'should drop an element which cannot carry the field', async () =>
+			{
+				// ***A scalar is dropped where a document is emptied***, which is the rule the
+				// test above sits next to and does not follow. A scalar cannot hold a field at
+				// all, so there is no empty document to stand in for it.
+				assert.deepStrictEqual(
+					await projected( { a: [ 1, 2, 3 ] }, { 'a.x': 1 } ), { a: [] } );
+				assert.deepStrictEqual(
+					await projected( { a: [ { x: 1 }, 5, { x: 2 } ] }, { 'a.x': 1 } ),
+					{ a: [ { x: 1 }, { x: 2 } ] } );
+				assert.deepStrictEqual(
+					await projected( { a: [ { x: 1 }, null ] }, { 'a.x': 1 } ), { a: [ { x: 1 } ] } );
+			} );
+
+			it( 'should include through two levels of array', async () =>
+			{
+				assert.deepStrictEqual(
+					await projected( { a: [ { b: [ { c: 1, d: 2 } ] } ] }, { 'a.b.c': 1 } ),
+					{ a: [ { b: [ { c: 1 } ] } ] } );
+			} );
+
+			it( 'should descend into an array inside an array', async () =>
+			{
+				// ***A projection does this and a query path does not***, which is a real
+				// difference between the two mechanisms rather than an accident of either.
+				assert.deepStrictEqual(
+					await projected( { a: [ [ { c: 1, d: 2 } ] ] }, { 'a.c': 1 } ),
+					{ a: [ [ { c: 1 } ] ] } );
+			} );
+
+			it( 'should treat a numeric path element as a field name', async () =>
+			{
+				// No element has a field named '0', so every one comes back empty - the array
+				// is not indexed.
+				assert.deepStrictEqual(
+					await projected( { a: [ { x: 1 }, { x: 2 } ] }, { 'a.0': 1 } ),
+					{ a: [ {}, {} ] } );
+
+				// Against a document the same key names a field, which does exist here.
+				assert.deepStrictEqual(
+					await projected( { a: { '0': 'zero', z: 9 } }, { 'a.0': 1 } ),
+					{ a: { '0': 'zero' } } );
+			} );
+
+		} );
+
 	} );
 
 };

@@ -37,7 +37,38 @@ module.exports = function ( jsongin )
 		let value_a = jsongin.Evaluate( Document, Args[ 0 ] );
 		let value_b = jsongin.Evaluate( Document, Args[ 1 ] );
 
-		return Test( jsongin.CompareValues( value_a, value_b ) );
+		return Test( helper.Compare( value_a, value_b ) );
+	};
+
+
+	//---------------------------------------------------------------------
+	// Compares two evaluated operands.
+	//
+	// ***A missing value ranks below a null here***, and equals only another missing one. That
+	// is not what CompareValues does - it ranks the two together, because that is what Sort()
+	// needs - and it is not what the query language does either, where a missing field matches
+	// a null. ***MongoDB is inconsistent about this on purpose and jsongin reproduces it***:
+	//
+	//   { $cmp: [ '$nope', null ] }   is -1, not 0
+	//   { $eq:  [ '$nope', null ] }   is false, not true
+	//   { $sort: { nope: 1 } }        still sorts a missing field as a null
+	//
+	// So the distinction is made here rather than in CompareValues, where it would change
+	// sorting, the query operators, and the accumulators along with it.
+	//
+	// Found by the 2026-08-20 sweep of unit tests making parity claims: a unit test asserted
+	// that the expression $eq equates a null and a missing value, which is the query rule, and
+	// no parity test had ever put the question to a server.
+	helper.Compare = function ( ValueA, ValueB )
+	{
+		let missing_a = ( jsongin.ShortType( ValueA ) === 'u' );
+		let missing_b = ( jsongin.ShortType( ValueB ) === 'u' );
+
+		if ( missing_a && missing_b ) { return 0; }
+		if ( missing_a ) { return -1; }
+		if ( missing_b ) { return 1; }
+
+		return jsongin.CompareValues( ValueA, ValueB );
 	};
 
 
