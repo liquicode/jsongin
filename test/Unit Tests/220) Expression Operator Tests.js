@@ -718,6 +718,51 @@ describe( '220) Expression Operator Tests', () =>
 
 
 	//---------------------------------------------------------------------
+	// ***A boundary, written down where it can be checked.***
+	//
+	// MongoDB has int, long, and double as three BSON types, and a conversion tags its result
+	// with the one it converted to: { $type: { $toLong: 42 } } is 'long' there, and
+	// { $type: { $toDouble: 42 } } is 'double', for the very same number.
+	//
+	// jsongin holds JSON, where there is one number kind, and $type reports what follows from
+	// the value: a whole number inside the 32 bit range is an int, whatever produced it. The
+	// converted values agree with MongoDB in every case - only what $type says about a number
+	// afterwards does not.
+	//
+	// These are unit tests and not parity tests on purpose. MongoDB has an opinion here and
+	// jsongin cannot share it, so there is nothing to compare; asserting jsongin's own answer
+	// is what keeps the boundary from moving without anyone noticing.
+	describe( 'Numeric Conversion Type Boundary Tests', () =>
+	{
+
+		it( 'should convert the value correctly, which is the part that matters', () =>
+		{
+			assert.ok( jsongin.Evaluate( {}, { $toLong: 42 } ) === 42 );
+			assert.ok( jsongin.Evaluate( {}, { $toDouble: 42 } ) === 42 );
+			assert.ok( jsongin.Evaluate( {}, { $toInt: 3.9 } ) === 3 );
+			assert.ok( jsongin.Evaluate( {}, { $convert: { input: 5, to: 'long' } } ) === 5 );
+		} );
+
+		it( 'should report a number type from the value, not from the conversion', () =>
+		{
+			// MongoDB answers 'long' and 'double' to these two.
+			assert.ok( jsongin.Evaluate( {}, { $type: { $toLong: 42 } } ) === 'int' );
+			assert.ok( jsongin.Evaluate( {}, { $type: { $toDouble: 42 } } ) === 'int' );
+			assert.ok( jsongin.Evaluate( {}, { $type: { $convert: { input: 5, to: 'long' } } } ) === 'int' );
+		} );
+
+		it( 'should never report a number as a long', () =>
+		{
+			// There is no value a Javascript number can hold which reports as one.
+			assert.ok( jsongin.BsonType( 42, true ) === 'int' );
+			assert.ok( jsongin.BsonType( 3000000000, true ) === 'double' );
+			assert.ok( jsongin.BsonType( Number.MAX_SAFE_INTEGER, true ) === 'double' );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
 	describe( '$literal Tests', () =>
 	{
 

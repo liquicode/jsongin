@@ -300,25 +300,38 @@ describe( '150) Error Handling Tests', () =>
 		}
 
 		// Returns the number of operators which threw and reported themselves correctly.
+		//
+		// Invoke may be a single function or a list of them. An operator which tolerates the
+		// first input is offered the next, and counts as reporting if any of them makes it
+		// fail. ***One input is not enough to reach every operator***: $type, $isNumber,
+		// $toBool, and $toString all accept a string quite happily, and were being skipped
+		// here with their report line never executed.
 		function sweep( Registry, Prefix, Invoke )
 		{
+			let attempts = Array.isArray( Invoke ) ? Invoke : [ Invoke ];
 			let names = Object.keys( jsongin[ Registry ] );
 			let reported = 0;
 			for ( let index = 0; index < names.length; index++ )
 			{
 				let name = names[ index ];
-				let errors = [];
-				let engine = reporting_engine( errors );
-				try
+				for ( let attempt = 0; attempt < attempts.length; attempt++ )
 				{
-					Invoke( engine, name );
-				}
-				catch ( error )
-				{
-					assert.ok( errors.length > 0, `${name} threw without reporting.` );
-					assert.ok( errors[ 0 ].startsWith( `${Prefix}${name}: ` ),
-						`${name} reported [${errors[ 0 ]}].` );
-					reported++;
+					let errors = [];
+					let engine = reporting_engine( errors );
+					let threw = false;
+					try
+					{
+						attempts[ attempt ]( engine, name );
+					}
+					catch ( error )
+					{
+						threw = true;
+						assert.ok( errors.length > 0, `${name} threw without reporting.` );
+						assert.ok( errors[ 0 ].startsWith( `${Prefix}${name}: ` ),
+							`${name} reported [${errors[ 0 ]}].` );
+						reported++;
+					}
+					if ( threw ) { break; }
 				}
 			}
 			return reported;
@@ -328,9 +341,14 @@ describe( '150) Error Handling Tests', () =>
 		{
 			// Called directly rather than through Evaluate(), which would reject the argument
 			// on the operator's behalf and report under its own name instead.
-			let reported = sweep( 'ExpressionOperators', 'Expression.',
-				function ( Engine, Name ) { Engine.ExpressionOperators[ Name ].Evaluate( {}, 'abc' ); } );
-			assert.ok( reported >= 14, `only ${reported} expression operators reported.` );
+			//
+			// The second input reaches the operators which accept a string: two operands is
+			// the wrong number for any of them.
+			let reported = sweep( 'ExpressionOperators', 'Expression.', [
+				function ( Engine, Name ) { Engine.ExpressionOperators[ Name ].Evaluate( {}, 'abc' ); },
+				function ( Engine, Name ) { Engine.ExpressionOperators[ Name ].Evaluate( {}, [ 'abc', 'abc' ] ); },
+			] );
+			assert.ok( reported >= 18, `only ${reported} expression operators reported.` );
 		} );
 
 		it( 'should report from every update operator which rejects its argument', () =>
