@@ -37,6 +37,12 @@
 		            much of the surface is implemented, and a number is only worth having if
 		            the table it is counted from is checked.
 
+		shared      The 'Operators Which Share a Name' tables must agree with the registries.
+		            A *(not supported)* marker must be true of the column it sits in, and a name
+		            registered in more than one place must be described somewhere in the
+		            section. These tables went stale in three consecutive families before this
+		            check existed, because the inventory check reads only the main tables.
+
 		examples    Every ```js block is executed against the engine, and the claims its
 		            comments make are checked:
 
@@ -428,6 +434,158 @@ function check_operator_inventory()
 
 
 //---------------------------------------------------------------------
+// The 'Operators Which Share a Name' tables must agree with the registries too.
+//
+// ***These tables went stale in three consecutive families*** and nothing noticed, because the
+// inventory check above only reads the main tables. Every family which adds an operator name
+// that already exists somewhere else invalidates a claim here: the Array pass left $first and
+// $last described as having no counterpart elsewhere after building expression versions of
+// both, the Object pass corrected two *(not supported)* notes and added a third, and the
+// Accumulator pass made that third one false within the hour.
+//
+// Two things are checked, and neither of them reads prose:
+//
+//   1. A *(not supported)* marker must be true. The cell sits in a column naming a role, so
+//      every operator the cell names must be absent from that role's registry.
+//   2. A name registered in two or more registries must appear somewhere in the section. That
+//      is what makes it a shared name, and a shared name nothing documents is the drift these
+//      tables exist to prevent.
+//
+// Prose claims are deliberately not parsed. A cell saying "Not a query operator" means the same
+// thing as the marker but cannot be told apart from a cell which merely mentions another
+// operator, and guessing would produce false findings - which is worse than an unchecked
+// sentence. Write *(not supported)* when the claim is meant to be checked.
+function check_shared_names()
+{
+	const COLUMN_REGISTRIES = {
+		'As a Query Operator': 'QueryOperators',
+		'As an Expression Operator': 'ExpressionOperators',
+		'As an Accumulator': 'AccumulatorOperators',
+		'As an Update Operator': 'UpdateOperators',
+		// A projection operator is handled inside Project.js rather than registered, and
+		// 'Elsewhere' is free text by design. Neither has a registry to be checked against.
+		'As a Projection Operator': null,
+		'Elsewhere': null,
+	};
+
+	const REGISTRIES = [ 'QueryOperators', 'ExpressionOperators', 'AccumulatorOperators', 'UpdateOperators' ];
+
+	const NOT_SUPPORTED = '*(not supported)*';
+
+	let reference = LIB_PATH.join( DOCS, 'guides', 'Operator-Reference.md' );
+	let relative = LIB_PATH.relative( REPO, reference );
+	let lines = LIB_FS.readFileSync( reference, 'utf8' ).split( /\r?\n/ );
+
+	let findings = [];
+	let checked = 0;
+
+	// The section runs from its heading to the next one at the same level.
+	let start = -1;
+	let end = lines.length;
+	for ( let index = 0; index < lines.length; index++ )
+	{
+		if ( /^##\s+Operators Which Share a Name\s*$/.test( lines[ index ] ) ) { start = index; continue; }
+		if ( ( start >= 0 ) && ( index > start ) && /^##\s+/.test( lines[ index ] ) ) { end = index; break; }
+	}
+	if ( start < 0 )
+	{
+		return {
+			Checked: 0,
+			Findings: [ { Path: relative, Line: 0, Detail: 'the [Operators Which Share a Name] section is missing.' } ],
+			Unit: 'shared names',
+		};
+	}
+
+	let section_text = lines.slice( start, end ).join( '\n' );
+
+	// Every `$name` written in a cell.
+	function names_in( Text )
+	{
+		let found = Text.match( /`\$[A-Za-z][A-Za-z0-9]*`/g );
+		if ( found === null ) { return []; }
+		let names = [];
+		for ( let index = 0; index < found.length; index++ )
+		{
+			let name = found[ index ].replace( /`/g, '' );
+			if ( names.indexOf( name ) < 0 ) { names.push( name ); }
+		}
+		return names;
+	}
+
+	// 1. Every *(not supported)* marker must be true of the column it sits in.
+	let columns = [];
+	for ( let index = start; index < end; index++ )
+	{
+		let line = lines[ index ];
+		if ( !line.startsWith( '|' ) ) { columns = []; continue; }
+
+		let cells = line.split( '|' ).slice( 1, -1 );
+
+		// A header row names the roles; the divider row under it is skipped.
+		if ( line.includes( '**Operator**' ) )
+		{
+			columns = [];
+			for ( let cell = 0; cell < cells.length; cell++ )
+			{
+				let heading = cells[ cell ].replace( /\*/g, '' ).trim();
+				columns.push( typeof COLUMN_REGISTRIES[ heading ] === 'undefined' ? null : COLUMN_REGISTRIES[ heading ] );
+			}
+			continue;
+		}
+		if ( /^\|[\s|:-]+\|$/.test( line ) ) { continue; }
+		if ( columns.length === 0 ) { continue; }
+
+		for ( let cell = 1; cell < cells.length; cell++ )
+		{
+			let registry_name = columns[ cell ];
+			if ( !registry_name ) { continue; }
+			if ( cells[ cell ].indexOf( NOT_SUPPORTED ) < 0 ) { continue; }
+
+			let subjects = names_in( cells[ cell ] );
+			if ( subjects.length === 0 ) { subjects = names_in( cells[ 0 ] ); }
+
+			for ( let subject = 0; subject < subjects.length; subject++ )
+			{
+				checked++;
+				if ( typeof LIB_JSONGIN[ registry_name ][ subjects[ subject ] ] === 'undefined' ) { continue; }
+				findings.push( {
+					Path: relative,
+					Line: index + 1,
+					Detail: `${subjects[ subject ]} is marked ${NOT_SUPPORTED} under [${Object.keys( COLUMN_REGISTRIES ).find( function ( Key ) { return COLUMN_REGISTRIES[ Key ] === registry_name; } )}], but it is registered in ${registry_name}.`,
+				} );
+			}
+		}
+	}
+
+	// 2. Every name carrying more than one meaning must be described here.
+	let roles = {};
+	for ( let index = 0; index < REGISTRIES.length; index++ )
+	{
+		let operators = Object.keys( LIB_JSONGIN[ REGISTRIES[ index ] ] );
+		for ( let found = 0; found < operators.length; found++ )
+		{
+			if ( !roles[ operators[ found ] ] ) { roles[ operators[ found ] ] = []; }
+			roles[ operators[ found ] ].push( REGISTRIES[ index ] );
+		}
+	}
+
+	let shared = Object.keys( roles ).filter( function ( Name ) { return roles[ Name ].length > 1; } );
+	for ( let index = 0; index < shared.length; index++ )
+	{
+		checked++;
+		if ( section_text.indexOf( '`' + shared[ index ] + '`' ) >= 0 ) { continue; }
+		findings.push( {
+			Path: relative,
+			Line: start + 1,
+			Detail: `${shared[ index ]} is registered in ${roles[ shared[ index ] ].join( ' and ' )}, but the shared-name tables never mention it.`,
+		} );
+	}
+
+	return { Checked: checked, Findings: findings, Unit: 'shared names' };
+}
+
+
+//---------------------------------------------------------------------
 // True when a fragment compiles on its own.
 function compiles( Text )
 {
@@ -748,6 +906,7 @@ function main()
 	failures += report( 'orphans', check_orphans( doc_files ) );
 	failures += report( 'operators', check_operator_blocks() );
 	failures += report( 'inventory', check_operator_inventory() );
+	failures += report( 'shared', check_shared_names() );
 	failures += report( 'examples', check_examples( all_files ) );
 	console.log( '' );
 

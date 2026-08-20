@@ -262,7 +262,7 @@ npm run check-docs
 npm run check-docs -- --verbose
 ```
 
-Four things are checked, all of them cheap to detect and expensive to find by reading:
+Seven things are checked, all of them cheap to detect and expensive to find by reading:
 
 | **Check**   | **Asserts**                                                                |
 |-------------|-----------------------------------------------------------------------------|
@@ -270,6 +270,18 @@ Four things are checked, all of them cheap to detect and expensive to find by re
 | `links`     | Every local markdown link resolves to a file which exists.                 |
 | `orphans`   | Every page under `docs/` is reachable from another page.                   |
 | `operators` | Every registered operator carries an `/*md` documentation block.           |
+| `inventory` | Every `Yes` row of the [Operator Reference](./Operator-Reference.md) names a registered operator, and every registered operator has a row. |
+| `shared`    | The reference's shared-name tables agree with the registries: a `*(not supported)*` marker is true of its column, and a name registered in more than one place is described there. |
+| `examples`  | Every ` ```js ` block is executed and the claims its comments make are checked. |
+
+***The last two exist because documentation drifts where nothing reads it.***
+`inventory` guards the table [`api-coverage`](#coverage) counts, since a coverage number is only
+  worth having if the table behind it is checked.
+`shared` was added after the shared-name tables went stale in ***three consecutive families***:
+  every family which adds an operator name that already exists elsewhere invalidates a claim
+  there, and `inventory` reads only the main tables.
+A prose claim in those tables is deliberately not parsed — write `*(not supported)*` when the
+  claim is meant to be checked.
 
 ***What goes inside a ` ```js ` fence must be code.***
 A result belongs in a comment rather than in a bare expression:
