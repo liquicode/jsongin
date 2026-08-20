@@ -23,6 +23,7 @@ module.exports = function ( Driver )
 	{
 		require( './test-suite/Ad-Hoc Tests.js' )( Driver );
 		require( './test-suite/Update Operator Tests.js' )( Driver );
+		require( './test-suite/Bitwise Update Tests.js' )( Driver );
 		require( './test-suite/Update Rejection Tests.js' )( Driver );
 	} );
 

@@ -718,6 +718,32 @@ describe( '220) Expression Operator Tests', () =>
 
 
 	//---------------------------------------------------------------------
+	// $bsonSize measures a Javascript object, and a Javascript object can hold things BSON
+	// cannot. Neither case below can be a parity test: a document carrying an `undefined` or a
+	// function does not survive a round trip through a server, so MongoDB has no opinion to
+	// compare against. What the size arithmetic does with them is still worth pinning down.
+	describe( '$bsonSize Javascript Value Tests', () =>
+	{
+
+		it( 'should not count a field which is undefined', () =>
+		{
+			// The BSON serializer drops such an element, so it costs nothing and the size is
+			// the same as the document without it.
+			assert.ok( jsongin.Evaluate( {}, { $bsonSize: { $literal: { a: 1 } } } ) === 12 );
+			assert.ok( jsongin.Evaluate( {}, { $bsonSize: { $literal: { a: 1, b: undefined } } } ) === 12 );
+			assert.ok( jsongin.Evaluate( {}, { $bsonSize: { $literal: { b: undefined } } } ) === 5 );
+		} );
+
+		it( 'should refuse a value which has no encoding', () =>
+		{
+			assert.throws( function () { jsongin.Evaluate( {}, { $bsonSize: { $literal: { a: function () { } } } } ); } );
+			assert.throws( function () { jsongin.Evaluate( {}, { $bsonSize: { $literal: { a: Symbol( 'x' ) } } } ); } );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
 	// ***A boundary, written down where it can be checked.***
 	//
 	// MongoDB has int, long, and double as three BSON types, and a conversion tags its result

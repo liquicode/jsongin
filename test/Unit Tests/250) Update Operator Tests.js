@@ -180,6 +180,23 @@ describe( '250) Update Operator Tests', () =>
 		} );
 
 
+		describe( '$bit Tests', () =>
+		{
+
+			// Called directly rather than through Update(), which refuses an empty path
+			// before any operator sees it. What is asserted here is the operator's own
+			// contract: it reports a write it could not make by returning false, and
+			// Update() is what turns that into a refusal.
+			it( 'should report a write it could not make', () =>
+			{
+				let document = { a: 1 };
+				assert.strictEqual( jsongin.UpdateOperators.$bit.Update( document, { '': { or: 1 } } ), false );
+				assert.deepStrictEqual( document, { a: 1 } );
+			} );
+
+		} );
+
+
 		describe( '$rename Tests', () =>
 		{
 

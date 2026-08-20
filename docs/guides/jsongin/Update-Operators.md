@@ -373,6 +373,47 @@ updated = jsongin.Update(
 ```
 
 
+# Bitwise Update Operators
+
+
+<a id="$bit"></a>$bit
+---------------------------------------------------------------------
+
+**Usage** : `$bit: { field: { and: integer } }`
+  or `$bit: { field: { or: integer } }`
+  or `$bit: { field: { xor: integer } }`
+
+Applies a bitwise operation to an integer field.
+
+A field which is ***not there*** is treated as a zero, so `and` stores 0 while `or` and `xor`
+  store the operand. The path to it is created, as [$inc](#$inc) creates one.
+
+The stored value and the operand must both be ***integers***.
+A field holding a string, a fractional number, a boolean, or a null is refused rather than
+  coerced, and so is a fractional or non numeric operand.
+A refused update leaves the whole document untouched.
+
+***The arithmetic is done in `BigInt`***, so a bit above the 32nd is not lost and a negative
+  value is read as two's complement.
+
+**Examples**
+```js
+// 20 is binary 10100 and 12 is 01100.
+let updated = jsongin.Update( { flags: 20 }, { $bit: { flags: { and: 12 } } } );
+updated.flags === 4
+
+updated = jsongin.Update( { flags: 20 }, { $bit: { flags: { or: 12 } } } );
+updated.flags === 28
+
+updated = jsongin.Update( { flags: 20 }, { $bit: { flags: { xor: 12 } } } );
+updated.flags === 24
+
+// A field which is not there counts as a zero.
+updated = jsongin.Update( {}, { $bit: { flags: { or: 12 } } } );
+updated.flags === 12
+```
+
+
 ## See Also
 
 - [`Update( Document, Updates )`](./Update.md), which applies these operators.

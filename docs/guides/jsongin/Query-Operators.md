@@ -619,6 +619,43 @@ jsongin.Query( { a: 10, b: 3 }, { $expr: { $gt: [ { $subtract: [ '$a', '$b' ] },
 ```
 
 
+<a id="$mod"></a>$mod
+---------------------------------------------------------------------
+
+**Usage** : `{ field : { $mod: [ divisor, remainder ] } }`
+
+Divides the field by the divisor and matches when what is left over is the remainder given.
+
+***This is not the expression `$mod`***, which shares the name and does something else.
+The expression one takes two operands and ***returns*** a remainder; this one takes a divisor
+  and the remainder to look for, and answers whether the field matches.
+See [Expression Operators](./Expression-Operators.md#$mod) for that one.
+
+A fractional field is truncated toward zero before the division, and a negative field keeps its
+  sign in the remainder.
+A field which is not a number does not match.
+The array must hold exactly two numbers, and a divisor of zero is refused.
+
+### Example
+```js
+let document = { count: 10, price: 10.5, owed: -11, name: 'Alice' };
+
+// Ten divides by five with nothing left over.
+jsongin.Query( document, { count: { $mod: [ 5, 0 ] } } ) === true
+jsongin.Query( document, { count: { $mod: [ 3, 1 ] } } ) === true
+
+// The value is truncated first, so 10.5 divides as 10 does.
+jsongin.Query( document, { price: { $mod: [ 5, 0 ] } } ) === true
+
+// A negative value keeps its sign.
+jsongin.Query( document, { owed: { $mod: [ 5, -1 ] } } ) === true
+
+// A field which is not a number cannot satisfy it.
+jsongin.Query( document, { name: { $mod: [ 5, 0 ] } } ) === false
+```
+
+
+
 # Array Operators
 
 
@@ -715,6 +752,158 @@ jsongin.Query( document, { tags: { $all: [ 'A', 'X' ] } } ) === false
 jsongin.Query( document, { login_attempts: { $all: [ 7 ] } } ) === true
 // An empty list matches nothing.
 jsongin.Query( document, { tags: { $all: [] } } ) === false
+```
+
+
+# Bitwise Operators
+
+
+These four ask about the individual bits of a numeric field.
+
+The bits are named in one of two ways, and every operator below accepts both:
+
+- a ***bitmask***, a number whose own set bits are the ones being asked about.
+- an array of ***bit positions***, counted from the least significant bit, where position 0 is
+  the ones place. So `[ 2, 4 ]` and the mask `20` ask about the same two bits.
+
+A field which is not an integer has no bits to read and does not match.
+A negative integer does: its bits are read as two's complement, so `-20` has every bit above
+  its highest set bit set.
+A bit position or mask which is negative or fractional is refused, since there is no such bit.
+
+***The empty array divides them.*** `$bitsAllSet` and `$bitsAllClear` ask whether all of no
+  bits satisfy them, which is true; `$bitsAnySet` and `$bitsAnyClear` ask whether any of no
+  bits does, which is false.
+
+
+<a id="$bitsAllSet"></a>$bitsAllSet
+---------------------------------------------------------------------
+
+**Usage** : `{ field : { $bitsAllSet: bitmask } }`
+  or `{ field : { $bitsAllSet: [ position, ... ] } }`
+
+Matches when ***every*** bit named is set in the field.
+
+### Example
+```js
+// 20 is binary 10100, so bits 2 and 4 are set.
+let document = { flags: 20 };
+
+jsongin.Query( document, { flags: { $bitsAllSet: [ 2, 4 ] } } ) === true
+jsongin.Query( document, { flags: { $bitsAllSet: [ 2, 3 ] } } ) === false
+
+// The same question as a bitmask.
+jsongin.Query( document, { flags: { $bitsAllSet: 20 } } ) === true
+jsongin.Query( document, { flags: { $bitsAllSet: 21 } } ) === false
+
+// All of no bits are set.
+jsongin.Query( document, { flags: { $bitsAllSet: [] } } ) === true
+```
+
+
+<a id="$bitsAllClear"></a>$bitsAllClear
+---------------------------------------------------------------------
+
+**Usage** : `{ field : { $bitsAllClear: bitmask } }`
+  or `{ field : { $bitsAllClear: [ position, ... ] } }`
+
+Matches when ***every*** bit named is clear in the field.
+
+### Example
+```js
+let document = { flags: 20 };
+
+jsongin.Query( document, { flags: { $bitsAllClear: [ 0, 1, 3 ] } } ) === true
+jsongin.Query( document, { flags: { $bitsAllClear: [ 0, 2 ] } } ) === false
+jsongin.Query( document, { flags: { $bitsAllClear: 11 } } ) === true
+```
+
+
+<a id="$bitsAnySet"></a>$bitsAnySet
+---------------------------------------------------------------------
+
+**Usage** : `{ field : { $bitsAnySet: bitmask } }`
+  or `{ field : { $bitsAnySet: [ position, ... ] } }`
+
+Matches when ***at least one*** bit named is set in the field.
+
+### Example
+```js
+let document = { flags: 20 };
+
+jsongin.Query( document, { flags: { $bitsAnySet: [ 2, 3 ] } } ) === true
+jsongin.Query( document, { flags: { $bitsAnySet: [ 0, 1, 3 ] } } ) === false
+
+// Any of no bits is not satisfied, unlike $bitsAllSet.
+jsongin.Query( document, { flags: { $bitsAnySet: [] } } ) === false
+```
+
+
+<a id="$bitsAnyClear"></a>$bitsAnyClear
+---------------------------------------------------------------------
+
+**Usage** : `{ field : { $bitsAnyClear: bitmask } }`
+  or `{ field : { $bitsAnyClear: [ position, ... ] } }`
+
+Matches when ***at least one*** bit named is clear in the field.
+
+### Example
+```js
+let document = { flags: 20 };
+
+jsongin.Query( document, { flags: { $bitsAnyClear: [ 0, 2 ] } } ) === true
+jsongin.Query( document, { flags: { $bitsAnyClear: [ 2, 4 ] } } ) === false
+jsongin.Query( document, { flags: { $bitsAnyClear: 21 } } ) === true
+```
+
+
+# Miscellaneous Operators
+
+
+<a id="$comment"></a>$comment
+---------------------------------------------------------------------
+
+**Usage** : `{ $comment: text }`
+
+Annotates a query with a note, and selects every document.
+
+***A comment is not a predicate.***
+It narrows nothing, so a query carrying one finds exactly what it would have found without it.
+It exists so that a query appearing in a log can say why it was run.
+
+### Example
+```js
+let document = { name: 'Alice', role: 'admin' };
+
+jsongin.Query( document, { $comment: 'the admin audit' } ) === true
+
+// It changes nothing about the rest of the criteria.
+jsongin.Query( document, { role: 'admin', $comment: 'still matches' } ) === true
+jsongin.Query( document, { role: 'user', $comment: 'still does not' } ) === false
+```
+
+
+<a id="$sampleRate"></a>$sampleRate
+---------------------------------------------------------------------
+
+**Usage** : `{ $sampleRate: rate }`
+
+Selects a random fraction of the documents, where the rate is a number from 0 through 1.
+
+***The result is not repeatable***, which is the point of it.
+Each document is decided independently, so a rate of `0.5` over a hundred documents selects
+  about fifty rather than exactly fifty.
+
+The two ends are not random at all: a rate of 0 selects nothing and a rate of 1 selects
+  everything.
+A rate outside that range is refused.
+
+### Example
+```js
+let document = { name: 'Alice' };
+
+jsongin.Query( document, { $sampleRate: 1 } ) === true
+jsongin.Query( document, { $sampleRate: 0 } ) === false
 ```
 
 
