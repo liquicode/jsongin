@@ -208,6 +208,12 @@ function NewJsongin( EngineSettings = {} )
 		$arrayElemAt: require( './Operators/Expression/Array/arrayElemAt' )( Engine ),
 		$concatArrays: require( './Operators/Expression/Array/concatArrays' )( Engine ),
 		$in: require( './Operators/Expression/Array/in' )( Engine ),
+		$map: require( './Operators/Expression/Array/map' )( Engine ),
+		$filter: require( './Operators/Expression/Array/filter' )( Engine ),
+		$reduce: require( './Operators/Expression/Array/reduce' )( Engine ),
+
+		// Variable Expression Operators
+		$let: require( './Operators/Expression/Variable/let' )( Engine ),
 
 		// Object Expression Operators
 		$mergeObjects: require( './Operators/Expression/Object/mergeObjects' )( Engine ),
@@ -310,6 +316,7 @@ function NewJsongin( EngineSettings = {} )
 		$bucketAuto: require( './Operators/Stage/bucketAuto' )( Engine ),
 		$fill: require( './Operators/Stage/fill' )( Engine ),
 		$densify: require( './Operators/Stage/densify' )( Engine ),
+		$redact: require( './Operators/Stage/redact' )( Engine ),
 
 	};
 

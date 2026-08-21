@@ -84,10 +84,11 @@ module.exports = function ( jsongin )
 
 		if ( jsongin.ShortType( Args ) !== 'o' )
 		{
-			// ***The shorthand lands here.*** MongoDB lets { $getField: 'name' } stand for
-			// reading the name from $$CURRENT, and jsongin has no variable scope to read it
-			// from, so the message says which form to write instead of reporting a type.
-			throw new Error( `${OperatorName}: requires a document naming a [field] and an [input]. The shorthand form reads [$$CURRENT], which is not supported.` );
+			// ***The $getField shorthand never lands here.*** { $getField: 'name' } reads the
+			// name from $$CURRENT and is handled in that operator before this is called, so a
+			// string reaching this point belongs to $setField or $unsetField, neither of
+			// which has a shorthand.
+			throw new Error( `${OperatorName}: requires a document naming a [field] and an [input].` );
 		}
 
 		let keys = Object.keys( Args );

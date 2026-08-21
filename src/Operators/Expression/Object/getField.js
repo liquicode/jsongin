@@ -21,8 +21,18 @@ Reads one named field of a document.
   absent field gives, so the field is left out of the result rather than set to null.
   [$setField](#$setField) and [$unsetField](#$unsetField) do not make this distinction.
 
-***The shorthand `{ $getField: 'name' }` is not supported.*** It reads the field from
-  `$$CURRENT`, and jsongin has no expression variable scope. Write the `input` out instead.
+***The shorthand `{ $getField: 'name' }` reads the field from `$$CURRENT`***, which is the
+  document being aggregated. The name follows the same two rules: it is a name rather than a
+  path, and it must be a constant, so `{ $getField: '$price' }` is refused as a field path.
+
+***Only the string shorthand defaults.*** The object form with no `input` looks as though it
+  should mean the same thing and does not — it is refused. So `{ $getField: 'a' }` and
+  `{ $getField: { field: 'a' } }` are not two spellings of one expression.
+
+```js
+const shorthand = { $getField: 'a.b' };      // the field literally called 'a.b', of $$CURRENT
+const written_out = { $getField: { field: 'a.b', input: '$$CURRENT' } };   // the same thing
+```
 
 */
 
@@ -43,7 +53,22 @@ module.exports = function ( jsongin )
 		{
 			try
 			{
-				let read = object.ReadArgs( Document, Args, '$getField', [ 'field', 'input' ], Scope );
+				let read = null;
+				if ( jsongin.ShortType( Args ) === 's' )
+				{
+					// ***The shorthand reads the field from $$CURRENT.*** Only this form
+					// defaults; the object form with no `input` is refused rather than
+					// meaning the same thing, which is what MongoDB 6.0.1 does.
+					jsongin.Scope.Require( Scope, '$getField' );
+					read = {
+						Name: object.ReadFieldName( Args, '$getField' ),
+						Input: jsongin.Evaluate( Document, '$$CURRENT', Scope ),
+					};
+				}
+				else
+				{
+					read = object.ReadArgs( Document, Args, '$getField', [ 'field', 'input' ], Scope );
+				}
 
 				let short_type = jsongin.ShortType( read.Input );
 				if ( short_type === 'l' ) { return null; }

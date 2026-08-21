@@ -106,6 +106,62 @@ module.exports = function ( jsongin )
 
 
 	//---------------------------------------------------------------------
+	// Reads the arguments the three binding operators share - $map, $filter, and $reduce.
+	//
+	// ***All three read an input and bind a variable to each of its elements***, and they
+	// agree about everything except which other arguments they take, so Allowed and Required
+	// are the only things that differ.
+	//
+	// ***A null or missing input answers null and is not an error***, which is where these
+	// three part company with $firstN and the rest of ReadInputN's callers. Anything else
+	// which is not an array is refused. The caller sees that as Values being null.
+	//
+	// ***`as` renames the element binding rather than adding one.*** Given `as: 'p'` the
+	// element is $$p and $$this is not bound at all, so an `in` written against $$this stops
+	// working the moment an `as` is added. Verified against MongoDB 6.0.1.
+	helper.ReadBindingArgs = function ( Document, Args, OperatorName, Allowed, Required, Scope )
+	{
+		jsongin.Scope.Require( Scope, 'array.ReadBindingArgs' );
+
+		if ( jsongin.ShortType( Args ) !== 'o' )
+		{
+			throw new Error( `${OperatorName}: requires a document naming [${Required.join( ', ' )}].` );
+		}
+
+		let keys = Object.keys( Args );
+		for ( let index = 0; index < keys.length; index++ )
+		{
+			if ( Allowed.includes( keys[ index ] ) === false )
+			{
+				throw new Error( `${OperatorName}: [${keys[ index ]}] is not an argument of this operator.` );
+			}
+		}
+		for ( let index = 0; index < Required.length; index++ )
+		{
+			if ( ( Required[ index ] in Args ) === false )
+			{
+				throw new Error( `${OperatorName}: requires an argument named [${Required[ index ]}].` );
+			}
+		}
+
+		// The name is read from what was written rather than from an evaluated value, the same
+		// way the field name of $getField is. A computed variable name is not a thing.
+		let name = 'this';
+		if ( 'as' in Args ) { name = jsongin.Scope.RequireName( Args.as, OperatorName ); }
+
+		let values = jsongin.Evaluate( Document, Args.input, Scope );
+		let short_type = jsongin.ShortType( values );
+		if ( 'lu'.includes( short_type ) ) { return { Values: null, Name: name }; }
+		if ( short_type !== 'a' )
+		{
+			throw new Error( `${OperatorName}: requires an array input but found a [${short_type}] instead.` );
+		}
+
+		return { Values: values, Name: name };
+	};
+
+
+	//---------------------------------------------------------------------
 	// Returns the elements sorted by BSON order, ascending or descending.
 	// This is what $minN and $maxN hand back, and what $sortArray does for a plain sortBy.
 	helper.SortedValues = function ( Values, Descending )

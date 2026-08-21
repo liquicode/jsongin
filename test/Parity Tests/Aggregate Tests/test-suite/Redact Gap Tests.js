@@ -78,6 +78,64 @@ module.exports = function ( Driver )
 			assert.deepStrictEqual( result[ 0 ].inner, { level: 9, secret: 'kept' } );
 		} );
 
+		it( 'should descend into the documents inside an array', async () =>
+		{
+			// ***An array of documents is descended into element by element***, and an element
+			// which is pruned is removed from the array rather than left as a null. This is the
+			// reason $redact is not simply a recursive walk of the fields of a document.
+			await Driver.SetData( [
+				{ _id: 1, level: 1, items: [ { level: 1, tag: 'shown' }, { level: 9, tag: 'gone' } ] },
+			] );
+			let result = await Driver.Aggregate( [ {
+				$redact: { $cond: [ { $lte: [ '$level', 3 ] }, '$$DESCEND', '$$PRUNE' ] }
+			} ] );
+			assert.deepStrictEqual( result[ 0 ].items, [ { level: 1, tag: 'shown' } ] );
+		} );
+
+		it( 'should leave the values which are not documents alone while descending', async () =>
+		{
+			// $$DESCEND asks again about the documents below this level and about nothing else.
+			await Driver.SetData( [
+				{ _id: 1, level: 1, numbers: [ 1, 2, 3 ], name: 'kept', nothing: null },
+			] );
+			let result = await Driver.Aggregate( [ {
+				$redact: { $cond: [ { $lte: [ '$level', 3 ] }, '$$DESCEND', '$$PRUNE' ] }
+			} ] );
+			assert.deepStrictEqual( result[ 0 ],
+				{ _id: 1, level: 1, numbers: [ 1, 2, 3 ], name: 'kept', nothing: null } );
+		} );
+
+		it( 'should read a field path as the level being asked about', async () =>
+		{
+			// ***'$level' is the level of the sub-document under examination***, not the root's.
+			// The root has no `level` at all here, and a missing value compares below 3, so the
+			// root descends and each inner document answers for itself.
+			await Driver.SetData( [
+				{ _id: 1, a: { level: 1, tag: 'shown' }, b: { level: 9, tag: 'gone' } },
+			] );
+			let result = await Driver.Aggregate( [ {
+				$redact: { $cond: [ { $lte: [ '$level', 3 ] }, '$$DESCEND', '$$PRUNE' ] }
+			} ] );
+			assert.deepStrictEqual( result[ 0 ], { _id: 1, a: { level: 1, tag: 'shown' } } );
+		} );
+
+		it( 'should give the level being asked about as $$CURRENT, and the root as $$ROOT', async () =>
+		{
+			await Driver.SetData( [
+				{ _id: 1, level: 1, inner: { level: 9 } },
+			] );
+			// $$CURRENT.level is 9 at the inner level, so the inner document is pruned.
+			let current = await Driver.Aggregate( [ {
+				$redact: { $cond: [ { $lte: [ '$$CURRENT.level', 3 ] }, '$$DESCEND', '$$PRUNE' ] }
+			} ] );
+			assert.strictEqual( 'inner' in current[ 0 ], false );
+			// $$ROOT.level is 1 at every level, so nothing is pruned.
+			let root = await Driver.Aggregate( [ {
+				$redact: { $cond: [ { $lte: [ '$$ROOT.level', 3 ] }, '$$DESCEND', '$$PRUNE' ] }
+			} ] );
+			assert.deepStrictEqual( root[ 0 ].inner, { level: 9 } );
+		} );
+
 		// ***A refusal test does not belong here.*** "$redact refuses a malformed expression"
 		// passes under jsongin today, for the wrong reason: the stage is not registered at
 		// all, so every $redact is refused. `parity-report` spotted it and said so - it reports

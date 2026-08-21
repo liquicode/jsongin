@@ -863,55 +863,62 @@ describe( '220) Expression Operator Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	// The shorthand forms of the object field operators, which read a system variable.
+	// The system variables reached through a bare two-argument Evaluate().
 	//
-	// MongoDB lets { $getField: 'name' } stand for reading the field from $$CURRENT, and
-	// { $setField: { ..., value: '$$REMOVE' } } stand for removing it. Both need an
-	// expression variable scope, which jsongin does not have, so there is no behavior to
-	// compare and these are unit tests rather than parity tests - the same reason the numeric
-	// conversion boundary above is one.
+	// ***What these hold down has no MongoDB analogue.*** MongoDB has no "evaluate one
+	// expression" entry point at all: every expression it runs arrives inside a pipeline,
+	// which is where the scope comes from. jsongin's Evaluate() is callable on its own and
+	// makes a scope for the occasion when none is passed, so the system variables have to
+	// resolve for a caller who has never heard of a scope. There is nothing to compare that
+	// against, which is what makes it a unit test.
 	//
-	// What is asserted is that they are ***refused by name***, and not quietly read as
-	// something else. A '$$CURRENT' silently treated as a literal string, or a '$$REMOVE'
-	// written into a field as text, would be the bad outcome here.
-	describe( 'Object Field Operator Shorthand Tests', () =>
+	// ***This block used to assert the opposite.*** Until the variable scope was built,
+	// { $getField: 'a' } and a $setField value of '$$REMOVE' were refused by name, and these
+	// tests asserted the refusal so that neither was quietly read as a literal string. Both
+	// work now, and what they do is MongoDB's question rather than this file's - it is
+	// asserted in the Object parity suite and in
+	// test/Parity Tests/Aggregate Tests/test-suite/Variable Scope Tests.js.
+	describe( 'System Variables Without a Scope Tests', () =>
 	{
 
-		it( 'should refuse the $getField shorthand rather than guessing at it', () =>
+		it( 'should resolve $$ROOT and $$CURRENT against the document it was handed', () =>
 		{
-			assert.throws( function () { jsongin.Evaluate( { a: 1 }, { $getField: 'a' } ); } );
+			assert.deepEqual( jsongin.Evaluate( { a: 1 }, '$$ROOT' ), { a: 1 } );
+			assert.deepEqual( jsongin.Evaluate( { a: 1 }, '$$CURRENT' ), { a: 1 } );
+			assert.strictEqual( jsongin.Evaluate( { a: 1 }, '$$ROOT.a' ), 1 );
 		} );
 
-		it( 'should say which form to write instead', () =>
+		it( 'should read the $getField shorthand from that same document', () =>
 		{
-			try
-			{
-				jsongin.Evaluate( { a: 1 }, { $getField: 'a' } );
-				assert.fail( 'expected a refusal' );
-			}
-			catch ( error )
-			{
-				assert.ok( error.message.includes( '$$CURRENT' ) );
-				assert.ok( error.message.includes( 'input' ) );
-			}
+			assert.strictEqual( jsongin.Evaluate( { a: 1 }, { $getField: 'a' } ), 1 );
 		} );
 
-		it( 'should no longer refuse a $setField whose value is $$REMOVE', () =>
+		it( 'should remove a field with a $setField value of $$REMOVE', () =>
 		{
-			// ***This test used to assert a refusal***, from the days when '$$' was refused
-			// wholesale. $$REMOVE resolves now. What $setField should then do with it is
-			// MongoDB's question rather than this file's, and is asserted in the Object parity
-			// suite - so all this holds down is that the expression is not turned away.
-			assert.doesNotThrow(
-				function () { jsongin.Evaluate( {}, { $setField: { field: 'a', input: { a: 1 }, value: '$$REMOVE' } } ); } );
+			assert.deepEqual(
+				jsongin.Evaluate( {}, { $setField: { field: 'a', input: { a: 1, b: 2 }, value: '$$REMOVE' } } ),
+				{ b: 2 } );
 		} );
 
-		it( 'should remove a field with $unsetField instead', () =>
+		it( 'should remove the same field with $unsetField', () =>
 		{
-			// The supported way to do what $$REMOVE does.
 			assert.deepEqual(
 				jsongin.Evaluate( {}, { $unsetField: { field: 'a', input: { a: 1, b: 2 } } } ),
 				{ b: 2 } );
+		} );
+
+		it( 'should bind a variable with $let and fold an array with $reduce', () =>
+		{
+			assert.strictEqual( jsongin.Evaluate( { a: 3 }, { $let: { vars: { x: 5 }, in: { $add: [ '$$x', '$a' ] } } } ), 8 );
+			assert.strictEqual(
+				jsongin.Evaluate( { list: [ 1, 2, 3 ] },
+					{ $reduce: { input: '$list', initialValue: 0, in: { $add: [ '$$value', '$$this' ] } } } ),
+				6 );
+		} );
+
+		it( 'should still refuse a variable nobody bound', () =>
+		{
+			assert.throws( function () { jsongin.Evaluate( { a: 1 }, '$$nope' ); } );
 		} );
 
 	} );

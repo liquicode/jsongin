@@ -248,7 +248,7 @@ MongoDB adds operators from one server version to the next, so treat this as a c
 | Array         |      Yes      | [$arrayElemAt](./jsongin/Expression-Operators.md#$arrayElemAt)       | Returns the element of an array at a given index.                                            |
 | Array         |      Yes      | [$arrayToObject](./jsongin/Expression-Operators.md#$arrayToObject)     | Converts an array of key/value pairs into an object.                                         |
 | Array         |      Yes      | [$concatArrays](./jsongin/Expression-Operators.md#$concatArrays)      | Joins arrays together.                                                                       |
-| Array         |       -       | $filter            | Returns the elements of an array which satisfy a condition.                                  |
+| Array         |      Yes      | [$filter](./jsongin/Expression-Operators.md#$filter) | Returns the elements of an array which satisfy a condition.                                  |
 | Array         |      Yes      | [$first](./jsongin/Expression-Operators.md#$first)             | Returns the first element of an array.                                                       |
 | Array         |      Yes      | [$firstN](./jsongin/Expression-Operators.md#$firstN)            | Returns the first N elements of an array.                                                    |
 | Array         |      Yes      | [$in](./jsongin/Expression-Operators.md#$in)                | Returns true when a value is found within an array.                                          |
@@ -256,11 +256,11 @@ MongoDB adds operators from one server version to the next, so treat this as a c
 | Array         |      Yes      | [$isArray](./jsongin/Expression-Operators.md#$isArray)           | Returns true when a value is an array.                                                       |
 | Array         |      Yes      | [$last](./jsongin/Expression-Operators.md#$last)              | Returns the last element of an array.                                                        |
 | Array         |      Yes      | [$lastN](./jsongin/Expression-Operators.md#$lastN)             | Returns the last N elements of an array.                                                     |
-| Array         |       -       | $map               | Applies an expression to each element of an array.                                           |
+| Array         |      Yes      | [$map](./jsongin/Expression-Operators.md#$map) | Applies an expression to each element of an array.                                           |
 | Array         |      Yes      | [$maxN](./jsongin/Expression-Operators.md#$maxN)              | Returns the N largest values from an array.                                                  |
 | Array         |      Yes      | [$minN](./jsongin/Expression-Operators.md#$minN)              | Returns the N smallest values from an array.                                                 |
 | Array         |      Yes      | [$range](./jsongin/Expression-Operators.md#$range)             | Generates an array of numbers.                                                               |
-| Array         |       -       | $reduce            | Reduces the elements of an array to a single value.                                          |
+| Array         |      Yes      | [$reduce](./jsongin/Expression-Operators.md#$reduce) | Reduces the elements of an array to a single value.                                          |
 | Array         |      Yes      | [$reverseArray](./jsongin/Expression-Operators.md#$reverseArray)      | Returns an array with its elements in reverse order.                                         |
 | Array         |      Yes      | [$size](./jsongin/Expression-Operators.md#$size)              | Returns the number of elements in an array.                                                  |
 | Array         |      Yes      | [$slice](./jsongin/Expression-Operators.md#$slice)             | Returns a subset of an array.                                                                |
@@ -367,7 +367,7 @@ MongoDB adds operators from one server version to the next, so treat this as a c
 | Type          |       -       | $toObjectId        | Converts a value to an ObjectId.                                                             |
 | Type          |      Yes      | [$toString](./jsongin/Expression-Operators.md#$toString)          | Converts a value to a string.                                                                |
 | Type          |      Yes      | [$type](./jsongin/Expression-Operators.md#$type)              | Returns the type of a value.                                                                 |
-| Variable      |       -       | $let               | Binds variables for use within a sub-expression.                                             |
+| Variable      |      Yes      | [$let](./jsongin/Expression-Operators.md#$let) | Binds variables for use within a sub-expression.                                             |
 
 ***Note on missing values*** :
 Arithmetic performed on a missing or `null` value returns `null` rather than throwing an error.
@@ -406,7 +406,7 @@ See the [`Aggregate()`](jsongin/Aggregate.md) guide for the details of each stag
 | Stage         |       -       | $merge           | Writes the results into a collection.                                    |
 | Stage         |       -       | $out             | Writes the results into a new collection.                                |
 | Stage         |      Yes      | [$project](./jsongin/Stage-Operators.md#$project)         | Includes, excludes, and computes document fields.                        |
-| Stage         |       -       | $redact          | Restricts the content of documents based on their content.               |
+| Stage         |      Yes      | [$redact](./jsongin/Stage-Operators.md#$redact) | Restricts the content of documents based on their content.               |
 | Stage         |      Yes      | [$replaceRoot](./jsongin/Stage-Operators.md#$replaceRoot)       | Promotes a sub-document to the top level. |
 | Stage         |      Yes      | [$replaceWith](./jsongin/Stage-Operators.md#$replaceWith)       | An alias of $replaceRoot. |
 | Stage         |      Yes      | [$sample](./jsongin/Stage-Operators.md#$sample)       | Selects a random sample of documents. |
