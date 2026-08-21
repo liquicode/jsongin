@@ -60,6 +60,98 @@ module.exports = function ( jsongin )
 	};
 
 
+	//---------------------------------------------------------------------
+	// The all positional operator, '$[]', is a ***path element*** and not an update operator.
+	// 'a.$[].n' means the n of every element of a, so one update reaches the whole array.
+	//
+	// ***It is expanded here, before any operator runs***, into the concrete paths it names -
+	// 'a.0.n', 'a.1.n', and so on. Every operator then works on ordinary paths and none of
+	// them needs to know the syntax exists.
+	//
+	// Handling it inside SetValue() instead would have been the obvious place and is wrong:
+	// $inc, $mul, $min, $max and $push ***read*** a field before writing it, so a SetValue
+	// which fanned out would give every element the value computed from the first one.
+	// Expanding the path keeps read and write on the same element.
+	//
+	// $rename is the exception and is refused: it names one source and one target, and there
+	// is no sensible target for a source which expands to many. Verified against MongoDB 6.0.1.
+	const ALL_POSITIONAL = '$[]';
+
+	function expand_all_positional( Node, Elements, Prefix, Paths, Path )
+	{
+		for ( let index = 0; index < Elements.length; index++ )
+		{
+			if ( Elements[ index ] !== ALL_POSITIONAL )
+			{
+				let short_type = jsongin.ShortType( Node );
+				if ( 'oa'.includes( short_type ) ) { Node = Node[ Elements[ index ] ]; }
+				else { Node = undefined; }
+				Prefix.push( Elements[ index ] );
+				continue;
+			}
+
+			if ( jsongin.ShortType( Node ) !== 'a' )
+			{
+				refuse( `The path [${Path}] applies [${ALL_POSITIONAL}] to something which is not an array.` );
+			}
+
+			// An empty array names no paths at all, so the update has nothing to do rather
+			// than something to refuse.
+			let rest = Elements.slice( index + 1 );
+			for ( let element = 0; element < Node.length; element++ )
+			{
+				expand_all_positional( Node[ element ], rest, Prefix.concat( [ element ] ), Paths, Path );
+			}
+			return;
+		}
+
+		Paths.push( Prefix.join( '.' ) );
+	};
+
+
+	//---------------------------------------------------------------------
+	// Rewrites an update document so that no field path holds an all positional operator.
+	// Returns the update document unchanged when none of them does.
+	function expand_updates( Document, Updates )
+	{
+		let expanded = {};
+		let found = false;
+
+		for ( let key in Updates )
+		{
+			let fields = Updates[ key ];
+			let rewritten = {};
+
+			for ( let field in fields )
+			{
+				if ( field.includes( ALL_POSITIONAL ) === false )
+				{
+					rewritten[ field ] = fields[ field ];
+					continue;
+				}
+
+				found = true;
+				if ( key === '$rename' )
+				{
+					refuse( `The operator [$rename] cannot be applied through [${ALL_POSITIONAL}].` );
+				}
+
+				let paths = [];
+				expand_all_positional( Document, jsongin.SplitPath( field ), [], paths, field );
+				for ( let index = 0; index < paths.length; index++ )
+				{
+					rewritten[ paths[ index ] ] = fields[ field ];
+				}
+			}
+
+			expanded[ key ] = rewritten;
+		}
+
+		if ( found === false ) { return Updates; }
+		return expanded;
+	};
+
+
 	function Update( Document, Updates )
 	{
 		// Validate the parameters.
@@ -102,6 +194,10 @@ module.exports = function ( jsongin )
 				}
 			}
 		}
+		// Expanded before the conflict check, so that two operators reaching different elements
+		// of the same array are compared as the concrete paths they became rather than as the
+		// identical '$[]' text they were written as.
+		Updates = expand_updates( Document, Updates );
 		check_for_conflicts( Updates );
 
 		// Process the updates.
