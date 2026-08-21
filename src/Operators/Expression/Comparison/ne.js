@@ -22,13 +22,13 @@ module.exports = function ( jsongin )
 		ArgTypes: 'a',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
 				// See _compare.js for the argument handling and the comparison.
 				return compare.Evaluate( Document, Args, '$ne',
-					function ( Comparison ) { return ( Comparison !== 0 ); } );
+					function ( Comparison ) { return ( Comparison !== 0 ); }, Scope );
 			}
 			catch ( error )
 			{

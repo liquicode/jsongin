@@ -26,11 +26,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = string.Operands( Document, Args, '$toLower', 1, 1 );
+				let operands = string.Operands( Document, Args, '$toLower', 1, 1, Scope );
 
 				// Null is an empty string here rather than a null result. See _string.js.
 				let text = string.AsStringOrEmpty( operands[ 0 ], '$toLower' );

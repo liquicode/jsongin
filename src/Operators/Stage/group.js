@@ -46,7 +46,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Stage: function ( Documents, Args )
+		Stage: function ( Documents, Args, Scope )
 		{
 			try
 			{
@@ -96,7 +96,7 @@ module.exports = function ( jsongin )
 				{
 					let document = Documents[ index ];
 
-					let id_value = jsongin.Evaluate( document, Args._id );
+					let id_value = jsongin.Evaluate( document, Args._id, Scope );
 					// A missing group key is treated as null, which is what MongoDB does.
 					if ( typeof id_value === 'undefined' ) { id_value = null; }
 
@@ -123,7 +123,7 @@ module.exports = function ( jsongin )
 						let accumulator_name = Object.keys( field )[ 0 ];
 						let accumulator = jsongin.AccumulatorOperators[ accumulator_name ];
 
-						let value = accumulator.Accumulate( group.Documents, field[ accumulator_name ] );
+						let value = accumulator.Accumulate( group.Documents, field[ accumulator_name ], Scope );
 
 						// ***An accumulated value which is missing is written as a null***, not
 						// left out. This used to omit the field, on the reasonable-looking

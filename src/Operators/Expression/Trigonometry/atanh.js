@@ -26,7 +26,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -35,7 +35,7 @@ module.exports = function ( jsongin )
 					{
 						if ( ( Value < -1 ) || ( Value > 1 ) ) { throw new Error( `$atanh: requires an operand between -1 and 1 but found ${Value} instead.` ); }
 						return Math.atanh( Value );
-					} );
+					}, Scope );
 			}
 			catch ( error )
 			{

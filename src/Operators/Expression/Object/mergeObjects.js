@@ -42,11 +42,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'oaslu',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = object.Operands( Document, Args, '$mergeObjects', 0, null );
+				let operands = object.Operands( Document, Args, '$mergeObjects', 0, null, Scope );
 
 				let merged = {};
 				for ( let index = 0; index < operands.length; index++ )

@@ -31,11 +31,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = datasize.Operands( Document, Args, '$bsonSize', 1, 1 );
+				let operands = datasize.Operands( Document, Args, '$bsonSize', 1, 1, Scope );
 
 				let value = operands[ 0 ];
 				let short_type = jsongin.ShortType( value );

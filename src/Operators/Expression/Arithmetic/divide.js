@@ -24,11 +24,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = arithmetic.Operands( Document, Args, '$divide', 2, 2 );
+				let operands = arithmetic.Operands( Document, Args, '$divide', 2, 2, Scope );
 
 				let number_a = arithmetic.AsOperandNumber( operands[ 0 ], '$divide' );
 				let number_b = arithmetic.AsOperandNumber( operands[ 1 ], '$divide' );

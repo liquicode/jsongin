@@ -27,11 +27,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let values = string.Arguments( Document, Args, '$replaceOne', [ 'input', 'find', 'replacement' ], [] );
+				let values = string.Arguments( Document, Args, '$replaceOne', [ 'input', 'find', 'replacement' ], [], Scope );
 
 				let text = string.AsStringOrNull( values.input, '$replaceOne' );
 				let find = string.AsStringOrNull( values.find, '$replaceOne' );

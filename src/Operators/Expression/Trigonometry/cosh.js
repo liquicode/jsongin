@@ -23,7 +23,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -31,7 +31,7 @@ module.exports = function ( jsongin )
 					function ( Value )
 					{
 						return Math.cosh( Value );
-					} );
+					}, Scope );
 			}
 			catch ( error )
 			{

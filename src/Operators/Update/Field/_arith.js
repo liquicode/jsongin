@@ -37,8 +37,7 @@ module.exports = function ( jsongin )
 	// - An update which cannot be applied is refused whole. Every field is checked before
 	//   any field is written, so one bad field never leaves the document half updated.
 	//   That is the rule MongoDB follows, and the one $push already follows here.
-	helper.Apply = function ( Document, UpdateFields, OperatorName, Operation )
-	{
+	helper.Apply = function ( Document, UpdateFields, OperatorName, Operation ){
 		if ( jsongin.ShortType( UpdateFields ) !== 'o' ) { throw new Error( `The UpdateFields parameter must be an object.` ); }
 
 		// Check every field, and work out what each one would store, before storing any of them.

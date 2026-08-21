@@ -29,7 +29,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -52,16 +52,16 @@ module.exports = function ( jsongin )
 					}
 				}
 
-				let start = date.ReadDateArgs( Document, { date: Args.startDate, timezone: Args.timezone }, '$dateDiff' );
+				let start = date.ReadDateArgs( Document, { date: Args.startDate, timezone: Args.timezone }, '$dateDiff', [], Scope );
 				if ( start === null ) { return null; }
 
-				let end = date.ReadDateArgs( Document, { date: Args.endDate, timezone: Args.timezone }, '$dateDiff' );
+				let end = date.ReadDateArgs( Document, { date: Args.endDate, timezone: Args.timezone }, '$dateDiff', [], Scope );
 				if ( end === null ) { return null; }
 
-				let unit = date.ReadUnit( Document, Args.unit, '$dateDiff' );
+				let unit = date.ReadUnit( Document, Args.unit, '$dateDiff', Scope );
 				if ( unit === null ) { return null; }
 
-				let start_day = date.ReadStartOfWeek( Document, Args.startOfWeek, '$dateDiff' );
+				let start_day = date.ReadStartOfWeek( Document, Args.startOfWeek, '$dateDiff', Scope );
 
 				return date.Difference( start.Date, end.Date, unit, start.Zone, start_day, '$dateDiff' );
 			}

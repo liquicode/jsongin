@@ -33,11 +33,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = arithmetic.Operands( Document, Args, '$in', 2, 2 );
+				let operands = arithmetic.Operands( Document, Args, '$in', 2, 2, Scope );
 
 				let value = operands[ 0 ];
 				let values = operands[ 1 ];

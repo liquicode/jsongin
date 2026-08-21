@@ -33,11 +33,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Accumulate: function ( Documents, Args )
+		Accumulate: function ( Documents, Args, Scope )
 		{
 			try
 			{
-				let read = accumulator.ReadN( Documents, Args, '$firstN' );
+				let read = accumulator.ReadN( Documents, Args, '$firstN', Scope );
 
 				return accumulator.AsReportedValues( read.Values.slice( 0, read.N ) );
 			}

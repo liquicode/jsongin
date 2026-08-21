@@ -40,13 +40,13 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Stage: function ( Documents, Args )
+		Stage: function ( Documents, Args, Scope )
 		{
 			try
 			{
-				let plan = stage.ReadDensifyPlan( Args );
+				let plan = stage.ReadDensifyPlan( Args, Scope );
 
-				let partitions = stage.Partitions( Documents, null, plan.PartitionFields, '$densify' );
+				let partitions = stage.Partitions( Documents, null, plan.PartitionFields, '$densify', Scope );
 
 				// 'full' measures the range across everything, so it is found once rather than
 				// once per partition.
@@ -57,7 +57,7 @@ module.exports = function ( jsongin )
 				for ( let index = 0; index < partitions.length; index++ )
 				{
 					results = results.concat(
-						stage.DensifyPartition( partitions[ index ], plan, full, '$densify' ) );
+						stage.DensifyPartition( partitions[ index ], plan, full, '$densify', Scope ) );
 				}
 
 				return results;

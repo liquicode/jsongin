@@ -78,8 +78,10 @@ module.exports = function ( jsongin )
 	// Every field named in Allowed is required, because none of the three has an optional one.
 	// Returns the field name and the evaluated input; a `value` is left to the caller, which
 	// is the only one of the three that has one.
-	helper.ReadArgs = function ( Document, Args, OperatorName, Allowed )
+	helper.ReadArgs = function ( Document, Args, OperatorName, Allowed, Scope )
 	{
+		jsongin.Scope.Require( Scope, 'object.ReadArgs' );
+
 		if ( jsongin.ShortType( Args ) !== 'o' )
 		{
 			// ***The shorthand lands here.*** MongoDB lets { $getField: 'name' } stand for
@@ -106,7 +108,7 @@ module.exports = function ( jsongin )
 
 		return {
 			Name: helper.ReadFieldName( Args.field, OperatorName ),
-			Input: jsongin.Evaluate( Document, Args.input ),
+			Input: jsongin.Evaluate( Document, Args.input, Scope ),
 		};
 	};
 
@@ -133,8 +135,7 @@ module.exports = function ( jsongin )
 	// has to preserve it. Assigning a field which is already there leaves it where it is and
 	// assigning one which is not appends it, which is exactly what MongoDB does when it
 	// merges or sets.
-	helper.CopyDocument = function ( Document )
-	{
+	helper.CopyDocument = function ( Document ){
 		let copy = {};
 		let keys = Object.keys( Document );
 		for ( let index = 0; index < keys.length; index++ )

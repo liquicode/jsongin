@@ -1,0 +1,180 @@
+'use strict';
+
+module.exports = function ( jsongin )
+{
+
+	//---------------------------------------------------------------------
+	// A variable scope: one frame of bindings, and a link to the frame around it.
+	//
+	// ***A scope is a value, not engine state.*** The engine holds no "current scope" and
+	// never has one: a scope is created by a caller, passed into Evaluate, and passed along
+	// to every operator. That is what makes two evaluations independent of each other, and it
+	// is what would let a saved scope be resumed later or captured by something which outlives
+	// the frame that made it.
+	//
+	// ***The frames are chained rather than flattened.*** Merging a child's bindings into a
+	// copy of its parent's would answer a lookup just as well and would lose the chain, which
+	// is the thing worth keeping: it is what a closure captures and what a reader walks to see
+	// where a name came from. A chain also costs one small object per binding rather than a
+	// copy of every binding in scope, which matters when $map makes a frame per element.
+	//
+	// ***Frames do not change after they are made.*** New() copies the bindings it is given,
+	// so a caller cannot reach back in and alter a frame something else is holding. The values
+	// inside are shared references, as they are everywhere else in the engine.
+
+
+	//---------------------------------------------------------------------
+	// Builds a frame. Parent is the frame around it, or null for the outermost one.
+	function New( Variables, Parent )
+	{
+		try
+		{
+			let st_variables = jsongin.ShortType( Variables );
+			if ( ( st_variables !== 'o' ) && ( st_variables !== 'u' ) )
+			{
+				throw new Error( `Scope variables must be a document, not [${st_variables}].` );
+			}
+
+			let st_parent = jsongin.ShortType( Parent );
+			if ( ( st_parent !== 'o' ) && ( st_parent !== 'u' ) && ( st_parent !== 'l' ) )
+			{
+				throw new Error( `A scope parent must be a scope or null, not [${st_parent}].` );
+			}
+
+			// The bindings are copied rather than held, so the frame cannot be altered from
+			// outside once it exists. Object.keys keeps a key whose value is undefined, which
+			// $$REMOVE depends on.
+			let bindings = {};
+			if ( st_variables === 'o' )
+			{
+				let names = Object.keys( Variables );
+				for ( let index = 0; index < names.length; index++ )
+				{
+					bindings[ names[ index ] ] = Variables[ names[ index ] ];
+				}
+			}
+
+			let scope = {
+
+				Variables: bindings,
+				Parent: ( st_parent === 'o' ) ? Parent : null,
+
+				//---------------------------------------------------------------------
+				// Builds a frame above this one.
+				Child: function ( Variables )
+				{
+					return New( Variables, scope );
+				},
+
+				//---------------------------------------------------------------------
+				// Builds a frame above this one which re-roots the document.
+				//
+				// ***More than the entry points need this.*** A $group accumulator reads
+				// '$$ROOT' of each document it is accumulating, and $redact asks its
+				// expression again at each level with $$CURRENT set to that level - so the
+				// two names get rebound in the middle of an evaluation, not only at the top
+				// of one. Naming them here keeps them out of five other files.
+				ForDocument: function ( Document )
+				{
+					return New( { ROOT: Document, CURRENT: Document }, scope );
+				},
+
+				//---------------------------------------------------------------------
+				// Resolves a variable name, innermost frame first.
+				//
+				// Found is reported apart from Value for the same reason resolve_field_path
+				// reports it apart in Evaluate.js: ***a variable bound to nothing is not an
+				// unbound variable.*** $$REMOVE is bound to nothing on purpose, and an
+				// unbound name is an error. One of those is a value and the other is a
+				// mistake, so they cannot share an answer.
+				//
+				// hasOwnProperty rather than `in`, so a variable called `toString` resolves to
+				// what was bound and not to something inherited from Object.prototype.
+				Lookup: function ( Name )
+				{
+					let frame = scope;
+					while ( frame !== null )
+					{
+						if ( Object.prototype.hasOwnProperty.call( frame.Variables, Name ) === true )
+						{
+							return { Found: true, Value: frame.Variables[ Name ] };
+						}
+						frame = frame.Parent;
+					}
+					return { Found: false };
+				},
+
+			};
+
+			return scope;
+		}
+		catch ( error )
+		{
+			if ( jsongin.OpError ) { jsongin.OpError( 'Scope.New: ' + error.message ); }
+			throw error;
+		}
+	};
+
+
+	//---------------------------------------------------------------------
+	// The outermost frame of an aggregation run: what is constant for the whole pipeline.
+	//
+	// ***$$NOW belongs here and not on the document frame*** because MongoDB gives every
+	// document and every stage of one pipeline the same instant. Reading the clock per
+	// document would be the obvious implementation and would disagree with the server.
+	//
+	// ***$$REMOVE is bound to nothing***, which is exactly what it means. An expression which
+	// answers with it produces no value, and the field being computed is left out rather than
+	// set to null - the same nothing that reading an absent field gives.
+	function NewPipeline( Now )
+	{
+		let now = Now;
+		if ( jsongin.ShortType( now ) !== 'd' ) { now = new Date(); }
+		return New( { NOW: now, REMOVE: undefined }, null );
+	};
+
+
+	//---------------------------------------------------------------------
+	// The frame for one document: what a stage sees while it works on it.
+	//
+	// ***$$ROOT is the document the stage was handed***, which is not the document the
+	// collection holds once an earlier stage has reshaped it. $$CURRENT is the same document,
+	// and a bare field path such as '$a' is the shorthand for '$$CURRENT.a'.
+	//
+	// Parent is the pipeline frame. Called without one - which is what a bare
+	// Evaluate( Document, Expression ) does - a pipeline frame is made for the occasion, so a
+	// caller who never mentions a scope still has working system variables.
+	function NewDocument( Document, Parent )
+	{
+		let parent = Parent;
+		if ( jsongin.ShortType( parent ) !== 'o' ) { parent = NewPipeline(); }
+		return parent.Child( { ROOT: Document, CURRENT: Document } );
+	};
+
+
+	//---------------------------------------------------------------------
+	// Refuses a helper call which did not carry a scope along.
+	//
+	// ***This is here because the failure it catches is otherwise silent.*** A helper is where
+	// a leaf operator's operands get evaluated, so a helper called without a scope would build
+	// a fresh root one and quietly lose every variable the caller was holding. Nothing would
+	// go wrong until somebody wrote a '$$name' inside that one operator.
+	//
+	// build/scope-check.js can see that a helper ***declares*** a Scope, but reading whether
+	// each of its ~175 callers ***passes*** one means reading the code. This closes that hole
+	// from the other side: the first test which touches an operator that forgot fails on it.
+	function Require( Scope, Name )
+	{
+		if ( jsongin.ShortType( Scope ) === 'o' ) { return Scope; }
+		throw new Error( `[${Name}] was called without a scope. See build/scope-check.js.` );
+	};
+
+
+	//---------------------------------------------------------------------
+	return {
+		New: New,
+		NewPipeline: NewPipeline,
+		NewDocument: NewDocument,
+		Require: Require,
+	};
+};

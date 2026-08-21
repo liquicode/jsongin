@@ -32,7 +32,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -53,7 +53,7 @@ module.exports = function ( jsongin )
 				let use_longest = false;
 				if ( 'useLongestLength' in Args )
 				{
-					use_longest = ( jsongin.Evaluate( Document, Args.useLongestLength ) === true );
+					use_longest = ( jsongin.Evaluate( Document, Args.useLongestLength, Scope ) === true );
 				}
 
 				let defaults = null;
@@ -63,7 +63,7 @@ module.exports = function ( jsongin )
 					{
 						throw new Error( `$zip: defaults cannot be given without useLongestLength.` );
 					}
-					defaults = array.AsArrayOrNull( jsongin.Evaluate( Document, Args.defaults ), '$zip' );
+					defaults = array.AsArrayOrNull( jsongin.Evaluate( Document, Args.defaults, Scope ), '$zip' );
 				}
 
 				// ***`inputs` is an array of expressions, not an expression giving an array.***
@@ -82,7 +82,7 @@ module.exports = function ( jsongin )
 				let arrays = [];
 				for ( let index = 0; index < inputs.length; index++ )
 				{
-					let values = array.AsArrayOrNull( jsongin.Evaluate( Document, inputs[ index ] ), '$zip' );
+					let values = array.AsArrayOrNull( jsongin.Evaluate( Document, inputs[ index ], Scope ), '$zip' );
 					if ( values === null ) { return null; }
 					arrays.push( values );
 				}

@@ -25,11 +25,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				return rounding.Apply( Document, Args, '$floor', Math.floor );
+				return rounding.Apply( Document, Args, '$floor', Math.floor, Scope );
 			}
 			catch ( error )
 			{

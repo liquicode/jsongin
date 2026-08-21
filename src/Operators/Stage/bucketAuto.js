@@ -36,7 +36,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Stage: function ( Documents, Args )
+		Stage: function ( Documents, Args, Scope )
 		{
 			try
 			{
@@ -74,7 +74,7 @@ module.exports = function ( jsongin )
 				for ( let index = 0; index < Documents.length; index++ )
 				{
 					sortable.push( {
-						Value: jsongin.Evaluate( Documents[ index ], Args.groupBy ),
+						Value: jsongin.Evaluate( Documents[ index ], Args.groupBy, Scope ),
 						Document: Documents[ index ],
 					} );
 				}
@@ -115,7 +115,7 @@ module.exports = function ( jsongin )
 					position = end;
 				}
 
-				return stage.ReduceBuckets( buckets, accumulators, '$bucketAuto' );
+				return stage.ReduceBuckets( buckets, accumulators, '$bucketAuto', Scope );
 			}
 			catch ( error )
 			{

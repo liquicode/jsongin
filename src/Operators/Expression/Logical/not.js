@@ -21,7 +21,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -35,7 +35,7 @@ module.exports = function ( jsongin )
 					expression = expression[ 0 ];
 				}
 
-				let value = jsongin.Evaluate( Document, expression );
+				let value = jsongin.Evaluate( Document, expression, Scope );
 
 				return ( jsongin.AsBoolean( value ) === false );
 			}

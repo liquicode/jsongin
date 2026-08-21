@@ -23,11 +23,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = arithmetic.Operands( Document, Args, '$multiply', 1, null );
+				let operands = arithmetic.Operands( Document, Args, '$multiply', 1, null, Scope );
 
 				let has_null = false;
 				let product = 1;

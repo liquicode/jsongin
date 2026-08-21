@@ -26,11 +26,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = string.Operands( Document, Args, '$concat', 0, null );
+				let operands = string.Operands( Document, Args, '$concat', 0, null, Scope );
 
 				let parts = [];
 				for ( let index = 0; index < operands.length; index++ )

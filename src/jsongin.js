@@ -346,6 +346,11 @@ function NewJsongin( EngineSettings = {} )
 
 	//---------------------------------------------------------------------
 	// MongoDB Mechanics
+
+	// Expression variable scope. A scope is a value the caller makes and passes in, never
+	// state the engine holds - see the note at the top of jsongin/Scope.js.
+	Engine.Scope = require( './jsongin/Scope' )( Engine );
+
 	Engine.Query = require( './jsongin/Query' )( Engine );
 	Engine.Evaluate = require( './jsongin/Evaluate' )( Engine );
 	Engine.Aggregate = require( './jsongin/Aggregate' )( Engine );

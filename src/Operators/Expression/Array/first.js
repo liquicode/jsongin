@@ -29,11 +29,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = array.Operands( Document, Args, '$first', 1, 1 );
+				let operands = array.Operands( Document, Args, '$first', 1, 1, Scope );
 
 				let values = array.AsArrayOrNull( operands[ 0 ], '$first' );
 				if ( values === null ) { return null; }

@@ -25,11 +25,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let values = string.Arguments( Document, Args, '$regexFindAll', [ 'input', 'regex' ], [ 'options' ] );
+				let values = string.Arguments( Document, Args, '$regexFindAll', [ 'input', 'regex' ], [ 'options' ], Scope );
 
 				// A missing input is an empty array here and a null in $regexFind.
 				if ( string.IsNullish( values.input ) ) { return []; }

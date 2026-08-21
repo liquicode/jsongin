@@ -39,11 +39,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Accumulate: function ( Documents, Args )
+		Accumulate: function ( Documents, Args, Scope )
 		{
 			try
 			{
-				let values = accumulator.Values( Documents, Args );
+				let values = accumulator.Values( Documents, Args, Scope );
 
 				let collected = [];
 				for ( let index = 0; index < values.length; index++ )

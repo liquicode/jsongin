@@ -29,7 +29,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -51,7 +51,7 @@ module.exports = function ( jsongin )
 					}
 				}
 
-				let values = array.AsArrayOrNull( jsongin.Evaluate( Document, Args.input ), '$sortArray' );
+				let values = array.AsArrayOrNull( jsongin.Evaluate( Document, Args.input, Scope ), '$sortArray' );
 				if ( values === null ) { return null; }
 
 				let sort_by = Args.sortBy;

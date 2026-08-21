@@ -26,11 +26,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = array.Operands( Document, Args, '$isArray', 1, 1 );
+				let operands = array.Operands( Document, Args, '$isArray', 1, 1, Scope );
 
 				return ( jsongin.ShortType( operands[ 0 ] ) === 'a' );
 			}

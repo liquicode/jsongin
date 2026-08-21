@@ -32,7 +32,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Stage: function ( Documents, Args )
+		Stage: function ( Documents, Args, Scope )
 		{
 			try
 			{
@@ -57,9 +57,9 @@ module.exports = function ( jsongin )
 				// Built as the two stages it stands for, so that the shorthand cannot disagree
 				// with the long form about grouping or about a missing value.
 				let grouped = jsongin.StageOperators.$group.Stage(
-					Documents, { _id: Args, count: { $sum: 1 } } );
+					Documents, { _id: Args, count: { $sum: 1 } }, Scope );
 
-				return jsongin.StageOperators.$sort.Stage( grouped, { count: -1 } );
+				return jsongin.StageOperators.$sort.Stage( grouped, { count: -1 }, Scope );
 			}
 			catch ( error )
 			{

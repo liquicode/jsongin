@@ -26,11 +26,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = string.Operands( Document, Args, '$strLenCP', 1, 1 );
+				let operands = string.Operands( Document, Args, '$strLenCP', 1, 1, Scope );
 
 				// Null is refused here, unlike the substring operators which read it as empty.
 				let text = string.AsRequiredString( operands[ 0 ], '$strLenCP' );

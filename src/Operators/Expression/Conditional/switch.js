@@ -23,7 +23,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -38,10 +38,10 @@ module.exports = function ( jsongin )
 					if ( typeof branch.case === 'undefined' ) { throw new Error( `$switch: each branch requires a [case] field.` ); }
 					if ( typeof branch.then === 'undefined' ) { throw new Error( `$switch: each branch requires a [then] field.` ); }
 
-					let condition = jsongin.Evaluate( Document, branch.case );
+					let condition = jsongin.Evaluate( Document, branch.case, Scope );
 					if ( jsongin.AsBoolean( condition ) === true )
 					{
-						return jsongin.Evaluate( Document, branch.then );
+						return jsongin.Evaluate( Document, branch.then, Scope );
 					}
 				}
 
@@ -50,7 +50,7 @@ module.exports = function ( jsongin )
 					throw new Error( `$switch: no branch matched and no [default] was given.` );
 				}
 
-				return jsongin.Evaluate( Document, Args.default );
+				return jsongin.Evaluate( Document, Args.default, Scope );
 			}
 			catch ( error )
 			{

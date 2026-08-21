@@ -32,7 +32,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -51,13 +51,13 @@ module.exports = function ( jsongin )
 					}
 				}
 
-				let text = jsongin.Evaluate( Document, Args.dateString );
+				let text = jsongin.Evaluate( Document, Args.dateString, Scope );
 				let short_type = jsongin.ShortType( text );
 
 				// A null takes the onNull path, never the onError one.
 				if ( 'lu'.includes( short_type ) )
 				{
-					if ( 'onNull' in Args ) { return jsongin.Evaluate( Document, Args.onNull ); }
+					if ( 'onNull' in Args ) { return jsongin.Evaluate( Document, Args.onNull, Scope ); }
 					return null;
 				}
 
@@ -68,12 +68,12 @@ module.exports = function ( jsongin )
 						throw new Error( `$dateFromString: requires a string but found a [${short_type}] instead.` );
 					}
 
-					let zone = date.ReadZone( Document, Args.timezone, '$dateFromString' );
+					let zone = date.ReadZone( Document, Args.timezone, '$dateFromString', Scope );
 					if ( zone === null ) { return null; }
 
 					if ( 'format' in Args )
 					{
-						let format = jsongin.Evaluate( Document, Args.format );
+						let format = jsongin.Evaluate( Document, Args.format, Scope );
 						if ( jsongin.ShortType( format ) !== 's' )
 						{
 							throw new Error( `$dateFromString: requires a format string.` );
@@ -85,7 +85,7 @@ module.exports = function ( jsongin )
 				}
 				catch ( reading_error )
 				{
-					if ( 'onError' in Args ) { return jsongin.Evaluate( Document, Args.onError ); }
+					if ( 'onError' in Args ) { return jsongin.Evaluate( Document, Args.onError, Scope ); }
 					throw reading_error;
 				}
 			}

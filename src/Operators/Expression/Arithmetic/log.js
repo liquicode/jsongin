@@ -24,7 +24,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -35,7 +35,7 @@ module.exports = function ( jsongin )
 						if ( Base <= 0 ) { throw new Error( `$log: requires a base greater than zero but found ${Base} instead.` ); }
 						if ( Base === 1 ) { throw new Error( `$log: requires a base other than one.` ); }
 						return ( Math.log( Value ) / Math.log( Base ) );
-					} );
+					}, Scope );
 			}
 			catch ( error )
 			{

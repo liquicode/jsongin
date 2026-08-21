@@ -78,9 +78,11 @@ module.exports = function ( jsongin )
 	//
 	// Returns null when an operand is null or missing and NullPropagates is true, and throws
 	// when it is false. That flag is the family's inconsistency, written down in one place.
-	helper.ReadSets = function ( Document, Args, OperatorName, MinCount, MaxCount, NullPropagates )
+	helper.ReadSets = function ( Document, Args, OperatorName, MinCount, MaxCount, NullPropagates, Scope )
 	{
-		let operands = helper.Operands( Document, Args, OperatorName, MinCount, MaxCount );
+		jsongin.Scope.Require( Scope, 'set.ReadSets' );
+
+		let operands = helper.Operands( Document, Args, OperatorName, MinCount, MaxCount, Scope );
 
 		let sets = [];
 		for ( let index = 0; index < operands.length; index++ )

@@ -34,7 +34,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'sa',
 
 		//---------------------------------------------------------------------
-		Stage: function ( Documents, Args )
+		Stage: function ( Documents, Args, Scope )
 		{
 			try
 			{
@@ -69,7 +69,7 @@ module.exports = function ( jsongin )
 				let results = [];
 				for ( let index = 0; index < Documents.length; index++ )
 				{
-					results.push( jsongin.Project( Documents[ index ], projection, true ) );
+					results.push( jsongin.Project( Documents[ index ], projection, true, Scope ) );
 				}
 
 				return results;

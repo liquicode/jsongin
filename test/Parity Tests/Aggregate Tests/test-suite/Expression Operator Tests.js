@@ -169,6 +169,72 @@ module.exports = function ( Driver )
 
 
 		//---------------------------------------------------------------------
+		describe( 'Array and Object Expressions', () =>
+		{
+
+			/*
+				What an expression which produces ***nothing*** does to the shape around it,
+				which is a different question in an array than in a document.
+
+				A document can leave a field out. An array cannot leave a position out without
+				moving every element after it, so the two cannot answer alike.
+			*/
+
+			it( 'should fill a missing element of an array literal with a null', async () =>
+			{
+				assert.deepStrictEqual( await evaluated( [ 1, '$nope', 3 ] ), [ 1, null, 3 ] );
+				assert.deepStrictEqual( await evaluated( [ '$nope' ] ), [ null ] );
+				assert.deepStrictEqual( await evaluated( [ 1, [ '$nope' ] ] ), [ 1, [ null ] ] );
+			} );
+
+			it( 'should leave a missing field out of an expression object', async () =>
+			{
+				assert.deepStrictEqual( await evaluated( { x: '$nope' } ), {} );
+				assert.deepStrictEqual( await evaluated( { x: '$n', y: '$nope' } ), { x: 4 } );
+			} );
+
+			it( 'should keep a field whose value is a null', async () =>
+			{
+				// Missing and null part company here, as they do wherever a shape is built.
+				assert.deepStrictEqual( await evaluated( { x: '$l' } ), { x: null } );
+			} );
+
+			it( 'should still produce an expression object whose every field is missing', async () =>
+			{
+				assert.strictEqual( await produced_a_field( { x: '$nope' } ), true );
+			} );
+
+			it( 'should produce an emptied expression object at every level', async () =>
+			{
+				await Driver.SetData( documents );
+				let result = await Driver.Aggregate( [
+					{ $project: { _id: 0, r: { s: { x: '$nope' } } } },
+				] );
+				assert.deepStrictEqual( result[ 0 ], { r: { s: {} } } );
+			} );
+
+			it( 'should omit a sub-projection of a field the document does not have', async () =>
+			{
+				// ***An inclusion sub-projection is not an expression object***, and this is
+				// the case which tells them apart: { nope: { x: 1 } } asks for a field which
+				// is not there and produces nothing, where { r: { x: '$nope' } } computes an
+				// object which happens to be empty.
+				await Driver.SetData( documents );
+				let result = await Driver.Aggregate( [
+					{ $project: { _id: 0, nope: { x: 1 } } },
+				] );
+				assert.deepStrictEqual( result[ 0 ], {} );
+			} );
+
+			it( 'should keep an emptied object in the array position it sits in', async () =>
+			{
+				assert.deepStrictEqual( await evaluated( [ { x: '$nope' } ] ), [ {} ] );
+			} );
+
+		} );
+
+
+		//---------------------------------------------------------------------
 		describe( 'Arithmetic Expression Operators', () =>
 		{
 

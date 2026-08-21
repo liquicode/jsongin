@@ -219,7 +219,7 @@ module.exports = function ( jsongin )
 	//   - empty, which MongoDB refuses with "An empty sub-projection is not a valid value"
 	//
 	// Verified against MongoDB 6.0.1.
-	function flatten_projection( Projection, Prefix, Flattened )
+	function flatten_projection( Projection, Prefix, Flattened, SubDocuments )
 	{
 		for ( let key in Projection )
 		{
@@ -256,7 +256,10 @@ module.exports = function ( jsongin )
 				continue;
 			}
 
-			flatten_projection( value, path, Flattened );
+			// Recorded so that the caller can tell an emptied computed sub-document from a
+			// sub-projection which matched nothing. See the pass at the end of Project().
+			SubDocuments.push( path );
+			flatten_projection( value, path, Flattened, SubDocuments );
 		}
 
 		return Flattened;
@@ -332,7 +335,7 @@ module.exports = function ( jsongin )
 	// nothing at all. MongoDB refuses `{ $project: { t: { $slice: 2 } } }` with "Expression
 	// $slice takes at least 2 arguments, and at most 3, but 1 were passed in" - reading it as
 	// the expression operator and finding it short of operands.
-	function Project( Document, Projection, IsStage = false )
+	function Project( Document, Projection, IsStage = false, Scope )
 	{
 		// Validate the parameters.
 		if ( jsongin.ShortType( Document ) !== 'o' )
@@ -348,9 +351,16 @@ module.exports = function ( jsongin )
 			return null;
 		}
 
+		// A projection computes fields, so it evaluates - and inside a $project stage those
+		// expressions have to see the pipeline's $$NOW rather than a fresh one, which is why
+		// the stage passes its scope down. A bare Project() call makes its own.
+		let scope = jsongin.Scope.NewDocument( Document );
+		if ( jsongin.ShortType( Scope ) === 'o' ) { scope = Scope.ForDocument( Document ); }
+
 		// Rewrite nested specifications into dotted paths, so that everything below deals only
 		// in paths. This also refuses an empty field name and an empty sub-projection.
-		let flat_projection = flatten_projection( Projection, '', {} );
+		let sub_document_paths = [];
+		let flat_projection = flatten_projection( Projection, '', {}, sub_document_paths );
 
 		// Scan the projection.
 		// A field is included when its value is a non-zero number or true, excluded when its
@@ -555,7 +565,7 @@ module.exports = function ( jsongin )
 			for ( let index = 0; index < computed_keys.length; index++ )
 			{
 				let key = computed_keys[ index ];
-				let value = jsongin.Evaluate( Document, flat_projection[ key ] );
+				let value = jsongin.Evaluate( Document, flat_projection[ key ], scope );
 				// An expression which evaluates to a missing value omits the field.
 				// An expression which evaluates to null sets the field to null.
 				if ( typeof value === 'undefined' ) { continue; }
@@ -563,6 +573,40 @@ module.exports = function ( jsongin )
 				// inside the given document rather than to a copy of it. Storing it as-is made
 				// the projection share structure with the document it was projected from.
 				jsongin.SetValue( projected, key, jsongin.SafeClone( value ) );
+			}
+
+			// ***A computed sub-document is still produced when every field of it goes
+			// missing.*** Flattening turned { r: { x: '$nope' } } into the path 'r.x' and the
+			// loop above rightly leaves that field out, but MongoDB answers with { r: {} }: the
+			// nested document is an expression object, and an expression object which computes
+			// nothing is empty rather than absent.
+			//
+			// ***An inclusion sub-projection is the case this must not touch.***
+			// { nope: { x: 1 } } asks for a field the document does not have, and produces
+			// nothing at all. The two are told apart by what their leaves turned out to be, so
+			// this only fires where every flattened key under the path is a computed one.
+			// Verified against MongoDB 6.0.1:
+			//
+			//   { r: { x: '$nope' } }        =>  { r: {} }
+			//   { r: { s: { x: '$nope' } } } =>  { r: { s: {} } }
+			//   { nope: { x: 1 } }           =>  {}
+			//
+			// The paths arrive parent-first, so setting an inner one after its parent leaves
+			// the parent as it was rather than replacing it.
+			for ( let index = 0; index < sub_document_paths.length; index++ )
+			{
+				let path = sub_document_paths[ index ];
+				if ( typeof jsongin.GetValue( projected, path ) !== 'undefined' ) { continue; }
+
+				let all_computed = true;
+				for ( let key in flat_projection )
+				{
+					if ( ( key !== path ) && ( key.startsWith( path + '.' ) === false ) ) { continue; }
+					if ( computed_keys.includes( key ) === false ) { all_computed = false; }
+				}
+				if ( all_computed === false ) { continue; }
+
+				jsongin.SetValue( projected, path, {} );
 			}
 		}
 

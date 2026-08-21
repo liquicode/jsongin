@@ -29,7 +29,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 's',
 
 		//---------------------------------------------------------------------
-		Stage: function ( Documents, Args )
+		Stage: function ( Documents, Args, Scope )
 		{
 			try
 			{

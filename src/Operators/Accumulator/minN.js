@@ -33,11 +33,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Accumulate: function ( Documents, Args )
+		Accumulate: function ( Documents, Args, Scope )
 		{
 			try
 			{
-				let read = accumulator.ReadN( Documents, Args, '$minN' );
+				let read = accumulator.ReadN( Documents, Args, '$minN', Scope );
 
 				let sorted = accumulator.ComparableValues( read.Values );
 				return sorted.slice( 0, read.N );

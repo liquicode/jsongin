@@ -30,11 +30,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let read = date.ReadDateArgs( Document, Args, '$dateToParts', [ 'iso8601' ] );
+				let read = date.ReadDateArgs( Document, Args, '$dateToParts', [ 'iso8601' ], Scope );
 				if ( read === null ) { return null; }
 
 				let shifted = date.ZoneShifted( read.Date, read.Zone, '$dateToParts' );
@@ -42,7 +42,7 @@ module.exports = function ( jsongin )
 				let iso = false;
 				if ( ( jsongin.ShortType( Args ) === 'o' ) && ( 'iso8601' in Args ) )
 				{
-					iso = ( jsongin.Evaluate( Document, Args.iso8601 ) === true );
+					iso = ( jsongin.Evaluate( Document, Args.iso8601, Scope ) === true );
 				}
 
 				if ( iso )

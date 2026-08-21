@@ -34,11 +34,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'a',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = array.Operands( Document, Args, '$slice', 2, 3 );
+				let operands = array.Operands( Document, Args, '$slice', 2, 3, Scope );
 
 				let values = array.AsArrayOrNull( operands[ 0 ], '$slice' );
 				if ( values === null ) { return null; }

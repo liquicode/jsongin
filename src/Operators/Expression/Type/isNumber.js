@@ -25,11 +25,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = type.Operands( Document, Args, '$isNumber', 1, 1 );
+				let operands = type.Operands( Document, Args, '$isNumber', 1, 1, Scope );
 
 				return ( jsongin.ShortType( operands[ 0 ] ) === 'n' );
 			}

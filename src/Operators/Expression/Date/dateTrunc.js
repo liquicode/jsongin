@@ -28,7 +28,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -37,16 +37,16 @@ module.exports = function ( jsongin )
 					throw new Error( `$dateTrunc: requires a date and a unit.` );
 				}
 
-				let read = date.ReadDateArgs( Document, Args, '$dateTrunc', [ 'unit', 'binSize', 'startOfWeek' ] );
+				let read = date.ReadDateArgs( Document, Args, '$dateTrunc', [ 'unit', 'binSize', 'startOfWeek' ], Scope );
 				if ( read === null ) { return null; }
 
-				let unit = date.ReadUnit( Document, Args.unit, '$dateTrunc' );
+				let unit = date.ReadUnit( Document, Args.unit, '$dateTrunc', Scope );
 				if ( unit === null ) { return null; }
 
 				let bin_size = undefined;
 				if ( 'binSize' in Args )
 				{
-					bin_size = jsongin.Evaluate( Document, Args.binSize );
+					bin_size = jsongin.Evaluate( Document, Args.binSize, Scope );
 					let short_type = jsongin.ShortType( bin_size );
 					if ( 'lu'.includes( short_type ) ) { return null; }
 					if ( ( short_type !== 'n' ) || !Number.isInteger( bin_size ) || ( bin_size < 1 ) )
@@ -55,7 +55,7 @@ module.exports = function ( jsongin )
 					}
 				}
 
-				let start_day = date.ReadStartOfWeek( Document, Args.startOfWeek, '$dateTrunc' );
+				let start_day = date.ReadStartOfWeek( Document, Args.startOfWeek, '$dateTrunc', Scope );
 
 				return date.Truncate( read.Date, unit, bin_size, read.Zone, start_day, '$dateTrunc' );
 			}

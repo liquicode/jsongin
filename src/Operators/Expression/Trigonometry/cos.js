@@ -23,7 +23,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -32,7 +32,7 @@ module.exports = function ( jsongin )
 					{
 						arithmetic.RequireFinite( Value, '$cos' );
 						return Math.cos( Value );
-					} );
+					}, Scope );
 			}
 			catch ( error )
 			{

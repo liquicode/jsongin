@@ -29,11 +29,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Accumulate: function ( Documents, Args )
+		Accumulate: function ( Documents, Args, Scope )
 		{
 			try
 			{
-				let read = accumulator.ReadRanked( Documents, Args, '$topN', true );
+				let read = accumulator.ReadRanked( Documents, Args, '$topN', true, Scope );
 
 				return read.Outputs.slice( 0, read.N );
 			}

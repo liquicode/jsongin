@@ -27,7 +27,7 @@ module.exports = function ( jsongin )
 	// The implementation is shared with the $set stage, which is an alias of this one.
 	// The operator name is a parameter so that each stage reports errors under the name the
 	// caller actually wrote, rather than under its alias.
-	function apply_fields( Documents, Args, OperatorName )
+	function apply_fields( Documents, Args, OperatorName, Scope )
 	{
 		try
 		{
@@ -39,10 +39,15 @@ module.exports = function ( jsongin )
 				let document = Documents[ index ];
 				let result = jsongin.SafeClone( document );
 
+				// ***The document being worked on is what '$$ROOT' means here***, and it is
+				// the stage's input rather than whatever the collection holds. One frame per
+				// document, made once and shared by every field of it.
+				let scope = Scope.ForDocument( document );
+
 				for ( let key in Args )
 				{
 					// The expression is evaluated against the original document.
-					let value = jsongin.Evaluate( document, Args[ key ] );
+					let value = jsongin.Evaluate( document, Args[ key ], scope );
 
 					// An expression which evaluates to a missing value does not add the field.
 					if ( typeof value === 'undefined' ) { continue; }
@@ -75,9 +80,9 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Stage: function ( Documents, Args )
+		Stage: function ( Documents, Args, Scope )
 		{
-			return apply_fields( Documents, Args, '$addFields' );
+			return apply_fields( Documents, Args, '$addFields', Scope );
 		},
 
 		//---------------------------------------------------------------------

@@ -23,7 +23,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -32,7 +32,7 @@ module.exports = function ( jsongin )
 					{
 						arithmetic.RequireFinite( Value, '$sin' );
 						return Math.sin( Value );
-					} );
+					}, Scope );
 			}
 			catch ( error )
 			{

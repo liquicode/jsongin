@@ -26,11 +26,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = string.Operands( Document, Args, '$strcasecmp', 2, 2 );
+				let operands = string.Operands( Document, Args, '$strcasecmp', 2, 2, Scope );
 
 				let text_a = string.AsStringOrEmpty( operands[ 0 ], '$strcasecmp' ).toUpperCase();
 				let text_b = string.AsStringOrEmpty( operands[ 1 ], '$strcasecmp' ).toUpperCase();

@@ -44,13 +44,13 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Stage: function ( Documents, Args )
+		Stage: function ( Documents, Args, Scope )
 		{
 			try
 			{
 				let plan = stage.ReadFillPlan( Args );
 
-				let partitions = stage.Partitions( Documents, plan.PartitionBy, plan.PartitionFields, '$fill' );
+				let partitions = stage.Partitions( Documents, plan.PartitionBy, plan.PartitionFields, '$fill', Scope );
 
 				let filled = [];
 				for ( let index = 0; index < partitions.length; index++ )
@@ -66,7 +66,7 @@ module.exports = function ( jsongin )
 
 					for ( let field = 0; field < plan.Outputs.length; field++ )
 					{
-						stage.FillSeries( results, plan.Outputs[ field ], plan.SortBy, '$fill' );
+						stage.FillSeries( results, plan.Outputs[ field ], plan.SortBy, '$fill', Scope );
 					}
 
 					filled = filled.concat( results );

@@ -238,9 +238,11 @@ module.exports = function ( jsongin )
 
 	//---------------------------------------------------------------------
 	// Evaluates a $toX shorthand: one operand, converted to a fixed target.
-	helper.ShorthandConversion = function ( Document, Args, OperatorName, TargetName )
+	helper.ShorthandConversion = function ( Document, Args, OperatorName, TargetName, Scope )
 	{
-		let operands = helper.Operands( Document, Args, OperatorName, 1, 1 );
+		jsongin.Scope.Require( Scope, 'type.ShorthandConversion' );
+
+		let operands = helper.Operands( Document, Args, OperatorName, 1, 1, Scope );
 		return helper.Convert( operands[ 0 ], TargetName, OperatorName );
 	};
 

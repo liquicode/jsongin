@@ -75,8 +75,7 @@ module.exports = function ( jsongin )
 
 	//---------------------------------------------------------------------
 	// The encoded size of a document, or of an array read as one.
-	helper.DocumentSize = function ( Document, OperatorName )
-	{
+	helper.DocumentSize = function ( Document, OperatorName ){
 		// The leading length and the trailing terminator belong to every document.
 		let size = 4 + 1;
 

@@ -23,7 +23,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'a',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -36,12 +36,12 @@ module.exports = function ( jsongin )
 				// Return the first value which is neither null nor missing.
 				for ( let index = 0; index < ( Args.length - 1 ); index++ )
 				{
-					let value = jsongin.Evaluate( Document, Args[ index ] );
+					let value = jsongin.Evaluate( Document, Args[ index ], Scope );
 					if ( 'lu'.includes( jsongin.ShortType( value ) ) === false ) { return value; }
 				}
 
 				// Otherwise, return the replacement value.
-				return jsongin.Evaluate( Document, Args[ Args.length - 1 ] );
+				return jsongin.Evaluate( Document, Args[ Args.length - 1 ], Scope );
 			}
 			catch ( error )
 			{

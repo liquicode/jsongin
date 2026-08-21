@@ -27,11 +27,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'a',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = array.Operands( Document, Args, '$range', 2, 3 );
+				let operands = array.Operands( Document, Args, '$range', 2, 3, Scope );
 
 				let start = array.AsWholeNumber( operands[ 0 ], '$range', 'start' );
 				let end = array.AsWholeNumber( operands[ 1 ], '$range', 'end' );

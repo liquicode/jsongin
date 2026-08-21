@@ -23,7 +23,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -32,7 +32,7 @@ module.exports = function ( jsongin )
 
 				for ( let index = 0; index < expressions.length; index++ )
 				{
-					let value = jsongin.Evaluate( Document, expressions[ index ] );
+					let value = jsongin.Evaluate( Document, expressions[ index ], Scope );
 					if ( jsongin.AsBoolean( value ) === true ) { return true; }
 				}
 

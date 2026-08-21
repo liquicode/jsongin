@@ -28,14 +28,14 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Accumulate: function ( Documents, Args )
+		Accumulate: function ( Documents, Args, Scope )
 		{
 			try
 			{
 				if ( jsongin.ShortType( Documents ) !== 'a' ) { throw new Error( `Documents must be an array.` ); }
 				if ( Documents.length === 0 ) { return null; }
 
-				let values = accumulator.Values( [ Documents[ 0 ] ], Args );
+				let values = accumulator.Values( [ Documents[ 0 ] ], Args, Scope );
 				return values[ 0 ];
 			}
 			catch ( error )
