@@ -697,11 +697,11 @@
       ✔ should reject a non-object UpdateFields for $pullAll
       ✔ should reject a non-object UpdateFields for $pull
     Operator OpError Reporting
-      ✔ should report from every expression operator which rejects its argument (109ms)
-      ✔ should report from every update operator which rejects its argument (10ms)
-      ✔ should report from every accumulator which rejects its argument (14ms)
-      ✔ should report from every stage which rejects its argument (14ms)
-      ✔ should report from the query operators which reject their argument (19ms)
+      ✔ should report from every expression operator which rejects its argument (110ms)
+      ✔ should report from every update operator which rejects its argument (7ms)
+      ✔ should report from every accumulator which rejects its argument (13ms)
+      ✔ should report from every stage which rejects its argument (16ms)
+      ✔ should report from the query operators which reject their argument (33ms)
     Aggregation Argument Validation
       ✔ should reject a non-array Documents to every accumulator
       ✔ should reject a document in the pipeline which is not an object
@@ -1455,7 +1455,7 @@
       ✔ should keep a date through a computed field
 
 
-  1230 passing (404ms)
+  1230 passing (414ms)
 ```
 
 ## Parity Tests
