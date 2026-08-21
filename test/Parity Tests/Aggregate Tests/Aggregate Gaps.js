@@ -20,13 +20,16 @@
 		                                        its own heading so they never move the parity
 		                                        number.
 
-	***It is empty, and that is the finished state of a family rather than a missing file.***
-	A family leaves this file by being built. Three have, all on 2026-08-20: the String family,
-	the twenty-one arithmetic and trigonometry operators, and the nine Type operators, each
-	graduating to its own file under `test-suite/`. In every case the suite was written here
-	against the server first, the operators were built until it went green under jsongin, and
-	only then did it move to where a later regression in it would be caught. A gap suite is
-	retired by implementing the operators it names, and by nothing else.
+	***What is left in it is one family, and it is the same family twice.*** `$redact` and the
+	variable-scope suite are both blocked by the missing variable parameter on `Evaluate()` -
+	Bucket C of .reviews/2026-08-19/review.md - and they are two files rather than one only
+	because a stage and an expression are tested differently. Nothing else remains: the
+	thirteen families built on 2026-08-20 each left this file by being built.
+
+	***A family leaves this file by being built, and by nothing else.*** In every case so far
+	the suite was written here against the server first, the operators were built until it went
+	green under jsongin, and only then did it move to `test-suite/` where a later regression in
+	it would be caught. A gap suite is retired by implementing the operators it names.
 
 	***One assertion did not survive graduation***, and that is worth knowing before writing
 	the next family. The Type suite asked what `$type` says about a converted number, MongoDB
@@ -47,6 +50,7 @@ module.exports = function ( Driver )
 	describe( 'Aggregate Gaps', function ()
 	{
 		require( './test-suite/Redact Gap Tests.js' )( Driver );
+		require( './test-suite/Variable Scope Gap Tests.js' )( Driver );
 	} );
 
 };
