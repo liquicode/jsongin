@@ -30,11 +30,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'oaslu',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = object.Operands( Document, Args, '$objectToArray', 1, 1 );
+				let operands = object.Operands( Document, Args, '$objectToArray', 1, 1, Scope );
 				let value = operands[ 0 ];
 
 				let short_type = jsongin.ShortType( value );

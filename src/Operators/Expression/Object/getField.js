@@ -39,11 +39,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'os',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let read = object.ReadArgs( Document, Args, '$getField', [ 'field', 'input' ] );
+				let read = object.ReadArgs( Document, Args, '$getField', [ 'field', 'input' ], Scope );
 
 				let short_type = jsongin.ShortType( read.Input );
 				if ( short_type === 'l' ) { return null; }

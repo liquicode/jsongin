@@ -16,15 +16,17 @@ module.exports = function ( jsongin )
 	// Arguments are normally given as an array of expressions.
 	// A single argument may also be given without the enclosing array.
 	// Throws when the argument count is out of range. A null MaxCount means variadic.
-	helper.Operands = function ( Document, Args, OperatorName, MinCount, MaxCount )
+	helper.Operands = function ( Document, Args, OperatorName, MinCount, MaxCount, Scope )
 	{
+		jsongin.Scope.Require( Scope, 'arithmetic.Operands' );
+
 		let expressions = Args;
 		if ( jsongin.ShortType( expressions ) !== 'a' ) { expressions = [ expressions ]; }
 
 		let operands = [];
 		for ( let index = 0; index < expressions.length; index++ )
 		{
-			operands.push( jsongin.Evaluate( Document, expressions[ index ] ) );
+			operands.push( jsongin.Evaluate( Document, expressions[ index ], Scope ) );
 		}
 
 		if ( operands.length < MinCount )
@@ -72,9 +74,11 @@ module.exports = function ( jsongin )
 	// identical in all of them. Compute receives a number which is known to be a number, and
 	// throws when that number is outside the operator's domain - Math.sqrt answers NaN for a
 	// negative and MongoDB refuses it, so the domain cannot be left to Javascript.
-	helper.UnaryNumber = function ( Document, Args, OperatorName, Compute )
+	helper.UnaryNumber = function ( Document, Args, OperatorName, Compute, Scope )
 	{
-		let operands = helper.Operands( Document, Args, OperatorName, 1, 1 );
+		jsongin.Scope.Require( Scope, 'arithmetic.UnaryNumber' );
+
+		let operands = helper.Operands( Document, Args, OperatorName, 1, 1, Scope );
 
 		let number = helper.AsOperandNumber( operands[ 0 ], OperatorName );
 		if ( number === null ) { return null; }
@@ -104,9 +108,11 @@ module.exports = function ( jsongin )
 	//---------------------------------------------------------------------
 	// Evaluates an operator which takes two numbers and returns one number.
 	// A null in either operand makes the result null, as it does everywhere else here.
-	helper.BinaryNumber = function ( Document, Args, OperatorName, Compute )
+	helper.BinaryNumber = function ( Document, Args, OperatorName, Compute, Scope )
 	{
-		let operands = helper.Operands( Document, Args, OperatorName, 2, 2 );
+		jsongin.Scope.Require( Scope, 'arithmetic.BinaryNumber' );
+
+		let operands = helper.Operands( Document, Args, OperatorName, 2, 2, Scope );
 
 		let number_a = helper.AsOperandNumber( operands[ 0 ], OperatorName );
 		let number_b = helper.AsOperandNumber( operands[ 1 ], OperatorName );

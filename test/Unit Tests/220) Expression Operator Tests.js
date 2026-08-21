@@ -60,10 +60,51 @@ describe( '220) Expression Operator Tests', () =>
 			assert.throws( function () { jsongin.Evaluate( {}, { $bogus: [ 1, 2 ] } ); }, /Unrecognized expression operator/ );
 		} );
 
-		it( 'should throw when system variables are used', () =>
+		it( 'should throw when a variable is not defined', () =>
 		{
-			assert.throws( function () { jsongin.Evaluate( {}, '$$ROOT' ); }, /system variables are not supported/ );
-			assert.throws( function () { jsongin.Evaluate( {}, '$$NOW' ); }, /system variables are not supported/ );
+			// ***This test used to say the opposite***, and asserted that every name beginning
+			// with '$$' was refused because Evaluate() had nowhere to keep a variable. Scope
+			// arrived and the blanket refusal went with it. What is left to check is that an
+			// unbound name is still an error rather than a quiet nothing, which is what turns
+			// a misspelled '$$vaule' into a stopped pipeline instead of an empty result.
+			assert.throws( function () { jsongin.Evaluate( {}, '$$nope' ); }, /is not defined/ );
+			assert.throws( function () { jsongin.Evaluate( {}, '$$this' ); }, /is not defined/ );
+		} );
+
+		it( 'should throw when a variable reference names nothing', () =>
+		{
+			assert.throws( function () { jsongin.Evaluate( {}, '$$' ); }, /names nothing/ );
+		} );
+
+		it( 'should resolve the system variables without being given a scope', () =>
+		{
+			// A bare Evaluate( Document, Expression ) names no scope and still has them,
+			// because one is made for the occasion. See Scope.NewDocument().
+			assert.deepStrictEqual( jsongin.Evaluate( { a: 1 }, '$$ROOT' ), { a: 1 } );
+			assert.deepStrictEqual( jsongin.Evaluate( { a: 1 }, '$$CURRENT' ), { a: 1 } );
+			assert.strictEqual( jsongin.Evaluate( {}, '$$NOW' ) instanceof Date, true );
+			assert.strictEqual( jsongin.Evaluate( { a: 1 }, '$$ROOT.a' ), 1 );
+		} );
+
+		it( 'should resolve a variable it is given a scope for', () =>
+		{
+			let scope = jsongin.Scope.NewDocument( { a: 1 } ).Child( { x: 42 } );
+			assert.strictEqual( jsongin.Evaluate( { a: 1 }, '$$x', scope ), 42 );
+			assert.deepStrictEqual( jsongin.Evaluate( { a: 1 }, [ '$$x', '$a' ], scope ), [ 42, 1 ] );
+			assert.deepStrictEqual( jsongin.Evaluate( { a: 1 }, { r: '$$x' }, scope ), { r: 42 } );
+		} );
+
+		it( 'should carry a scope down through an operator', () =>
+		{
+			// ***This is the assertion the whole signature sweep exists to satisfy.*** An
+			// operator which does not pass its Scope along loses every variable below it, and
+			// the loss is invisible until something nests a '$$name' underneath that operator.
+			// build/scope-check.js and the arity test in 130) are what make forgetting one
+			// mechanically detectable rather than a matter of hoping a test nests it.
+			let scope = jsongin.Scope.NewDocument( { a: 1 } ).Child( { x: 42 } );
+			assert.strictEqual( jsongin.Evaluate( { a: 1 }, { $add: [ '$$x', '$a' ] }, scope ), 43 );
+			assert.strictEqual( jsongin.Evaluate( { a: 1 }, { $ifNull: [ '$nope', '$$x' ] }, scope ), 42 );
+			assert.strictEqual( jsongin.Evaluate( { a: 1 }, { $concat: [ 'n=', { $toString: '$$x' } ] }, scope ), 'n=42' );
 		} );
 
 		// A field reference which crosses an array gathers the values of the elements.
@@ -170,7 +211,10 @@ describe( '220) Expression Operator Tests', () =>
 
 		it( 'should be callable directly from the operator registry', () =>
 		{
-			assert.ok( jsongin.ExpressionOperators.$add.Evaluate( { a: 1 }, [ '$a', 2 ] ) === 3 );
+			// ***A direct call supplies its own scope.*** Evaluate() makes one for a caller
+			// who does not name it; an operator is below that line and is handed one.
+			let scope = jsongin.Scope.NewDocument( { a: 1 } );
+			assert.ok( jsongin.ExpressionOperators.$add.Evaluate( { a: 1 }, [ '$a', 2 ], scope ) === 3 );
 		} );
 
 	} );
@@ -852,11 +896,14 @@ describe( '220) Expression Operator Tests', () =>
 			}
 		} );
 
-		it( 'should refuse a $setField which removes with $$REMOVE', () =>
+		it( 'should no longer refuse a $setField whose value is $$REMOVE', () =>
 		{
-			assert.throws(
-				function () { jsongin.Evaluate( {}, { $setField: { field: 'a', input: { a: 1 }, value: '$$REMOVE' } } ); },
-				/system variables are not supported/ );
+			// ***This test used to assert a refusal***, from the days when '$$' was refused
+			// wholesale. $$REMOVE resolves now. What $setField should then do with it is
+			// MongoDB's question rather than this file's, and is asserted in the Object parity
+			// suite - so all this holds down is that the expression is not turned away.
+			assert.doesNotThrow(
+				function () { jsongin.Evaluate( {}, { $setField: { field: 'a', input: { a: 1 }, value: '$$REMOVE' } } ); } );
 		} );
 
 		it( 'should remove a field with $unsetField instead', () =>

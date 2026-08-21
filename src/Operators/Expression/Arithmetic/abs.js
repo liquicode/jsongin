@@ -22,11 +22,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = arithmetic.Operands( Document, Args, '$abs', 1, 1 );
+				let operands = arithmetic.Operands( Document, Args, '$abs', 1, 1, Scope );
 
 				let number = arithmetic.AsOperandNumber( operands[ 0 ], '$abs' );
 				if ( number === null ) { return null; }

@@ -32,11 +32,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Accumulate: function ( Documents, Args )
+		Accumulate: function ( Documents, Args, Scope )
 		{
 			try
 			{
-				let numbers = accumulator.NumericValues( Documents, Args );
+				let numbers = accumulator.NumericValues( Documents, Args, Scope );
 				if ( numbers.length < 2 ) { return null; }
 
 				return accumulator.StandardDeviation( numbers, numbers.length - 1 );

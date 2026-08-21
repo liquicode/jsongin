@@ -25,11 +25,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				return type.ShorthandConversion( Document, Args, '$toDate', 'date' );
+				return type.ShorthandConversion( Document, Args, '$toDate', 'date', Scope );
 			}
 			catch ( error )
 			{

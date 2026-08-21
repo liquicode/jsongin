@@ -32,7 +32,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -55,13 +55,13 @@ module.exports = function ( jsongin )
 					}
 				}
 
-				let read = date.ReadDateArgs( Document, { date: Args.startDate, timezone: Args.timezone }, '$dateSubtract' );
+				let read = date.ReadDateArgs( Document, { date: Args.startDate, timezone: Args.timezone }, '$dateSubtract', [], Scope );
 				if ( read === null ) { return null; }
 
-				let unit = date.ReadUnit( Document, Args.unit, '$dateSubtract' );
+				let unit = date.ReadUnit( Document, Args.unit, '$dateSubtract', Scope );
 				if ( unit === null ) { return null; }
 
-				let amount = jsongin.Evaluate( Document, Args.amount );
+				let amount = jsongin.Evaluate( Document, Args.amount, Scope );
 				let short_type = jsongin.ShortType( amount );
 				if ( 'lu'.includes( short_type ) ) { return null; }
 				if ( short_type !== 'n' )

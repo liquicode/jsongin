@@ -29,11 +29,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let values = string.Arguments( Document, Args, '$regexMatch', [ 'input', 'regex' ], [ 'options' ] );
+				let values = string.Arguments( Document, Args, '$regexMatch', [ 'input', 'regex' ], [ 'options' ], Scope );
 
 				// A missing input is false rather than null. This operator answers a question
 				// which still has a false answer when there is nothing to match.

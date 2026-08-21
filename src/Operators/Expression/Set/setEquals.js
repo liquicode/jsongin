@@ -28,11 +28,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'a',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let sets = set.ReadSets( Document, Args, '$setEquals', 2, null, false );
+				let sets = set.ReadSets( Document, Args, '$setEquals', 2, null, false, Scope );
 
 				let first = set.AsSet( sets[ 0 ] );
 				for ( let index = 1; index < sets.length; index++ )

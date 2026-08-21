@@ -29,9 +29,11 @@ module.exports = function ( jsongin )
 	//
 	// ***A missing or non-document result fails the pipeline*** rather than dropping the
 	// document, which is why $ifNull is the usual guard on a field which may not be there.
-	helper.AsNewRoot = function ( Document, Expression, OperatorName )
+	helper.AsNewRoot = function ( Document, Expression, OperatorName, Scope )
 	{
-		let value = jsongin.Evaluate( Document, Expression );
+		jsongin.Scope.Require( Scope, 'stage.AsNewRoot' );
+
+		let value = jsongin.Evaluate( Document, Expression, Scope.ForDocument( Document ) );
 
 		let short_type = jsongin.ShortType( value );
 		if ( short_type !== 'o' )
@@ -83,8 +85,10 @@ module.exports = function ( jsongin )
 	// The accumulators are run through the $group stage rather than reimplemented, so that a
 	// bucket and a group cannot disagree about what an accumulator means or which of them are
 	// recognized.
-	helper.ReduceBuckets = function ( Buckets, Accumulators, OperatorName )
+	helper.ReduceBuckets = function ( Buckets, Accumulators, OperatorName, Scope )
 	{
+		jsongin.Scope.Require( Scope, 'stage.ReduceBuckets' );
+
 		if ( jsongin.ShortType( Accumulators ) !== 'o' )
 		{
 			throw new Error( `${OperatorName}: requires [output] to be a document of accumulators.` );
@@ -107,7 +111,7 @@ module.exports = function ( jsongin )
 				specification[ names[ name ] ] = Accumulators[ names[ name ] ];
 			}
 
-			let grouped = jsongin.StageOperators.$group.Stage( Buckets[ index ].Documents, specification );
+			let grouped = jsongin.StageOperators.$group.Stage( Buckets[ index ].Documents, specification, Scope );
 
 			// Every named field is present, because $group always writes one - a missing
 			// accumulated value becomes a null rather than being left out. This used to guard
@@ -134,8 +138,10 @@ module.exports = function ( jsongin )
 	//
 	// ***partitionBy takes a document rather than a path***, which MongoDB enforces: a bare
 	// '$k' is refused for being a string.
-	helper.Partitions = function ( Documents, PartitionBy, PartitionFields, OperatorName )
+	helper.Partitions = function ( Documents, PartitionBy, PartitionFields, OperatorName, Scope )
 	{
+		jsongin.Scope.Require( Scope, 'stage.Partitions' );
+
 		if ( ( PartitionBy === null ) && ( PartitionFields === null ) )
 		{
 			return [ { Key: null, Documents: Documents } ];
@@ -149,7 +155,7 @@ module.exports = function ( jsongin )
 			let key = null;
 			if ( PartitionBy !== null )
 			{
-				key = jsongin.Evaluate( Documents[ index ], PartitionBy );
+				key = jsongin.Evaluate( Documents[ index ], PartitionBy, Scope.ForDocument( Documents[ index ] ) );
 			}
 			else
 			{
@@ -295,8 +301,10 @@ module.exports = function ( jsongin )
 	//
 	// ***A null is filled as well as a missing field***, which is unusual and is MongoDB's
 	// behavior: almost everywhere else a null is a value.
-	helper.FillSeries = function ( Series, Output, SortBy, OperatorName )
+	helper.FillSeries = function ( Series, Output, SortBy, OperatorName, Scope )
 	{
+		jsongin.Scope.Require( Scope, 'stage.FillSeries' );
+
 		function is_empty( Document )
 		{
 			let value = jsongin.GetValue( Document, Output.Name );
@@ -309,7 +317,8 @@ module.exports = function ( jsongin )
 			for ( let index = 0; index < Series.length; index++ )
 			{
 				if ( is_empty( Series[ index ] ) === false ) { continue; }
-				jsongin.SetValue( Series[ index ], Output.Name, jsongin.Evaluate( Series[ index ], Output.Value ) );
+				jsongin.SetValue( Series[ index ], Output.Name,
+					jsongin.Evaluate( Series[ index ], Output.Value, Scope.ForDocument( Series[ index ] ) ) );
 			}
 			return;
 		}
@@ -386,8 +395,10 @@ module.exports = function ( jsongin )
 
 	//---------------------------------------------------------------------
 	// Reads and validates the argument document of $densify.
-	helper.ReadDensifyPlan = function ( Args )
+	helper.ReadDensifyPlan = function ( Args, Scope )
 	{
+		jsongin.Scope.Require( Scope, 'stage.ReadDensifyPlan' );
+
 		if ( jsongin.ShortType( Args ) !== 'o' )
 		{
 			throw new Error( `$densify: requires a document naming a [field] and a [range].` );
@@ -430,7 +441,10 @@ module.exports = function ( jsongin )
 		let unit = null;
 		if ( 'unit' in Args.range )
 		{
-			unit = require( '../Expression/Date/_date' )( jsongin ).ReadUnit( {}, Args.range.unit, '$densify' );
+			// Read against no document, because a densify unit is a constant for the whole
+			// stage and cannot vary from one document to the next.
+			unit = require( '../Expression/Date/_date' )( jsongin )
+				.ReadUnit( {}, Args.range.unit, '$densify', Scope.ForDocument( {} ) );
 		}
 
 		let bounds = Args.range.bounds;
@@ -476,8 +490,7 @@ module.exports = function ( jsongin )
 	//---------------------------------------------------------------------
 	// The smallest and largest value of a field across a set of documents.
 	// Returns null when nothing holds the field.
-	helper.SeriesRange = function ( Documents, Field, OperatorName )
-	{
+	helper.SeriesRange = function ( Documents, Field, OperatorName ){
 		let low = null;
 		let high = null;
 
@@ -496,8 +509,10 @@ module.exports = function ( jsongin )
 
 	//---------------------------------------------------------------------
 	// Adds the documents one partition is missing.
-	helper.DensifyPartition = function ( Partition, Plan, FullRange, OperatorName )
+	helper.DensifyPartition = function ( Partition, Plan, FullRange, OperatorName, Scope )
 	{
+		jsongin.Scope.Require( Scope, 'stage.DensifyPartition' );
+
 		const date = require( '../Expression/Date/_date' )( jsongin );
 
 		let range = FullRange;

@@ -33,11 +33,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'os',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let read = object.ReadArgs( Document, Args, '$unsetField', [ 'field', 'input' ] );
+				let read = object.ReadArgs( Document, Args, '$unsetField', [ 'field', 'input' ], Scope );
 
 				let input = object.AsInputDocument( read.Input, '$unsetField' );
 				if ( input === null ) { return null; }

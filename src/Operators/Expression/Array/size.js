@@ -29,11 +29,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = arithmetic.Operands( Document, Args, '$size', 1, 1 );
+				let operands = arithmetic.Operands( Document, Args, '$size', 1, 1, Scope );
 
 				let value = operands[ 0 ];
 				if ( jsongin.ShortType( value ) !== 'a' )

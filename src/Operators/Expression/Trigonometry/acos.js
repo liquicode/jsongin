@@ -24,7 +24,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -33,7 +33,7 @@ module.exports = function ( jsongin )
 					{
 						if ( ( Value < -1 ) || ( Value > 1 ) ) { throw new Error( `$acos: requires an operand between -1 and 1 but found ${Value} instead.` ); }
 						return Math.acos( Value );
-					} );
+					}, Scope );
 			}
 			catch ( error )
 			{

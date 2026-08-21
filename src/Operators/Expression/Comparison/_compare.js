@@ -29,13 +29,15 @@ module.exports = function ( jsongin )
 	// $eq query operator. A query operator implements query semantics, where a match value can
 	// also match an element of a document array. Within an expression the operands are plain
 	// values, and all seven operators have to agree with each other.
-	helper.Evaluate = function ( Document, Args, OperatorName, Test )
+	helper.Evaluate = function ( Document, Args, OperatorName, Test, Scope )
 	{
+		jsongin.Scope.Require( Scope, 'compare.Evaluate' );
+
 		if ( jsongin.ShortType( Args ) !== 'a' ) { throw new Error( `${OperatorName}: requires an array of two arguments.` ); }
 		if ( Args.length !== 2 ) { throw new Error( `${OperatorName}: requires exactly two arguments but found ${Args.length} instead.` ); }
 
-		let value_a = jsongin.Evaluate( Document, Args[ 0 ] );
-		let value_b = jsongin.Evaluate( Document, Args[ 1 ] );
+		let value_a = jsongin.Evaluate( Document, Args[ 0 ], Scope );
+		let value_b = jsongin.Evaluate( Document, Args[ 1 ], Scope );
 
 		return Test( helper.Compare( value_a, value_b ) );
 	};

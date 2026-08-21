@@ -27,11 +27,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = arithmetic.Operands( Document, Args, '$concatArrays', 0, null );
+				let operands = arithmetic.Operands( Document, Args, '$concatArrays', 0, null, Scope );
 
 				// Every operand is checked before any of them is joined, so that a null which
 				// arrives after a valid array still takes the whole result.

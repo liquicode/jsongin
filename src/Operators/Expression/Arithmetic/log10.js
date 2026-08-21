@@ -23,7 +23,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -32,7 +32,7 @@ module.exports = function ( jsongin )
 					{
 						if ( Value <= 0 ) { throw new Error( `$log10: requires an operand greater than zero but found ${Value} instead.` ); }
 						return Math.log10( Value );
-					} );
+					}, Scope );
 			}
 			catch ( error )
 			{

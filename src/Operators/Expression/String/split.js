@@ -27,11 +27,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = string.Operands( Document, Args, '$split', 2, 2 );
+				let operands = string.Operands( Document, Args, '$split', 2, 2, Scope );
 
 				let text = string.AsStringOrNull( operands[ 0 ], '$split' );
 				let delimiter = string.AsStringOrNull( operands[ 1 ], '$split' );

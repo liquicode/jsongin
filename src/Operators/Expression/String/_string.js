@@ -151,8 +151,10 @@ module.exports = function ( jsongin )
 	// Returns a map of the evaluated field values, with a missing optional field left
 	// undefined. An unknown field is refused rather than ignored, which is what MongoDB does
 	// and what stops a misspelled 'chars' from silently doing nothing.
-	helper.Arguments = function ( Document, Args, OperatorName, Required, Optional )
+	helper.Arguments = function ( Document, Args, OperatorName, Required, Optional, Scope )
 	{
+		jsongin.Scope.Require( Scope, 'string.Arguments' );
+
 		let short_type = jsongin.ShortType( Args );
 		if ( short_type !== 'o' )
 		{
@@ -176,13 +178,13 @@ module.exports = function ( jsongin )
 			{
 				throw new Error( `${OperatorName}: requires an argument named [${key}].` );
 			}
-			values[ key ] = jsongin.Evaluate( Document, Args[ key ] );
+			values[ key ] = jsongin.Evaluate( Document, Args[ key ], Scope );
 		}
 		for ( let index = 0; index < Optional.length; index++ )
 		{
 			let key = Optional[ index ];
 			if ( !Object.prototype.hasOwnProperty.call( Args, key ) ) { continue; }
-			values[ key ] = jsongin.Evaluate( Document, Args[ key ] );
+			values[ key ] = jsongin.Evaluate( Document, Args[ key ], Scope );
 		}
 
 		return values;

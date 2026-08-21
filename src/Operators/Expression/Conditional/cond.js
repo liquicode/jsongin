@@ -23,7 +23,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'ao',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -56,12 +56,12 @@ module.exports = function ( jsongin )
 					throw new Error( `$cond: requires an array of three arguments or an object with if, then, and else fields.` );
 				}
 
-				let condition = jsongin.Evaluate( Document, if_expression );
+				let condition = jsongin.Evaluate( Document, if_expression, Scope );
 				if ( jsongin.AsBoolean( condition ) === true )
 				{
-					return jsongin.Evaluate( Document, then_expression );
+					return jsongin.Evaluate( Document, then_expression, Scope );
 				}
-				return jsongin.Evaluate( Document, else_expression );
+				return jsongin.Evaluate( Document, else_expression, Scope );
 			}
 			catch ( error )
 			{

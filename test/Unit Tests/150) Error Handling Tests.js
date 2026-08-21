@@ -46,7 +46,7 @@ describe( '150) Error Handling Tests', () =>
 			{ Name: 'Filter', Call: function ( E ) { E.Filter( {}, {} ); } },
 			{ Name: 'Sort', Call: function ( E ) { E.Sort( {}, {} ); } },
 			{ Name: 'Distinct', Call: function ( E ) { E.Distinct( {}, {} ); } },
-			{ Name: 'Evaluate', Call: function ( E ) { E.Evaluate( {}, '$$ROOT' ); } },
+			{ Name: 'Evaluate', Call: function ( E ) { E.Evaluate( {}, '$$nope' ); } },
 			{ Name: 'Flatten', Call: function ( E ) { E.Flatten( 'x' ); } },
 			{ Name: 'Expand', Call: function ( E ) { E.Expand( 'x' ); } },
 			{ Name: 'GetValue', Call: function ( E ) { E.GetValue( {}, {} ); } },
@@ -206,8 +206,9 @@ describe( '150) Error Handling Tests', () =>
 				// before it dispatches, so that is what a caller sees.
 				assert.throws( function () { jsongin.Evaluate( {}, { [ name ]: 'abc' } ); },
 					/does not take an argument of type/ );
-				// The operator keeps its own check for a direct call.
-				assert.throws( function () { jsongin.ExpressionOperators[ name ].Evaluate( {}, 'abc' ); },
+				// The operator keeps its own check for a direct call, which now has to supply
+				// a scope the way the dispatcher would have.
+				assert.throws( function () { jsongin.ExpressionOperators[ name ].Evaluate( {}, 'abc', jsongin.Scope.NewDocument( {} ) ); },
 					/requires an array of two arguments/ );
 			} );
 
@@ -361,7 +362,7 @@ describe( '150) Error Handling Tests', () =>
 		it( 'should report from every accumulator which rejects its argument', () =>
 		{
 			let reported = sweep( 'AccumulatorOperators', 'Accumulator.',
-				function ( Engine, Name ) { Engine.AccumulatorOperators[ Name ].Accumulate( 'abc', '$n' ); } );
+				function ( Engine, Name ) { Engine.AccumulatorOperators[ Name ].Accumulate( 'abc', '$n', Engine.Scope.NewPipeline() ); } );
 			assert.strictEqual( reported, 20 );
 		} );
 
@@ -422,7 +423,7 @@ describe( '150) Error Handling Tests', () =>
 			for ( let index = 0; index < names.length; index++ )
 			{
 				assert.throws(
-					function () { jsongin.AccumulatorOperators[ names[ index ] ].Accumulate( 'abc', valid_args( names[ index ] ) ); },
+					function () { jsongin.AccumulatorOperators[ names[ index ] ].Accumulate( 'abc', valid_args( names[ index ] ), jsongin.Scope.NewPipeline() ); },
 					/Documents must be an array/,
 					`${names[ index ]} accepted a non-array.` );
 			}

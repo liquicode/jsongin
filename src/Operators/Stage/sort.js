@@ -33,7 +33,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Stage: function ( Documents, Args )
+		Stage: function ( Documents, Args, Scope )
 		{
 			try
 			{

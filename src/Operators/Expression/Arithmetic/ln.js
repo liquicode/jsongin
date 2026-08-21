@@ -23,7 +23,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -34,7 +34,7 @@ module.exports = function ( jsongin )
 						// MongoDB refuses it, so this cannot be left to Javascript.
 						if ( Value <= 0 ) { throw new Error( `$ln: requires an operand greater than zero but found ${Value} instead.` ); }
 						return Math.log( Value );
-					} );
+					}, Scope );
 			}
 			catch ( error )
 			{

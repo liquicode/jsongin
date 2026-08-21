@@ -22,11 +22,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let values = string.Arguments( Document, Args, '$rtrim', [ 'input' ], [ 'chars' ] );
+				let values = string.Arguments( Document, Args, '$rtrim', [ 'input' ], [ 'chars' ], Scope );
 
 				let text = string.AsStringOrNull( values.input, '$rtrim' );
 				if ( text === null ) { return null; }

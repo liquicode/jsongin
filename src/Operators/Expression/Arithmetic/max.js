@@ -30,11 +30,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = arithmetic.Operands( Document, Args, '$max', 1, null );
+				let operands = arithmetic.Operands( Document, Args, '$max', 1, null, Scope );
 
 				// A single array operand supplies the values.
 				if ( operands.length === 1 )

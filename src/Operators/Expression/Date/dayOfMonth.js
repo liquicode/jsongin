@@ -29,11 +29,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let read = date.ReadDateArgs( Document, Args, '$dayOfMonth' );
+				let read = date.ReadDateArgs( Document, Args, '$dayOfMonth', [], Scope );
 				if ( read === null ) { return null; }
 
 				let shifted = date.ZoneShifted( read.Date, read.Zone, '$dayOfMonth' );

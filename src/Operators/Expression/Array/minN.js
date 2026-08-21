@@ -26,11 +26,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let read = array.ReadInputN( Document, Args, '$minN' );
+				let read = array.ReadInputN( Document, Args, '$minN', Scope );
 				return ( array.SortedValues( read.Values, false ).slice( 0, read.Count ) );
 			}
 			catch ( error )

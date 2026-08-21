@@ -32,7 +32,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Stage: function ( Documents, Args )
+		Stage: function ( Documents, Args, Scope )
 		{
 			try
 			{
@@ -41,7 +41,7 @@ module.exports = function ( jsongin )
 				let results = [];
 				for ( let index = 0; index < Documents.length; index++ )
 				{
-					results.push( stage.AsNewRoot( Documents[ index ], Args.newRoot, '$replaceRoot' ) );
+					results.push( stage.AsNewRoot( Documents[ index ], Args.newRoot, '$replaceRoot', Scope ) );
 				}
 
 				return results;

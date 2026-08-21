@@ -67,8 +67,10 @@ module.exports = function ( jsongin )
 	// ***These four refuse a null input***, where most of this family propagates one. MongoDB
 	// answers a null or a missing field with "Input must be an array" rather than with null,
 	// and that difference is reproduced rather than tidied up.
-	helper.ReadInputN = function ( Document, Args, OperatorName )
+	helper.ReadInputN = function ( Document, Args, OperatorName, Scope )
 	{
+		jsongin.Scope.Require( Scope, 'array.ReadInputN' );
+
 		if ( jsongin.ShortType( Args ) !== 'o' )
 		{
 			throw new Error( `${OperatorName}: requires a document naming an input and an n.` );
@@ -87,13 +89,13 @@ module.exports = function ( jsongin )
 			}
 		}
 
-		let count = helper.AsWholeNumber( jsongin.Evaluate( Document, Args.n ), OperatorName, 'n' );
+		let count = helper.AsWholeNumber( jsongin.Evaluate( Document, Args.n, Scope ), OperatorName, 'n' );
 		if ( count < 1 )
 		{
 			throw new Error( `${OperatorName}: requires an n of one or more but found ${count} instead.` );
 		}
 
-		let values = jsongin.Evaluate( Document, Args.input );
+		let values = jsongin.Evaluate( Document, Args.input, Scope );
 		if ( jsongin.ShortType( values ) !== 'a' )
 		{
 			throw new Error( `${OperatorName}: requires an array input but found a [${jsongin.ShortType( values )}] instead.` );

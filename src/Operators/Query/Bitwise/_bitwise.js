@@ -79,8 +79,7 @@ module.exports = function ( jsongin )
 	//---------------------------------------------------------------------
 	// Applies one bit test to every value the path can mean.
 	// Compare receives the value's bits and the mask, and answers whether they satisfy it.
-	helper.MatchBits = function ( Document, MatchValue, Path, ExpandArrays, OperatorName, Compare )
-	{
+	helper.MatchBits = function ( Document, MatchValue, Path, ExpandArrays, OperatorName, Compare ){
 		let mask = helper.AsMask( MatchValue, OperatorName, Path );
 
 		let candidates = jsongin.ResolveCandidates( Document, Path, ExpandArrays );

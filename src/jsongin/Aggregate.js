@@ -8,12 +8,23 @@ module.exports = function ( jsongin )
 	// The input array and the documents within it are never modified.
 	// Stages which produce documents clone before writing. Stages which only select or
 	// reorder documents return the original document references.
-	function Aggregate( Documents, Pipeline )
+	function Aggregate( Documents, Pipeline, Scope )
 	{
 		try
 		{
 			if ( jsongin.ShortType( Documents ) !== 'a' ) { throw new Error( `Documents must be an array.` ); }
 			if ( jsongin.ShortType( Pipeline ) !== 'a' ) { throw new Error( `Pipeline must be an array.` ); }
+
+			// ***The pipeline frame is made once, here, and that is what makes $$NOW right.***
+			// MongoDB gives every document and every stage of one pipeline the same instant,
+			// so the clock is read once for the whole run rather than per document. Reading it
+			// lower down would be the obvious implementation and would disagree with the
+			// server - which the parity suite asserts in both directions.
+			//
+			// A caller may pass its own frame, which is how a nested pipeline - $facet running
+			// a branch, $lookup one day - shares the outer run's instant and variables.
+			let scope = Scope;
+			if ( jsongin.ShortType( scope ) !== 'o' ) { scope = jsongin.Scope.NewPipeline(); }
 
 			// A new array holding the same document references.
 			let documents = Documents.slice();
@@ -52,7 +63,7 @@ module.exports = function ( jsongin )
 					}
 				}
 
-				documents = operator.Stage( documents, stage[ key ] );
+				documents = operator.Stage( documents, stage[ key ], scope );
 			}
 
 			return documents;

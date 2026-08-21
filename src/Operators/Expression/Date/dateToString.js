@@ -48,7 +48,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -67,17 +67,17 @@ module.exports = function ( jsongin )
 					}
 				}
 
-				let read = date.ReadDateArgs( Document, { date: Args.date, timezone: Args.timezone }, '$dateToString' );
+				let read = date.ReadDateArgs( Document, { date: Args.date, timezone: Args.timezone }, '$dateToString', [], Scope );
 				if ( read === null )
 				{
-					if ( 'onNull' in Args ) { return jsongin.Evaluate( Document, Args.onNull ); }
+					if ( 'onNull' in Args ) { return jsongin.Evaluate( Document, Args.onNull, Scope ); }
 					return null;
 				}
 
 				let format = date.DEFAULT_FORMAT;
 				if ( 'format' in Args )
 				{
-					format = jsongin.Evaluate( Document, Args.format );
+					format = jsongin.Evaluate( Document, Args.format, Scope );
 					let short_type = jsongin.ShortType( format );
 					if ( 'lu'.includes( short_type ) ) { return null; }
 					if ( short_type !== 's' )

@@ -23,7 +23,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -33,7 +33,7 @@ module.exports = function ( jsongin )
 						// Math.pow answers Infinity here and MongoDB refuses.
 						if ( ( Value === 0 ) && ( Exponent < 0 ) ) { throw new Error( `$pow: cannot raise zero to a negative exponent.` ); }
 						return Math.pow( Value, Exponent );
-					} );
+					}, Scope );
 			}
 			catch ( error )
 			{

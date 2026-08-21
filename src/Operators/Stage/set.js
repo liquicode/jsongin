@@ -30,9 +30,9 @@ module.exports = function ( jsongin )
 		// An alias. The implementation is shared with $addFields rather than duplicated, but
 		// this stage reports under its own name so that an error names the operator which was
 		// actually written.
-		Stage: function ( Documents, Args )
+		Stage: function ( Documents, Args, Scope )
 		{
-			return add_fields.ApplyFields( Documents, Args, '$set' );
+			return add_fields.ApplyFields( Documents, Args, '$set', Scope );
 		},
 
 	};

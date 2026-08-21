@@ -81,7 +81,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'so',
 
 		//---------------------------------------------------------------------
-		Stage: function ( Documents, Args )
+		Stage: function ( Documents, Args, Scope )
 		{
 			try
 			{

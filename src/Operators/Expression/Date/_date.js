@@ -142,8 +142,10 @@ module.exports = function ( jsongin )
 	// Returns null when the date or the zone is null or missing, which every caller
 	// propagates. ***A null timezone is not the same as no timezone***: leaving it out means
 	// UTC, and writing null makes the whole result null.
-	helper.ReadDateArgs = function ( Document, Args, OperatorName, ExtraFields )
+	helper.ReadDateArgs = function ( Document, Args, OperatorName, ExtraFields, Scope )
 	{
+		jsongin.Scope.Require( Scope, 'date.ReadDateArgs' );
+
 		let date_expression = Args;
 		let zone_expression = undefined;
 
@@ -168,8 +170,8 @@ module.exports = function ( jsongin )
 			throw new Error( `${OperatorName}: requires a date, or a document naming one.` );
 		}
 
-		let value = jsongin.Evaluate( Document, date_expression );
-		let zone = helper.ReadZone( Document, zone_expression, OperatorName );
+		let value = jsongin.Evaluate( Document, date_expression, Scope );
+		let zone = helper.ReadZone( Document, zone_expression, OperatorName, Scope );
 		if ( zone === null ) { return null; }
 
 		let short_type = jsongin.ShortType( value );
@@ -187,11 +189,13 @@ module.exports = function ( jsongin )
 	// Evaluates a timezone argument.
 	// Returns undefined when none was given, which means UTC, and null when one was given and
 	// evaluated to null, which makes the whole result null.
-	helper.ReadZone = function ( Document, ZoneExpression, OperatorName )
+	helper.ReadZone = function ( Document, ZoneExpression, OperatorName, Scope )
 	{
+		jsongin.Scope.Require( Scope, 'date.ReadZone' );
+
 		if ( typeof ZoneExpression === 'undefined' ) { return undefined; }
 
-		let zone = jsongin.Evaluate( Document, ZoneExpression );
+		let zone = jsongin.Evaluate( Document, ZoneExpression, Scope );
 		let short_type = jsongin.ShortType( zone );
 		if ( 'lu'.includes( short_type ) ) { return null; }
 		if ( short_type !== 's' )
@@ -256,9 +260,11 @@ module.exports = function ( jsongin )
 
 	//---------------------------------------------------------------------
 	// Answers the unit named, or throws when it is not one.
-	helper.ReadUnit = function ( Document, UnitExpression, OperatorName )
+	helper.ReadUnit = function ( Document, UnitExpression, OperatorName, Scope )
 	{
-		let unit = jsongin.Evaluate( Document, UnitExpression );
+		jsongin.Scope.Require( Scope, 'date.ReadUnit' );
+
+		let unit = jsongin.Evaluate( Document, UnitExpression, Scope );
 		let short_type = jsongin.ShortType( unit );
 		if ( 'lu'.includes( short_type ) ) { return null; }
 		if ( ( short_type !== 's' ) || !( unit in UNIT_MILLISECONDS ) )
@@ -271,11 +277,13 @@ module.exports = function ( jsongin )
 
 	//---------------------------------------------------------------------
 	// Answers the day a week starts on, as a number with Sunday at 0.
-	helper.ReadStartOfWeek = function ( Document, StartExpression, OperatorName )
+	helper.ReadStartOfWeek = function ( Document, StartExpression, OperatorName, Scope )
 	{
+		jsongin.Scope.Require( Scope, 'date.ReadStartOfWeek' );
+
 		if ( typeof StartExpression === 'undefined' ) { return 0; }
 
-		let name = jsongin.Evaluate( Document, StartExpression );
+		let name = jsongin.Evaluate( Document, StartExpression, Scope );
 		if ( jsongin.ShortType( name ) !== 's' )
 		{
 			throw new Error( `${OperatorName}: requires a day name but found a [${jsongin.ShortType( name )}] instead.` );

@@ -26,7 +26,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -34,7 +34,7 @@ module.exports = function ( jsongin )
 					function ( ValueY, ValueX )
 					{
 						return Math.atan2( ValueY, ValueX );
-					} );
+					}, Scope );
 			}
 			catch ( error )
 			{

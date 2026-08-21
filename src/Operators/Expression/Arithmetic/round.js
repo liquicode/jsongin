@@ -32,11 +32,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				return rounding.ApplyAtPlace( Document, Args, '$round', rounding.RoundHalfToEven );
+				return rounding.ApplyAtPlace( Document, Args, '$round', rounding.RoundHalfToEven, Scope );
 			}
 			catch ( error )
 			{

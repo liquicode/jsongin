@@ -24,7 +24,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'a',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -32,7 +32,7 @@ module.exports = function ( jsongin )
 				// This is the one operator of the seven which returns the comparison itself
 				// rather than a boolean made from it.
 				return compare.Evaluate( Document, Args, '$cmp',
-					function ( Comparison ) { return Comparison; } );
+					function ( Comparison ) { return Comparison; }, Scope );
 			}
 			catch ( error )
 			{

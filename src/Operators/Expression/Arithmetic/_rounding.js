@@ -24,9 +24,11 @@ module.exports = function ( jsongin )
 	// A null or missing operand gives null rather than an error, which is how the arithmetic
 	// operators treat one. Anything else which is not a number is an error.
 	// Verified against MongoDB 6.0.1.
-	helper.Apply = function ( Document, Args, OperatorName, Operation )
+	helper.Apply = function ( Document, Args, OperatorName, Operation, Scope )
 	{
-		let operands = arithmetic.Operands( Document, Args, OperatorName, 1, 1 );
+		jsongin.Scope.Require( Scope, 'rounding.Apply' );
+
+		let operands = arithmetic.Operands( Document, Args, OperatorName, 1, 1, Scope );
 
 		let number = arithmetic.AsOperandNumber( operands[ 0 ], OperatorName );
 		if ( number === null ) { return null; }
@@ -41,9 +43,11 @@ module.exports = function ( jsongin )
 	//
 	// The place defaults to 0, may be negative to work to the left of the decimal point, and
 	// a null place gives null the same way a null value does.
-	helper.ApplyAtPlace = function ( Document, Args, OperatorName, Operation )
+	helper.ApplyAtPlace = function ( Document, Args, OperatorName, Operation, Scope )
 	{
-		let operands = arithmetic.Operands( Document, Args, OperatorName, 1, 2 );
+		jsongin.Scope.Require( Scope, 'rounding.ApplyAtPlace' );
+
+		let operands = arithmetic.Operands( Document, Args, OperatorName, 1, 2, Scope );
 
 		let number = arithmetic.AsOperandNumber( operands[ 0 ], OperatorName );
 		if ( number === null ) { return null; }

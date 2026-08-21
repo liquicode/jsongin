@@ -40,7 +40,12 @@ module.exports = function ( jsongin )
 				}
 
 				// Evaluate the expression against the document.
-				let value = jsongin.Evaluate( Document, MatchValue );
+				//
+				// ***The scope is built here rather than passed in.*** A query carries no
+				// scope - Query( Document, Criteria ) takes two values, the same as MongoDB
+				// gives a query no variables of its own - so the root frame is made from the
+				// document in hand, which is what lets '$$ROOT' and '$$NOW' work inside $expr.
+				let value = jsongin.Evaluate( Document, MatchValue, jsongin.Scope.NewDocument( Document ) );
 
 				return jsongin.AsBoolean( value );
 			}

@@ -10,7 +10,9 @@ const jsongin = require( '../../src/jsongin' )
 //---------------------------------------------------------------------
 function accumulate( Name, Documents, Args )
 {
-	return jsongin.AccumulatorOperators[ Name ].Accumulate( Documents, Args );
+	// An accumulator now needs a scope, the same as every other operator. A direct call is
+	// the caller's to supply one for - see docs/guides/Operator-Authoring.md.
+	return jsongin.AccumulatorOperators[ Name ].Accumulate( Documents, Args, jsongin.Scope.NewPipeline() );
 }
 
 

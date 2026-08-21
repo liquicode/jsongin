@@ -37,7 +37,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -62,7 +62,7 @@ module.exports = function ( jsongin )
 					throw new Error( `$dateFromParts: requires either a year or an isoWeekYear.` );
 				}
 
-				let zone = date.ReadZone( Document, Args.timezone, '$dateFromParts' );
+				let zone = date.ReadZone( Document, Args.timezone, '$dateFromParts', Scope );
 				if ( zone === null ) { return null; }
 
 				// Every part is evaluated before any is used, so that a null anywhere makes
@@ -74,7 +74,7 @@ module.exports = function ( jsongin )
 					let name = names[ index ];
 					if ( !( name in Args ) ) { continue; }
 
-					let value = jsongin.Evaluate( Document, Args[ name ] );
+					let value = jsongin.Evaluate( Document, Args[ name ], Scope );
 					let short_type = jsongin.ShortType( value );
 					if ( 'lu'.includes( short_type ) ) { return null; }
 					if ( short_type !== 'n' )

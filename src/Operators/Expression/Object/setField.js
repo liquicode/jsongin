@@ -39,16 +39,16 @@ module.exports = function ( jsongin )
 		ArgTypes: 'os',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let read = object.ReadArgs( Document, Args, '$setField', [ 'field', 'input', 'value' ] );
+				let read = object.ReadArgs( Document, Args, '$setField', [ 'field', 'input', 'value' ], Scope );
 
 				let input = object.AsInputDocument( read.Input, '$setField' );
 				if ( input === null ) { return null; }
 
-				let value = jsongin.Evaluate( Document, Args.value );
+				let value = jsongin.Evaluate( Document, Args.value, Scope );
 
 				let result = object.CopyDocument( input );
 				result[ read.Name ] = jsongin.SafeClone( value );

@@ -31,11 +31,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				return rounding.ApplyAtPlace( Document, Args, '$trunc', rounding.TruncateTowardZero );
+				return rounding.ApplyAtPlace( Document, Args, '$trunc', rounding.TruncateTowardZero, Scope );
 			}
 			catch ( error )
 			{

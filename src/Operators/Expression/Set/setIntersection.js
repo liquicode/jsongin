@@ -25,11 +25,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'a',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let sets = set.ReadSets( Document, Args, '$setIntersection', 1, null, true );
+				let sets = set.ReadSets( Document, Args, '$setIntersection', 1, null, true, Scope );
 				if ( sets === null ) { return null; }
 
 				let common = set.AsSet( sets[ 0 ] );

@@ -38,7 +38,8 @@ module.exports = function ( jsongin )
 				// At the top level, evaluate against the entire document.
 				if ( Path === '' )
 				{
-					return jsongin.AsBoolean( jsongin.Evaluate( Document, MatchValue ) );
+					// The scope is built from the document being tested. See $expr.
+					return jsongin.AsBoolean( jsongin.Evaluate( Document, MatchValue, jsongin.Scope.NewDocument( Document ) ) );
 				}
 
 				// Otherwise, evaluate against the sub-document found at Path.
@@ -51,7 +52,8 @@ module.exports = function ( jsongin )
 					for ( let index = 0; index < sub_document.length; index++ )
 					{
 						if ( jsongin.ShortType( sub_document[ index ] ) !== 'o' ) { continue; }
-						let value = jsongin.Evaluate( sub_document[ index ], MatchValue );
+						let value = jsongin.Evaluate( sub_document[ index ], MatchValue,
+							jsongin.Scope.NewDocument( sub_document[ index ] ) );
 						if ( jsongin.AsBoolean( value ) === true ) { return true; }
 					}
 					return false;
@@ -60,7 +62,8 @@ module.exports = function ( jsongin )
 				// Evaluate against a sub-document.
 				if ( sub_document_type === 'o' )
 				{
-					return jsongin.AsBoolean( jsongin.Evaluate( sub_document, MatchValue ) );
+					return jsongin.AsBoolean( jsongin.Evaluate( sub_document, MatchValue,
+						jsongin.Scope.NewDocument( sub_document ) ) );
 				}
 
 				if ( jsongin.OpLog ) { jsongin.OpLog( `$exprx: requires an object or an array but found type [${sub_document_type}] instead at [${Path}].` ); }

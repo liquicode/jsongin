@@ -23,7 +23,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -33,7 +33,7 @@ module.exports = function ( jsongin )
 						// Math.sqrt answers NaN here. MongoDB refuses, so the domain is checked.
 						if ( Value < 0 ) { throw new Error( `$sqrt: requires an operand of zero or greater but found ${Value} instead.` ); }
 						return Math.sqrt( Value );
-					} );
+					}, Scope );
 			}
 			catch ( error )
 			{

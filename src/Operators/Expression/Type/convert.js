@@ -43,7 +43,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
@@ -56,14 +56,14 @@ module.exports = function ( jsongin )
 					throw new Error( `$convert: requires both an [input] and a [to].` );
 				}
 
-				let value = jsongin.Evaluate( Document, Args.input );
-				let target = type.TargetName( jsongin.Evaluate( Document, Args.to ), '$convert' );
+				let value = jsongin.Evaluate( Document, Args.input, Scope );
+				let target = type.TargetName( jsongin.Evaluate( Document, Args.to, Scope ), '$convert' );
 
 				// A null takes the onNull path, never the onError one, even when both are given.
 				let short_type = jsongin.ShortType( value );
 				if ( 'lu'.includes( short_type ) )
 				{
-					if ( 'onNull' in Args ) { return jsongin.Evaluate( Document, Args.onNull ); }
+					if ( 'onNull' in Args ) { return jsongin.Evaluate( Document, Args.onNull, Scope ); }
 					return null;
 				}
 
@@ -73,7 +73,7 @@ module.exports = function ( jsongin )
 				}
 				catch ( conversion_error )
 				{
-					if ( 'onError' in Args ) { return jsongin.Evaluate( Document, Args.onError ); }
+					if ( 'onError' in Args ) { return jsongin.Evaluate( Document, Args.onError, Scope ); }
 					throw conversion_error;
 				}
 			}

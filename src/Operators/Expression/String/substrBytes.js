@@ -28,11 +28,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = string.Operands( Document, Args, '$substrBytes', 3, 3 );
+				let operands = string.Operands( Document, Args, '$substrBytes', 3, 3, Scope );
 
 				let text = string.AsStringOrEmpty( operands[ 0 ], '$substrBytes' );
 

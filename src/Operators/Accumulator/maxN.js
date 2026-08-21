@@ -34,11 +34,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Accumulate: function ( Documents, Args )
+		Accumulate: function ( Documents, Args, Scope )
 		{
 			try
 			{
-				let read = accumulator.ReadN( Documents, Args, '$maxN' );
+				let read = accumulator.ReadN( Documents, Args, '$maxN', Scope );
 
 				let sorted = accumulator.ComparableValues( read.Values );
 				sorted.reverse();

@@ -38,7 +38,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Stage: function ( Documents, Args )
+		Stage: function ( Documents, Args, Scope )
 		{
 			try
 			{
@@ -78,7 +78,7 @@ module.exports = function ( jsongin )
 
 				for ( let index = 0; index < Documents.length; index++ )
 				{
-					let value = jsongin.Evaluate( Documents[ index ], Args.groupBy );
+					let value = jsongin.Evaluate( Documents[ index ], Args.groupBy, Scope );
 
 					let placed = false;
 					for ( let edge = 0; edge < buckets.length; edge++ )
@@ -105,7 +105,7 @@ module.exports = function ( jsongin )
 				}
 
 				let accumulators = has_output ? Args.output : { count: { $sum: 1 } };
-				return stage.ReduceBuckets( buckets, accumulators, '$bucket' );
+				return stage.ReduceBuckets( buckets, accumulators, '$bucket', Scope );
 			}
 			catch ( error )
 			{

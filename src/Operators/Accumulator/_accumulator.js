@@ -31,14 +31,18 @@ module.exports = function ( jsongin )
 	// Returns an array of values, one per document, in group order.
 	// A document whose expression resolves to a missing field contributes an undefined
 	// value here. Each accumulator decides for itself what to do with it.
-	helper.Values = function ( Documents, Args )
+	helper.Values = function ( Documents, Args, Scope )
 	{
+		jsongin.Scope.Require( Scope, 'accumulator.Values' );
+
 		if ( jsongin.ShortType( Documents ) !== 'a' ) { throw new Error( `Documents must be an array.` ); }
 
 		let values = [];
 		for ( let index = 0; index < Documents.length; index++ )
 		{
-			values.push( jsongin.Evaluate( Documents[ index ], Args ) );
+			// ***Each document of the group is its own root.*** An accumulator argument
+			// which reads '$$ROOT' means the document being accumulated, not the group.
+			values.push( jsongin.Evaluate( Documents[ index ], Args, Scope.ForDocument( Documents[ index ] ) ) );
 		}
 		return values;
 	};
@@ -50,8 +54,10 @@ module.exports = function ( jsongin )
 	// ***n is evaluated against nothing***, not against the group's documents. It says how
 	// many values to take from the whole group, so it cannot vary from one document to the
 	// next; a field reference in it has nothing to resolve against and is refused as a result.
-	helper.ReadN = function ( Documents, Args, OperatorName )
+	helper.ReadN = function ( Documents, Args, OperatorName, Scope )
 	{
+		jsongin.Scope.Require( Scope, 'accumulator.ReadN' );
+
 		if ( jsongin.ShortType( Args ) !== 'o' )
 		{
 			throw new Error( `${OperatorName}: requires a document naming an [input] and an [n].` );
@@ -75,17 +81,20 @@ module.exports = function ( jsongin )
 		}
 
 		return {
-			Values: helper.Values( Documents, Args.input ),
-			N: helper.ReadCount( Args.n, OperatorName ),
+			Values: helper.Values( Documents, Args.input, Scope ),
+			N: helper.ReadCount( Args.n, OperatorName, Scope ),
 		};
 	};
 
 
 	//---------------------------------------------------------------------
 	// Evaluates and validates an `n` argument. It must be a whole number of one or more.
-	helper.ReadCount = function ( CountExpression, OperatorName )
+	helper.ReadCount = function ( CountExpression, OperatorName, Scope )
 	{
-		let count = jsongin.Evaluate( {}, CountExpression );
+		jsongin.Scope.Require( Scope, 'accumulator.ReadCount' );
+
+		// Evaluated against no document at all, which is what refuses a field reference here.
+		let count = jsongin.Evaluate( {}, CountExpression, Scope.ForDocument( {} ) );
 
 		if ( ( jsongin.ShortType( count ) !== 'n' ) || !Number.isInteger( count ) || ( count < 1 ) )
 		{
@@ -103,8 +112,10 @@ module.exports = function ( jsongin )
 	// ***The group is sorted on a copy.*** jsongin.Sort() sorts in place, and the array handed
 	// to an accumulator is the pipeline's own group; reordering it would change what every
 	// later accumulator in the same $group sees.
-	helper.ReadRanked = function ( Documents, Args, OperatorName, WantsCount )
+	helper.ReadRanked = function ( Documents, Args, OperatorName, WantsCount, Scope )
 	{
+		jsongin.Scope.Require( Scope, 'accumulator.ReadRanked' );
+
 		if ( jsongin.ShortType( Args ) !== 'o' )
 		{
 			throw new Error( `${OperatorName}: requires a document naming a [sortBy] and an [output].` );
@@ -146,12 +157,12 @@ module.exports = function ( jsongin )
 		let outputs = [];
 		for ( let index = 0; index < sorted.length; index++ )
 		{
-			outputs.push( jsongin.Evaluate( sorted[ index ], Args.output ) );
+			outputs.push( jsongin.Evaluate( sorted[ index ], Args.output, Scope.ForDocument( sorted[ index ] ) ) );
 		}
 
 		return {
 			Outputs: outputs,
-			N: WantsCount ? helper.ReadCount( Args.n, OperatorName ) : 1,
+			N: WantsCount ? helper.ReadCount( Args.n, OperatorName, Scope ) : 1,
 		};
 	};
 
@@ -193,9 +204,11 @@ module.exports = function ( jsongin )
 	// already follow and is deliberately unlike the expression operators. An accumulator runs
 	// over whatever a collection happens to hold, where an expression is authored against one
 	// document, so a type error there is an authoring mistake and here it is just data.
-	helper.NumericValues = function ( Documents, Args )
+	helper.NumericValues = function ( Documents, Args, Scope )
 	{
-		let values = helper.Values( Documents, Args );
+		jsongin.Scope.Require( Scope, 'accumulator.NumericValues' );
+
+		let values = helper.Values( Documents, Args, Scope );
 
 		let numbers = [];
 		for ( let index = 0; index < values.length; index++ )

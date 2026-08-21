@@ -25,11 +25,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let operands = arithmetic.Operands( Document, Args, '$subtract', 2, 2 );
+				let operands = arithmetic.Operands( Document, Args, '$subtract', 2, 2, Scope );
 
 				let date_a = arithmetic.AsOperandDate( operands[ 0 ] );
 				let date_b = arithmetic.AsOperandDate( operands[ 1 ] );

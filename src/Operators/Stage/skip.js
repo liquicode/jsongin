@@ -24,7 +24,7 @@ module.exports = function ( jsongin )
 		ArgTypes: 'n',
 
 		//---------------------------------------------------------------------
-		Stage: function ( Documents, Args )
+		Stage: function ( Documents, Args, Scope )
 		{
 			try
 			{

@@ -33,8 +33,7 @@ module.exports = function ( jsongin )
 	//   every number, so { $min: { n: 5 } } leaves { n: null } alone.
 	// - A path which reaches into an array by field name is rejected, whether or not the
 	//   value would have changed.
-	helper.Apply = function ( Document, UpdateFields, OperatorName, Direction )
-	{
+	helper.Apply = function ( Document, UpdateFields, OperatorName, Direction ){
 		if ( jsongin.ShortType( UpdateFields ) !== 'o' ) { throw new Error( `The UpdateFields parameter must be an object.` ); }
 
 		let operation_result = true;

@@ -22,11 +22,11 @@ module.exports = function ( jsongin )
 		ArgTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Evaluate: function ( Document, Args )
+		Evaluate: function ( Document, Args, Scope )
 		{
 			try
 			{
-				let values = string.Arguments( Document, Args, '$replaceAll', [ 'input', 'find', 'replacement' ], [] );
+				let values = string.Arguments( Document, Args, '$replaceAll', [ 'input', 'find', 'replacement' ], [], Scope );
 
 				let text = string.AsStringOrNull( values.input, '$replaceAll' );
 				let find = string.AsStringOrNull( values.find, '$replaceAll' );

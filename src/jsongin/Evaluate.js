@@ -28,6 +28,9 @@ module.exports = function ( jsongin )
 	// caller indexing into the result depends on. Sorting relies on the same thing, since
 	// MongoDB treats a missing element as null when it builds a sort key rather than dropping
 	// it. Only the aggregation reading of a path omits, so only this resolves that way.
+	//
+	// This takes no scope, and does not need one: it walks values which are already in hand
+	// and never evaluates an expression, so there is nothing here a variable could appear in.
 	function resolve_field_path( Node, PathElements, Index )
 	{
 		if ( Index >= PathElements.length ) { return { Found: true, Value: Node }; }
@@ -71,23 +74,76 @@ module.exports = function ( jsongin )
 
 
 	//---------------------------------------------------------------------
-	function Evaluate( Document, Expression )
+	// Resolves a variable reference such as '$$this' or '$$ROOT.sub.a'.
+	//
+	// ***The first path element is the variable name and the rest is an ordinary field path***,
+	// walked by resolve_field_path exactly as '$a.b' is walked. So '$$ROOT.a' and '$a' answer
+	// alike, which is the relation MongoDB defines between them.
+	//
+	// ***An unbound name is an error, and a name bound to nothing is a value.*** MongoDB
+	// refuses an undefined variable rather than reading it as missing, which turns a
+	// misspelled '$$vaule' into a stopped pipeline instead of a silently empty result.
+	// $$REMOVE is the bound-to-nothing case: it resolves, and what it resolves to is nothing.
+	function resolve_variable( Expression, Scope )
+	{
+		let path_elements = jsongin.SplitPath( Expression.substring( 2 ) );
+		if ( path_elements.length === 0 )
+		{
+			throw new Error( `Expression variable [${Expression}] names nothing.` );
+		}
+
+		let name = path_elements[ 0 ];
+		let found = Scope.Lookup( name );
+		if ( found.Found === false )
+		{
+			throw new Error( `Expression variable [$$${name}] is not defined.` );
+		}
+
+		// Bound to nothing. Nothing has no fields either, so the rest of the path is moot.
+		if ( typeof found.Value === 'undefined' ) { return undefined; }
+
+		let resolved = resolve_field_path( found.Value, path_elements, 1 );
+		if ( resolved.Found === false ) { return undefined; }
+		return resolved.Value;
+	};
+
+
+	//---------------------------------------------------------------------
+	// Evaluates an aggregation expression against a document.
+	//
+	// ***Scope is a value the caller owns***, not state this engine holds. See the note at the
+	// top of Scope.js for why that is the shape, and Operator-Authoring.md for the convention
+	// every operator follows in passing it along.
+	//
+	// A caller who names no scope gets one made for the occasion, so
+	// Evaluate( Document, Expression ) keeps working and its system variables still resolve.
+	// That default is written in the body rather than in the signature, because the arity of
+	// this function is what build/scope-check.js reads.
+	function Evaluate( Document, Expression, Scope )
 	{
 		try
 		{
+			if ( typeof Scope === 'undefined' ) { Scope = jsongin.Scope.NewDocument( Document ); }
+
 			let expression_type = jsongin.ShortType( Expression );
 
-			// A string is either a field reference or a literal string.
+			// A string is a variable reference, a field reference, or a literal string.
 			if ( expression_type === 's' )
 			{
 				if ( Expression.startsWith( '$$' ) )
 				{
-					throw new Error( `Expression system variables are not supported [${Expression}].` );
+					return resolve_variable( Expression, Scope );
 				}
 				if ( Expression.startsWith( '$' ) )
 				{
 					// A field reference. Missing fields evaluate to undefined.
 					// See resolve_field_path above for why this does not call GetValue.
+					//
+					// ***'$a' is the shorthand for '$$CURRENT.a'***, and it is read from
+					// Document rather than from the scope because every caller keeps the two
+					// in step: whoever hands this function a document hands it a scope whose
+					// CURRENT is that same document, which is what Scope.ForDocument() is for.
+					// The day $$CURRENT can be rebound on its own, this is the line to change.
 					let path_elements = jsongin.SplitPath( Expression.substring( 1 ) );
 					let resolved = resolve_field_path( Document, path_elements, 0 );
 					if ( resolved.Found === false ) { return undefined; }
@@ -97,12 +153,19 @@ module.exports = function ( jsongin )
 			}
 
 			// An array is evaluated element-wise.
+			//
+			// ***A position which produces nothing is filled with a null.*** An array cannot
+			// leave a position out without moving every element after it, so it cannot answer
+			// a missing value the way a document does. Verified against MongoDB 6.0.1, where
+			// [ 1, '$nope', 3 ] and [ 1, '$$REMOVE', 3 ] both give [ 1, null, 3 ].
 			if ( expression_type === 'a' )
 			{
 				let values = [];
 				for ( let index = 0; index < Expression.length; index++ )
 				{
-					values.push( Evaluate( Document, Expression[ index ] ) );
+					let value = Evaluate( Document, Expression[ index ], Scope );
+					if ( typeof value === 'undefined' ) { value = null; }
+					values.push( value );
 				}
 				return values;
 			}
@@ -131,11 +194,16 @@ module.exports = function ( jsongin )
 							}
 						}
 
-						return operator.Evaluate( Document, Expression[ key ] );
+						return operator.Evaluate( Document, Expression[ key ], Scope );
 					}
 				}
 
 				// Anything else is an expression object. Evaluate each of the field values.
+				//
+				// ***A field which produces nothing is left out***, which is the other half of
+				// the array rule above: a document can be short a field, so it is. The object
+				// itself is still produced even when every field of it goes missing, so an
+				// emptied { } is a value and not a nothing.
 				let evaluated = {};
 				for ( let index = 0; index < keys.length; index++ )
 				{
@@ -144,7 +212,9 @@ module.exports = function ( jsongin )
 					{
 						throw new Error( `Unrecognized expression operator [${key}].` );
 					}
-					evaluated[ key ] = Evaluate( Document, Expression[ key ] );
+					let value = Evaluate( Document, Expression[ key ], Scope );
+					if ( typeof value === 'undefined' ) { continue; }
+					evaluated[ key ] = value;
 				}
 				return evaluated;
 			}
