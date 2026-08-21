@@ -153,6 +153,55 @@ module.exports = function ( jsongin )
 
 
 	//---------------------------------------------------------------------
+	// Refuses a name a caller may not bind, and answers it when it is allowed.
+	//
+	// ***A user variable name begins with a lowercase letter, and a system variable does
+	// not.*** That single rule is what keeps the two namespaces apart: because no name a
+	// caller may bind can look like `$$ROOT`, a system variable can never be shadowed, and a
+	// misspelled `$$Now` is a name nobody bound rather than a silent miss. It is also why
+	// `$$now` is an error - lowercase makes it a user name, and no user bound it.
+	//
+	// ***The first character and the rest follow different rules***, so this cannot be written
+	// as one character class applied to the whole name. An underscore is refused first and
+	// accepted after that, which is the distinction a single rule would quietly lose.
+	// Non-ASCII characters are allowed anywhere, including first, which is what MongoDB
+	// documents. Verified against MongoDB 6.0.1.
+	function RequireName( Name, OperatorName )
+	{
+		if ( jsongin.ShortType( Name ) !== 's' )
+		{
+			throw new Error( `${OperatorName}: requires a variable name but found a [${jsongin.ShortType( Name )}] instead.` );
+		}
+		if ( Name.length === 0 )
+		{
+			throw new Error( `${OperatorName}: requires a variable name, which cannot be empty.` );
+		}
+
+		let first = Name.charCodeAt( 0 );
+		let first_is_lowercase = ( first >= 0x61 ) && ( first <= 0x7A );
+		let first_is_non_ascii = ( first > 0x7F );
+		if ( ( first_is_lowercase === false ) && ( first_is_non_ascii === false ) )
+		{
+			throw new Error( `${OperatorName}: the variable name [${Name}] must begin with a lowercase letter. Names beginning with an uppercase letter are reserved for the system variables.` );
+		}
+
+		for ( let index = 1; index < Name.length; index++ )
+		{
+			let code = Name.charCodeAt( index );
+			let is_digit = ( code >= 0x30 ) && ( code <= 0x39 );
+			let is_upper = ( code >= 0x41 ) && ( code <= 0x5A );
+			let is_lower = ( code >= 0x61 ) && ( code <= 0x7A );
+			let is_underscore = ( code === 0x5F );
+			let is_non_ascii = ( code > 0x7F );
+			if ( is_digit || is_upper || is_lower || is_underscore || is_non_ascii ) { continue; }
+			throw new Error( `${OperatorName}: the variable name [${Name}] may only contain letters, digits, and underscores.` );
+		}
+
+		return Name;
+	};
+
+
+	//---------------------------------------------------------------------
 	// Refuses a helper call which did not carry a scope along.
 	//
 	// ***This is here because the failure it catches is otherwise silent.*** A helper is where
@@ -175,6 +224,7 @@ module.exports = function ( jsongin )
 		New: New,
 		NewPipeline: NewPipeline,
 		NewDocument: NewDocument,
+		RequireName: RequireName,
 		Require: Require,
 	};
 };

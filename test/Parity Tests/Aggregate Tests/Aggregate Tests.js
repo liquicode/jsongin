@@ -42,6 +42,7 @@ module.exports = function ( Driver )
 		require( './test-suite/Filling Stage Tests.js' )( Driver );
 		require( './test-suite/Stage and Accumulator Tests.js' )( Driver );
 		require( './test-suite/Expression Rejection Tests.js' )( Driver );
+		require( './test-suite/Variable Scope Tests.js' )( Driver );
 	} );
 
 };

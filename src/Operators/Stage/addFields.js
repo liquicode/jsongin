@@ -7,7 +7,11 @@ Usage: `$addFields: { field: expression, ... }`
 
 Adds new fields to each document, leaving the existing fields in place.
 A field which already exists is overwritten.
-An expression which evaluates to a missing value does not add the field.
+
+***An expression which produces nothing removes the field.*** Writing `'$$REMOVE'`, or any
+  expression which evaluates to it, takes the field off the document; a field which was not
+  there to begin with is simply not added. This is what makes one `$addFields` able to keep a
+  field on one document and drop it from another.
 
 Each expression is evaluated against the ***original*** document, so fields added by this
   stage are not visible to the other expressions within the same stage. This is what MongoDB
@@ -49,8 +53,17 @@ module.exports = function ( jsongin )
 					// The expression is evaluated against the original document.
 					let value = jsongin.Evaluate( document, Args[ key ], scope );
 
-					// An expression which evaluates to a missing value does not add the field.
-					if ( typeof value === 'undefined' ) { continue; }
+					// ***An expression which produces nothing removes the field***, rather
+					// than merely declining to add it. The two readings agree whenever the
+					// field was not there to begin with, which is why this looked right for
+					// as long as there was no way to write '$$REMOVE': removing a field that
+					// is absent is not adding it. They part company on a field which is
+					// already present, and MongoDB removes it.
+					if ( typeof value === 'undefined' )
+					{
+						jsongin.DeleteValue( result, key );
+						continue;
+					}
 
 					// Cloned, because a field reference such as '$user' evaluates to the value
 					// inside the original document rather than to a copy of it. Storing it

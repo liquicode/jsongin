@@ -21,8 +21,10 @@ A null or missing `input` makes the result null. Any other non-document throws, 
   would be nothing to build a document from. A null `value` is written as a null rather than
   being ignored.
 
-***Removing a field with `value: '$$REMOVE'` is not supported***, since jsongin has no
-  expression variable scope. Use [$unsetField](#$unsetField) instead.
+***A `value` of `'$$REMOVE'` removes the field***, and is the only way to add, replace, or
+  remove a field with one operator. [$unsetField](#$unsetField) is the other way to remove
+  one, and takes no value at all. Any expression which produces nothing removes the field the
+  same way, so a `value` of a missing field path does too.
 
 */
 
@@ -51,6 +53,16 @@ module.exports = function ( jsongin )
 				let value = jsongin.Evaluate( Document, Args.value, Scope );
 
 				let result = object.CopyDocument( input );
+
+				// ***A value of nothing removes the field***, which is how '$$REMOVE' unsets.
+				// A null is a value and is written as one, so the two have to be told apart
+				// here rather than lumped together as "no value".
+				if ( typeof value === 'undefined' )
+				{
+					delete result[ read.Name ];
+					return result;
+				}
+
 				result[ read.Name ] = jsongin.SafeClone( value );
 
 				return result;
