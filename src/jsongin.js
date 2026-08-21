@@ -280,7 +280,7 @@ function NewJsongin( EngineSettings = {} )
 		$pop: require( './Operators/Update/Array/pop' )( Engine ),
 		$push: require( './Operators/Update/Array/push' )( Engine ),
 		$pullAll: require( './Operators/Update/Array/pullAll' )( Engine ),
-		// $pull: require( './Operators/Update/Array/pull' )( Engine ),
+		$pull: require( './Operators/Update/Array/pull' )( Engine ),
 		// $: require( './Operators/Update/Array/positional_$' )( Engine ),
 		// $identifier: require( './Operators/Update/Array/identifier' )( Engine ),
 
