@@ -539,15 +539,14 @@ jsongin.Aggregate( readings, [
 
 ## Stages Which Are Not Implemented
 
-`$redact` and `$documents` are the only two of the twelve stages this project set out to build
-  which are not here, and for two different reasons.
+`$documents` is the only one of the twelve stages this project set out to build which is not
+  here.
 
-***`$redact` needs expression system variables.*** It walks a document level by level and asks
-  an expression what to do with each one, and the expression answers by evaluating to
-  `$$DESCEND`, `$$PRUNE`, or `$$KEEP`. [`Evaluate()`](./Evaluate.md) has no system variables at
-  all, so the answers cannot be expressed. It becomes buildable with the same change that
-  brings `$let`, `$map`, `$filter`, and `$reduce`, and until then it is measured as a gap by
-  `test/Parity Tests/Aggregate Tests/test-suite/Redact Gap Tests.js`.
+> ***`$redact` was the other, until v0.1.0.*** It walks a document level by level and asks an
+  expression what to do with each one, and the expression answers by evaluating to
+  `$$DESCEND`, `$$PRUNE`, or `$$KEEP` — which [`Evaluate()`](./Evaluate.md) had no way to
+  express, because it had no variable scope to bind them in. The scope was built, and the
+  stage with it. See [$redact](#$redact) above.
 
 ***`$documents` is a source stage of a database-level aggregation.*** It replaces the input
   rather than transforming it, which is why MongoDB allows it in `db.aggregate()` and refuses

@@ -2105,10 +2105,17 @@ jsongin.Evaluate( document, { $anyElementTrue: [ [] ] } );
 | [$getField](#$getField) | `null` | no value at all — the field is left out |
 | [$setField](#$setField), [$unsetField](#$unsetField) | `null` | `null` for a missing input; anything else is refused |
 
-***The shorthand forms are not supported.*** MongoDB lets `{ $getField: 'name' }` read the
-  field from `$$CURRENT`, and `{ $setField: { ..., value: '$$REMOVE' } }` remove one, and both
-  of those are system variables which `jsongin` has no expression variable scope for. Write
-  the `input` out, and use [$unsetField](#$unsetField) to remove.
+***The shorthand forms read a system variable, and both work.*** `{ $getField: 'name' }` reads
+  the field from `$$CURRENT`, and `{ $setField: { ..., value: '$$REMOVE' } }` removes one —
+  which is the only way to add, replace, or remove a field with a single operator.
+  [$unsetField](#$unsetField) is the other way to remove one, and takes no value at all.
+
+> ***Only the string shorthand of `$getField` defaults.*** `{ $getField: { field: 'a' } }` with
+  no `input` looks as though it should mean the same thing and is refused, so the two are not
+  two spellings of one expression. This is what MongoDB does.
+
+> ***Both were refused before v0.1.0***, when `Evaluate()` had no variable scope to read a
+  `$$` name from at all.
 
 
 <a id="$mergeObjects"></a>$mergeObjects
