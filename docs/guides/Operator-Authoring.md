@@ -63,13 +63,17 @@ Every operator carries one:
 Which remaining members an operator needs depends on what kind it is.
 The kind is determined by which registry you put it in.
 
-| **Registry**            | **Method**    | **Also needs**             |
-|-------------------------|---------------|----------------------------|
-| `QueryOperators`        | `Query`       | `TopLevel`, `ValueTypes`   |
-| `ExpressionOperators`   | `Evaluate`    | `ArgTypes`                 |
-| `UpdateOperators`       | `Update`      | `TopLevel`, `ValueTypes`   |
-| `StageOperators`        | `Stage`       | `ArgTypes`                 |
-| `AccumulatorOperators`  | `Accumulate`  | `ArgTypes`                 |
+| **Registry**            | **Method**    | **Also needs**             | **Carries a Scope** |
+|-------------------------|---------------|----------------------------|:-------------------:|
+| `QueryOperators`        | `Query`       | `TopLevel`, `ValueTypes`   |          no         |
+| `ExpressionOperators`   | `Evaluate`    | `ArgTypes`                 |         ***yes***   |
+| `UpdateOperators`       | `Update`      | `TopLevel`, `ValueTypes`   |          no         |
+| `StageOperators`        | `Stage`       | `ArgTypes`                 |         ***yes***   |
+| `AccumulatorOperators`  | `Accumulate`  | `ArgTypes`                 |         ***yes***   |
+
+The three which evaluate expressions take a trailing `Scope` and pass it along. See
+  [The Scope Contract](#the-scope-contract) below, which is the one rule in this document that
+  is checked mechanically.
 
 `ValueTypes` and `ArgTypes` are the same idea under two names: the
   [ShortTypes](./jsongin/ShortType.md) the operator accepts for the ***single value it is
@@ -123,13 +127,15 @@ Use `Engine.GetValue( Document, Path )` to read the field being tested.
 ### Expression Operators
 
 ```
-Evaluate: function ( Document, Args )
+Evaluate: function ( Document, Args, Scope )
 ```
 
 Returns the computed value.
 
 - `Args` is the operator's operand or array of operands, each of which is itself an expression.
-  Evaluate them with `Engine.Evaluate( Document, arg )`.
+  Evaluate them with `Engine.Evaluate( Document, arg, Scope )`.
+- `Scope` is the variables in effect. ***Pass it along to everything you call*** — see
+  [The Scope Contract](#the-scope-contract).
 
 | **Member**  | **Description**                                                             |
 |-------------|------------------------------------------------------------------------------|
@@ -173,10 +179,14 @@ Use `Engine.SetValue` and `Engine.DeleteValue` to make the changes so that docum
 ### Stage Operators
 
 ```
-Stage: function ( Documents, StageArgs )
+Stage: function ( Documents, StageArgs, Scope )
 ```
 
 Takes an array of documents and returns a new array of documents.
+
+`Scope` is the pipeline scope. A stage which evaluates an expression against a document makes
+  the frame for that document itself, with `Scope.ForDocument( document )`, because `$$ROOT` is
+  the document the ***stage*** was handed.
 
 ***Do not modify the input.***
 A stage which only selects or reorders documents may pass the original documents along.
@@ -187,10 +197,13 @@ A stage which produces documents must clone with `Engine.SafeClone()` before wri
 ### Accumulators
 
 ```
-Accumulate: function ( Documents, Args )
+Accumulate: function ( Documents, Args, Scope )
 ```
 
 Takes the array of documents belonging to one group and returns a single value.
+
+An accumulator reads `$$ROOT` of each document it is accumulating, so it makes a frame per
+  document with `Scope.ForDocument( document )` exactly as a stage does.
 
 Accumulators belong to the `$group` stage and cannot be used with `Evaluate` or `$expr`.
 
@@ -199,6 +212,52 @@ Accumulators belong to the `$group` stage and cannot be used with `Evaluate` or 
   An expression is authored against a single document, where a type error is an authoring
   mistake worth surfacing. An accumulator runs across a whole group, where one malformed
   document should not abort the report.
+
+
+## The Scope Contract
+
+<a id="the-scope-contract"></a>
+
+***An operator which does not pass its `Scope` along loses every variable underneath it.***
+Nothing goes wrong at the time. It goes wrong later, when somebody writes a `$$name` inside
+  that one operator, and it reads as "`$map` is broken" rather than as "`$dateAdd` dropped the
+  scope". There are around 175 operators and helpers which each have to remember, so
+  ***remembering is not the plan***: the contract is checked.
+
+Four rules, and `npm run scope-check` reads all four out of the source:
+
+1. Every `jsongin.Evaluate(` call passes three arguments. Two means the caller is making a
+   fresh root scope by accident, which is exactly how a variable goes missing.
+2. Every helper which evaluates takes `Scope` as its ***last*** parameter. The test is what the
+   body does, not what its first parameter is called: a query range test and an update
+   arithmetic helper both take a `Document` and neither one ever evaluates anything.
+3. Every operator module declares its `Evaluate` / `Stage` / `Accumulate` with a trailing
+   `Scope`.
+4. Every call of such a helper passes as many arguments as it declares. This is the rule that
+   earns its place: `date.ReadDateArgs` has an optional `ExtraFields` ahead of its scope, and
+   seventeen operators had left it off, so appending an argument put every one of those scopes
+   in the ***optional slot***. Nothing threw. The scope was simply somewhere else.
+
+***What no static check can see is whether a caller actually passes the scope its helper
+  declares***, because reading that means reading the code. Close it from the other side, at
+  the top of any helper which evaluates:
+
+```js
+// docs-check: skip - the opening line of a helper, shown as it appears in its own file.
+jsongin.Scope.Require( Scope, 'myfamily.ReadArgs' );
+```
+
+A forgotten forward then fails loudly on the first test which touches the operator that forgot,
+  instead of silently years later.
+
+***Bind names with `Scope.Child( { name: value } )`, never by writing into `Scope.Variables`.***
+A frame is immutable once made, and a child frame is what a binding is. If your operator binds
+  a name the caller chose, put it through `jsongin.Scope.RequireName( Name, '$myop' )` first, so
+  that a name which could be mistaken for a system variable is refused rather than shadowing
+  one.
+
+See [Scope](./jsongin/Scope.md) for the object itself, and
+  [Variables](./jsongin/Expression-Operators.md#variables) for what the names mean.
 
 
 ## Reporting Problems

@@ -8,10 +8,10 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
-Parity with MongoDB is ***100%*** across 902 compared behaviors: Query 230, Update 127,
-  Projection 56, and Aggregate 489. Run `npm run parity-report` to measure it.
+Parity with MongoDB is ***100%*** across 988 compared behaviors: Query 230, Update 127,
+  Projection 56, and Aggregate 575. Run `npm run parity-report` to measure it.
 
-Coverage of the operator surface MongoDB documents is ***84.3%***, 214 operators of 254. Run
+Coverage of the operator surface MongoDB documents is ***86.2%***, 219 operators of 254. Run
   `npm run api-coverage` to measure that one. The two numbers answer different questions: parity
   is how faithfully what exists behaves, and coverage is how much exists.
 
@@ -193,6 +193,52 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 ### Added
 
+- ***Expression variable scope.*** A name beginning with `$$` is a variable reference, resolved
+  from the scope in effect where the expression is being evaluated rather than from the
+  document. Every such name was refused outright before. See
+  [Variables](./docs/guides/jsongin/Expression-Operators.md#variables).
+- ***The system variables `$$ROOT`, `$$CURRENT`, `$$NOW`, and `$$REMOVE`***, which are always in
+  scope. `$$NOW` is one instant for a whole pipeline, shared by every document and every stage,
+  rather than a reading of the clock per document.
+- ***`$$REMOVE` is bound to nothing***, which is how an expression says "leave this field out".
+  One `$project` or `$addFields` can now keep a field on one document and drop it from another,
+  which no inclusion spec can say.
+- ***A variable nobody bound is an error***, where a field which does not exist is merely
+  missing. A misspelled `'$$totl'` stops the expression instead of quietly producing nothing.
+- ***A bound name begins with a lowercase letter***, and a system variable does not, so a name a
+  caller binds can never shadow one. The characters after the first are letters, digits, and
+  underscores — an underscore being refused as the first character and accepted after it.
+- The ***`$let` expression operator***, which binds names for a sub-expression. See
+  [$let](./docs/guides/jsongin/Expression-Operators.md#$let).
+- ***The bindings of one `$let` do not see each other.*** Every value in `vars` is evaluated in
+  the scope around the `$let` and the whole set is bound together, so a variable cannot be
+  written in terms of the one beside it. Nesting a second `$let` is how that is said.
+- The ***`$map`, `$filter`, and `$reduce` expression operators***, which bind a variable to each
+  element of an array. See [$map](./docs/guides/jsongin/Expression-Operators.md#$map),
+  [$filter](./docs/guides/jsongin/Expression-Operators.md#$filter), and
+  [$reduce](./docs/guides/jsongin/Expression-Operators.md#$reduce).
+- ***`as` renames the element binding rather than adding one.*** Given `as: 'item'` the element
+  is `$$item` and `$$this` is not bound at all, so an expression written against `$$this` stops
+  working the moment an `as` is added.
+- ***A field path inside `in` reads the document, not the element***, which is the single most
+  common way to get `$map` wrong. The element is `'$$this.name'`; `'$name'` is the document's.
+- The ***`$redact` stage***, which walks a document level by level and asks an expression what to
+  do with each one, answering with `$$DESCEND`, `$$PRUNE`, or `$$KEEP`. Unlike `$match`, it can
+  remove a part of a document and let the rest through. See
+  [$redact](./docs/guides/jsongin/Stage-Operators.md#$redact).
+- ***The `$getField` string shorthand.*** `{ $getField: 'name' }` reads the field from
+  `$$CURRENT`. Only the string form defaults — `{ $getField: { field: 'name' } }` with no
+  `input` is refused, as it is in MongoDB.
+- ***`Evaluate( Document, Expression, Scope )` takes a third argument***, which is optional: a
+  caller who names no scope gets one made for the occasion, so every existing two-argument call
+  keeps working and its system variables still resolve. The new `jsongin.Scope` builds one when
+  a caller wants to bind a name of their own from outside the expression language. See
+  [Scope](./docs/guides/jsongin/Scope.md).
+- ***A scope is a value the caller owns, not state the engine holds***, and its frames are
+  chained rather than flattened. See [Scope](./docs/guides/jsongin/Scope.md) for why, which is
+  a decision about where this library is going rather than about the operators above.
+- `npm run scope-check`, which asserts that every operator and every evaluating helper declares
+  a trailing `Scope`, and that no call site drops it.
 - The ***all positional operator, `$[]`***, which is a ***path*** element rather than an update
   operator. `'a.$[].n'` means the `n` of every element of `a`, so one update reaches the whole
   array. See [Update Operators](./docs/guides/jsongin/Update-Operators.md#$[]).

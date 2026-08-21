@@ -33,6 +33,7 @@ See [`Aggregate()`](./Aggregate.md) for the pipeline rules and
 | [`$bucketAuto`](#$bucketAuto)      | `{ $bucketAuto: { groupBy: expression, buckets: count, ... } }`      |
 | [`$fill`](#$fill)                  | `{ $fill: { output: { field: { value: ... } \| { method: ... } } } }` |
 | [`$densify`](#$densify)            | `{ $densify: { field: 'name', range: { step: ..., bounds: ... } } }` |
+| [`$redact`](#$redact)              | `{ $redact: expression }`                                            |
 
 
 
@@ -82,7 +83,9 @@ jsongin.Aggregate( players, [ { $project: { _id: 0, name: 1, net: { $subtract: [
 
 Adds new fields to each document, leaving the existing fields in place.
 A field which already exists is overwritten.
-An expression which evaluates to a missing value does not add the field.
+***An expression which produces nothing removes the field*** rather than merely declining to
+  add it. Writing `'$$REMOVE'`, or any expression which evaluates to it, takes the field off the
+  document; a field which was not there to begin with is simply not added.
 
 `$set` is an alias of `$addFields`, exactly as it is in MongoDB.
 
@@ -534,6 +537,82 @@ jsongin.Aggregate( readings, [
 	{ $sort: { t: 1 } },
 ] );
 // returns [ { t: 1 }, { t: 2 }, { t: 3 }, { t: 4 } ]
+```
+
+<a id="$redact"></a>$redact
+---------------------------------------------------------------------
+
+**Usage** : `{ $redact: expression }`
+
+Restricts the contents of each document by asking an expression, level by level, what to do
+  with each one.
+
+***This is not a filter.***
+[`$match`](#$match) decides about whole documents; `$redact` walks into a document and asks
+  again about every sub-document it finds, so one document can come through with a part of it
+  removed.
+That is the reason it exists, and it is what makes a single pipeline able to serve callers who
+  may see different parts of the same record.
+
+The expression must answer with one of three variables, which are bound within this stage and
+  [nowhere else](./Expression-Operators.md#variables):
+
+| **Variable**  | **Description**                                                            |
+|---------------|------------------------------------------------------------------------------|
+| `$$DESCEND`   | Keep the fields at this level, and ask again about the documents below it. |
+| `$$PRUNE`     | Remove this level entirely, without asking about anything below it.        |
+| `$$KEEP`      | Keep this level entirely, without asking about anything below it.          |
+
+***`$$CURRENT` is the level being asked about, and `$$ROOT` stays the whole document.***
+A bare field path such as `'$level'` reads the level, which is what lets one expression ask
+  each sub-document about its own `level` rather than about the root's.
+
+***`$$DESCEND` descends into the documents inside an array***, element by element.
+An element which is pruned is removed from the array rather than left as a null.
+Values which are not documents are kept exactly as they are.
+
+A document whose ***top*** level is pruned does not appear in the output at all.
+
+***The answer is checked, not the expression.***
+Only the branch which actually runs has to produce one of the three, so a
+  [$cond](./Expression-Operators.md#$cond) whose other branch produces something else is fine
+  until that branch is taken.
+An answer which is anything else throws.
+
+### Example
+```js
+let records =
+[
+	{ _id: 1, level: 1, name: 'open', inner: { level: 1, secret: 'visible' } },
+	{ _id: 2, level: 5, name: 'closed', inner: { level: 5, secret: 'hidden' } },
+];
+
+// A pruned top level takes the whole document with it.
+jsongin.Aggregate( records, [
+	{ $redact: { $cond: [ { $lte: [ '$level', 3 ] }, '$$DESCEND', '$$PRUNE' ] } },
+] );
+// returns [ { _id: 1, level: 1, name: 'open', inner: { level: 1, secret: 'visible' } } ]
+
+// Descending asks again at each level, so an inner document can go on its own.
+jsongin.Aggregate( [ { _id: 1, level: 1, inner: { level: 9, secret: 'hidden' } } ], [
+	{ $redact: { $cond: [ { $lte: [ '$level', 3 ] }, '$$DESCEND', '$$PRUNE' ] } },
+] );
+// returns [ { _id: 1, level: 1 } ]
+
+// $$KEEP takes a whole sub-tree without examining it.
+jsongin.Aggregate( [ { _id: 1, level: 1, inner: { level: 9, secret: 'kept' } } ], [
+	{ $redact: { $cond: [ { $lte: [ '$level', 3 ] }, '$$KEEP', '$$PRUNE' ] } },
+] );
+// returns [ { _id: 1, level: 1, inner: { level: 9, secret: 'kept' } } ]
+
+// An element of an array which is pruned is removed rather than left as a null.
+jsongin.Aggregate( [ { _id: 1, level: 1, items: [ { level: 1 }, { level: 9 } ] } ], [
+	{ $redact: { $cond: [ { $lte: [ '$level', 3 ] }, '$$DESCEND', '$$PRUNE' ] } },
+] );
+// returns [ { _id: 1, level: 1, items: [ { level: 1 } ] } ]
+
+// An answer which is not one of the three throws.
+jsongin.Aggregate( records, [ { $redact: '$$ROOT' } ] );   // throws
 ```
 
 

@@ -20,6 +20,7 @@
 
 	- [`Query()`](/guides/jsongin/Query.md)
 	- [`Evaluate()`](/guides/jsongin/Evaluate.md)
+	- [Scope](/guides/jsongin/Scope.md)
 	- [`Aggregate()`](/guides/jsongin/Aggregate.md)
 	- [`Filter()`](/guides/jsongin/Filter.md)
 	- [`Distinct()`](/guides/jsongin/Distinct.md)

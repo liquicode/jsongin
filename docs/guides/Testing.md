@@ -14,11 +14,17 @@ That claim is only worth as much as the tests behind it, so the suite is organiz
 npm test
 ```
 
-This runs the unit tests. It needs nothing but Node, and it is expected to be ***green***.
+This runs the unit tests and the ***jsongin parity inventory***. It needs nothing but Node,
+  because the parity inventory runs the shared suites against `jsongin` itself rather than
+  against a server, and it is expected to be ***green***.
 
-`npm test` does not run the parity suites. Those measure agreement with MongoDB, and a known
-  gap is a state this project expects to be in while it is being closed. Keeping it out of the
-  default run means a red `npm test` always means a regression in `jsongin` itself.
+`npm test` does not run the ***gap*** inventory, and that is what keeps its meaning. A gap
+  suite states what MongoDB does with an operator `jsongin` has not built yet, so every test in
+  one fails under `jsongin` by design; running them here would make a red `npm test` ambiguous.
+  Kept out, ***a red `npm test` always means a regression in `jsongin` itself***.
+
+> ***All three gap inventories are empty as of 2026-08-21***, which is the finished state of a
+  family rather than a missing file. See [How the Tests are Organized](#how-the-tests-are-organized).
 
 ```bash
 npm run parity-test-mongodb
@@ -44,6 +50,23 @@ npm run coverage
 ```
 
 This reports the parts of `src/` which the test suite never executes.
+
+```bash
+npm run scope-check
+```
+
+This one needs no server and reads the source rather than running it. It asserts that every
+  operator and every helper which evaluates an expression declares a trailing `Scope`, and that
+  no call site drops it. See [Operator Authoring](./Operator-Authoring.md#the-scope-contract)
+  for why a contract that ~175 files each have to remember gets a checker instead.
+
+```bash
+npm run api-coverage
+```
+
+This reports how much of the operator surface MongoDB documents is implemented at all, by
+  counting the rows of [Operator Reference](./Operator-Reference.md). It answers a different
+  question from parity — see [Measuring Parity](#measuring-parity).
 
 
 ## How the Tests are Organized
@@ -216,13 +239,13 @@ This generates a runner for each engine over the same suite list, runs both, and
    Query              230     230      0           0
    Update             127     127      0           0
    Projection          56      56      0           0
-   Aggregate          489     489      0           0
+   Aggregate          575     575      0           0
    ----------------------------------------------------
-   total              902     902      0           0
+   total              988     988      0           0
 
-   parity     100.0%   (902 of 902 compared behaviors agree)
+   parity     100.0%   (988 of 988 compared behaviors agree)
 
-   coverage   84.3%   (214 of 254 documented operators are implemented)
+   coverage   86.2%   (219 of 254 documented operators are implemented)
 ```
 
 It exits non-zero when there is a gap, so it can gate a build.
