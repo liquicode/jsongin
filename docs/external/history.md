@@ -8,8 +8,12 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
-Parity with MongoDB is ***100%*** across 475 compared behaviors: Query 214, Update 86,
-  Projection 51, and Aggregate 124. Run `npm run parity-report` to measure it.
+Parity with MongoDB is ***100%*** across 988 compared behaviors: Query 230, Update 127,
+  Projection 56, and Aggregate 575. Run `npm run parity-report` to measure it.
+
+Coverage of the operator surface MongoDB documents is ***86.2%***, 219 operators of 254. Run
+  `npm run api-coverage` to measure that one. The two numbers answer different questions: parity
+  is how faithfully what exists behaves, and coverage is how much exists.
 
 This version carries many breaking changes. Nearly all of them correct a behavior which
   disagreed with MongoDB, so code written against MongoDB's own semantics is more likely to
@@ -189,6 +193,298 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 ### Added
 
+- ***Expression variable scope.*** A name beginning with `$$` is a variable reference, resolved
+  from the scope in effect where the expression is being evaluated rather than from the
+  document. Every such name was refused outright before. See
+  [Variables](/docs/guides/jsongin/Expression-Operators.md#variables).
+- ***The system variables `$$ROOT`, `$$CURRENT`, `$$NOW`, and `$$REMOVE`***, which are always in
+  scope. `$$NOW` is one instant for a whole pipeline, shared by every document and every stage,
+  rather than a reading of the clock per document.
+- ***`$$REMOVE` is bound to nothing***, which is how an expression says "leave this field out".
+  One `$project` or `$addFields` can now keep a field on one document and drop it from another,
+  which no inclusion spec can say.
+- ***A variable nobody bound is an error***, where a field which does not exist is merely
+  missing. A misspelled `'$$totl'` stops the expression instead of quietly producing nothing.
+- ***A bound name begins with a lowercase letter***, and a system variable does not, so a name a
+  caller binds can never shadow one. The characters after the first are letters, digits, and
+  underscores — an underscore being refused as the first character and accepted after it.
+- The ***`$let` expression operator***, which binds names for a sub-expression. See
+  [$let](/docs/guides/jsongin/Expression-Operators.md#$let).
+- ***The bindings of one `$let` do not see each other.*** Every value in `vars` is evaluated in
+  the scope around the `$let` and the whole set is bound together, so a variable cannot be
+  written in terms of the one beside it. Nesting a second `$let` is how that is said.
+- The ***`$map`, `$filter`, and `$reduce` expression operators***, which bind a variable to each
+  element of an array. See [$map](/docs/guides/jsongin/Expression-Operators.md#$map),
+  [$filter](/docs/guides/jsongin/Expression-Operators.md#$filter), and
+  [$reduce](/docs/guides/jsongin/Expression-Operators.md#$reduce).
+- ***`as` renames the element binding rather than adding one.*** Given `as: 'item'` the element
+  is `$$item` and `$$this` is not bound at all, so an expression written against `$$this` stops
+  working the moment an `as` is added.
+- ***A field path inside `in` reads the document, not the element***, which is the single most
+  common way to get `$map` wrong. The element is `'$$this.name'`; `'$name'` is the document's.
+- The ***`$redact` stage***, which walks a document level by level and asks an expression what to
+  do with each one, answering with `$$DESCEND`, `$$PRUNE`, or `$$KEEP`. Unlike `$match`, it can
+  remove a part of a document and let the rest through. See
+  [$redact](/docs/guides/jsongin/Stage-Operators.md#$redact).
+- ***The `$getField` string shorthand.*** `{ $getField: 'name' }` reads the field from
+  `$$CURRENT`. Only the string form defaults — `{ $getField: { field: 'name' } }` with no
+  `input` is refused, as it is in MongoDB.
+- ***`Evaluate( Document, Expression, Scope )` takes a third argument***, which is optional: a
+  caller who names no scope gets one made for the occasion, so every existing two-argument call
+  keeps working and its system variables still resolve. The new `jsongin.Scope` builds one when
+  a caller wants to bind a name of their own from outside the expression language. See
+  [Scope](/docs/guides/jsongin/Scope.md).
+- ***A scope is a value the caller owns, not state the engine holds***, and its frames are
+  chained rather than flattened. See [Scope](/docs/guides/jsongin/Scope.md) for why, which is
+  a decision about where this library is going rather than about the operators above.
+- `npm run scope-check`, which asserts that every operator and every evaluating helper declares
+  a trailing `Scope`, and that no call site drops it.
+- The ***all positional operator, `$[]`***, which is a ***path*** element rather than an update
+  operator. `'a.$[].n'` means the `n` of every element of `a`, so one update reaches the whole
+  array. See [Update Operators](/docs/guides/jsongin/Update-Operators.md#$[]).
+- ***It is the only way to write through an array without naming an index***, which the
+  breaking change above left without a replacement: an ordinary path reaching into an array by
+  field name is refused by `SetValue()`.
+- ***Every update operator can use it except `$rename`***, which names one source and one
+  target and has no sensible target for a source that expands to many. The path is expanded
+  before any operator runs, into the concrete paths it names, so `$inc` and its relatives read
+  and write the same element rather than giving every element the value computed from the first.
+- A `$[]` against a field which is not an array, or which is not there, is refused; against an
+  ***empty*** array there is simply nothing to do.
+- The ***`$pull` update operator***, in `jsongin.UpdateOperators`. See
+  [Update Operators](/docs/guides/jsongin/Update-Operators.md#$pull).
+- ***`$pull` takes a query, where `$pullAll` takes values.*** `$pullAll` removes elements equal
+  to the ones listed; `$pull` removes every element a condition selects, so it reaches
+  operators and ranges: `{ $pull: { a: { $gt: 3 } } }`.
+- ***A bare document is a condition on the fields of each element***, not a value to match
+  whole, so `{ b: 1 }` removes `{ b: 1, c: 2 }` as well as `{ b: 1 }`. An ***empty*** document
+  is a condition too, and selects every element which has fields at all.
+- ***The condition applies to an element, not through it.*** A query for `{ a: 1 }` matches a
+  document whose `a` is `[ 1, 2 ]`, but `{ $pull: { a: 1 } }` does not remove a `[ 1, 2 ]`
+  element.
+- The 2 ***filling pipeline stages***, in `jsongin.StageOperators`: `$fill` and `$densify`. See
+  [Stage Operators](/docs/guides/jsongin/Stage-Operators.md).
+- ***`$fill` treats a null as a value which is not there***, which is unusual: almost everywhere
+  else in this engine a null is a value and only a missing field is absent. It replaces both.
+- ***A `$fill` method writes its field for every document***, even where it has nothing to
+  write. A gap before the first observed value, or at either end of a `linear` series, becomes a
+  `null` rather than staying missing. `linear` refuses a `sortBy` field holding repeated values,
+  since the interpolation has nothing to advance along.
+- ***An output field naming neither a `value` nor a `method` fills nothing***, and is accepted;
+  naming both is refused. `partitionBy` takes a document rather than a path.
+- ***`$densify` only ever adds documents.*** A value which does not sit on the series is kept
+  where it is, so a step which skips over existing values leaves them alone. A date field
+  requires a `unit` and a numeric field must not have one.
+- ***`$redact` and `$documents` are not implemented***, and for two different reasons. `$redact`
+  answers with `$$DESCEND`, `$$PRUNE`, or `$$KEEP`, and `Evaluate()` has no expression system
+  variables; it is measured as a gap and becomes buildable with the same change that brings
+  `$let` and `$map`. `$documents` is a source stage of a ***database-level*** aggregation, and
+  `Aggregate()` always takes the documents it works on, so there is no position for it.
+- The 2 ***bucketing pipeline stages***, in `jsongin.StageOperators`: `$bucket` and
+  `$bucketAuto`. See [Stage Operators](/docs/guides/jsongin/Stage-Operators.md).
+- ***Bucket ranges are half open.*** A value equal to a boundary belongs to the bucket above it,
+  so `[ 0, 10, 20 ]` makes `0 <= n < 10` and `10 <= n < 20`. A value outside every bucket needs
+  a `default` and throws without one.
+- ***A bucket nothing fell into is left out entirely***, rather than reported with a count of
+  zero, and so is the `default` bucket.
+- ***`$bucketAuto` gives an odd document to the earlier bucket***, and never splits documents
+  which share a value across a boundary, which is why fewer buckets than asked for can come
+  back. A bucket's `_id` is a `{ min, max }` range rather than a single boundary.
+- ***The two stages disagree about an empty `output`***, and that is reproduced rather than
+  tidied: `$bucket` takes it literally and answers the `_id` alone, while `$bucketAuto` reads it
+  as no output at all and falls back to counting.
+
+- The 6 ***reshaping pipeline stages***, in `jsongin.StageOperators`: `$unset`, `$replaceRoot`,
+  `$replaceWith`, `$sortByCount`, `$sample`, and `$facet`. See
+  [Stage Operators](/docs/guides/jsongin/Stage-Operators.md).
+- ***`$unset` takes a path and `$unsetField` takes a name***, which is the same distinction the
+  object expression operators draw. The stage removes `'sub.q'` by stepping into `sub`; the
+  expression operator removes a field literally called `sub.q`. `$unset` now carries three
+  meanings — an update operator, a pipeline stage, and `$unsetField` as the expression form.
+- ***`$replaceRoot` and `$replaceWith` fail the pipeline*** when the new root is missing or is
+  not a document, rather than dropping that document, which is why `$ifNull` is the usual guard.
+  `_id` does not survive either stage unless the new root carries one.
+- ***`$replaceWith` takes any expression and only the result has to be a document***, so over an
+  empty stream there is nothing for it to object to. `$replaceRoot` is refused up front when its
+  argument document is malformed, because that is wrong whatever flows through.
+- ***`$sortByCount` takes a narrower argument than an expression***: a `$`-prefixed path or a
+  document naming an operator. `{ $sortByCount: { team: 1 } }` is refused rather than gathering
+  every document under one key, which is what a plain `$group` would do with it.
+- ***`$sample` truncates a fractional size*** rather than refusing it, unlike the N accumulators,
+  which require a whole number. It draws without replacement, and the order of the result is not
+  specified.
+- ***Every `$facet` branch is given the whole input***, not what another branch left behind, and
+  the stage emits exactly one document however many went in.
+- The 11 ***remaining accumulators***, in `jsongin.AccumulatorOperators`: `$stdDevPop`,
+  `$stdDevSamp`, `$mergeObjects`, `$firstN`, `$lastN`, `$minN`, `$maxN`, `$top`, `$bottom`,
+  `$topN`, and `$bottomN`. See
+  [Accumulator Operators](/docs/guides/jsongin/Accumulator-Operators.md).
+- ***Three kinds of accumulator now read a group three different ways***, and the difference
+  decides what they answer. `$first`, `$last`, `$firstN`, and `$lastN` are ***positional***:
+  they read the group in the order it arrived, so they depend on a `$sort` earlier in the
+  pipeline, and they report a missing value as a null. `$min`, `$max`, `$minN`, and `$maxN` are
+  ***comparative***: they ignore the order entirely and leave a null or missing value out,
+  having nothing to compare it with. `$top`, `$bottom`, `$topN`, and `$bottomN` are ***ranked***:
+  they carry a `sortBy` of their own, and they are the only accumulators which can sort by one
+  field and answer with another.
+- ***`$maxN` counts down.*** It returns its values in descending order, making it the mirror of
+  `$minN` rather than a sorted list of the same values, so the first element of either result is
+  the most extreme one. `$bottomN` does not mirror `$topN` the same way: it returns its values in
+  `sortBy` order rather than reversed.
+- ***`$stdDevSamp` answers a single value with `null`*** where `$stdDevPop` answers `0`, which
+  follows from the divisor: a population of one has no spread, and a sample of one cannot say
+  what the spread is. Both ignore non-numeric values, the rule `$sum` and `$avg` already follow.
+- ***An empty `sortBy` is accepted rather than refused.*** A specification naming no field sorts
+  nothing, so the operator still answers — it just answers something the sort had no say in.
+- `$median` and `$percentile` are ***not*** implemented. They were introduced in MongoDB 7.0 and
+  the parity baseline is a 6.0.1 server which refuses them, so there is nothing to measure an
+  implementation against. The parity suite records that refusal so the boundary is measured
+  rather than remembered. `$accumulator`, which runs custom Javascript, remains out of scope.
+- The 5 ***object expression operators***, in `jsongin.ExpressionOperators`: `$mergeObjects`,
+  `$objectToArray`, `$getField`, `$setField`, and `$unsetField`. See
+  [Object Operators](/docs/guides/jsongin/Expression-Operators.md).
+- ***`$getField`, `$setField`, and `$unsetField` name a field rather than a path***, and a dot
+  in that name is part of the name: `{ field: 'a.b' }` means a field literally called `a.b` and
+  not the `b` of the `a`. That is the reason the three exist, since no dotted-path syntax can
+  reach such a field. The name must be a ***constant***, written as a string or as a
+  `$literal`; a computed name is refused however simple it is. A name beginning with a `$` is
+  written `{ field: { $literal: '$price' } }`, since a bare `'$price'` is a field reference.
+- ***The shorthand forms are not supported.*** `{ $getField: 'name' }` reads the field from
+  `$$CURRENT` and `{ $setField: { ..., value: '$$REMOVE' } }` removes it, and both need an
+  expression variable scope which `Evaluate()` does not have. Both are refused by name rather
+  than read as something else. Write the `input` out, and use `$unsetField` to remove.
+- ***A null input and a missing one part company in `$getField`***, which they do almost
+  nowhere else in the expression language: a null answers null, while a missing input — or an
+  array, or a number — answers no value at all, so the field is left out of the result.
+  `$setField` and `$unsetField` answer either one with a null, and refuse any other
+  non-document.
+- ***`$mergeObjects` ignores a null or missing operand*** rather than making the result null,
+  and answers no operands at all with an empty document, which is what makes it safe to fold
+  over documents that may not all be there. The merge is ***one level deep***: a shared field
+  holding a document is replaced whole rather than merged into.
+- ***Field order is preserved by all five.*** An overwritten or replaced field keeps its
+  original position and a new one is appended, which is observable because a document is
+  compared field by field in the order it holds them.
+- `$objectToArray` returns `{ k, v }` pairs ***in the order the document holds its fields***,
+  not sorted, which makes it the inverse of `$arrayToObject`.
+- The 14 ***array expression operators which bind no variables***, in
+  `jsongin.ExpressionOperators`: `$isArray`, `$reverseArray`, `$range`, `$indexOfArray`,
+  `$slice`, `$sortArray`, `$zip`, `$arrayToObject`, `$first`, `$last`, `$firstN`, `$lastN`,
+  `$minN`, and `$maxN`. See [Array Operators](/docs/guides/jsongin/Expression-Operators.md).
+  `$map`, `$filter`, and `$reduce` are still missing: each binds a variable over the elements
+  of an array, and `Evaluate()` has no variable scope to bind one in.
+- ***`$slice` and the projection `$slice` are two operators sharing a name, and the stage
+  decides which.*** Inside a `$project` stage there is no projection operator called `$slice`:
+  the name is the expression operator, so `{ $project: { t: { $slice: 2 } } }` is refused for
+  having only one operand, exactly as MongoDB refuses it. The projection form still applies in
+  a projection handed to `Project()` or to a find. ***This is a fix***: the projection form
+  used to shadow the expression form everywhere, so the expression `$slice` could not be
+  reached from a pipeline at all.
+- `$first` and `$last` now exist as ***expression*** operators as well as accumulators. Which
+  one applies is decided by where it is written.
+- ***`$firstN`, `$lastN`, `$minN`, and `$maxN` refuse a null input***, where most of the array
+  family propagates one. `$zip` requires its `inputs` to be written as an array rather than as
+  an expression which produces one. Both are MongoDB's behavior.
+- The 7 ***set expression operators***, in `jsongin.ExpressionOperators`: `$setEquals`,
+  `$setIsSubset`, `$setUnion`, `$setIntersection`, `$setDifference`, `$allElementsTrue`, and
+  `$anyElementTrue`. See [Set Operators](/docs/guides/jsongin/Expression-Operators.md).
+- ***These read an array as a set***, so order stops mattering and repeats stop counting:
+  `[ 1, 1, 2 ]` and `[ 2, 1 ]` are the same set. Elements are compared by content, the same way
+  `$eq` and `Sort()` compare, so two documents are the same element when their contents are —
+  though `{ a: 1, b: 2 }` and `{ b: 2, a: 1 }` are not, because a document is compared field by
+  field in the order it holds them.
+- ***A set is returned in BSON order***, not in the order its elements were written, since a
+  set has no order of its own.
+- ***The family disagrees with itself about a null operand, and that is reproduced.***
+  `$setUnion`, `$setIntersection`, and `$setDifference` answer a null with a null, while
+  `$setEquals`, `$setIsSubset`, `$allElementsTrue`, and `$anyElementTrue` refuse one.
+- The 21 ***date expression operators***, in `jsongin.ExpressionOperators`: `$year`, `$month`,
+  `$dayOfMonth`, `$dayOfWeek`, `$dayOfYear`, `$hour`, `$minute`, `$second`, `$millisecond`,
+  `$week`, `$isoWeek`, `$isoDayOfWeek`, `$isoWeekYear`, `$dateToParts`, `$dateFromParts`,
+  `$dateToString`, `$dateFromString`, `$dateAdd`, `$dateSubtract`, `$dateDiff`, and
+  `$dateTrunc`. See [Date Operators](/docs/guides/jsongin/Expression-Operators.md).
+- ***Every one of them reads a date in UTC unless given a `timezone`.*** Javascript's
+  `getFullYear()` and its relatives read a date in the machine's own zone, which would make the
+  same stored document answer differently on a laptop in New York than on a server in London.
+  A `timezone` is either an IANA zone name such as `'America/New_York'` or an offset such as
+  `'+05:30'`. A null `timezone` is not the same as no `timezone`: leaving it out means UTC, and
+  writing `null` makes the whole result null.
+- ***The ISO 8601 week operators do not agree with the calendar ones, on purpose.*** `$week`
+  begins its weeks on Sunday and calls the days before the year's first Sunday week 0, while
+  `$isoWeek` begins on Monday and puts a week entirely in the year holding its Thursday. So
+  `2021-01-01` is week 53 of ***2020*** by `$isoWeek` and `$isoWeekYear`, and week 0 of 2021
+  by `$week`.
+- ***`$dateAdd` and `$dateSubtract` add calendar units to the calendar***, not as a length of
+  time, and a day of the month which the target month does not have is pulled back to the last
+  day it does: the 31st of January plus one month is the 28th or 29th of February.
+- ***`$dateDiff` counts boundaries crossed, not elapsed time.*** One second before midnight to
+  one second after is one day.
+- The 4 ***bitwise query operators***, in `jsongin.QueryOperators`: `$bitsAllSet`,
+  `$bitsAllClear`, `$bitsAnySet`, and `$bitsAnyClear`. The bits are given either as a bitmask
+  or as an array of bit positions. ***The arithmetic is done in `BigInt`***, so a position
+  beyond the 32nd is not lost and a negative field is read as two's complement.
+  See [Bitwise Operators](/docs/guides/jsongin/Query-Operators.md).
+- The ***query `$mod`***, which takes `[ divisor, remainder ]` and matches. This is not the
+  expression `$mod`, which shares the name and returns a remainder instead.
+- `$comment` and `$sampleRate`, in `jsongin.QueryOperators`. A `$comment` selects everything,
+  and `$sampleRate` selects a random fraction: 0 selects nothing, 1 selects everything.
+- `$rand`, in `jsongin.ExpressionOperators`. ***It is an expression and not a query operator***,
+  as it is in MongoDB, so a criteria reaches it through `$expr`:
+  `{ $expr: { $lt: [ { $rand: {} }, 0.5 ] } }`.
+- `$binarySize` and `$bsonSize`, in `jsongin.ExpressionOperators`. `$bsonSize` counts what a
+  document would occupy once encoded, following the encoding's own arithmetic, and an array is
+  counted as a document whose keys are `'0'`, `'1'`, and so on.
+- The ***`$bit` update operator***, in `jsongin.UpdateOperators`, with `and`, `or`, and `xor`.
+  A field which is not there counts as a zero, as it does for `$inc`. A field holding a
+  fractional number or anything which is not a number is refused rather than coerced.
+- The 9 ***type expression operators***, in `jsongin.ExpressionOperators`: `$type`,
+  `$isNumber`, `$convert`, `$toString`, `$toBool`, `$toDate`, `$toInt`, `$toLong`, and
+  `$toDouble`. See [Type Operators](/docs/guides/jsongin/Expression-Operators.md).
+- ***These follow MongoDB's conversion rules, not Javascript's***, which disagree more often
+  than they agree. A numeric string must be numeric in its entirety, so `' 5'` and `''` are
+  refused where `Number()` reads them as `5` and `0`. Every string converts to `true`,
+  including the empty one. `$toInt` truncates a fractional number but refuses a fractional
+  string. A date string carrying no time zone is read as ***UTC***, where `Date.parse()` would
+  read it as local time and give a different instant on every machine.
+- `$convert` adds `onError` and `onNull`, which the `$toX` shorthands cannot express. A null
+  input takes the `onNull` path even when an `onError` is also given, and a `to` which names no
+  type throws rather than being caught by `onError`.
+- ***One boundary is worth knowing before relying on `$type`.*** MongoDB has `int`, `long`, and
+  `double` as separate BSON types and tags a converted number with the one it was converted to,
+  so `{ $type: { $toLong: 42 } }` is `'long'` there and `'int'` here. jsongin holds JSON, which
+  has one number kind, and reports a number's type from its value. The converted values agree
+  in every case; only what `$type` says about a number afterwards differs. `$toDecimal` and
+  `$toObjectId` are absent for the same reason.
+- The 15 ***trigonometry expression operators***, in `jsongin.ExpressionOperators`: `$sin`,
+  `$cos`, `$tan`, `$asin`, `$acos`, `$atan`, `$atan2`, `$sinh`, `$cosh`, `$tanh`, `$asinh`,
+  `$acosh`, `$atanh`, `$degreesToRadians`, and `$radiansToDegrees`.
+  See [Trigonometry Operators](/docs/guides/jsongin/Expression-Operators.md).
+- 6 more ***arithmetic expression operators***: `$sqrt`, `$pow`, `$exp`, `$ln`, `$log`, and
+  `$log10`.
+- ***Each of the 21 has a domain, and an operand outside it throws.*** `$sqrt` refuses a
+  negative, `$asin` and `$acos` refuse anything beyond -1 through 1, `$acosh` refuses anything
+  below 1, and `$sin`, `$cos`, and `$tan` refuse an infinite angle. Two boundaries return an
+  infinity instead of throwing: `$atanh` at -1 and 1, and `$exp` on overflow.
+- ***The logarithms refuse zero***, where Javascript's `Math.log( 0 )` answers `-Infinity`.
+  This is MongoDB's behavior and the one place in the family where the operator is not simply
+  the `Math` function underneath.
+- The 20 ***string expression operators***, in `jsongin.ExpressionOperators`: `$concat`,
+  `$split`, `$toLower`, `$toUpper`, `$strcasecmp`, `$trim`, `$ltrim`, `$rtrim`, `$substr`,
+  `$substrBytes`, `$substrCP`, `$strLenBytes`, `$strLenCP`, `$indexOfBytes`, `$indexOfCP`,
+  `$regexMatch`, `$regexFind`, `$regexFindAll`, `$replaceOne`, and `$replaceAll`.
+  See [String Operators](/docs/guides/jsongin/Expression-Operators.md).
+- ***The string family's operand rules are MongoDB's, inconsistencies included.*** A null makes
+  the result null in most of them, is read as an empty string in `$toLower`, `$toUpper`,
+  `$strcasecmp` and the three substring operators, and is refused by `$strLenBytes` and
+  `$strLenCP`. The operators which predate MongoDB 3.4 also render a number where the newer
+  ones refuse it. None of this was made consistent, because a query written against MongoDB has
+  to mean the same thing here.
+- ***Byte forms and code point forms are genuinely different.*** `$substrBytes`,
+  `$strLenBytes`, and `$indexOfBytes` count UTF-8 bytes; `$substrCP`, `$strLenCP`, and
+  `$indexOfCP` count characters. A byte range which starts or ends inside a character is
+  refused, since those bytes do not spell a string.
+- `npm run api-coverage`, which reports how much of the documented operator surface is
+  implemented, per section. It reads `docs/guides/Operator-Reference.md` and needs no server.
 - `Aggregate( Documents, Pipeline )`, which runs an array of documents through a MongoDB
   aggregation pipeline.
 - 10 pipeline stages, in `jsongin.StageOperators`: `$match`, `$project`, `$addFields`, `$set`,
@@ -254,6 +550,22 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 ### Fixed
 
+- ***The expression comparison operators equated a missing value with a null; they no longer
+  do.*** `{ $eq: [ '$missing', null ] }` answered `true`, which is the ***query*** language's
+  rule wrongly applied to the expression language. In an expression a missing value ranks
+  ***below*** a null and equals only another missing one, so `$cmp` answers `-1` rather than
+  `0` and `$lt` answers `true`. This affects `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, and
+  `$cmp`.
+  *Was: a missing operand compared equal to a null, so `$ne` against a null answered `false`
+  for a field which was not there.*
+  ***`$sort` is unchanged***, and still orders a document missing the sort field as though it
+  held a null. MongoDB is inconsistent between the two on purpose, and both rules are now
+  measured.
+- ***`$group` wrote no field at all when an accumulator produced no value; it now writes a
+  null.*** `{ $first: '$missing' }` left its field out of the group's output document, on the
+  analogy with `$project`, where an expression producing no value does exactly that. A `$group`
+  output field is always written, and MongoDB answers such a field with a null.
+  *Was: the field was absent from the result.*
 - `$push` and `$addToSet` create the array when the field is not present, rather than refusing
   the update.
 - `$inc` and `$mul` on a field which is not there no longer write a `NaN`. The field counts as

@@ -196,7 +196,7 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 - ***Expression variable scope.*** A name beginning with `$$` is a variable reference, resolved
   from the scope in effect where the expression is being evaluated rather than from the
   document. Every such name was refused outright before. See
-  [Variables](./docs/guides/jsongin/Expression-Operators.md#variables).
+  [Variables](/docs/guides/jsongin/Expression-Operators.md#variables).
 - ***The system variables `$$ROOT`, `$$CURRENT`, `$$NOW`, and `$$REMOVE`***, which are always in
   scope. `$$NOW` is one instant for a whole pipeline, shared by every document and every stage,
   rather than a reading of the clock per document.
@@ -209,14 +209,14 @@ This version carries many breaking changes. Nearly all of them correct a behavio
   caller binds can never shadow one. The characters after the first are letters, digits, and
   underscores — an underscore being refused as the first character and accepted after it.
 - The ***`$let` expression operator***, which binds names for a sub-expression. See
-  [$let](./docs/guides/jsongin/Expression-Operators.md#$let).
+  [$let](/docs/guides/jsongin/Expression-Operators.md#$let).
 - ***The bindings of one `$let` do not see each other.*** Every value in `vars` is evaluated in
   the scope around the `$let` and the whole set is bound together, so a variable cannot be
   written in terms of the one beside it. Nesting a second `$let` is how that is said.
 - The ***`$map`, `$filter`, and `$reduce` expression operators***, which bind a variable to each
-  element of an array. See [$map](./docs/guides/jsongin/Expression-Operators.md#$map),
-  [$filter](./docs/guides/jsongin/Expression-Operators.md#$filter), and
-  [$reduce](./docs/guides/jsongin/Expression-Operators.md#$reduce).
+  element of an array. See [$map](/docs/guides/jsongin/Expression-Operators.md#$map),
+  [$filter](/docs/guides/jsongin/Expression-Operators.md#$filter), and
+  [$reduce](/docs/guides/jsongin/Expression-Operators.md#$reduce).
 - ***`as` renames the element binding rather than adding one.*** Given `as: 'item'` the element
   is `$$item` and `$$this` is not bound at all, so an expression written against `$$this` stops
   working the moment an `as` is added.
@@ -225,7 +225,7 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 - The ***`$redact` stage***, which walks a document level by level and asks an expression what to
   do with each one, answering with `$$DESCEND`, `$$PRUNE`, or `$$KEEP`. Unlike `$match`, it can
   remove a part of a document and let the rest through. See
-  [$redact](./docs/guides/jsongin/Stage-Operators.md#$redact).
+  [$redact](/docs/guides/jsongin/Stage-Operators.md#$redact).
 - ***The `$getField` string shorthand.*** `{ $getField: 'name' }` reads the field from
   `$$CURRENT`. Only the string form defaults — `{ $getField: { field: 'name' } }` with no
   `input` is refused, as it is in MongoDB.
@@ -233,15 +233,15 @@ This version carries many breaking changes. Nearly all of them correct a behavio
   caller who names no scope gets one made for the occasion, so every existing two-argument call
   keeps working and its system variables still resolve. The new `jsongin.Scope` builds one when
   a caller wants to bind a name of their own from outside the expression language. See
-  [Scope](./docs/guides/jsongin/Scope.md).
+  [Scope](/docs/guides/jsongin/Scope.md).
 - ***A scope is a value the caller owns, not state the engine holds***, and its frames are
-  chained rather than flattened. See [Scope](./docs/guides/jsongin/Scope.md) for why, which is
+  chained rather than flattened. See [Scope](/docs/guides/jsongin/Scope.md) for why, which is
   a decision about where this library is going rather than about the operators above.
 - `npm run scope-check`, which asserts that every operator and every evaluating helper declares
   a trailing `Scope`, and that no call site drops it.
 - The ***all positional operator, `$[]`***, which is a ***path*** element rather than an update
   operator. `'a.$[].n'` means the `n` of every element of `a`, so one update reaches the whole
-  array. See [Update Operators](./docs/guides/jsongin/Update-Operators.md#$[]).
+  array. See [Update Operators](/docs/guides/jsongin/Update-Operators.md#$[]).
 - ***It is the only way to write through an array without naming an index***, which the
   breaking change above left without a replacement: an ordinary path reaching into an array by
   field name is refused by `SetValue()`.
@@ -252,7 +252,7 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 - A `$[]` against a field which is not an array, or which is not there, is refused; against an
   ***empty*** array there is simply nothing to do.
 - The ***`$pull` update operator***, in `jsongin.UpdateOperators`. See
-  [Update Operators](./docs/guides/jsongin/Update-Operators.md#$pull).
+  [Update Operators](/docs/guides/jsongin/Update-Operators.md#$pull).
 - ***`$pull` takes a query, where `$pullAll` takes values.*** `$pullAll` removes elements equal
   to the ones listed; `$pull` removes every element a condition selects, so it reaches
   operators and ranges: `{ $pull: { a: { $gt: 3 } } }`.
@@ -263,7 +263,7 @@ This version carries many breaking changes. Nearly all of them correct a behavio
   document whose `a` is `[ 1, 2 ]`, but `{ $pull: { a: 1 } }` does not remove a `[ 1, 2 ]`
   element.
 - The 2 ***filling pipeline stages***, in `jsongin.StageOperators`: `$fill` and `$densify`. See
-  [Stage Operators](./docs/guides/jsongin/Stage-Operators.md).
+  [Stage Operators](/docs/guides/jsongin/Stage-Operators.md).
 - ***`$fill` treats a null as a value which is not there***, which is unusual: almost everywhere
   else in this engine a null is a value and only a missing field is absent. It replaces both.
 - ***A `$fill` method writes its field for every document***, even where it has nothing to
@@ -281,7 +281,7 @@ This version carries many breaking changes. Nearly all of them correct a behavio
   `$let` and `$map`. `$documents` is a source stage of a ***database-level*** aggregation, and
   `Aggregate()` always takes the documents it works on, so there is no position for it.
 - The 2 ***bucketing pipeline stages***, in `jsongin.StageOperators`: `$bucket` and
-  `$bucketAuto`. See [Stage Operators](./docs/guides/jsongin/Stage-Operators.md).
+  `$bucketAuto`. See [Stage Operators](/docs/guides/jsongin/Stage-Operators.md).
 - ***Bucket ranges are half open.*** A value equal to a boundary belongs to the bucket above it,
   so `[ 0, 10, 20 ]` makes `0 <= n < 10` and `10 <= n < 20`. A value outside every bucket needs
   a `default` and throws without one.
@@ -296,7 +296,7 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 - The 6 ***reshaping pipeline stages***, in `jsongin.StageOperators`: `$unset`, `$replaceRoot`,
   `$replaceWith`, `$sortByCount`, `$sample`, and `$facet`. See
-  [Stage Operators](./docs/guides/jsongin/Stage-Operators.md).
+  [Stage Operators](/docs/guides/jsongin/Stage-Operators.md).
 - ***`$unset` takes a path and `$unsetField` takes a name***, which is the same distinction the
   object expression operators draw. The stage removes `'sub.q'` by stepping into `sub`; the
   expression operator removes a field literally called `sub.q`. `$unset` now carries three
@@ -318,7 +318,7 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 - The 11 ***remaining accumulators***, in `jsongin.AccumulatorOperators`: `$stdDevPop`,
   `$stdDevSamp`, `$mergeObjects`, `$firstN`, `$lastN`, `$minN`, `$maxN`, `$top`, `$bottom`,
   `$topN`, and `$bottomN`. See
-  [Accumulator Operators](./docs/guides/jsongin/Accumulator-Operators.md).
+  [Accumulator Operators](/docs/guides/jsongin/Accumulator-Operators.md).
 - ***Three kinds of accumulator now read a group three different ways***, and the difference
   decides what they answer. `$first`, `$last`, `$firstN`, and `$lastN` are ***positional***:
   they read the group in the order it arrived, so they depend on a `$sort` earlier in the
@@ -342,7 +342,7 @@ This version carries many breaking changes. Nearly all of them correct a behavio
   rather than remembered. `$accumulator`, which runs custom Javascript, remains out of scope.
 - The 5 ***object expression operators***, in `jsongin.ExpressionOperators`: `$mergeObjects`,
   `$objectToArray`, `$getField`, `$setField`, and `$unsetField`. See
-  [Object Operators](./docs/guides/jsongin/Expression-Operators.md).
+  [Object Operators](/docs/guides/jsongin/Expression-Operators.md).
 - ***`$getField`, `$setField`, and `$unsetField` name a field rather than a path***, and a dot
   in that name is part of the name: `{ field: 'a.b' }` means a field literally called `a.b` and
   not the `b` of the `a`. That is the reason the three exist, since no dotted-path syntax can
@@ -370,7 +370,7 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 - The 14 ***array expression operators which bind no variables***, in
   `jsongin.ExpressionOperators`: `$isArray`, `$reverseArray`, `$range`, `$indexOfArray`,
   `$slice`, `$sortArray`, `$zip`, `$arrayToObject`, `$first`, `$last`, `$firstN`, `$lastN`,
-  `$minN`, and `$maxN`. See [Array Operators](./docs/guides/jsongin/Expression-Operators.md).
+  `$minN`, and `$maxN`. See [Array Operators](/docs/guides/jsongin/Expression-Operators.md).
   `$map`, `$filter`, and `$reduce` are still missing: each binds a variable over the elements
   of an array, and `Evaluate()` has no variable scope to bind one in.
 - ***`$slice` and the projection `$slice` are two operators sharing a name, and the stage
@@ -387,7 +387,7 @@ This version carries many breaking changes. Nearly all of them correct a behavio
   an expression which produces one. Both are MongoDB's behavior.
 - The 7 ***set expression operators***, in `jsongin.ExpressionOperators`: `$setEquals`,
   `$setIsSubset`, `$setUnion`, `$setIntersection`, `$setDifference`, `$allElementsTrue`, and
-  `$anyElementTrue`. See [Set Operators](./docs/guides/jsongin/Expression-Operators.md).
+  `$anyElementTrue`. See [Set Operators](/docs/guides/jsongin/Expression-Operators.md).
 - ***These read an array as a set***, so order stops mattering and repeats stop counting:
   `[ 1, 1, 2 ]` and `[ 2, 1 ]` are the same set. Elements are compared by content, the same way
   `$eq` and `Sort()` compare, so two documents are the same element when their contents are —
@@ -402,7 +402,7 @@ This version carries many breaking changes. Nearly all of them correct a behavio
   `$dayOfMonth`, `$dayOfWeek`, `$dayOfYear`, `$hour`, `$minute`, `$second`, `$millisecond`,
   `$week`, `$isoWeek`, `$isoDayOfWeek`, `$isoWeekYear`, `$dateToParts`, `$dateFromParts`,
   `$dateToString`, `$dateFromString`, `$dateAdd`, `$dateSubtract`, `$dateDiff`, and
-  `$dateTrunc`. See [Date Operators](./docs/guides/jsongin/Expression-Operators.md).
+  `$dateTrunc`. See [Date Operators](/docs/guides/jsongin/Expression-Operators.md).
 - ***Every one of them reads a date in UTC unless given a `timezone`.*** Javascript's
   `getFullYear()` and its relatives read a date in the machine's own zone, which would make the
   same stored document answer differently on a laptop in New York than on a server in London.
@@ -423,7 +423,7 @@ This version carries many breaking changes. Nearly all of them correct a behavio
   `$bitsAllClear`, `$bitsAnySet`, and `$bitsAnyClear`. The bits are given either as a bitmask
   or as an array of bit positions. ***The arithmetic is done in `BigInt`***, so a position
   beyond the 32nd is not lost and a negative field is read as two's complement.
-  See [Bitwise Operators](./docs/guides/jsongin/Query-Operators.md).
+  See [Bitwise Operators](/docs/guides/jsongin/Query-Operators.md).
 - The ***query `$mod`***, which takes `[ divisor, remainder ]` and matches. This is not the
   expression `$mod`, which shares the name and returns a remainder instead.
 - `$comment` and `$sampleRate`, in `jsongin.QueryOperators`. A `$comment` selects everything,
@@ -439,7 +439,7 @@ This version carries many breaking changes. Nearly all of them correct a behavio
   fractional number or anything which is not a number is refused rather than coerced.
 - The 9 ***type expression operators***, in `jsongin.ExpressionOperators`: `$type`,
   `$isNumber`, `$convert`, `$toString`, `$toBool`, `$toDate`, `$toInt`, `$toLong`, and
-  `$toDouble`. See [Type Operators](./docs/guides/jsongin/Expression-Operators.md).
+  `$toDouble`. See [Type Operators](/docs/guides/jsongin/Expression-Operators.md).
 - ***These follow MongoDB's conversion rules, not Javascript's***, which disagree more often
   than they agree. A numeric string must be numeric in its entirety, so `' 5'` and `''` are
   refused where `Number()` reads them as `5` and `0`. Every string converts to `true`,
@@ -458,7 +458,7 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 - The 15 ***trigonometry expression operators***, in `jsongin.ExpressionOperators`: `$sin`,
   `$cos`, `$tan`, `$asin`, `$acos`, `$atan`, `$atan2`, `$sinh`, `$cosh`, `$tanh`, `$asinh`,
   `$acosh`, `$atanh`, `$degreesToRadians`, and `$radiansToDegrees`.
-  See [Trigonometry Operators](./docs/guides/jsongin/Expression-Operators.md).
+  See [Trigonometry Operators](/docs/guides/jsongin/Expression-Operators.md).
 - 6 more ***arithmetic expression operators***: `$sqrt`, `$pow`, `$exp`, `$ln`, `$log`, and
   `$log10`.
 - ***Each of the 21 has a domain, and an operand outside it throws.*** `$sqrt` refuses a
@@ -472,7 +472,7 @@ This version carries many breaking changes. Nearly all of them correct a behavio
   `$split`, `$toLower`, `$toUpper`, `$strcasecmp`, `$trim`, `$ltrim`, `$rtrim`, `$substr`,
   `$substrBytes`, `$substrCP`, `$strLenBytes`, `$strLenCP`, `$indexOfBytes`, `$indexOfCP`,
   `$regexMatch`, `$regexFind`, `$regexFindAll`, `$replaceOne`, and `$replaceAll`.
-  See [String Operators](./docs/guides/jsongin/Expression-Operators.md).
+  See [String Operators](/docs/guides/jsongin/Expression-Operators.md).
 - ***The string family's operand rules are MongoDB's, inconsistencies included.*** A null makes
   the result null in most of them, is read as an empty string in `$toLower`, `$toUpper`,
   `$strcasecmp` and the three substring operators, and is refused by `$strLenBytes` and

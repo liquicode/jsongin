@@ -689,17 +689,19 @@
       ✔ should reject a non-object UpdateFields for $min
       ✔ should reject a non-object UpdateFields for $max
       ✔ should reject a non-object UpdateFields for $mul
+      ✔ should reject a non-object UpdateFields for $bit
       ✔ should reject a non-object UpdateFields for $currentDate
       ✔ should reject a non-object UpdateFields for $addToSet
       ✔ should reject a non-object UpdateFields for $pop
       ✔ should reject a non-object UpdateFields for $push
       ✔ should reject a non-object UpdateFields for $pullAll
+      ✔ should reject a non-object UpdateFields for $pull
     Operator OpError Reporting
-      ✔ should report from every expression operator which rejects its argument (6ms)
-      ✔ should report from every update operator which rejects its argument
-      ✔ should report from every accumulator which rejects its argument
-      ✔ should report from every stage which rejects its argument
-      ✔ should report from the query operators which reject their argument
+      ✔ should report from every expression operator which rejects its argument (109ms)
+      ✔ should report from every update operator which rejects its argument (10ms)
+      ✔ should report from every accumulator which rejects its argument (14ms)
+      ✔ should report from every stage which rejects its argument (14ms)
+      ✔ should report from the query operators which reject their argument (19ms)
     Aggregation Argument Validation
       ✔ should reject a non-array Documents to every accumulator
       ✔ should reject a document in the pipeline which is not an object
@@ -712,6 +714,36 @@
       ✔ should return false when the document is not an object
       ✔ should refuse a criteria which is not an object
       ✔ should refuse an implicit $eq against undefined
+
+  160) Variable Scope Tests
+    Building a Frame
+      ✔ should build an empty frame with no parent
+      ✔ should take null as no parent
+      ✔ should refuse variables which are not a document
+      ✔ should refuse a parent which is not a scope or null
+      ✔ should copy the bindings rather than hold them
+      ✔ should keep a binding whose value is nothing
+    Resolving a Name
+      ✔ should resolve a name bound in this frame
+      ✔ should report an unbound name as not found
+      ✔ should distinguish a name bound to nothing from an unbound name
+      ✔ should not resolve a name inherited from Object.prototype
+      ✔ should resolve a name bound in an outer frame
+      ✔ should resolve the innermost binding of a shadowed name
+      ✔ should leave the outer frame alone when an inner one shadows it
+      ✔ should walk more than one frame to find a name
+    The Signature Contract
+      ✔ should take a scope on every expression operator
+      ✔ should take a scope on every stage operator
+      ✔ should take a scope on every accumulator
+    The System Frames
+      ✔ should bind NOW and REMOVE on a pipeline frame
+      ✔ should take the instant it is given
+      ✔ should read the clock when it is given anything else
+      ✔ should bind ROOT and CURRENT on a document frame
+      ✔ should share one instant across every document of a pipeline
+      ✔ should make its own pipeline frame when it is given none
+      ✔ should let a binding frame shadow a system name
 
   200) Comparison Operator Tests
     $eq Tests
@@ -991,7 +1023,11 @@
       ✔ should evaluate arrays element-wise
       ✔ should evaluate the field values of an expression object
       ✔ should throw when an expression operator is not recognized
-      ✔ should throw when system variables are used
+      ✔ should throw when a variable is not defined
+      ✔ should throw when a variable reference names nothing
+      ✔ should resolve the system variables without being given a scope
+      ✔ should resolve a variable it is given a scope for
+      ✔ should carry a scope down through an operator
       ✔ should gather a field reference through an array
       ✔ should omit elements which do not have the field
       ✔ should evaluate a reference to a missing field as undefined
@@ -1038,7 +1074,7 @@
     $eq and $ne Tests
       ✔ should compare primitive values
       ✔ should not equate values of different types
-      ✔ should equate null and missing values
+      ✔ should not equate a null and a missing value
       ✔ should compare document fields to each other
       ✔ should compare arrays and objects by value
       ✔ should throw when the argument count is wrong
@@ -1089,9 +1125,23 @@
       ✔ should join arrays end to end
     $in (expression) Tests
       ✔ should be true when the array holds the value
+    $bsonSize Javascript Value Tests
+      ✔ should not count a field which is undefined
+      ✔ should refuse a value which has no encoding
+    Numeric Conversion Type Boundary Tests
+      ✔ should convert the value correctly, which is the part that matters
+      ✔ should report a number type from the value, not from the conversion
+      ✔ should never report a number as a long
     $literal Tests
       ✔ should return a $-string as text rather than as a field reference
       ✔ should return an operator-shaped document as data
+    System Variables Without a Scope Tests
+      ✔ should resolve $$ROOT and $$CURRENT against the document it was handed
+      ✔ should read the $getField shorthand from that same document
+      ✔ should remove a field with a $setField value of $$REMOVE
+      ✔ should remove the same field with $unsetField
+      ✔ should bind a variable with $let and fold an array with $reduce
+      ✔ should still refuse a variable nobody bound
 
   230) Accumulator Operator Tests
     $sum Tests
@@ -1199,7 +1249,7 @@
       ✔ should not group values of different types together
       ✔ should emit the groups in the order they were first seen
       ✔ should support several accumulators at once
-      ✔ should omit a field whose accumulated value is missing
+      ✔ should write a null for a field whose accumulated value is missing
       ✔ should not alias the documents it grouped
       ✔ should throw when _id is not given
       ✔ should throw when a field is not an accumulator object
@@ -1243,6 +1293,8 @@
         ✔ should not reach into an array by field name to find an element
         ✔ should leave an array alone for a negative index part way along the path
         ✔ should leave the document alone for an empty path
+      $bit Tests
+        ✔ should report a write it could not make
       $rename Tests
         ✔ should leave a source field which is not there alone
         ✔ should rename values
@@ -1403,7 +1455,7 @@
       ✔ should keep a date through a computed field
 
 
-  1188 passing (206ms)
+  1230 passing (404ms)
 ```
 
 ## Parity Tests
@@ -1684,6 +1736,20 @@ jsongin Parity Tests
         ✔ should apply the extended flag through $options
         ✔ should keep whitespace inside a character class under the extended flag
         ✔ should match every document for an empty query
+      Bitwise and Miscellaneous Query Tests
+        Bitwise
+          ✔ should match every bit set with $bitsAllSet
+          ✔ should match every bit clear with $bitsAllClear
+          ✔ should match any bit set with $bitsAnySet
+          ✔ should match any bit clear with $bitsAnyClear
+          ✔ should read the bits of a value only when it has bits to read
+          ✔ should refuse a bit specification which is not one
+        Miscellaneous
+          ✔ should match a remainder with the query $mod
+          ✔ should select everything with $comment
+          ✔ should draw from zero through one with $rand
+          ✔ should refuse the miscellaneous names which are not predicates
+          ✔ should select a random fraction with $sampleRate
       Query Rejection Tests
         ✔ should refuse $not at the top level of a query
         ✔ should accept $nor at the top level
@@ -1780,6 +1846,51 @@ jsongin Parity Tests
           ✔ should keep the last elements for a negative $slice
           ✔ should order documents with a $sort specification
           ✔ should append at the end for a $position past the end
+        Swept In From the Unit Tests
+          ✔ should add a value repeated within one $each only once
+          ✔ should compare strictly in $addToSet, without coercing a type
+          ✔ should apply a $push $sort before its $slice
+          ✔ should remove a numeric key from a document rather than nulling it
+          ✔ should leave an array alone for an index which is out of range
+      Bitwise Update Tests
+        ✔ should apply and, or, and xor with $bit
+        ✔ should create a missing field rather than refusing it
+        ✔ should refuse what $bit cannot apply
+      Pull Tests
+        ✔ should remove every element equal to a scalar
+        ✔ should remove every element a query condition selects
+        ✔ should take a condition of several operators
+        ✔ should take $in as a condition
+        ✔ should read a bare document as a condition on the fields of each element
+        ✔ should match an embedded document on several fields at once
+        ✔ should remove an element equal to a whole array
+        ✔ should leave an empty array when everything matches
+        ✔ should leave the array alone when nothing matches
+        ✔ should leave a document which does not have the field alone
+        ✔ should pull from a nested array by path
+        ✔ should pull several fields in one update
+        ✔ should refuse a field which is not an array
+        ✔ should take $elemMatch as a condition on an array of arrays
+        ✔ should not reach inside a nested array to match a scalar
+        ✔ should not match a scalar element against a field condition
+        ✔ should read a condition which names nothing as a field condition
+        ✔ should remove a null element when the condition is null
+      All Positional Tests
+        ✔ should set every element of an array
+        ✔ should set a field of every element
+        ✔ should increment a field of every element
+        ✔ should multiply a field of every element
+        ✔ should remove a field from every element
+        ✔ should create the field on an element which does not have it
+        ✔ should leave an empty array alone
+        ✔ should reach a nested path below each element
+        ✔ should reach through two levels of array
+        ✔ should push to an array field of every element
+        ✔ should refuse a field which is not an array
+        ✔ should refuse a field which is not there
+        ✔ should refuse writing a field below an element which cannot hold one
+        ✔ should refuse a $rename through the all positional operator
+        ✔ should apply the same rule to $min and $max
       Update Rejection Tests
         ✔ should refuse an unknown update operator
         ✔ should refuse two operators which touch the same path
@@ -1841,6 +1952,12 @@ jsongin Parity Tests
         ✔ should read a nested document as a projection specification
         ✔ should read a nested document with several keys as a specification
         ✔ should read a nested specification which excludes
+        Swept In From the Unit Tests
+          ✔ should give an empty document for an element which lacks the field
+          ✔ should drop an element which cannot carry the field
+          ✔ should include through two levels of array
+          ✔ should descend into an array inside an array
+          ✔ should treat a numeric path element as a field name
       Computed Field Tests
         ✔ should compute a field from an expression
         ✔ should copy a field with a field path
@@ -1891,18 +2008,35 @@ jsongin Parity Tests
           ✔ should read a nested field by its path
           ✔ should read an array field whole
           ✔ should omit the field for a path which resolves to nothing
+          ✔ should gather a field reference through an array
+          ✔ should leave out an element which does not have the field
+          ✔ should tell an empty gather from a path which traversed nothing
+          ✔ should keep a gathered value which is itself an array whole
+          ✔ should nest rather than flatten when gathering through two arrays
           ✔ should not index an array, with any numeric key
           ✔ should read a numeric field name on a document
           ✔ should return a field path as text with $literal
+        Array and Object Expressions
+          ✔ should fill a missing element of an array literal with a null
+          ✔ should leave a missing field out of an expression object
+          ✔ should keep a field whose value is a null
+          ✔ should still produce an expression object whose every field is missing
+          ✔ should produce an emptied expression object at every level
+          ✔ should omit a sub-projection of a field the document does not have
+          ✔ should keep an emptied object in the array position it sits in
         Arithmetic Expression Operators
           ✔ should add with $add
           ✔ should subtract with $subtract
           ✔ should multiply with $multiply
           ✔ should divide with $divide
+          ✔ should refuse to divide by zero, in $divide and $mod
           ✔ should take the remainder with $mod
           ✔ should take the magnitude with $abs
           ✔ should give null for an operand which is not there
         Comparison Expression Operators
+          ✔ should rank a missing value below a null, not equal to it
+          ✔ should order a missing value below everything with the ranking operators
+          ✔ should select a zero rather than reading it as no value
           ✔ should compare for equality with $eq and $ne
           ✔ should order with $gt, $gte, $lt, and $lte
           ✔ should rank with $cmp
@@ -1949,6 +2083,432 @@ jsongin Parity Tests
           ✔ should carry an infinity through the rounding operators
           ✔ should round a value already in exponential notation
           ✔ should carry a NaN through arithmetic
+      String Operator Tests
+        Joining and Splitting
+          ✔ should join strings with $concat
+          ✔ should propagate null through $concat
+          ✔ should refuse a $concat operand which is not a string
+          ✔ should split a string with $split
+          ✔ should propagate null through $split
+          ✔ should refuse a bad $split operand
+        Case and Comparison
+          ✔ should lowercase with $toLower
+          ✔ should read a missing or null $toLower operand as an empty string
+          ✔ should uppercase with $toUpper
+          ✔ should read a missing or null $toUpper operand as an empty string
+          ✔ should compare without case using $strcasecmp
+          ✔ should read a missing or null $strcasecmp operand as an empty string
+        Trimming
+          ✔ should trim both ends with $trim
+          ✔ should trim the left end with $ltrim
+          ✔ should trim the right end with $rtrim
+          ✔ should propagate null through the trim operators
+          ✔ should refuse a bad trim argument
+        Substrings
+          ✔ should take a substring with $substr
+          ✔ should take a substring by bytes with $substrBytes
+          ✔ should take a substring by code points with $substrCP
+          ✔ should read a missing or null substring operand as an empty string
+          ✔ should truncate a fractional $substrBytes position
+          ✔ should refuse a fractional $substrCP position
+          ✔ should render a number operand rather than refusing it
+          ✔ should refuse a bad substring operand
+        Byte Boundaries
+          ✔ should refuse a $substrBytes range which splits a character
+        Operand Types
+          ✔ should render a number in the operators which predate 3.4
+          ✔ should refuse a number in the operators added since 3.4
+          ✔ should accept a single operand outside an array
+        Wider Characters
+          ✔ should count three byte characters
+          ✔ should count a four byte character
+          ✔ should take substrings of wider characters by code point
+          ✔ should take substrings of wider characters by byte
+          ✔ should find wider characters at the right offset
+        Patterns Which Match Nothing
+          ✔ should not stall on a zero length match
+          ✔ should still match an empty string
+          ✔ should still report a zero length match between characters
+          ✔ should report a zero length first match
+        Malformed Operands
+          ✔ should refuse a position which is not a number
+          ✔ should refuse regex options which are not a string
+          ✔ should refuse an operand which is neither a string nor a number
+          ✔ should refuse a position which is not finite
+        Length
+          ✔ should count bytes with $strLenBytes
+          ✔ should count code points with $strLenCP
+          ✔ should refuse a null or missing length operand
+        Searching
+          ✔ should find a byte offset with $indexOfBytes
+          ✔ should find a code point offset with $indexOfCP
+          ✔ should search from a start position
+          ✔ should search within a start and end window
+          ✔ should propagate null through the search operators
+          ✔ should refuse a bad search operand
+        Regular Expressions
+          ✔ should test a pattern with $regexMatch
+          ✔ should accept a RegExp as the pattern
+          ✔ should read the $regexMatch options
+          ✔ should return false rather than null for a missing $regexMatch input
+          ✔ should find the first match with $regexFind
+          ✔ should report the capture groups of a $regexFind
+          ✔ should report an idx in code points rather than bytes
+          ✔ should find every match with $regexFindAll
+          ✔ should return null or an empty array for a missing regex input
+          ✔ should refuse a bad regex argument
+        Replacing
+          ✔ should replace the first occurrence with $replaceOne
+          ✔ should replace every occurrence with $replaceAll
+          ✔ should match literally rather than as a pattern
+          ✔ should propagate null through the replace operators
+          ✔ should refuse a bad replace argument
+      Arithmetic and Trigonometry Operator Tests
+        Roots, Powers, and Logarithms
+          ✔ should take a square root with $sqrt
+          ✔ should raise a number to a power with $pow
+          ✔ should raise e to a power with $exp
+          ✔ should take a natural logarithm with $ln
+          ✔ should take a logarithm in any base with $log
+          ✔ should take a base 10 logarithm with $log10
+        Angles and their Inverses
+          ✔ should compute a sine with $sin
+          ✔ should compute a cosine with $cos
+          ✔ should compute a tangent with $tan
+          ✔ should compute an inverse sine with $asin
+          ✔ should compute an inverse cosine with $acos
+          ✔ should compute an inverse tangent with $atan
+          ✔ should compute an inverse tangent of a coordinate pair with $atan2
+        Hyperbolic Functions
+          ✔ should compute a hyperbolic sine with $sinh
+          ✔ should compute a hyperbolic cosine with $cosh
+          ✔ should compute a hyperbolic tangent with $tanh
+          ✔ should compute an inverse hyperbolic sine with $asinh
+          ✔ should compute an inverse hyperbolic cosine with $acosh
+          ✔ should compute an inverse hyperbolic tangent with $atanh
+        Angle Conversion
+          ✔ should convert degrees to radians with $degreesToRadians
+          ✔ should convert radians to degrees with $radiansToDegrees
+        Not a Number, and the Infinities
+          ✔ should compute with a NaN rather than refusing it
+          ✔ should carry an infinity through the unbounded operators
+          ✔ should refuse an infinity which falls outside a domain
+          ✔ should refuse a periodic function an infinite angle
+        Operands and Arity
+          ✔ should refuse an operand which is not a number
+          ✔ should refuse the wrong number of operands
+          ✔ should take an expression as an operand
+      Type Operator Tests
+        Reading a Type
+          ✔ should report the type of a value with $type
+          ✔ should answer whether a value is a number with $isNumber
+        Converting to a Scalar
+          ✔ should convert to a string with $toString
+          ✔ should convert to a boolean with $toBool
+          ✔ should convert to a date with $toDate
+        Converting to a Number
+          ✔ should convert to an int with $toInt
+          ✔ should convert to a long with $toLong
+          ✔ should convert to a double with $toDouble
+        Converting by Name
+          ✔ should convert to a named type with $convert
+        The Edges of a Conversion
+          ✔ should require a numeric string to be wholly numeric
+          ✔ should refuse a number which does not fit the target
+          ✔ should read a date string as ISO 8601 and nothing else
+          ✔ should refuse a value which has no reading at all
+          ✔ should refuse a number which has no date reading
+          ✔ should refuse a target which names no type
+          ✔ should refuse the wrong number of operands
+          ✔ should let onError catch either kind of failure
+        The Type of a Converted Number
+          ✔ should report a type which follows from the value
+      Data Size Operator Tests
+        Sizes
+          ✔ should count the bytes of a string with $binarySize
+          ✔ should count the encoded bytes of a document with $bsonSize
+      Date Operator Tests
+        Reading the Parts of a Date
+          ✔ should read the year with $year (16ms)
+          ✔ should read the month with $month
+          ✔ should read the day of the month with $dayOfMonth
+          ✔ should read the day of the week with $dayOfWeek
+          ✔ should read the day of the year with $dayOfYear
+          ✔ should read the hour with $hour
+          ✔ should read the minute with $minute
+          ✔ should read the seconds with $second
+          ✔ should read the milliseconds with $millisecond
+        Weeks
+          ✔ should read the week of the year with $week
+          ✔ should read the ISO week with $isoWeek
+          ✔ should read the ISO day of the week with $isoDayOfWeek
+          ✔ should read the ISO week year with $isoWeekYear
+        Taking a Date Apart and Putting One Together
+          ✔ should take a date apart with $dateToParts
+          ✔ should build a date from parts with $dateFromParts
+        Dates and Strings
+          ✔ should write a date through a format with $dateToString
+          ✔ should read a date from a string with $dateFromString
+        Date Arithmetic
+          ✔ should add units to a date with $dateAdd
+          ✔ should subtract units from a date with $dateSubtract
+          ✔ should count unit boundaries with $dateDiff
+          ✔ should truncate to a unit with $dateTrunc
+          ✔ should bin and start weeks where told to
+        The Edges of the Date Family
+          ✔ should pull a rolled over day back to the end of the month
+          ✔ should write the specifiers nothing else has asked for
+          ✔ should read a format back with every numeric specifier
+          ✔ should count the fixed length units by boundary too
+          ✔ should take a zone through the compound operators
+          ✔ should refuse a bin size which is not one
+        Nulls Through the Compound Operators
+          ✔ should propagate a null unit or amount
+          ✔ should propagate a null format or zone
+        Arguments the Compound Operators Refuse
+          ✔ should refuse a call which is not a document of arguments
+          ✔ should refuse an argument it does not have
+          ✔ should refuse a required argument which is missing
+          ✔ should refuse an argument of the wrong type
+        More Zones, Bins, and Formats
+          ✔ should read an offset zone in either direction
+          ✔ should truncate to a quarter and to several weeks
+          ✔ should refuse a string which does not match its format
+          ✔ should read a literal percent and default the ISO parts
+        What a Date Operand May Be
+          ✔ should refuse an operand which is not a date
+          ✔ should refuse a malformed object form
+          ✔ should propagate a null through the object form
+      Set Operator Tests
+        Comparing Sets
+          ✔ should compare sets with $setEquals
+          ✔ should test containment with $setIsSubset
+        Combining Sets
+          ✔ should combine sets with $setUnion
+          ✔ should find common elements with $setIntersection
+          ✔ should remove elements with $setDifference
+        What Order, and What Counts as the Same Element
+          ✔ should return a set in BSON order rather than in the order written
+          ✔ should count elements the same by content, not by type alone
+          ✔ should propagate a null through the combining operators
+          ✔ should refuse a null where the combining operators would have propagated it
+        Testing Every Element
+          ✔ should test every element with $allElementsTrue
+          ✔ should test any element with $anyElementTrue
+      Array Operator Tests
+        Asking About an Array
+          ✔ should answer whether a value is an array with $isArray
+          ✔ should find an element with $indexOfArray
+        Reshaping an Array
+          ✔ should reverse a list with $reverseArray
+          ✔ should generate numbers with $range
+          ✔ should take a subset with $slice
+          ✔ should tell the expression $slice from the projection $slice
+          ✔ should sort elements with $sortArray
+          ✔ should merge arrays element by element with $zip
+          ✔ should build a document from pairs with $arrayToObject
+        The Edges of the Array Family
+          ✔ should answer an empty array with nothing at all
+          ✔ should refuse a null input to the four N operators
+          ✔ should refuse an argument the operator does not have
+          ✔ should bound the search range of $indexOfArray
+          ✔ should start at the front when $slice reaches back too far
+          ✔ should refuse a sortBy which sorts nothing
+          ✔ should require $zip inputs to be written as an array
+          ✔ should refuse a pair which is not a pair
+        Taking Elements From an Array
+          ✔ should take the first element with $first
+          ✔ should take the last element with $last
+          ✔ should take the first n with $firstN
+          ✔ should take the last n with $lastN
+          ✔ should take the smallest n with $minN
+          ✔ should take the largest n with $maxN
+      Object Operator Tests
+        Merging Documents ($mergeObjects)
+          ✔ should combine the fields of several documents
+          ✔ should let the last document win a shared field
+          ✔ should keep an overwritten field in its original position
+          ✔ should append a new field after the fields already there
+          ✔ should merge one level only
+          ✔ should ignore a null or missing operand
+          ✔ should answer nothing at all with an empty document
+          ✔ should take a single document without a list
+          ✔ should refuse an operand which is not a document
+        Taking a Document Apart ($objectToArray)
+          ✔ should turn each field into a k and v pair
+          ✔ should keep the fields in the order the document holds them
+          ✔ should keep a value of any type as it is
+          ✔ should answer an empty document with an empty array
+          ✔ should answer a null or missing operand with a null
+          ✔ should refuse an operand which is not a document
+          ✔ should undo $arrayToObject
+        Reading a Field by Name ($getField)
+          ✔ should read the named field of the input document
+          ✔ should read a field whose name contains a dot
+          ✔ should produce no value at all for a field which is not there
+          ✔ should answer a null input with a null
+          ✔ should produce no value at all for a missing input
+          ✔ should produce no value at all for an input which is not a document
+          ✔ should take the field name from a constant only
+          ✔ should refuse a field name which is not a string
+          ✔ should refuse an unknown argument and a missing one
+        Writing a Field by Name ($setField)
+          ✔ should add a field which was not there
+          ✔ should replace a field which was there, in its own position
+          ✔ should append a new field after the fields already there
+          ✔ should write a field whose name contains a dot
+          ✔ should write a null value rather than ignoring it
+          ✔ should leave the input document alone
+          ✔ should answer a null or missing input with a null
+          ✔ should refuse an input which is not a document
+          ✔ should refuse a field name which is not a string
+          ✔ should refuse an unknown argument and a missing one
+        Removing a Field by Name ($unsetField)
+          ✔ should remove the named field
+          ✔ should keep the remaining fields in order
+          ✔ should remove a field whose name contains a dot, and only that one
+          ✔ should leave a document which does not have the field alone
+          ✔ should answer a null or missing input with a null
+          ✔ should refuse an input which is not a document
+          ✔ should refuse an unknown argument and a missing one
+        The Field Name Rule
+          ✔ should take a constant field name in $setField and $unsetField
+          ✔ should refuse a computed field name in $setField and $unsetField
+          ✔ should reach a field whose name begins with a dollar sign
+      Accumulator Operator Tests
+        Standard Deviation
+          ✔ should divide by the count with $stdDevPop
+          ✔ should divide by one less than the count with $stdDevSamp
+          ✔ should answer a single value with zero and null
+          ✔ should ignore a value which is not a number
+          ✔ should answer a group with nothing numeric in it with null
+        Merging a Group ($mergeObjects)
+          ✔ should merge every document in the group
+          ✔ should ignore a missing or null value
+          ✔ should refuse a value which is not a document
+        Taking Several Values ($firstN, $lastN, $minN, $maxN)
+          ✔ should take from the ends of the group with $firstN and $lastN
+          ✔ should take the extremes with $minN and $maxN
+          ✔ should take the whole group when n is larger than it
+          ✔ should keep a missing value in $firstN but not in $minN
+          ✔ should refuse an n which is not a positive whole number
+          ✔ should refuse an unknown argument and a missing one
+        Taking by a Sort of Their Own ($top, $bottom, $topN, $bottomN)
+          ✔ should take one document by sortBy and read its output
+          ✔ should ignore the order the group arrived in
+          ✔ should take several with $topN and $bottomN
+          ✔ should sort by several keys
+          ✔ should output a computed value
+          ✔ should refuse a missing sortBy or output
+          ✔ should refuse a sortBy which is not a sort specification
+          ✔ should accept an empty sortBy rather than refusing it
+          ✔ should refuse an argument which is not a document
+          ✔ should refuse an unknown argument
+        The 7.0 Accumulators ($median, $percentile)
+          ✔ should not be available on the baseline server
+      Reshaping Stage Tests
+        Removing Fields ($unset)
+          ✔ should remove one field named as a string
+          ✔ should remove several fields named as an array
+          ✔ should remove a nested field by dotted path
+          ✔ should leave a document without the field alone
+          ✔ should remove _id when asked
+          ✔ should refuse an empty specification
+          ✔ should refuse a specification which is not a string or an array of them
+        Promoting a Document ($replaceRoot and $replaceWith)
+          ✔ should promote a sub-document to the top level
+          ✔ should promote a computed document
+          ✔ should treat $replaceWith as the same stage without the newRoot wrapper
+          ✔ should refuse a new root which is missing
+          ✔ should refuse a new root which is not a document
+          ✔ should accept a guarded new root
+          ✔ should refuse a missing or unknown argument
+          ✔ should not complain about a bad new root when no document reaches it
+        Counting by Value ($sortByCount)
+          ✔ should group by the expression and sort by count, descending
+          ✔ should produce the same rows as the $group and $sort it stands for
+          ✔ should group a missing value as null
+          ✔ should take an expression operator as well as a path
+          ✔ should refuse an argument which is not a path or an operator
+        Taking a Sample ($sample)
+          ✔ should take the number of documents asked for
+          ✔ should take documents which are actually in the collection
+          ✔ should take the whole collection when asked for more than it holds
+          ✔ should take nothing for a size of zero
+          ✔ should truncate a fractional size rather than refusing it
+          ✔ should refuse a negative size and one which is not a number
+          ✔ should refuse a missing or unknown argument
+        Several Pipelines at Once ($facet)
+          ✔ should run each pipeline over the same input and name its result
+          ✔ should give each branch the whole input, not what another branch left
+          ✔ should answer an empty branch with an empty array
+          ✔ should refuse a branch which is not a pipeline
+          ✔ should refuse an empty facet and a non-document one
+      Bucketing Stage Tests
+        Bucketing by Boundaries ($bucket)
+          ✔ should put each document in the bucket its value falls in
+          ✔ should count with a default output of count
+          ✔ should put a value outside every bucket into the default
+          ✔ should refuse a value outside every bucket when there is no default
+          ✔ should accept no default when every value falls in a bucket
+          ✔ should leave out a bucket which nothing fell into
+          ✔ should refuse boundaries which are too few or out of order
+          ✔ should refuse a missing or unknown argument
+        Bucketing by Count ($bucketAuto)
+          ✔ should spread the documents across the number of buckets asked for
+          ✔ should take an output the same way $bucket does
+          ✔ should produce fewer buckets than asked for when it cannot fill them
+          ✔ should refuse a buckets count which is not a positive whole number
+          ✔ should refuse a missing or unknown argument
+          ✔ should answer an empty stream with no buckets
+          ✔ should not split documents which share a value across a boundary
+        What Both Stages Share
+          ✔ should refuse an output which is not a document of accumulators
+          ✔ should accept an output which names no accumulator, and disagree about it
+          ✔ should keep a field whose accumulator produced no value
+          ✔ should refuse boundaries which are not an array
+      Filling Stage Tests
+        Supplying a Missing Value ($fill)
+          ✔ should fill a missing field with a constant
+          ✔ should carry the last observed value forward with locf
+          ✔ should interpolate between the values on either side with linear
+          ✔ should fill within a partition only
+          ✔ should partition by an expression as well as by field names
+          ✔ should fill a value which is null as well as one which is missing
+          ✔ should refuse a method which is not one it knows
+          ✔ should take a method without a sortBy, and use the order it was given
+          ✔ should refuse both a value and a method for the same field
+          ✔ should take an output field naming neither, and fill nothing
+          ✔ should refuse a missing or unknown argument
+        Adding Missing Documents ($densify)
+          ✔ should add a document for each step the sequence skipped
+          ✔ should step by more than one
+          ✔ should take explicit bounds
+          ✔ should densify each partition separately
+          ✔ should step through dates with a unit
+          ✔ should refuse a unit on a numeric field
+          ✔ should refuse a date field without a unit
+          ✔ should refuse a step which is not positive
+          ✔ should refuse a missing or unknown argument
+        Edges of $fill
+          ✔ should refuse a malformed output specification
+          ✔ should refuse a malformed sortBy and partition
+          ✔ should take a sort direction other than 1 or -1
+          ✔ should write a null before the first observed value with locf
+          ✔ should write a null at either end with linear
+          ✔ should interpolate across several missing documents at once
+          ✔ should write nulls for a run of gaps before the first value
+          ✔ should refuse a repeated value in the sort field with linear
+          ✔ should refuse to interpolate between values which are not numbers
+        Edges of $densify
+          ✔ should refuse a malformed field, range, and partition
+          ✔ should refuse a malformed bounds
+          ✔ should refuse a field which is neither a number nor a date
+          ✔ should ignore a document which does not hold the field
+          ✔ should add nothing when nothing holds the field at all
+          ✔ should carry the partition onto every document it adds
+        The Stage Which Cannot Be Reached From Here
+          ✔ should refuse $documents in a collection aggregate
       Stage and Accumulator Tests
         Stages
           ✔ should select documents with $match
@@ -1979,14 +2539,25 @@ jsongin Parity Tests
           ✔ should average with $avg
           ✔ should take the extremes with $min and $max
           ✔ should take the ends with $first and $last
+          ✔ should write a null when $first or $last finds no value
           ✔ should collect every value with $push
           ✔ should collect distinct values with $addToSet
           ✔ should compare by content in $addToSet
           ✔ should skip a missing field in $addToSet
+          ✔ should keep a null but drop a missing value in $push
+          ✔ should keep a null but drop a missing value in $addToSet
+          ✔ should order mixed types by the BSON type order in $min and $max
+          ✔ should ignore a null as well as a missing value in $min and $max
           ✔ should count the group with the $count accumulator
           ✔ should ignore a field which is not there
           ✔ should take a NaN into the total rather than skipping it
           ✔ should skip a value which is not a number
+        Swept In From the Unit Tests
+          ✔ should group a missing key with the nulls
+          ✔ should not group values of different types together
+          ✔ should not add a field whose expression produces no value in $addFields
+          ✔ should sort a document missing the sort field as though it were null
+          ✔ should sort mixed types by the BSON type order
       Expression Rejection Tests
         Operators Which Take a Fixed Number of Operands
           ✔ should refuse too few operands
@@ -2007,13 +2578,106 @@ jsongin Parity Tests
           ✔ should refuse an $in whose second operand is not an array
           ✔ should refuse a rounding place which is not an integer
           ✔ should refuse subtracting a date from a number
+      Redact Tests
+        ✔ should drop a document whose top level is pruned
+        ✔ should prune a sub-document while keeping the document around it
+        ✔ should keep a whole sub-tree without examining it with $$KEEP
+        ✔ should descend into the documents inside an array
+        ✔ should leave the values which are not documents alone while descending
+        ✔ should read a field path as the level being asked about
+        ✔ should give the level being asked about as $$CURRENT, and the root as $$ROOT
+        ✔ should refuse its three variables outside the stage
+        What $redact Refuses
+          ✔ should refuse an expression which does not answer with one of its three variables
+          ✔ should not mind a branch it does not take
+      Variable Scope Tests
+        ✔ should evaluate the vars of a $let in the scope around it
+        System Variables
+          ✔ should give the whole document as $$ROOT
+          ✔ should give the stage input as $$ROOT and not the stored document
+          ✔ should give the same document as $$CURRENT
+          ✔ should walk a path into a system variable
+          ✔ should give a path which the variable does not have no value at all
+          ✔ should give the current time as $$NOW
+          ✔ should give every document in one pipeline the same $$NOW
+          ✔ should give every stage in one pipeline the same $$NOW
+          ✔ should leave a field out of a projection with $$REMOVE
+          ✔ should remove a field conditionally with $$REMOVE
+          ✔ should remove an existing field from $addFields with $$REMOVE
+          ✔ should give a null for a $$REMOVE in an array position
+        Binding Variables with $let
+          ✔ should bind a variable and use it in the in expression
+          ✔ should evaluate a variable value as an expression
+          ✔ should walk a path into a bound variable
+          ✔ should still read the document from inside the in expression
+          ✔ should see an outer variable from an inner $let
+          ✔ should shadow an outer variable and restore it afterwards
+          ✔ should bind a variable to a missing value
+        Transforming an Array with $map
+          ✔ should map every element, which $$this names by default
+          ✔ should name the element with as
+          ✔ should still read the document from inside the in expression
+          ✔ should shadow $$this in a nested $map
+          ✔ should map an empty array to an empty array
+          ✔ should answer a null input with a null
+          ✔ should answer a missing input with a null
+        Selecting from an Array with $filter
+          ✔ should keep the elements whose cond is true
+          ✔ should name the element with as
+          ✔ should stop at limit matches
+          ✔ should ignore a limit larger than the number of matches
+          ✔ should take a null limit as no limit
+          ✔ should read a cond which is not a boolean for its truthiness
+          ✔ should filter an empty array to an empty array
+          ✔ should answer a null input with a null
+          ✔ should answer a missing input with a null
+        Folding an Array with $reduce
+          ✔ should carry the accumulated value in $$value
+          ✔ should build a value of any shape
+          ✔ should answer an empty array with the initial value
+          ✔ should still read the document from inside the in expression
+          ✔ should answer a null input with a null
+          ✔ should answer a missing input with a null
+        The Forms Which Need $$CURRENT
+          ✔ should read a field of $$CURRENT with the $getField shorthand
+          ✔ should read a dotted name as a name in the shorthand too
+          ✔ should set a field on the whole document with $$ROOT as the input
+          ✔ should remove a field by setting it to $$REMOVE
+        Variable Names Which Do Not Resolve
+          ✔ should refuse a variable which is not bound
+          ✔ should refuse a system variable written in the wrong case
+          ✔ should refuse $$this and $$value outside the operator which binds them
+          ✔ should refuse $$this inside a $map which renamed the element
+          ✔ should refuse a bound variable after the operator which bound it has finished
+        Variable Names Which Are Not Valid
+          ✔ should refuse a $let name which does not begin with a lowercase letter
+          ✔ should refuse an as name which is not a valid variable name
+          ✔ should refuse a name whose later characters are not letters or digits
+          ✔ should accept an underscore anywhere but first
+          ✔ should refuse an as which is not a string at all
+          ✔ should accept a name whose later characters are uppercase or digits
+        Arguments the Binding Operators Refuse
+          ✔ should refuse a $let which is missing vars or in
+          ✔ should refuse an argument the operator does not have
+          ✔ should refuse an argument document which is missing a required argument
+          ✔ should refuse an argument which is not a document
+          ✔ should refuse vars which is not a document
+        Inputs the Array Operators Refuse
+          ✔ should refuse an input which is neither an array nor nothing
+          ✔ should refuse a $filter limit which is not a positive integer
+          ✔ should evaluate the limit as an expression
+          ✔ should take a limit which evaluates to nothing as no limit
+          ✔ should take a $map result which is nothing as a null
+        The $getField Shorthand
+          ✔ should refuse the object form with no input
+          ✔ should refuse a shorthand name which is a field path
 
 
-  480 passing (108ms)
+  988 passing (256ms)
 ```
 
 ## Summary
 
-- Unit Tests: 1188 passed (passed)
-- Parity Tests: 480 passed (passed)
-- Total: 1668 passed
+- Unit Tests: 1230 passed (passed)
+- Parity Tests: 988 passed (passed)
+- Total: 2218 passed
