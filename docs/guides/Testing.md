@@ -296,17 +296,26 @@ npm run check-docs
 npm run check-docs -- --verbose
 ```
 
-Seven things are checked, all of them cheap to detect and expensive to find by reading:
+Eight things are checked, all of them cheap to detect and expensive to find by reading:
 
 | **Check**   | **Asserts**                                                                |
 |-------------|-----------------------------------------------------------------------------|
 | `fences`    | Every ` ```js ` block parses as Javascript.                                |
 | `links`     | Every local markdown link resolves to a file which exists.                 |
+| `anchors`   | Every link naming a `#fragment` finds it in the page it points at.         |
 | `orphans`   | Every page under `docs/` is reachable from another page.                   |
 | `operators` | Every registered operator carries an `/*md` documentation block.           |
 | `inventory` | Every `Yes` row of the [Operator Reference](./Operator-Reference.md) names a registered operator, and every registered operator has a row. |
 | `shared`    | The reference's shared-name tables agree with the registries: a `*(not supported)*` marker is true of its column, and a name registered in more than one place is described there. |
 | `examples`  | Every ` ```js ` block is executed and the claims its comments make are checked. |
+
+***`anchors` exists because `links` reads only half of a target.***
+A link is a file and a fragment, and resolving the file says nothing about whether the heading
+  is there. Five Operator Reference rows pointed at operator entries which had not been written
+  yet and `check-docs` stayed green for two commits. A page's anchors are its explicit
+  `<a id="...">` tags plus the slug docsify derives from each heading — both the `##` form and
+  the underlined form the operator pages use — numbered on a repeat the way docsify numbers
+  them.
 
 ***The last two exist because documentation drifts where nothing reads it.***
 `inventory` guards the table [`api-coverage`](#coverage) counts, since a coverage number is only
