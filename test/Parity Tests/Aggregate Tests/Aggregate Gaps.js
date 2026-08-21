@@ -20,16 +20,22 @@
 		                                        its own heading so they never move the parity
 		                                        number.
 
-	***What is left in it is one family, and it is the same family twice.*** `$redact` and the
-	variable-scope suite are both blocked by the missing variable parameter on `Evaluate()` -
-	Bucket C of .reviews/2026-08-19/review.md - and they are two files rather than one only
-	because a stage and an expression are tested differently. Nothing else remains: the
-	thirteen families built on 2026-08-20 each left this file by being built.
+	A family leaves this file by being built, and by nothing else.
 
-	***A family leaves this file by being built, and by nothing else.*** In every case so far
-	the suite was written here against the server first, the operators were built until it went
-	green under jsongin, and only then did it move to `test-suite/` where a later regression in
-	it would be caught. A gap suite is retired by implementing the operators it names.
+	***It is empty, which is the finished state of a family rather than a missing file.*** The
+	thirteen families written here on 2026-08-20 graduated the same day. The last two left on
+	2026-08-21: `$redact` and the variable-scope suite, which were one family in two files -
+	both blocked by the missing variable parameter on `Evaluate()`, Bucket C of
+	.reviews/2026-08-19/review.md - and they are now `test-suite/Redact Tests.js` and
+	`test-suite/Variable Scope Tests.js`.
+
+	***With all three gap inventories empty, every operator jsongin has not built is one which
+	was never written down as a gap.*** That is not the same as nothing being left: what
+	remains is listed in `docs/guides/Operator-Reference.md`, where a `-` in the Supported
+	column marks it, and `npm run api-coverage` counts those rows. A gap suite is the next step
+	up from a row in that table - it is what a family gets when someone decides to build it -
+	so the way to refill this file is to pick one and write what MongoDB does with it, against
+	the server, before writing any code.
 
 	***One assertion did not survive graduation***, and that is worth knowing before writing
 	the next family. The Type suite asked what `$type` says about a converted number, MongoDB
@@ -38,9 +44,8 @@
 	unit test which asserts jsongin's own answer, and in the documentation. See
 	`test/Unit Tests/220) Expression Operator Tests.js`.
 
-	`.reviews/2026-08-19/review.md` classifies the 151 operators still unimplemented into what
-	is buildable now, what needs care, what waits on variable scope in Evaluate, and what the
-	single-document model rules out.
+	`.reviews/2026-08-19/review.md` classifies the operators still unimplemented into what is
+	buildable now, what needs care, and what the single-document model rules out.
 */
 
 module.exports = function ( Driver )
@@ -49,8 +54,7 @@ module.exports = function ( Driver )
 	//---------------------------------------------------------------------
 	describe( 'Aggregate Gaps', function ()
 	{
-		require( './test-suite/Redact Gap Tests.js' )( Driver );
-		require( './test-suite/Variable Scope Gap Tests.js' )( Driver );
+		// No family is currently measured as a gap. See the note above.
 	} );
 
 };

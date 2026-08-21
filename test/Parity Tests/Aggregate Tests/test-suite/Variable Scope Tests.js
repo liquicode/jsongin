@@ -3,18 +3,27 @@
 const assert = require( 'assert' );
 
 /*
-	The expression variable scope: what MongoDB refuses.
+	The expression variable scope: the system variables, the four operators which bind one,
+	and the two forms which read $$CURRENT.
 
-	The behavior of the system variables and of the four binding operators is in
-	`Variable Scope Gap Tests.js` until that suite graduates. This file holds the other half -
-	the expressions MongoDB will not evaluate at all - and it is a separate file for one
-	reason: ***a refusal test cannot live in a gap suite.*** An engine which has not built an
-	operator refuses everything written with it, so the test would pass before a line of code
-	was written and `parity-report` would read the operator as implemented. See the note at the
-	foot of `Redact Gap Tests.js`, where exactly that happened.
+		the system variables    $$ROOT, $$CURRENT, $$NOW, $$REMOVE
+		the bound variables     $$this, $$value, and any name a caller chooses
+		the binding operators   $let, $map, $filter, $reduce
+		the shorthand forms     { $getField: 'name' }, which reads from $$CURRENT
 
-	These tests assert only that the expression was refused, never the wording of the message.
-	Two engines can agree that something is invalid while describing it differently.
+	$redact binds three more of its own and is tested in `Redact Tests.js` - a stage is
+	exercised differently than an expression, and its three variables mean nothing outside it.
+
+	***This was a gap suite until 2026-08-21.*** All of it was blocked by one missing parameter:
+	`Evaluate( Document, Expression )` had nowhere to carry a binding, so it refused every name
+	beginning with `$$` outright. The behavior half was written against the server before the
+	scope was built and the refusal half before the five operators were, which is why the file
+	reads as two halves - the first says what MongoDB does, the second what it will not do.
+
+	***The refusals could not have been written any earlier, and that is worth keeping.*** An
+	engine which has not built an operator refuses everything written with it, so a refusal test
+	passes before a line of code exists and `parity-report` reads the operator as implemented.
+	A gap suite can only state what MongoDB ***does***.
 
 	Verified against MongoDB 6.0.1.
 */
@@ -27,9 +36,49 @@ module.exports = function ( Driver )
 	{
 
 		let documents = [
-			{ _id: 1, a: 3, list: [ 1, 2, 3, 4 ], sub: { a: 9 } },
+			{
+				_id: 1,
+				a: 3,
+				list: [ 1, 2, 3, 4 ],
+				people: [ { name: 'ann', age: 30 }, { name: 'bob', age: 20 } ],
+				nests: [ [ 1, 2 ], [ 3 ] ],
+				truthy: [ 0, 1, null, '', 'x', false, true ],
+				empty_list: [],
+				empty: null,
+				sub: { a: 9, b: 2 },
+			},
 		];
 
+		//---------------------------------------------------------------------
+		// Evaluates an expression as a computed field of a $project stage, and returns the
+		// projected document rather than the value.
+		//
+		// The document is what is returned because an expression which produces ***no value***
+		// leaves the field out entirely, and that is a distinct answer from producing a null.
+		// $$REMOVE exists precisely to produce it.
+		async function projected( Expression )
+		{
+			await Driver.SetData( documents );
+			let result = await Driver.Aggregate( [
+				{ $match: { _id: 1 } },
+				{ $project: { _id: 0, r: Expression } },
+			] );
+			return result[ 0 ];
+		}
+
+		//---------------------------------------------------------------------
+		async function evaluated( Expression )
+		{
+			let document = await projected( Expression );
+			return document.r;
+		}
+
+		//---------------------------------------------------------------------
+		async function piped( Documents, Pipeline )
+		{
+			await Driver.SetData( Documents );
+			return await Driver.Aggregate( Pipeline );
+		}
 
 		//---------------------------------------------------------------------
 		// Answers whether the engine refused to evaluate the expression.
@@ -47,19 +96,417 @@ module.exports = function ( Driver )
 			}
 		}
 
+		//---------------------------------------------------------------------
+		describe( 'System Variables', () =>
+		{
+
+			it( 'should give the whole document as $$ROOT', async () =>
+			{
+				let result = await piped(
+					[ { _id: 1, a: 3, sub: { b: 4 } } ],
+					[ { $project: { _id: 0, r: '$$ROOT' } } ] );
+				assert.deepStrictEqual( result[ 0 ].r, { _id: 1, a: 3, sub: { b: 4 } } );
+			} );
+
+			it( 'should give the stage input as $$ROOT and not the stored document', async () =>
+			{
+				// ***$$ROOT is the root of the document the stage is looking at***, which is
+				// not the same thing as the document the collection holds once an earlier
+				// stage has reshaped it.
+				let result = await piped(
+					[ { _id: 1, a: 3, b: 4 } ],
+					[
+						{ $project: { _id: 0, a: 1 } },
+						{ $project: { r: '$$ROOT' } },
+					] );
+				assert.deepStrictEqual( result[ 0 ].r, { a: 3 } );
+			} );
+
+			it( 'should give the same document as $$CURRENT', async () =>
+			{
+				let result = await piped(
+					[ { _id: 1, a: 3 } ],
+					[ { $project: { _id: 0, r: '$$CURRENT' } } ] );
+				assert.deepStrictEqual( result[ 0 ].r, { _id: 1, a: 3 } );
+			} );
+
+			it( 'should walk a path into a system variable', async () =>
+			{
+				assert.strictEqual( await evaluated( '$$ROOT.sub.a' ), 9 );
+				assert.strictEqual( await evaluated( '$$CURRENT.sub.a' ), 9 );
+				// A plain '$a' is the shorthand for '$$CURRENT.a', and answers the same.
+				assert.strictEqual( await evaluated( '$$CURRENT.a' ), 3 );
+			} );
+
+			it( 'should give a path which the variable does not have no value at all', async () =>
+			{
+				assert.deepStrictEqual( await projected( '$$ROOT.nope' ), {} );
+			} );
+
+			it( 'should give the current time as $$NOW', async () =>
+			{
+				let result = await piped(
+					[ { _id: 1 } ],
+					[ { $project: { _id: 0, r: '$$NOW' } } ] );
+				assert.strictEqual( result[ 0 ].r instanceof Date, true );
+			} );
+
+			it( 'should give every document in one pipeline the same $$NOW', async () =>
+			{
+				let result = await piped(
+					[ { _id: 1 }, { _id: 2 } ],
+					[ { $project: { _id: 1, r: '$$NOW' } } ] );
+				assert.strictEqual( result[ 0 ].r.getTime(), result[ 1 ].r.getTime() );
+			} );
+
+			it( 'should give every stage in one pipeline the same $$NOW', async () =>
+			{
+				let result = await piped(
+					[ { _id: 1 } ],
+					[
+						{ $addFields: { first: '$$NOW' } },
+						{ $addFields: { second: '$$NOW' } },
+						{ $project: { _id: 0, r: { $eq: [ '$first', '$second' ] } } },
+					] );
+				assert.strictEqual( result[ 0 ].r, true );
+			} );
+
+			it( 'should leave a field out of a projection with $$REMOVE', async () =>
+			{
+				let result = await piped(
+					[ { _id: 1, a: 3, b: 4 } ],
+					[ { $project: { a: 1, b: '$$REMOVE' } } ] );
+				assert.deepStrictEqual( result[ 0 ], { _id: 1, a: 3 } );
+			} );
+
+			it( 'should remove a field conditionally with $$REMOVE', async () =>
+			{
+				// ***This is what $$REMOVE is for***: the same projection keeps the field on
+				// one document and drops it from another, which no inclusion spec can say.
+				let result = await piped(
+					[ { _id: 1, a: 3 }, { _id: 2, a: 9 } ],
+					[ { $project: { a: { $cond: [ { $gt: [ '$a', 5 ] }, '$a', '$$REMOVE' ] } } } ] );
+				assert.deepStrictEqual( result[ 0 ], { _id: 1 } );
+				assert.deepStrictEqual( result[ 1 ], { _id: 2, a: 9 } );
+			} );
+
+			it( 'should remove an existing field from $addFields with $$REMOVE', async () =>
+			{
+				let result = await piped(
+					[ { _id: 1, a: 3, b: 4 } ],
+					[ { $addFields: { b: '$$REMOVE' } } ] );
+				assert.deepStrictEqual( result[ 0 ], { _id: 1, a: 3 } );
+			} );
+
+			it( 'should give a null for a $$REMOVE in an array position', async () =>
+			{
+				// ***$$REMOVE only removes where something can be absent.*** A document can
+				// leave a field out; an array cannot leave a position out without moving
+				// every element after it, so the position is filled with a null instead. A
+				// missing field path in the same position answers the same way, which says
+				// this is the array literal's rule rather than anything $$REMOVE decides.
+				assert.deepStrictEqual( await evaluated( [ 1, '$$REMOVE', 3 ] ), [ 1, null, 3 ] );
+				assert.deepStrictEqual( await evaluated( [ 1, '$nope', 3 ] ), [ 1, null, 3 ] );
+			} );
+
+		} );
 
 		//---------------------------------------------------------------------
-		// Answers the evaluated value, for the cases which are accepted rather than refused.
-		async function evaluated( Expression )
+		describe( 'Binding Variables with $let', () =>
 		{
-			await Driver.SetData( documents );
-			let result = await Driver.Aggregate( [
-				{ $match: { _id: 1 } },
-				{ $project: { _id: 0, r: Expression } },
-			] );
-			return result[ 0 ].r;
-		}
 
+			it( 'should bind a variable and use it in the in expression', async () =>
+			{
+				let expression = { $let: { vars: { x: 5 }, in: { $add: [ '$$x', '$a' ] } } };
+				assert.strictEqual( await evaluated( expression ), 8 );
+			} );
+
+			it( 'should evaluate a variable value as an expression', async () =>
+			{
+				let expression = { $let: { vars: { doubled: { $multiply: [ '$a', 2 ] } }, in: '$$doubled' } };
+				assert.strictEqual( await evaluated( expression ), 6 );
+			} );
+
+			it( 'should walk a path into a bound variable', async () =>
+			{
+				let expression = { $let: { vars: { s: '$sub' }, in: '$$s.a' } };
+				assert.strictEqual( await evaluated( expression ), 9 );
+			} );
+
+			it( 'should still read the document from inside the in expression', async () =>
+			{
+				// ***Binding a variable does not rebind the document.*** A field path inside
+				// `in` still resolves against $$CURRENT, which $let leaves alone.
+				let expression = { $let: { vars: { x: 1 }, in: { $add: [ '$$x', '$$ROOT.a' ] } } };
+				assert.strictEqual( await evaluated( expression ), 4 );
+			} );
+
+			it( 'should see an outer variable from an inner $let', async () =>
+			{
+				let expression = {
+					$let: {
+						vars: { x: 1 },
+						in: { $let: { vars: { y: '$$x' }, in: '$$y' } },
+					}
+				};
+				assert.strictEqual( await evaluated( expression ), 1 );
+			} );
+
+			it( 'should shadow an outer variable and restore it afterwards', async () =>
+			{
+				// The inner binding of x wins inside the inner `in`, and the outer one is
+				// still 1 in the operand beside it.
+				let expression = {
+					$let: {
+						vars: { x: 1 },
+						in: {
+							$add: [
+								{ $let: { vars: { x: 10 }, in: '$$x' } },
+								'$$x',
+							]
+						},
+					}
+				};
+				assert.strictEqual( await evaluated( expression ), 11 );
+			} );
+
+			it( 'should bind a variable to a missing value', async () =>
+			{
+				let expression = { $let: { vars: { m: '$nope' }, in: '$$m' } };
+				assert.deepStrictEqual( await projected( expression ), {} );
+				let guarded = { $let: { vars: { m: '$nope' }, in: { $ifNull: [ '$$m', 'gone' ] } } };
+				assert.strictEqual( await evaluated( guarded ), 'gone' );
+			} );
+
+		} );
+
+		//---------------------------------------------------------------------
+		describe( 'Transforming an Array with $map', () =>
+		{
+
+			it( 'should map every element, which $$this names by default', async () =>
+			{
+				let expression = { $map: { input: '$list', in: { $multiply: [ '$$this', 2 ] } } };
+				assert.deepStrictEqual( await evaluated( expression ), [ 2, 4, 6, 8 ] );
+			} );
+
+			it( 'should name the element with as', async () =>
+			{
+				let expression = { $map: { input: '$people', as: 'p', in: '$$p.name' } };
+				assert.deepStrictEqual( await evaluated( expression ), [ 'ann', 'bob' ] );
+			} );
+
+			it( 'should still read the document from inside the in expression', async () =>
+			{
+				// A field path inside `in` reads the ***document***, not the element. This is
+				// the single most common way to get $map wrong.
+				let expression = { $map: { input: '$list', in: '$a' } };
+				assert.deepStrictEqual( await evaluated( expression ), [ 3, 3, 3, 3 ] );
+			} );
+
+			it( 'should shadow $$this in a nested $map', async () =>
+			{
+				let expression = {
+					$map: {
+						input: '$nests',
+						in: { $map: { input: '$$this', in: { $add: [ '$$this', 1 ] } } },
+					}
+				};
+				assert.deepStrictEqual( await evaluated( expression ), [ [ 2, 3 ], [ 4 ] ] );
+			} );
+
+			it( 'should map an empty array to an empty array', async () =>
+			{
+				let expression = { $map: { input: '$empty_list', in: '$$this' } };
+				assert.deepStrictEqual( await evaluated( expression ), [] );
+			} );
+
+			it( 'should answer a null input with a null', async () =>
+			{
+				let expression = { $map: { input: '$empty', in: '$$this' } };
+				assert.strictEqual( await evaluated( expression ), null );
+			} );
+
+			it( 'should answer a missing input with a null', async () =>
+			{
+				let expression = { $map: { input: '$nope', in: '$$this' } };
+				assert.strictEqual( await evaluated( expression ), null );
+			} );
+
+		} );
+
+		//---------------------------------------------------------------------
+		describe( 'Selecting from an Array with $filter', () =>
+		{
+
+			it( 'should keep the elements whose cond is true', async () =>
+			{
+				let expression = { $filter: { input: '$list', cond: { $gt: [ '$$this', 2 ] } } };
+				assert.deepStrictEqual( await evaluated( expression ), [ 3, 4 ] );
+			} );
+
+			it( 'should name the element with as', async () =>
+			{
+				let expression = { $filter: { input: '$people', as: 'p', cond: { $lt: [ '$$p.age', 25 ] } } };
+				assert.deepStrictEqual( await evaluated( expression ), [ { name: 'bob', age: 20 } ] );
+			} );
+
+			it( 'should stop at limit matches', async () =>
+			{
+				let expression = { $filter: { input: '$list', cond: { $gt: [ '$$this', 0 ] }, limit: 2 } };
+				assert.deepStrictEqual( await evaluated( expression ), [ 1, 2 ] );
+			} );
+
+			it( 'should ignore a limit larger than the number of matches', async () =>
+			{
+				let expression = { $filter: { input: '$list', cond: { $gt: [ '$$this', 3 ] }, limit: 9 } };
+				assert.deepStrictEqual( await evaluated( expression ), [ 4 ] );
+			} );
+
+			it( 'should take a null limit as no limit', async () =>
+			{
+				let expression = { $filter: { input: '$list', cond: { $gt: [ '$$this', 0 ] }, limit: null } };
+				assert.deepStrictEqual( await evaluated( expression ), [ 1, 2, 3, 4 ] );
+			} );
+
+			it( 'should read a cond which is not a boolean for its truthiness', async () =>
+			{
+				// Only false, null, 0, and a missing value are false. An empty string is not.
+				let expression = { $filter: { input: '$truthy', cond: '$$this' } };
+				assert.deepStrictEqual( await evaluated( expression ), [ 1, '', 'x', true ] );
+			} );
+
+			it( 'should filter an empty array to an empty array', async () =>
+			{
+				let expression = { $filter: { input: '$empty_list', cond: true } };
+				assert.deepStrictEqual( await evaluated( expression ), [] );
+			} );
+
+			it( 'should answer a null input with a null', async () =>
+			{
+				let expression = { $filter: { input: '$empty', cond: true } };
+				assert.strictEqual( await evaluated( expression ), null );
+			} );
+
+			it( 'should answer a missing input with a null', async () =>
+			{
+				let expression = { $filter: { input: '$nope', cond: true } };
+				assert.strictEqual( await evaluated( expression ), null );
+			} );
+
+		} );
+
+		//---------------------------------------------------------------------
+		describe( 'Folding an Array with $reduce', () =>
+		{
+
+			it( 'should carry the accumulated value in $$value', async () =>
+			{
+				let expression = {
+					$reduce: {
+						input: '$list',
+						initialValue: 0,
+						in: { $add: [ '$$value', '$$this' ] },
+					}
+				};
+				assert.strictEqual( await evaluated( expression ), 10 );
+			} );
+
+			it( 'should build a value of any shape', async () =>
+			{
+				let expression = {
+					$reduce: {
+						input: '$list',
+						initialValue: [],
+						in: { $concatArrays: [ '$$value', [ { $multiply: [ '$$this', 10 ] } ] ] },
+					}
+				};
+				assert.deepStrictEqual( await evaluated( expression ), [ 10, 20, 30, 40 ] );
+			} );
+
+			it( 'should answer an empty array with the initial value', async () =>
+			{
+				let expression = {
+					$reduce: {
+						input: '$empty_list',
+						initialValue: 'untouched',
+						in: { $concat: [ '$$value', '!' ] },
+					}
+				};
+				assert.strictEqual( await evaluated( expression ), 'untouched' );
+			} );
+
+			it( 'should still read the document from inside the in expression', async () =>
+			{
+				let expression = {
+					$reduce: {
+						input: '$list',
+						initialValue: 0,
+						in: { $add: [ '$$value', '$a' ] },
+					}
+				};
+				assert.strictEqual( await evaluated( expression ), 12 );
+			} );
+
+			it( 'should answer a null input with a null', async () =>
+			{
+				let expression = { $reduce: { input: '$empty', initialValue: 0, in: '$$value' } };
+				assert.strictEqual( await evaluated( expression ), null );
+			} );
+
+			it( 'should answer a missing input with a null', async () =>
+			{
+				let expression = { $reduce: { input: '$nope', initialValue: 0, in: '$$value' } };
+				assert.strictEqual( await evaluated( expression ), null );
+			} );
+
+		} );
+
+		//---------------------------------------------------------------------
+		describe( 'The Forms Which Need $$CURRENT', () =>
+		{
+
+			it( 'should read a field of $$CURRENT with the $getField shorthand', async () =>
+			{
+				assert.strictEqual( await evaluated( { $getField: 'a' } ), 3 );
+			} );
+
+			// ***Only the string shorthand defaults to $$CURRENT.*** The object form with no
+			// `input` looks like it should mean the same thing, and MongoDB 6.0.1 refuses it:
+			//   $getField requires 'input' to be specified
+			// So `{ $getField: 'a' }` and `{ $getField: { field: 'a' } }` are not two spellings
+			// of one expression. The review read this family as "acts on $$CURRENT when input
+			// is omitted"; the server says that is true of one form and not the other. The
+			// refusal is in the list at the foot of this file, not here, because jsongin
+			// refuses it today for its own unrelated reason.
+
+			it( 'should read a dotted name as a name in the shorthand too', async () =>
+			{
+				let result = await piped(
+					[ { _id: 1, 'a.b': 'literal', a: { b: 'nested' } } ],
+					[ { $project: { _id: 0, r: { $getField: 'a.b' } } } ] );
+				assert.strictEqual( result[ 0 ].r, 'literal' );
+			} );
+
+			it( 'should set a field on the whole document with $$ROOT as the input', async () =>
+			{
+				let result = await piped(
+					[ { _id: 1, a: 3 } ],
+					[ { $replaceWith: { $setField: { field: 'x.y', input: '$$ROOT', value: 7 } } } ] );
+				assert.deepStrictEqual( result[ 0 ], { _id: 1, a: 3, 'x.y': 7 } );
+			} );
+
+			it( 'should remove a field by setting it to $$REMOVE', async () =>
+			{
+				// ***This is how $setField unsets***, and it is the only way to say it in one
+				// operator. $unsetField is the other way, and takes no value at all.
+				let result = await piped(
+					[ { _id: 1, a: 3, b: 4 } ],
+					[ { $replaceWith: { $setField: { field: 'b', input: '$$ROOT', value: '$$REMOVE' } } } ] );
+				assert.deepStrictEqual( result[ 0 ], { _id: 1, a: 3 } );
+			} );
+
+		} );
 
 		//---------------------------------------------------------------------
 		describe( 'Variable Names Which Do Not Resolve', () =>
@@ -103,7 +550,6 @@ module.exports = function ( Driver )
 			} );
 
 		} );
-
 
 		//---------------------------------------------------------------------
 		describe( 'Variable Names Which Are Not Valid', () =>
@@ -152,7 +598,6 @@ module.exports = function ( Driver )
 
 		} );
 
-
 		//---------------------------------------------------------------------
 		describe( 'Arguments the Binding Operators Refuse', () =>
 		{
@@ -197,7 +642,6 @@ module.exports = function ( Driver )
 			} );
 
 		} );
-
 
 		//---------------------------------------------------------------------
 		describe( 'Inputs the Array Operators Refuse', () =>
@@ -245,11 +689,6 @@ module.exports = function ( Driver )
 
 		} );
 
-
-		//---------------------------------------------------------------------
-		describe( 'Where a Bound Variable Is Visible', () =>
-		{
-
 			it( 'should evaluate the vars of a $let in the scope around it', async () =>
 			{
 				// ***The bindings of one $let do not see each other.*** They are all evaluated
@@ -265,60 +704,6 @@ module.exports = function ( Driver )
 				};
 				assert.strictEqual( await evaluated( nested ), 1 );
 			} );
-
-			it( 'should refuse the $redact variables outside $redact', async () =>
-			{
-				assert.ok( await refused( '$$DESCEND' ), '$$DESCEND' );
-				assert.ok( await refused( '$$PRUNE' ), '$$PRUNE' );
-				assert.ok( await refused( '$$KEEP' ), '$$KEEP' );
-			} );
-
-		} );
-
-
-		//---------------------------------------------------------------------
-		describe( 'What $redact Refuses', () =>
-		{
-
-			//---------------------------------------------------------------------
-			// $redact is a stage, so it is refused as a stage rather than as an expression.
-			async function redact_refused( Expression )
-			{
-				await Driver.SetData( documents );
-				try
-				{
-					await Driver.Aggregate( [ { $redact: Expression } ] );
-					return false;
-				}
-				catch ( error )
-				{
-					return true;
-				}
-			}
-
-			it( 'should refuse an expression which does not answer with one of its three variables', async () =>
-			{
-				assert.ok( await redact_refused( 'DESCEND' ), 'the name without the sigil' );
-				assert.ok( await redact_refused( 1 ), 'a number' );
-				assert.ok( await redact_refused( true ), 'a boolean' );
-				assert.ok( await redact_refused( '$$ROOT' ), 'another system variable' );
-				assert.ok( await redact_refused(
-					{ $cond: [ false, '$$DESCEND', 'nope' ] } ), 'the branch which is taken' );
-			} );
-
-			it( 'should not mind a branch it does not take', async () =>
-			{
-				// ***The answer is checked, not the expression.*** $cond evaluates one branch,
-				// so a branch which would have been invalid is never produced and never
-				// refused. This is why the check cannot be made before the stage runs.
-				await Driver.SetData( documents );
-				let result = await Driver.Aggregate( [
-					{ $redact: { $cond: [ true, '$$DESCEND', 'nope' ] } } ] );
-				assert.strictEqual( result.length, 1 );
-			} );
-
-		} );
-
 
 		//---------------------------------------------------------------------
 		describe( 'The $getField Shorthand', () =>
