@@ -21,7 +21,8 @@ An expression is a document, an array, or a scalar:
 | Rounding        | [$ceil](#$ceil), [$floor](#$floor), [$round](#$round), [$trunc](#$trunc)                                    |
 | Comparison      | [$eq](#$eq), [$ne](#$ne), [$gt](#$gt), [$gte](#$gte), [$lt](#$lt), [$lte](#$lte), [$cmp](#$cmp)              |
 | Smallest/Largest| [$min](#$min), [$max](#$max)                                                                                |
-| Array           | [$size](#$size), [$arrayElemAt](#$arrayElemAt), [$concatArrays](#$concatArrays), [$in](#$in), [$isArray](#$isArray), [$reverseArray](#$reverseArray), [$range](#$range), [$indexOfArray](#$indexOfArray), [$slice](#$slice), [$sortArray](#$sortArray), [$zip](#$zip), [$arrayToObject](#$arrayToObject), [$first](#$first), [$last](#$last), [$firstN](#$firstN), [$lastN](#$lastN), [$minN](#$minN), [$maxN](#$maxN) |
+| Array           | [$size](#$size), [$arrayElemAt](#$arrayElemAt), [$concatArrays](#$concatArrays), [$in](#$in), [$isArray](#$isArray), [$reverseArray](#$reverseArray), [$range](#$range), [$indexOfArray](#$indexOfArray), [$slice](#$slice), [$sortArray](#$sortArray), [$zip](#$zip), [$arrayToObject](#$arrayToObject), [$first](#$first), [$last](#$last), [$firstN](#$firstN), [$lastN](#$lastN), [$minN](#$minN), [$maxN](#$maxN), [$map](#$map), [$filter](#$filter), [$reduce](#$reduce) |
+| Variables       | [$let](#$let), and the [system variables](#variables) `$$ROOT`, `$$CURRENT`, `$$NOW`, `$$REMOVE` |
 | String          | [$concat](#$concat), [$split](#$split), [$toLower](#$toLower), [$toUpper](#$toUpper), [$strcasecmp](#$strcasecmp), [$trim](#$trim), [$ltrim](#$ltrim), [$rtrim](#$rtrim), [$substr](#$substr), [$substrBytes](#$substrBytes), [$substrCP](#$substrCP), [$strLenBytes](#$strLenBytes), [$strLenCP](#$strLenCP), [$indexOfBytes](#$indexOfBytes), [$indexOfCP](#$indexOfCP), [$regexMatch](#$regexMatch), [$regexFind](#$regexFind), [$regexFindAll](#$regexFindAll), [$replaceOne](#$replaceOne), [$replaceAll](#$replaceAll) |
 | Trigonometry    | [$sin](#$sin), [$cos](#$cos), [$tan](#$tan), [$asin](#$asin), [$acos](#$acos), [$atan](#$atan), [$atan2](#$atan2), [$sinh](#$sinh), [$cosh](#$cosh), [$tanh](#$tanh), [$asinh](#$asinh), [$acosh](#$acosh), [$atanh](#$atanh), [$degreesToRadians](#$degreesToRadians), [$radiansToDegrees](#$radiansToDegrees) |
 | Type            | [$type](#$type), [$isNumber](#$isNumber), [$convert](#$convert), [$toString](#$toString), [$toBool](#$toBool), [$toDate](#$toDate), [$toInt](#$toInt), [$toLong](#$toLong), [$toDouble](#$toDouble) |
@@ -929,6 +930,314 @@ The `n` largest values of an array, ***largest first***.
 ```js
 jsongin.Evaluate( { v: [ 3, 1, 2 ] }, { $maxN: { input: '$v', n: 2 } } );
 // returns [ 3, 2 ]
+```
+
+
+<a id="$map"></a>$map
+---------------------------------------------------------------------
+
+**Usage** : `{ $map: { input: array, as: name, in: expression } }`
+
+Applies an expression to each element of an array and answers the array of results.
+
+The element being worked on is bound to `$$this`, or to the name given by `as`.
+See [Variables](#variables) below for what a bound variable is and how long it lasts.
+
+***`as` renames the binding rather than adding one.***
+Given `as: 'item'` the element is `$$item` and `$$this` is not bound at all, so an `in` written
+  against `$$this` stops working the moment an `as` is added.
+
+***A field path inside `in` reads the document, not the element.***
+This is the single most common way to get `$map` wrong: `'$a'` is the `a` of the document being
+  aggregated, and the `a` of the element is `'$$this.a'`.
+
+A null `input`, or one which is missing, answers `null`.
+An `input` which is present and is not an array throws.
+An empty array answers an empty array.
+
+A result which is nothing takes its position as a `null`, because an array cannot leave a
+  position out without moving every element after it.
+
+### Example
+```js
+jsongin.Evaluate( document, { $map: { input: '$scores', in: { $multiply: [ '$$this', 2 ] } } } );
+// returns [ 20, 40, 60 ]
+
+// `as` renames the element binding.
+jsongin.Evaluate( document, { $map: { input: '$scores', as: 'score', in: { $add: [ '$$score', 1 ] } } } );
+// returns [ 11, 21, 31 ]
+
+// A field path inside `in` still reads the document.
+jsongin.Evaluate( document, { $map: { input: '$scores', in: '$a' } } );
+// returns [ 5, 5, 5 ]
+
+// A null or missing input answers null; anything else which is not an array throws.
+jsongin.Evaluate( document, { $map: { input: '$empty', in: '$$this' } } ) === null
+jsongin.Evaluate( document, { $map: { input: '$a', in: '$$this' } } );   // throws
+```
+
+
+<a id="$filter"></a>$filter
+---------------------------------------------------------------------
+
+**Usage** : `{ $filter: { input: array, as: name, cond: expression, limit: number } }`
+
+Answers the elements of an array which satisfy a condition, in the order they were in.
+
+The element being tested is bound to `$$this`, or to the name given by `as`.
+As with [$map](#$map), `as` ***renames*** the binding rather than adding one, and a field path
+  inside `cond` reads the document rather than the element.
+
+***`cond` is read for its truthiness rather than for a boolean.***
+Only `false`, `null`, `0`, and a missing value are false; every other value is true, including
+  an empty string and an empty array.
+
+***`limit` is a count of matches, not a count of elements examined.***
+Filtering stops once that many elements have been kept.
+A limit larger than the number of matches simply gives every match, and a `null` limit means no
+  limit at all.
+
+`limit` is an expression, so it may be computed.
+It must evaluate to a whole number of one or more; a zero, a negative, or a fraction throws.
+
+A null `input`, or one which is missing, answers `null`.
+An `input` which is present and is not an array throws.
+
+### Example
+```js
+jsongin.Evaluate( document, { $filter: { input: '$scores', cond: { $gt: [ '$$this', 10 ] } } } );
+// returns [ 20, 30 ]
+
+// limit counts the matches which are kept.
+jsongin.Evaluate( document, { $filter: { input: '$scores', cond: true, limit: 2 } } );
+// returns [ 10, 20 ]
+
+// A null limit is no limit. A zero one is refused.
+jsongin.Evaluate( document, { $filter: { input: '$scores', cond: true, limit: null } } );
+// returns [ 10, 20, 30 ]
+jsongin.Evaluate( document, { $filter: { input: '$scores', cond: true, limit: 0 } } );   // throws
+```
+
+
+<a id="$reduce"></a>$reduce
+---------------------------------------------------------------------
+
+**Usage** : `{ $reduce: { input: array, initialValue: expression, in: expression } }`
+
+Folds an array into a single value by applying an expression to each element in turn.
+
+Two variables are bound within `in`:
+
+| **Variable** | **Description**                                                          |
+|--------------|----------------------------------------------------------------------------|
+| `$$this`     | The element being folded in.                                             |
+| `$$value`    | What the fold has accumulated so far, starting at `initialValue`.        |
+
+The answer is whatever `in` produced for the last element.
+***`$reduce` has no `as`***, so these two names cannot be renamed.
+
+***The accumulated value may be of any shape***, which is what makes this more than a sum: an
+  array built up with [$concatArrays](#$concatArrays) or a document built up with
+  [$mergeObjects](#$mergeObjects) is accumulated the same way a number is.
+
+***`initialValue` is required***, and is evaluated once, in the scope around the operator.
+An empty array answers it untouched, which is the only case where `in` never runs.
+
+A null `input`, or one which is missing, answers `null`.
+An `input` which is present and is not an array throws.
+
+### Example
+```js
+jsongin.Evaluate( document,
+	{ $reduce: { input: '$scores', initialValue: 0, in: { $add: [ '$$value', '$$this' ] } } } );
+// returns 60
+
+// The accumulated value may be of any shape.
+jsongin.Evaluate( document, {
+	$reduce: {
+		input: '$scores',
+		initialValue: [],
+		in: { $concatArrays: [ '$$value', [ { $divide: [ '$$this', 10 ] } ] ] },
+	}
+} );
+// returns [ 1, 2, 3 ]
+
+// An empty array answers the initial value, untouched.
+jsongin.Evaluate( { v: [] }, { $reduce: { input: '$v', initialValue: 'none', in: '$$value' } } ) === 'none'
+```
+
+
+
+# Variables
+
+<a id="variables"></a>
+
+A name beginning with `$$` is a ***variable reference***, where a name beginning with a single
+  `$` is a field reference.
+The two are resolved from different places: a field comes out of the document, and a variable
+  comes out of the ***scope***, which is the set of names in effect where the expression is
+  being evaluated.
+
+***A variable is not a field, and the difference shows when the name is wrong.***
+A field path which resolves to nothing evaluates to nothing, so a misspelled `'$naem'` quietly
+  produces a missing value.
+A variable which nobody bound is an ***error***, so a misspelled `'$$totl'` stops the
+  expression instead.
+
+```js
+jsongin.Evaluate( document, '$naem' ) === undefined
+jsongin.Evaluate( document, '$$totl' );   // throws
+```
+
+
+## The System Variables
+
+Four are always in scope:
+
+| **Variable**  | **Description**                                                            |
+|---------------|------------------------------------------------------------------------------|
+| `$$ROOT`      | The document the stage was handed.                                         |
+| `$$CURRENT`   | The document a field path is resolved against. `'$a'` is shorthand for `'$$CURRENT.a'`. |
+| `$$NOW`       | The instant the pipeline started, as a `Date`.                             |
+| `$$REMOVE`    | Bound to nothing, which is how an expression says "leave this field out".   |
+
+A variable reference may be followed by a path, which is walked exactly as a field path is:
+  `'$$ROOT.user.role'` and `'$user.role'` answer alike.
+
+```js
+jsongin.Evaluate( document, '$$ROOT.user.role' ) === 'admin'
+jsongin.Evaluate( document, '$$CURRENT.a' ) === 5
+jsongin.Evaluate( document, '$a' ) === 5
+
+let instant = jsongin.Evaluate( document, '$$NOW' );
+instant instanceof Date === true
+```
+
+***`$$ROOT` is the document the stage was handed***, which is not the document the collection
+  holds once an earlier stage has reshaped it.
+`$$CURRENT` is the same document as `$$ROOT` everywhere in this engine today; the two are
+  separate names because MongoDB rebinds `$$CURRENT` inside
+  [$redact](./Stage-Operators.md#$redact) and leaves `$$ROOT` alone.
+
+***`$$NOW` is one instant for the whole pipeline***, shared by every document and every stage,
+  rather than a reading of the clock per document.
+
+***`$$REMOVE` is bound to nothing***, which is exactly what it means.
+A computed field which evaluates to it is left out of the result rather than set to null, so
+  one projection can keep a field on one document and drop it from another — something no
+  inclusion spec can say.
+
+```js
+jsongin.Evaluate( document, { keep: '$a', drop: '$$REMOVE' } );
+// returns { keep: 5 }
+```
+
+***It only removes where something can be absent.***
+A document can leave a field out; an array cannot leave a position out without moving every
+  element after it, so the position is filled with a `null` instead.
+
+```js
+jsongin.Evaluate( document, [ '$a', '$$REMOVE', '$b' ] );
+// returns [ 5, null, 2 ]
+```
+
+***A system variable is written in uppercase, and a name a caller binds is not.***
+That is the whole of what keeps the two namespaces apart, and it is why `'$$now'` is an error
+  rather than another spelling of `'$$NOW'`: a lowercase name is a user variable name, and no
+  user bound it.
+
+```js
+jsongin.Evaluate( document, '$$now' );    // throws
+jsongin.Evaluate( document, '$$root' );   // throws
+```
+
+
+## Names a Caller May Bind
+
+A bound variable name ***begins with a lowercase letter***, and the characters after the first
+  are letters, digits, and underscores.
+
+***The first character and the rest follow different rules***, so the name cannot be described
+  as one character class over the whole word: an underscore is refused as the first character
+  and accepted after it, so `a_b` is a name and `_ab` is not.
+
+Because no name a caller may bind can look like `$$ROOT`, ***a system variable can never be
+  shadowed***.
+
+| **Operator**             | **Binds**                                    |
+|--------------------------|------------------------------------------------|
+| [$let](#$let)            | any names the caller chooses                 |
+| [$map](#$map)            | `$$this`, or the name given by `as`          |
+| [$filter](#$filter)      | `$$this`, or the name given by `as`          |
+| [$reduce](#$reduce)      | `$$this` and `$$value`                       |
+| [$redact](./Stage-Operators.md#$redact) | `$$DESCEND`, `$$PRUNE`, `$$KEEP` |
+
+***A binding lasts for the length of the expression it was made for and no longer.***
+`$$this` is an unbound name outside the `$map` which bound it, and the `$$DESCEND` of `$redact`
+  means nothing anywhere else.
+
+```js
+jsongin.Evaluate( document, '$$this' );      // throws
+jsongin.Evaluate( document, '$$DESCEND' );   // throws
+```
+
+
+<a id="$let"></a>$let
+---------------------------------------------------------------------
+
+**Usage** : `{ $let: { vars: { name: expression, ... }, in: expression } }`
+
+Binds one or more variables and evaluates a sub-expression with them in scope.
+The bound variables are read as `$$name` within `in`, and nowhere else.
+
+***Binding a variable does not rebind the document.***
+A field path inside `in` still reads `$$CURRENT`, which this operator leaves exactly as it
+  found it.
+
+***The bindings of one `$let` do not see each other.***
+Every value in `vars` is evaluated in the scope ***around*** the `$let`, and the whole set is
+  bound together, so a variable cannot be written in terms of the one beside it.
+Nesting a second `$let` is how that is said.
+
+An inner `$let` may bind a name an outer one already bound.
+The inner binding wins for the length of its own `in`, and the outer one is unchanged
+  everywhere else.
+
+A variable may be bound to nothing, which is what a missing field path gives it.
+Reading it produces no value, the same as reading an absent field, so a computed field bound to
+  it is left out rather than set to null.
+Guard it with [$ifNull](#$ifNull) when a default is wanted.
+
+### Example
+```js
+jsongin.Evaluate( document,
+	{ $let: { vars: { total: { $add: [ '$a', '$b' ] } }, in: { $multiply: [ '$$total', 10 ] } } } ) === 70
+
+// A path may be walked into a bound variable.
+jsongin.Evaluate( document, { $let: { vars: { u: '$user' }, in: '$$u.role' } } ) === 'admin'
+
+// The bindings of one $let cannot see each other.
+jsongin.Evaluate( document, { $let: { vars: { x: 1, y: '$$x' }, in: '$$y' } } );   // throws
+
+// Nested, each `in` runs with the binding around it already made.
+jsongin.Evaluate( document, {
+	$let: {
+		vars: { half: { $divide: [ '$a', 2 ] } },
+		in: { $let: { vars: { quarter: { $divide: [ '$$half', 2 ] } }, in: '$$quarter' } },
+	}
+} ) === 1.25
+
+// An inner binding shadows an outer one for the length of its own `in`.
+jsongin.Evaluate( document, {
+	$let: {
+		vars: { x: 1 },
+		in: { $add: [ { $let: { vars: { x: 10 }, in: '$$x' } }, '$$x' ] },
+	}
+} ) === 11
+
+// A variable bound to nothing produces nothing, and the field is left out.
+jsongin.Evaluate( document, { r: { $let: { vars: { m: '$nope' }, in: '$$m' } } } );
+// returns { }
 ```
 
 
