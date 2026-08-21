@@ -25,6 +25,15 @@
 		            resolves it. Every other link resolves relative to the file it appears in,
 		            which is what docsify's relativePath setting and GitHub both do.
 
+		anchors     Every link which names a '#fragment' must find it in the page it points
+		            at, whether that is another page or the same one. The links check reads
+		            only the file half of a target, so five links to headings which did not
+		            exist yet passed it; a link into a page is only as good as the anchor.
+
+		            A page's anchors are its explicit <a id="..."> tags plus the slug docsify
+		            derives from each of its headings, numbered on a repeat the way docsify
+		            numbers them.
+
 		orphans     Every page under docs/ must be reachable from another page, so that a
 		            document cannot be written and then quietly left unlinked.
 
@@ -144,12 +153,34 @@ function find_fences( Filename )
 function find_links( Filename )
 {
 	let text = LIB_FS.readFileSync( Filename, 'utf8' );
+
+	// ***A commented-out link is not a link.*** Blanked rather than removed, so that the line
+	// numbers below still describe the file on disk. _coverpage.md sets its background with
+	// docsify's `![color](#cceeff)` syntax, kept in a comment, which is not a link to an
+	// anchor named cceeff - and would be reported as one by every check which reads this.
+	text = text.replace( /<!--[\s\S]*?-->/g, function ( Comment )
+	{
+		return Comment.replace( /[^\n]/g, ' ' );
+	} );
+
 	let links = [];
 	let expression = /\]\(([^)\s]+)\)/g;
 	let match = expression.exec( text );
+
+	// The matches arrive in order, so one cursor walking forward counts the lines for all of
+	// them. Counting newlines from the start for each match separately is the obvious way and
+	// is quadratic on a page with several hundred links, which the operator pages are.
+	let line = 1;
+	let cursor = 0;
+
 	while ( match !== null )
 	{
-		links.push( match[ 1 ] );
+		while ( cursor < match.index )
+		{
+			if ( text[ cursor ] === '\n' ) { line++; }
+			cursor++;
+		}
+		links.push( { Target: match[ 1 ], Line: line } );
 		match = expression.exec( text );
 	}
 	return links;
@@ -225,20 +256,160 @@ function check_links( Files )
 		let links = find_links( file );
 		for ( let link_index = 0; link_index < links.length; link_index++ )
 		{
-			let target = links[ link_index ];
-			let resolved = resolve_link( file, target );
+			let link = links[ link_index ];
+			let resolved = resolve_link( file, link.Target );
 			if ( resolved === null ) { continue; }
 			checked++;
 			if ( LIB_FS.existsSync( resolved ) ) { continue; }
 			findings.push( {
 				Path: LIB_PATH.relative( REPO, file ),
-				Line: 0,
-				Detail: target,
+				Line: link.Line,
+				Detail: link.Target,
 			} );
 		}
 	}
 	return { Checked: checked, Findings: findings, Unit: 'local links' };
 }
+
+
+//---------------------------------------------------------------------
+// Derives the id docsify gives a heading.
+//
+// This mirrors docsify's own slugify rather than inventing one, because the anchor a reader's
+// link has to match is the one docsify emits. Lowercase, html removed, every run of anything
+// else replaced by a dash, dashes trimmed from the ends, and a leading digit prefixed with an
+// underscore because an id may not begin with one.
+function heading_slug( Text )
+{
+	let slug = Text.toLowerCase();
+	slug = slug.replace( /<[^>]+>/g, '' );
+	slug = slug.replace( /[^a-z0-9\u00c0-\uffff]+/g, '-' );
+	slug = slug.replace( /^-+|-+$/g, '' );
+	if ( /^[0-9]/.test( slug ) ) { slug = '_' + slug; }
+	return slug;
+};
+
+
+//---------------------------------------------------------------------
+// The anchors a page offers: its explicit tags, and the slug of every heading.
+//
+// ***Both heading forms count.*** The operator pages write their entries as setext headings -
+// a line of text underlined by dashes - and docsify gives those an id exactly as it does an
+// atx '## heading'. Reading only the '#' form would miss every operator entry.
+//
+// Read once per page and remembered, because a page which is linked to five hundred times is
+// otherwise parsed five hundred times.
+const ANCHORS_BY_PAGE = {};
+
+function page_anchors( Filename )
+{
+	if ( typeof ANCHORS_BY_PAGE[ Filename ] !== 'undefined' ) { return ANCHORS_BY_PAGE[ Filename ]; }
+
+	let text = LIB_FS.readFileSync( Filename, 'utf8' );
+	let anchors = {};
+
+	let explicit = /<a\s+id=["']([^"']+)["']/g;
+	let match = explicit.exec( text );
+	while ( match !== null )
+	{
+		anchors[ match[ 1 ] ] = true;
+		match = explicit.exec( text );
+	}
+
+	// docsify numbers a repeated slug rather than dropping it, so the second 'Example' heading
+	// is 'example-1'. Reproduced here so that a link to one is not reported as missing.
+	let seen = {};
+	function add_heading( Text )
+	{
+		let slug = heading_slug( Text );
+		if ( slug.length === 0 ) { return; }
+		let count = seen[ slug ] || 0;
+		seen[ slug ] = count + 1;
+		anchors[ ( count === 0 ) ? slug : ( slug + '-' + count ) ] = true;
+	};
+
+	let lines = text.split( '\n' );
+	let fenced = false;
+	for ( let index = 0; index < lines.length; index++ )
+	{
+		let line = lines[ index ];
+
+		// A '#' inside a fence is a shell comment, not a heading.
+		if ( line.trim().startsWith( '```' ) ) { fenced = !fenced; continue; }
+		if ( fenced === true ) { continue; }
+
+		let atx = /^#{1,6}\s+(.*)$/.exec( line );
+		if ( atx !== null ) { add_heading( atx[ 1 ] ); continue; }
+
+		// A setext heading is a line of text underlined by dashes or equals. A rule is the
+		// same thing with nothing above it, and a table divider begins with a pipe.
+		if ( /^(-{2,}|={2,})\s*$/.test( line ) === false ) { continue; }
+		let above = ( index > 0 ) ? lines[ index - 1 ] : '';
+		if ( above.trim().length === 0 ) { continue; }
+		if ( above.trim().startsWith( '|' ) ) { continue; }
+		if ( above.trim().startsWith( '#' ) ) { continue; }
+		add_heading( above );
+	}
+
+	ANCHORS_BY_PAGE[ Filename ] = anchors;
+	return anchors;
+};
+
+
+//---------------------------------------------------------------------
+// Every '#fragment' a link names must exist in the page it points at.
+//
+// ***The links check cannot see this.*** It resolves the file half of a target and stops, so
+// a link to a heading which was never written passes it. That is not hypothetical: the five
+// Operator Reference rows flipped for the variable scope family pointed at operator entries
+// which had not been written yet, and check-docs stayed green for two commits.
+function check_anchors( Files )
+{
+	let findings = [];
+	let checked = 0;
+
+	for ( let index = 0; index < Files.length; index++ )
+	{
+		let file = Files[ index ];
+		let links = find_links( file );
+
+		for ( let link_index = 0; link_index < links.length; link_index++ )
+		{
+			let link = links[ link_index ];
+			let hash = link.Target.indexOf( '#' );
+			if ( hash < 0 ) { continue; }
+
+			let fragment = decodeURIComponent( link.Target.slice( hash + 1 ) );
+			if ( fragment.length === 0 ) { continue; }
+
+			// A target which is only a fragment names this same page. Docsify reads '#/path'
+			// as a route to another page rather than as an anchor, so those are not anchors.
+			let target = file;
+			if ( hash > 0 )
+			{
+				let resolved = resolve_link( file, link.Target );
+				if ( resolved === null ) { continue; }
+				target = resolved;
+			}
+			else if ( fragment.startsWith( '/' ) ) { continue; }
+
+			if ( target.endsWith( '.md' ) === false ) { continue; }
+
+			// A target file which does not exist is the links check's finding, not this one.
+			if ( LIB_FS.existsSync( target ) === false ) { continue; }
+
+			checked++;
+			if ( page_anchors( target )[ fragment ] === true ) { continue; }
+
+			findings.push( {
+				Path: LIB_PATH.relative( REPO, file ),
+				Line: link.Line,
+				Detail: `${link.Target} - the page has no anchor [${fragment}].`,
+			} );
+		}
+	}
+	return { Checked: checked, Findings: findings, Unit: 'link anchors' };
+};
 
 
 //---------------------------------------------------------------------
@@ -252,7 +423,7 @@ function check_orphans( Files )
 		let links = find_links( file );
 		for ( let link_index = 0; link_index < links.length; link_index++ )
 		{
-			let resolved = resolve_link( file, links[ link_index ] );
+			let resolved = resolve_link( file, links[ link_index ].Target );
 			if ( resolved !== null ) { linked[ resolved ] = true; }
 		}
 	}
@@ -914,6 +1085,7 @@ function main()
 	let failures = 0;
 	failures += report( 'fences', check_fences( all_files ) );
 	failures += report( 'links', check_links( all_files ) );
+	failures += report( 'anchors', check_anchors( all_files ) );
 	failures += report( 'orphans', check_orphans( doc_files ) );
 	failures += report( 'operators', check_operator_blocks() );
 	failures += report( 'inventory', check_operator_inventory() );
