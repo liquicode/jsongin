@@ -8,10 +8,10 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
-Parity with MongoDB is ***100%*** across 869 compared behaviors: Query 230, Update 94,
+Parity with MongoDB is ***100%*** across 887 compared behaviors: Query 230, Update 112,
   Projection 56, and Aggregate 489. Run `npm run parity-report` to measure it.
 
-Coverage of the operator surface MongoDB documents is ***83.5%***, 212 operators of 254. Run
+Coverage of the operator surface MongoDB documents is ***83.9%***, 213 operators of 254. Run
   `npm run api-coverage` to measure that one. The two numbers answer different questions: parity
   is how faithfully what exists behaves, and coverage is how much exists.
 
@@ -193,6 +193,17 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 ### Added
 
+- The ***`$pull` update operator***, in `jsongin.UpdateOperators`. See
+  [Update Operators](./docs/guides/jsongin/Update-Operators.md#$pull).
+- ***`$pull` takes a query, where `$pullAll` takes values.*** `$pullAll` removes elements equal
+  to the ones listed; `$pull` removes every element a condition selects, so it reaches
+  operators and ranges: `{ $pull: { a: { $gt: 3 } } }`.
+- ***A bare document is a condition on the fields of each element***, not a value to match
+  whole, so `{ b: 1 }` removes `{ b: 1, c: 2 }` as well as `{ b: 1 }`. An ***empty*** document
+  is a condition too, and selects every element which has fields at all.
+- ***The condition applies to an element, not through it.*** A query for `{ a: 1 }` matches a
+  document whose `a` is `[ 1, 2 ]`, but `{ $pull: { a: 1 } }` does not remove a `[ 1, 2 ]`
+  element.
 - The 2 ***filling pipeline stages***, in `jsongin.StageOperators`: `$fill` and `$densify`. See
   [Stage Operators](./docs/guides/jsongin/Stage-Operators.md).
 - ***`$fill` treats a null as a value which is not there***, which is unusual: almost everywhere

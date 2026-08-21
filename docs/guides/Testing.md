@@ -214,15 +214,15 @@ This generates a runner for each engine over the same suite list, runs both, and
    area          compared   agree   gaps   test bugs
    ----------------------------------------------------
    Query              230     230      0           0
-   Update              94      94      0           0
+   Update             112     112      0           0
    Projection          56      56      0           0
    Aggregate          489     489      0           0
    ----------------------------------------------------
-   total              869     869      0           0
+   total              887     887      0           0
 
-   parity     100.0%   (869 of 869 compared behaviors agree)
+   parity     100.0%   (887 of 887 compared behaviors agree)
 
-   coverage   83.5%   (212 of 254 documented operators are implemented)
+   coverage   83.9%   (213 of 254 documented operators are implemented)
 ```
 
 It exits non-zero when there is a gap, so it can gate a build.

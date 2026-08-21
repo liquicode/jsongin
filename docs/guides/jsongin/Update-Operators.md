@@ -373,6 +373,52 @@ updated = jsongin.Update(
 ```
 
 
+<a id="$pull"></a>$pull
+---------------------------------------------------------------------
+
+**Usage** : `$pull: { array-field: condition, array-field: condition, ... }`
+
+Removes every element of an array which the condition selects.
+
+***The condition is a query, not a value***, which is the whole of what makes this different
+  from [`$pullAll`](#$pullAll) above. `$pullAll` removes elements equal to the ones listed;
+  `$pull` removes every element a query selects, so it reaches operators and ranges.
+
+| **Written** | **Removes** |
+|-------------|--------------|
+| `{ $pull: { a: 3 } }` | every element equal to `3` |
+| `{ $pull: { a: { $gt: 3 } } }` | every element greater than `3` |
+| `{ $pull: { a: { b: 1 } } }` | every element whose `b` is `1` |
+
+***A bare document is a condition on the fields of each element***, not a value to match whole,
+  so `{ b: 1 }` removes `{ b: 1, c: 2 }` as well as `{ b: 1 }`. Use
+  [`$pullAll`](#$pullAll) to remove documents by equality instead. An ***empty*** document is a
+  condition too: it asks nothing, and so selects every element which has fields at all.
+
+***The condition applies to an element, not through it.*** A query for `{ a: 1 }` matches a
+  document whose `a` is `[ 1, 2 ]`, but `{ $pull: { a: 1 } }` does not remove a `[ 1, 2 ]`
+  element. Only an element which is itself `1` goes.
+
+A field which is not there is left alone. A field which is there and is not an array is refused.
+
+**Examples**
+```js
+jsongin.Update( { a: [ 1, 3, 5, 3 ] }, { $pull: { a: 3 } } );
+// returns { a: [ 1, 5 ] }
+
+jsongin.Update( { a: [ 1, 3, 5, 7 ] }, { $pull: { a: { $gt: 3 } } } );
+// returns { a: [ 1, 3 ] }
+
+// A bare document asks about the fields of each element, so the element with a c goes too.
+jsongin.Update( { a: [ { b: 1, c: 2 }, { b: 2 } ] }, { $pull: { a: { b: 1 } } } );
+// returns { a: [ { b: 2 } ] }
+
+// The condition applies to the element rather than through it.
+jsongin.Update( { a: [ [ 1, 2 ], 1 ] }, { $pull: { a: 1 } } );
+// returns { a: [ [ 1, 2 ] ] }
+```
+
+
 # Bitwise Update Operators
 
 
