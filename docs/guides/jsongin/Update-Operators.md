@@ -419,6 +419,56 @@ jsongin.Update( { a: [ [ 1, 2 ], 1 ] }, { $pull: { a: 1 } } );
 ```
 
 
+<a id="$[]"></a>$[] — the all positional operator
+---------------------------------------------------------------------
+
+**Usage** : `{ operator: { 'array-field.$[].field': value } }`
+
+***`$[]` is a path element, not an update operator.*** It is written inside a field path, and
+  `'a.$[].n'` means the `n` of ***every*** element of `a`, so one update reaches the whole
+  array.
+
+***It is the only way to write through an array without naming an index.*** An ordinary path
+  which reaches into an array by field name is not a write target at all:
+  `{ $set: { 'a.n': 9 } }` against an array `a` is refused, because a field cannot be created
+  on an array. See [`SetValue()`](./SetValue.md).
+
+***Every update operator can use it except [`$rename`](#$rename)***, which names one source and
+  one target and has no sensible target for a source that expands to many.
+
+The path is expanded before any operator runs, into the concrete paths it names — `'a.0.n'`,
+  `'a.1.n'`, and so on. That is what lets `$inc` and its relatives read and write the ***same***
+  element rather than giving every element the value computed from the first.
+
+| **Written against** | **Result** |
+|---------------------|-------------|
+| a field which is not an array | refused |
+| a field which is not there | refused |
+| an ***empty*** array | nothing to do, and no refusal |
+| an element which cannot hold the field | refused |
+
+**Examples**
+```js
+jsongin.Update( { a: [ 1, 2, 3 ] }, { $set: { 'a.$[]': 5 } } );
+// returns { a: [ 5, 5, 5 ] }
+
+// Each element is read and written on its own, so this is not one value repeated.
+jsongin.Update( { a: [ { n: 1 }, { n: 2 } ] }, { $inc: { 'a.$[].n': 1 } } );
+// returns { a: [ { n: 2 }, { n: 3 } ] }
+
+jsongin.Update( { a: [ { n: 1, k: 'x' } ] }, { $unset: { 'a.$[].n': '' } } );
+// returns { a: [ { k: 'x' } ] }
+
+// It nests, one level per array crossed.
+jsongin.Update( { a: [ { b: [ { n: 1 }, { n: 2 } ] } ] }, { $set: { 'a.$[].b.$[].n': 9 } } );
+// returns { a: [ { b: [ { n: 9 }, { n: 9 } ] } ] }
+
+// An empty array names no paths, so there is nothing to do.
+jsongin.Update( { a: [] }, { $set: { 'a.$[]': 5 } } );
+// returns { a: [] }
+```
+
+
 # Bitwise Update Operators
 
 

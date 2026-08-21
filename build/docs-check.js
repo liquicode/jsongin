@@ -349,9 +349,14 @@ function check_operator_inventory()
 	// and measured by test/Unit Tests/260) Extension Operator Tests.js.
 	const EXTENSIONS = [ '$ImplicitEq', '$eqx', '$nex', '$exprx', '$noop' ];
 
-	// The implicit form is a row with no operator behind it: it is the shape '<field>: value'
-	// rather than a name the engine registers.
-	const NOT_AN_OPERATOR = [ '<field>: value' ];
+	// Rows with no operator behind them. These are real parts of the language which the engine
+	// does not register, so there is nothing to compare a Yes or a - against:
+	//
+	//   '<field>: value'   the implicit query form, a shape rather than a name.
+	//   '$[]'              the all positional operator, which is a ***path*** element. It is
+	//                      expanded by Update() before any operator runs, so every update
+	//                      operator supports it and none of them implements it.
+	const NOT_AN_OPERATOR = [ '<field>: value', '$[]' ];
 
 	let reference = LIB_PATH.join( DOCS, 'guides', 'Operator-Reference.md' );
 	let lines = LIB_FS.readFileSync( reference, 'utf8' ).split( /\r?\n/ );
@@ -378,8 +383,10 @@ function check_operator_inventory()
 		let supported = cells[ 2 ].trim();
 		if ( ( supported !== 'Yes' ) && ( supported !== '-' ) ) { continue; }
 
+		// The link text runs to the '](' rather than to the first ']', because an operator name
+		// may contain one: '[$[]](...)' names $[] and not $[.
 		let operator = cells[ 3 ].trim();
-		let link = operator.match( /^\[([^\]]+)\]/ );
+		let link = operator.match( /^\[(.+?)\]\(/ );
 		if ( link ) { operator = link[ 1 ]; }
 
 		if ( NOT_AN_OPERATOR.indexOf( operator ) >= 0 ) { continue; }

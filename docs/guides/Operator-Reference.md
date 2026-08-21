@@ -668,7 +668,7 @@ Use the `jsongin.Update( Document, Updates )` function to apply updates to a doc
 | Array    |    Yes    | [$pullAll](./jsongin/Update-Operators.md#$pullAll)         | Removes all matching values from an array.                                                                                                    |
 | Array    |    Yes    | [$pull](./jsongin/Update-Operators.md#$pull)            | Removes all array elements that match a specified query. A bare document is a condition on the fields of each element, not a value to match whole. |
 | Array    |     -     | $                | Acts as a placeholder to update the first element that matches the query condition.                                                           |
-| Array    |     -     | $[]              | Acts as a placeholder to update all elements in an array for the documents that match the query condition.                                    |
+| Array    |    Yes    | [$[]](./jsongin/Update-Operators.md#$[])              | Acts as a placeholder to update all elements in an array. Written inside a path, as `'a.$[].n'`, and usable by every update operator except `$rename`. |
 | Array    |     -     | $[<identifier> ] | Acts as a placeholder to update all elements that match the arrayFilters condition for the documents that match the query condition.          |
 | Bitwise  |    Yes    | [$bit](./jsongin/Update-Operators.md#$bit)             | Performs bitwise AND, OR, and XOR updates of integer values. The field must already hold an integer, or not be there at all.                  |
 

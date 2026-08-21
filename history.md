@@ -8,10 +8,10 @@
 v0.1.0 (current)
 ---------------------------------------------------------------------
 
-Parity with MongoDB is ***100%*** across 887 compared behaviors: Query 230, Update 112,
+Parity with MongoDB is ***100%*** across 902 compared behaviors: Query 230, Update 127,
   Projection 56, and Aggregate 489. Run `npm run parity-report` to measure it.
 
-Coverage of the operator surface MongoDB documents is ***83.9%***, 213 operators of 254. Run
+Coverage of the operator surface MongoDB documents is ***84.3%***, 214 operators of 254. Run
   `npm run api-coverage` to measure that one. The two numbers answer different questions: parity
   is how faithfully what exists behaves, and coverage is how much exists.
 
@@ -193,6 +193,18 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 ### Added
 
+- The ***all positional operator, `$[]`***, which is a ***path*** element rather than an update
+  operator. `'a.$[].n'` means the `n` of every element of `a`, so one update reaches the whole
+  array. See [Update Operators](./docs/guides/jsongin/Update-Operators.md#$[]).
+- ***It is the only way to write through an array without naming an index***, which the
+  breaking change above left without a replacement: an ordinary path reaching into an array by
+  field name is refused by `SetValue()`.
+- ***Every update operator can use it except `$rename`***, which names one source and one
+  target and has no sensible target for a source that expands to many. The path is expanded
+  before any operator runs, into the concrete paths it names, so `$inc` and its relatives read
+  and write the same element rather than giving every element the value computed from the first.
+- A `$[]` against a field which is not an array, or which is not there, is refused; against an
+  ***empty*** array there is simply nothing to do.
 - The ***`$pull` update operator***, in `jsongin.UpdateOperators`. See
   [Update Operators](./docs/guides/jsongin/Update-Operators.md#$pull).
 - ***`$pull` takes a query, where `$pullAll` takes values.*** `$pullAll` removes elements equal
