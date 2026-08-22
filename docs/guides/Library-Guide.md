@@ -105,10 +105,10 @@ They all share the concept of a document path that is expressed in dot-notation.
 
 **Document Conversions**
 
-- [Parse( JsonString )](./jsongin/Parse.md)
+- [Parse( JsonString, Options )](./jsongin/Parse.md)
   : Similar to `JSON.parse()` but able to read Javascript as well as JSON.
 
-- [Format( Document, WithWhitespace, LikeJavascript )](./jsongin/Format.md)
+- [Format( Value, Options )](./jsongin/Format.md)
   : Similar to `JSON.stringify()` but with additional format options.
 
 - [Flatten( Document )](./jsongin/Flatten.md)

@@ -1,7 +1,7 @@
 # @liquicode/jsongin
 
 
-# Parse( JsonString )
+# Parse( JsonString, Options )
 
 
 ## Parameters
@@ -9,6 +9,14 @@
 | **Parameter** | **Allowed Types** | **Description**                          |
 |---------------|:-----------------:|------------------------------------------|
 | JsonString    |        s          | The json string to parse.                |
+| Options       |        o          | The options document below.              |
+
+### Options
+
+| **Option**  | **Type** | **Default** | **Description**                          |
+|-------------|:--------:|:-----------:|------------------------------------------|
+| Strict      |    b     |   `false`   | Throws when the string cannot be read, rather than returning it unchanged. |
+| TypedValues |    b     |   `false`   | Reads the tagged forms [`Format()`](./Format.md) writes for values JSON cannot hold. |
 
 
 ## Description
@@ -53,7 +61,7 @@ jsongin.Parse( '{ "a": "one\\ntwo" }' )
 ```
 
 
-## It Never Throws
+## It Does Not Throw By Default
 
 `Parse()` is a forgiving parser.
 A string it cannot read is ***returned unchanged*** rather than throwing, and so is an argument
@@ -81,10 +89,47 @@ Note that a value which was returned unchanged cannot be told apart from a succe
   it did not.
 `OpLog` is what distinguishes them.
 
+***Set `Strict` when that ambiguity is not acceptable.***
+Forgiveness is right for input a person typed and wrong for reading back something the engine
+  wrote, where a truncated value has to be an error rather than a string which happens to look
+  like one.
+
+```js
+// jsongin.Parse( '{ bad', { Strict: true } )
+// throws: At position [2]: Expected a ':' after the field name 'bad'.
+```
+
+A `Strict` failure is reported to [`OpError`](../OpLog.md) rather than `OpLog`.
+
+
+## Typed Values
+
+`TypedValues` reads the tagged forms [`Format()`](./Format.md) writes, so that a `Date`, an
+  `undefined`, and a `RegExp` come back as what they were rather than as a string, a missing
+  field, and an empty object.
+
+```js
+const options = { TypedValues: true };
+let text = jsongin.Format( { created: new Date( 1700000000000 ) }, options );
+jsongin.ShortType( jsongin.Parse( text, options ).created )
+// returns 'd'
+```
+
+Both ends need the option.
+Reading tagged text without it gives back the tag documents themselves, and writing without it
+  loses the values before `Parse()` ever sees them.
+
+***A tag is only a tag when it is the whole document.***
+`{ $date: ... }` alongside any other field is an ordinary document which happens to use the
+  name.
+This is the same reading MongoDB's Extended JSON takes, and it means a document whose only
+  field is genuinely called `$date` cannot be told apart from a tagged value.
+A malformed tag is left exactly as it was found, so nothing is lost to a bad guess.
+
 
 ## See Also
 
-- [`Format( Value, WithWhitespace, AndPretty )`](./Format.md)
+- [`Format( Value, Options )`](./Format.md)
 - [`OpLog`](../OpLog.md)
 
 

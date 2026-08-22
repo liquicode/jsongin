@@ -190,6 +190,13 @@ This version carries many breaking changes. Nearly all of them correct a behavio
   *Was: an operator registered through one global was invisible through the other. A browser
   sees this once `dist/jsongin.min.js` is rebuilt.*
 
+- `Format()` leaves out a value which JSON has no representation for, rather than writing the
+  field name followed by nothing. A field holding `undefined`, a symbol, or a function is left
+  out of a document and becomes `null` in an array, which is what `JSON.stringify()` does.
+  *Was: `Format( { a: undefined } )` returned `'{"a":}'`, which no JSON parser accepts and
+  which `Parse()` read back as the punctuation following the colon. Use the new `TypedValues`
+  option to carry such values rather than drop them.*
+
 
 ### Added
 
@@ -547,8 +554,29 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 - Documentation pages for the functions which had none, an Operator Authoring guide, and a
   Testing guide.
 
+- ***`Format()` and `Parse()` take an options document.*** `Format( Value, Options )` and
+  `Parse( JsonString, Options )`. The older positional form
+  `Format( Value, WithWhitespace, LikeJavascript )` still works: a boolean in the second
+  position is read as `WithWhitespace`. See [Format](/docs/guides/jsongin/Format.md) and
+  [Parse](/docs/guides/jsongin/Parse.md).
+- ***The `TypedValues` option carries the values JSON cannot hold.*** A `Date`, an `undefined`,
+  and a `RegExp` are written in MongoDB's Extended JSON forms and read back as what they were,
+  so a `Format` and `Parse` round trip returns the value it started with for every short type.
+  See [Typed Values](/docs/guides/jsongin/Format.md#typed-values).
+- ***The `Strict` option.*** `Format()` throws on a value with no representation rather than
+  leaving it out, and `Parse()` throws rather than returning the text it could not read.
+- ***`Scope.ToJSON()` and `Scope.FromJSON()`.*** A variable scope can be written down and read
+  back. The methods belong to the engine and are never stored; `FromJSON()` rebuilds them. Use
+  `TypedValues` on both ends, or `$NOW` returns as a string and `$REMOVE` is lost entirely.
+  See [Storing a Scope](/docs/guides/jsongin/Scope.md#storing-a-scope).
+
 
 ### Fixed
+
+- ***`Format()` produced text which was not JSON, and `Parse()` read it back as the wrong
+  value.*** A field with nothing to write left its name and colon behind, and `Parse()` then
+  took the following comma as the value: `Parse( Format( { a: undefined, b: 1 } ) )` returned
+  `{ a: ',', b: 1 }`. The two are inverses again.
 
 - ***The expression comparison operators equated a missing value with a null; they no longer
   do.*** `{ $eq: [ '$missing', null ] }` answered `true`, which is the ***query*** language's

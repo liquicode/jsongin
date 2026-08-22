@@ -312,8 +312,8 @@ More Functions
 - [Hybridize( Document )](/docs/guides/jsongin/Hybridize.md)
 - [Unhybridize( Document )](/docs/guides/jsongin/Unhybridize.md)
 - [Merge( DocumentA, DocumentB )](/docs/guides/jsongin/Merge.md)
-- [Parse( JsonString )](/docs/guides/jsongin/Parse.md)
-- [Format( Document, WithWhitespace, LikeJavascript )](/docs/guides/jsongin/Format.md)
+- [Parse( JsonString, Options )](/docs/guides/jsongin/Parse.md)
+- [Format( Value, Options )](/docs/guides/jsongin/Format.md)
 
 **Object Matching and Cloning**
 

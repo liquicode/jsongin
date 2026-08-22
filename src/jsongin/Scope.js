@@ -220,11 +220,90 @@ module.exports = function ( jsongin )
 
 
 	//---------------------------------------------------------------------
+	// Gives the frame chain its wire shape: bindings and a parent link, and nothing else.
+	//
+	// ***The methods are the engine's and are never stored.*** A scope written down and read
+	// back somewhere else must find the engine it lands in, not carry a copy of the one it
+	// left. FromJSON is what puts them back.
+	//
+	// ***This states the shape rather than relying on Format to drop the functions.*** It does
+	// drop them, so writing the scope object directly would work today and would quietly carry
+	// along the first non-function field anybody adds to a frame.
+	function ToJSON( Scope )
+	{
+		try
+		{
+			let st_scope = jsongin.ShortType( Scope );
+			if ( ( st_scope === 'l' ) || ( st_scope === 'u' ) ) { return null; }
+			if ( st_scope !== 'o' )
+			{
+				throw new Error( `A scope must be a document, not [${st_scope}].` );
+			}
+
+			// The bindings are copied for the same reason New() copies them: what is written
+			// down must not change afterward because the frame it came from did.
+			let variables = {};
+			let names = Object.keys( Scope.Variables );
+			for ( let index = 0; index < names.length; index++ )
+			{
+				variables[ names[ index ] ] = Scope.Variables[ names[ index ] ];
+			}
+
+			return {
+				Variables: variables,
+				Parent: ToJSON( Scope.Parent ),
+			};
+		}
+		catch ( error )
+		{
+			if ( jsongin.OpError ) { jsongin.OpError( 'Scope.ToJSON: ' + error.message ); }
+			throw error;
+		}
+	};
+
+
+	//---------------------------------------------------------------------
+	// Rebuilds a frame chain from the shape ToJSON wrote.
+	//
+	// ***The outermost frame is built first***, because New() takes the frame around it. The
+	// recursion does that on its own: a frame cannot be made until its parent has been.
+	//
+	// ***Format and Parse have to carry the values, not this.*** A scope holds a Date in
+	// $$NOW and nothing at all in $$REMOVE, and plain JSON keeps neither - the first comes
+	// back a string and the second is dropped along with its key. Use the TypedValues option
+	// on both ends. Reading a scope which was written without it gives back a $$NOW which is
+	// a string and no $$REMOVE at all, which is exactly what it says it is rather than an
+	// error this function could detect.
+	function FromJSON( Document )
+	{
+		try
+		{
+			let st_document = jsongin.ShortType( Document );
+			if ( ( st_document === 'l' ) || ( st_document === 'u' ) ) { return null; }
+			if ( st_document !== 'o' )
+			{
+				throw new Error( `A stored scope must be a document, not [${st_document}].` );
+			}
+
+			let parent = FromJSON( Document.Parent );
+			return New( Document.Variables, parent );
+		}
+		catch ( error )
+		{
+			if ( jsongin.OpError ) { jsongin.OpError( 'Scope.FromJSON: ' + error.message ); }
+			throw error;
+		}
+	};
+
+
+	//---------------------------------------------------------------------
 	return {
 		New: New,
 		NewPipeline: NewPipeline,
 		NewDocument: NewDocument,
 		RequireName: RequireName,
 		Require: Require,
+		ToJSON: ToJSON,
+		FromJSON: FromJSON,
 	};
 };

@@ -567,6 +567,7 @@ describe( '100) Core Tests', () =>
 				result = jsongin.Format( "Hello World!" );
 				assert.strictEqual( result, `"Hello World!"` );
 			} );
+
 		} );
 
 
@@ -2514,6 +2515,275 @@ describe( '100) Core Tests', () =>
 			var twice = jsongin.Merge( once, overrides );
 			assert.deepStrictEqual( twice, once );
 			assert.deepStrictEqual( once, { plugins: [ 'a' ], ui: { theme: 'dark', scale: 2 } } );
+		} );
+
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( `Storage Round-Trip Tests`, function ()
+	{
+
+		// Format and Parse are meant to be inverses. A value which JSON has no representation
+		// for used to be written as a key with no value, which is not parseable JSON at all.
+		// See .plans/2026-08-22/process-language-spec.md, findings S1 through S4.
+
+
+		//---------------------------------------------------------------------
+		describe( `Valid JSON by default`, function ()
+		{
+
+			it( `should omit an undefined field, as JSON.stringify does`, function ()
+			{
+				let document = { a: 1, gone: undefined, b: 2 };
+				let text = jsongin.Format( document );
+				assert.strictEqual( text, JSON.stringify( document ) );
+				assert.deepStrictEqual( JSON.parse( text ), { a: 1, b: 2 } );
+			} );
+
+			it( `should write null for an undefined array element, as JSON.stringify does`, function ()
+			{
+				// The rule is not the same in both places. In a document the key is dropped,
+				// and in an array the element becomes null, because an array cannot lose an
+				// element without renumbering the ones after it.
+				let value = [ 1, undefined, 3 ];
+				let text = jsongin.Format( value );
+				assert.strictEqual( text, JSON.stringify( value ) );
+				assert.deepStrictEqual( JSON.parse( text ), [ 1, null, 3 ] );
+			} );
+
+			it( `should omit a function and a symbol field, as JSON.stringify does`, function ()
+			{
+				let document = { a: 1, f: function () { return; }, s: Symbol( 'x' ), b: 2 };
+				let text = jsongin.Format( document );
+				assert.strictEqual( text, JSON.stringify( document ) );
+				assert.deepStrictEqual( JSON.parse( text ), { a: 1, b: 2 } );
+			} );
+
+			it( `should produce text which native JSON.parse accepts`, function ()
+			{
+				// This is the whole point of the change. Every one of these used to throw.
+				assert.doesNotThrow( function () { JSON.parse( jsongin.Format( { a: undefined } ) ); } );
+				assert.doesNotThrow( function () { JSON.parse( jsongin.Format( { a: Symbol( 'x' ) } ) ); } );
+				assert.doesNotThrow( function () { JSON.parse( jsongin.Format( { a: function () { return; } } ) ); } );
+				assert.doesNotThrow( function () { JSON.parse( jsongin.Format( [ undefined ] ) ); } );
+			} );
+
+		} );
+
+
+		//---------------------------------------------------------------------
+		describe( `Typed Values`, function ()
+		{
+
+			it( `should round-trip every ShortType`, function ()
+			{
+				let options = { TypedValues: true };
+				let document = {
+					n: 3.14,
+					s: 'Hello World!',
+					b: true,
+					l: null,
+					u: undefined,
+					d: new Date( '2026-08-22T04:00:00.000Z' ),
+					a: [ 1, 'two', false ],
+					o: { key: 'value' },
+					r: /ab+c/i,
+				};
+				let result = jsongin.Parse( jsongin.Format( document, options ), options );
+
+				assert.strictEqual( jsongin.ShortType( result.n ), 'n' );
+				assert.strictEqual( jsongin.ShortType( result.s ), 's' );
+				assert.strictEqual( jsongin.ShortType( result.b ), 'b' );
+				assert.strictEqual( jsongin.ShortType( result.l ), 'l' );
+				assert.strictEqual( jsongin.ShortType( result.u ), 'u' );
+				assert.strictEqual( jsongin.ShortType( result.d ), 'd' );
+				assert.strictEqual( jsongin.ShortType( result.a ), 'a' );
+				assert.strictEqual( jsongin.ShortType( result.o ), 'o' );
+				assert.strictEqual( jsongin.ShortType( result.r ), 'r' );
+
+				assert.deepStrictEqual( result, document );
+			} );
+
+			it( `should keep an undefined field apart from a null one`, function ()
+			{
+				// This is the distinction $$REMOVE depends on: a variable bound to nothing is
+				// not a variable bound to null. MongoDB Extended JSON collapses the two, which
+				// is why jsongin writes the v1 $undefined tag rather than following v2 here.
+				let options = { TypedValues: true };
+				let result = jsongin.Parse( jsongin.Format( { gone: undefined, empty: null }, options ), options );
+
+				assert.strictEqual( 'gone' in result, true );
+				assert.strictEqual( jsongin.ShortType( result.gone ), 'u' );
+				assert.strictEqual( jsongin.ShortType( result.empty ), 'l' );
+			} );
+
+			it( `should write the MongoDB Extended JSON date form`, function ()
+			{
+				// The milliseconds are dropped when there are none. This is the driver's rule,
+				// not toISOString()'s, and it was read off bson rather than assumed.
+				let text = jsongin.Format( { when: new Date( '2026-08-22T04:00:00.000Z' ) }, { TypedValues: true } );
+				assert.strictEqual( text, '{"when":{"$date":"2026-08-22T04:00:00Z"}}' );
+			} );
+
+			it( `should keep the milliseconds when there are some`, function ()
+			{
+				let text = jsongin.Format( { when: new Date( '2026-08-22T04:00:00.010Z' ) }, { TypedValues: true } );
+				assert.strictEqual( text, '{"when":{"$date":"2026-08-22T04:00:00.010Z"}}' );
+			} );
+
+			it( `should write a time before the epoch in the canonical form`, function ()
+			{
+				// The relaxed form is an ISO-8601 string and the driver does not use one for a
+				// negative timestamp, so this is the one case which is written the other way.
+				let text = jsongin.Format( { when: new Date( -1 ) }, { TypedValues: true } );
+				assert.strictEqual( text, '{"when":{"$date":{"$numberLong":"-1"}}}' );
+			} );
+
+			it( `should read the canonical form back as a date`, function ()
+			{
+				// Format writes this one rarely and Parse has to read it always: an ordinary
+				// Extended JSON document holding an old date arrives in this shape.
+				let options = { TypedValues: true };
+				let result = jsongin.Parse( '{"when":{"$date":{"$numberLong":"-86400000"}}}', options );
+				assert.strictEqual( jsongin.ShortType( result.when ), 'd' );
+				assert.strictEqual( result.when.toISOString(), '1969-12-31T00:00:00.000Z' );
+			} );
+
+			it( `should not write tagged forms when TypedValues is off`, function ()
+			{
+				let text = jsongin.Format( { when: new Date( '2026-08-22T04:00:00.000Z' ) } );
+				assert.strictEqual( text, '{"when":"2026-08-22T04:00:00.000Z"}' );
+			} );
+
+		} );
+
+
+		//---------------------------------------------------------------------
+		describe( `Strict`, function ()
+		{
+
+			it( `should throw rather than return the text it could not read`, function ()
+			{
+				// Parse is forgiving on purpose, which is right for user input and wrong for
+				// restoring engine state, where a truncated value must be an error.
+				assert.strictEqual( jsongin.Parse( '{ "Status": "ready", ' ), '{ "Status": "ready", ' );
+				assert.throws( function () { jsongin.Parse( '{ "Status": "ready", ', { Strict: true } ); } );
+			} );
+
+			it( `should throw on a value which cannot be represented`, function ()
+			{
+				assert.throws( function () { jsongin.Format( { f: function () { return; } }, { Strict: true } ); } );
+				assert.throws( function () { jsongin.Format( { s: Symbol( 'x' ) }, { Strict: true } ); } );
+			} );
+
+		} );
+
+
+		//---------------------------------------------------------------------
+		describe( `Backward Compatibility`, function ()
+		{
+
+			it( `should still read the positional boolean arguments`, function ()
+			{
+				// Format( Value, WithWhitespace, LikeJavascript ) ships today and is called
+				// this way by the guides, which check-docs executes.
+				let document = { a: 1, b: { c: 2 } };
+				assert.strictEqual( jsongin.Format( document, false ), jsongin.Format( document ) );
+				assert.strictEqual( jsongin.Format( document, true ).includes( '\n' ), true );
+				assert.strictEqual( jsongin.Format( document, true, true ).includes( '\n' ), true );
+			} );
+
+		} );
+
+
+		//---------------------------------------------------------------------
+		describe( `Boundaries`, function ()
+		{
+
+			it( `should state what happens to a regular expression carrying the g flag`, function ()
+			{
+				// BSON regex options are imxlsu. There is no g, so a JS RegExp carrying one
+				// cannot be written in the Extended JSON form. jsongin keeps the flag rather
+				// than losing it silently, which means this one value is jsongin's own form
+				// and not MongoDB's. Stated here so the boundary cannot move unnoticed.
+				let options = { TypedValues: true };
+				let result = jsongin.Parse( jsongin.Format( { r: /ab+c/gi }, options ), options );
+				assert.strictEqual( jsongin.ShortType( result.r ), 'r' );
+				assert.strictEqual( result.r.source, 'ab+c' );
+				assert.strictEqual( result.r.flags.includes( 'g' ), true );
+				assert.strictEqual( result.r.flags.includes( 'i' ), true );
+			} );
+		} );
+
+
+		//---------------------------------------------------------------------
+		describe( `Compared with MongoDB Extended JSON`, function ()
+		{
+
+			/*
+				***These are unit tests and not parity tests, and the reason is the harness
+				rather than the subject.*** The parity suites run one shared suite against a
+				MongoDB server and against jsongin, over a collection. Extended JSON is not a
+				server behavior at all - it is what the driver's serializer writes - so there is
+				no collection for the harness to hold and nothing for parity-report to count.
+				Folding it into that number would change what the number means.
+
+				The comparison is still against the reference rather than against jsongin's own
+				answer, which is the part the standing lesson is about: a test which asserts
+				what the engine already does can only ever confirm it. EJSON here is the
+				reference, reached through the mongodb devDependency.
+			*/
+
+			const EJSON = require( 'mongodb' ).BSON.EJSON;
+			const TYPED = { TypedValues: true };
+
+			it( `should write a date exactly as the driver writes it`, function ()
+			{
+				let document = { created: new Date( 1700000000000 ) };
+				assert.strictEqual(
+					jsongin.Format( document, TYPED ),
+					EJSON.stringify( document, { relaxed: true } ) );
+			} );
+
+			it( `should write a regular expression in the driver's form`, function ()
+			{
+				let document = { r: /ab+c/i };
+				assert.strictEqual(
+					jsongin.Format( document, TYPED ),
+					EJSON.stringify( document, { relaxed: true } ) );
+			} );
+
+			it( `should differ from the driver on an undefined value, deliberately`, function ()
+			{
+				// Extended JSON v2 maps undefined onto null, because BSON has no such value.
+				// jsongin does have one - $$REMOVE is bound to nothing, which is not the same
+				// as being bound to null - so it writes the retired v1 tag instead. Asserted
+				// here in both directions so the divergence cannot drift into an accident.
+				let document = { gone: undefined };
+
+				assert.strictEqual( EJSON.stringify( document, { relaxed: true } ), '{"gone":null}' );
+				assert.strictEqual( jsongin.Format( document, TYPED ), '{"gone":{"$undefined":true}}' );
+
+				// And the consequence: the round trip keeps them apart, where EJSON cannot.
+				let result = jsongin.Parse( jsongin.Format( { gone: undefined, empty: null }, TYPED ), TYPED );
+				assert.strictEqual( jsongin.ShortType( result.gone ), 'u' );
+				assert.strictEqual( jsongin.ShortType( result.empty ), 'l' );
+			} );
+
+			it( `should differ from the driver on the g flag, deliberately`, function ()
+			{
+				// BSON's regex options are imxlsu. The driver refuses g outright rather than
+				// dropping it, which is the honest thing for a wire format that cannot carry
+				// it. jsongin keeps the flag, because losing it would change what the
+				// expression matches.
+				assert.throws( function () { EJSON.stringify( { r: /ab+c/g } ); } );
+
+				let result = jsongin.Parse( jsongin.Format( { r: /ab+c/g }, TYPED ), TYPED );
+				assert.strictEqual( result.r.flags, 'g' );
+			} );
+
 		} );
 
 

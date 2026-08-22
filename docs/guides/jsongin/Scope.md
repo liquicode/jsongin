@@ -151,9 +151,58 @@ Whether a caller actually ***passes*** the scope its helper declares cannot be r
   and that is the hole `Require` closes from the other side.
 
 
+## Storing a Scope
+
+A scope is a value, so it can be written down and read back.
+
+| **Function**                       | **Description**                          |
+|------------------------------------|------------------------------------------|
+| `jsongin.Scope.ToJSON( Scope )`    | Gives the frame chain its wire shape: bindings and a parent link, nothing else. |
+| `jsongin.Scope.FromJSON( Document )` | Rebuilds the chain, methods and all.   |
+
+***The methods are never stored.***
+They belong to the engine rather than to the value, so a scope read back somewhere else finds
+  the engine it lands in instead of carrying a copy of the one it left.
+
+***Use [`TypedValues`](./Format.md#typed-values) on both ends.***
+A scope holds a `Date` in `$$NOW` and nothing at all in `$$REMOVE`, and plain JSON keeps
+  neither: the first comes back a string and the second is dropped along with its key.
+
+```js
+const storage = { TypedValues: true };
+
+let scope = jsongin.Scope.NewPipeline().ForDocument( { price: 10 } ).Child( { discount: 0.5 } );
+let text = jsongin.Format( jsongin.Scope.ToJSON( scope ), storage );
+
+let restored = jsongin.Scope.FromJSON( jsongin.Parse( text, storage ) );
+jsongin.Evaluate( { price: 10 }, { $multiply: [ '$price', '$$discount' ] }, restored )
+// returns 5
+```
+
+***A variable bound to nothing stays bound to nothing.***
+That is the distinction [`Lookup`](#using-a-scope) reports `Found` apart from `Value` for, and
+  losing it across storage would make a restored scope disagree with the one it came from.
+
+```js
+const storage = { TypedValues: true };
+
+let scope = jsongin.Scope.New( { nothing: undefined }, null );
+let restored = jsongin.Scope.FromJSON( jsongin.Parse( jsongin.Format( jsongin.Scope.ToJSON( scope ), storage ), storage ) );
+
+restored.Lookup( 'nothing' )       // returns { Found: true, Value: undefined }
+restored.Lookup( 'neverBound' )    // returns { Found: false }
+```
+
+Reading a scope which was written without `TypedValues` is not an error and cannot be detected
+  as one.
+It gives back a `$$NOW` which is a string and no `$$REMOVE` at all, which is exactly what the
+  text it was given says.
+
+
 ## See Also
 
 - [Variables](./Expression-Operators.md#variables) — what the variables mean
+- [`Format( Value, Options )`](./Format.md) and [`Parse( JsonString, Options )`](./Parse.md)
 - [`Evaluate( Document, Expression, Scope )`](./Evaluate.md)
 - [`Aggregate( Documents, Pipeline )`](./Aggregate.md)
 - [$let](./Expression-Operators.md#$let), [$map](./Expression-Operators.md#$map),

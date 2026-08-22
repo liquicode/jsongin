@@ -65,8 +65,8 @@ The `jsongin` functions which need to preserve values — `Project()`, `Update()
 ## See Also
 
 - [`SafeClone( Document, Exceptions )`](./SafeClone.md)
-- [`Format( Document, WithWhitespace, LikeJavascript )`](./Format.md)
-- [`Parse( JsonString )`](./Parse.md)
+- [`Format( Value, Options )`](./Format.md)
+- [`Parse( JsonString, Options )`](./Parse.md)
 
 
 ## Examples

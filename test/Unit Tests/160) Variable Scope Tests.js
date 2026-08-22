@@ -265,5 +265,124 @@ describe( '160) Variable Scope Tests', () =>
 
 	} );
 
+	//---------------------------------------------------------------------
+	describe( 'Scope Storage', () =>
+	{
+
+		/*
+			A scope is meant to be storable data - that is the standing decision behind making
+			it a value the caller owns rather than a stack the engine holds. Through JSON it was
+			not storable at all: the methods went missing, $$NOW came back a string, and
+			$$REMOVE disappeared entirely, because JSON.stringify drops a key whose value is
+			undefined.
+
+			ToJSON gives the frames a wire shape and FromJSON puts the methods back. The text in
+			between is Format and Parse with TypedValues, which is what carries a Date and an
+			undefined binding across.
+
+			See .plans/2026-08-22/process-language-spec.md, finding S4.
+		*/
+
+		const STORAGE = { TypedValues: true };
+
+		function round_trip( Scope )
+		{
+			let text = jsongin.Format( jsongin.Scope.ToJSON( Scope ), STORAGE );
+			return jsongin.Scope.FromJSON( jsongin.Parse( text, STORAGE ) );
+		}
+
+		function sample_scope()
+		{
+			let scope = jsongin.Scope.NewPipeline( new Date( '2026-08-22T04:00:00.000Z' ) );
+			scope = scope.ForDocument( { _id: 1, price: 10 } );
+			return scope.Child( { discount: 0.5, nothing: undefined } );
+		}
+
+
+		it( 'should answer every name the same way after a round trip', () =>
+		{
+			let before = sample_scope();
+			let after = round_trip( before );
+
+			let names = [ 'discount', 'ROOT', 'CURRENT', 'NOW', 'REMOVE', 'nothing' ];
+			for ( let index = 0; index < names.length; index++ )
+			{
+				let name = names[ index ];
+				assert.deepStrictEqual( after.Lookup( name ), before.Lookup( name ),
+					`the name [${name}] did not survive storage.` );
+			}
+		} );
+
+		it( 'should keep a variable bound to nothing apart from an unbound one', () =>
+		{
+			// This is the distinction the whole exercise is for. A resumed process which read
+			// $$REMOVE as unbound would throw on an expression that worked before it suspended.
+			let after = round_trip( sample_scope() );
+
+			assert.deepStrictEqual( after.Lookup( 'REMOVE' ), { Found: true, Value: undefined } );
+			assert.deepStrictEqual( after.Lookup( 'nothing' ), { Found: true, Value: undefined } );
+			assert.deepStrictEqual( after.Lookup( 'nobodyBoundThis' ), { Found: false } );
+		} );
+
+		it( 'should bring $$NOW back as a date and not as a string', () =>
+		{
+			let after = round_trip( sample_scope() );
+			let now = after.Lookup( 'NOW' ).Value;
+
+			assert.strictEqual( jsongin.ShortType( now ), 'd' );
+			assert.strictEqual( now.getTime(), new Date( '2026-08-22T04:00:00.000Z' ).getTime() );
+		} );
+
+		it( 'should keep the frames chained rather than flattened', () =>
+		{
+			// The chain is what a closure captures and what a reader walks to see where a name
+			// came from. Flattening would answer every lookup correctly and lose that.
+			let before = sample_scope().Child( { discount: 0.9 } );
+			let after = round_trip( before );
+
+			assert.strictEqual( after.Lookup( 'discount' ).Value, 0.9 );
+			assert.strictEqual( after.Parent.Lookup( 'discount' ).Value, 0.5 );
+			assert.strictEqual( after.Parent.Parent.Lookup( 'discount' ).Found, false );
+		} );
+
+		it( 'should restore the methods, which are the engine\'s and are never stored', () =>
+		{
+			let after = round_trip( sample_scope() );
+
+			assert.strictEqual( typeof after.Lookup, 'function' );
+			assert.strictEqual( typeof after.Child, 'function' );
+			assert.strictEqual( typeof after.ForDocument, 'function' );
+			assert.strictEqual( typeof after.Parent.Lookup, 'function' );
+
+			// The wire shape carries no methods at all.
+			let stored = jsongin.Scope.ToJSON( sample_scope() );
+			assert.deepStrictEqual( Object.keys( stored ), [ 'Variables', 'Parent' ] );
+		} );
+
+		it( 'should evaluate an expression to the same answer after a round trip', () =>
+		{
+			// The proof that matters: the scope is not merely shaped the same, it works.
+			let document = { price: 10 };
+			let expression = { $multiply: [ '$price', '$$discount' ] };
+
+			let before = sample_scope();
+			let after = round_trip( before );
+
+			assert.strictEqual( jsongin.Evaluate( document, expression, after ),
+				jsongin.Evaluate( document, expression, before ) );
+			assert.strictEqual( jsongin.Evaluate( document, { $year: '$$NOW' }, after ), 2026 );
+		} );
+
+		it( 'should take a scope which has no parent', () =>
+		{
+			let before = jsongin.Scope.New( { only: 1 }, null );
+			let after = round_trip( before );
+
+			assert.strictEqual( after.Lookup( 'only' ).Value, 1 );
+			assert.strictEqual( after.Parent, null );
+		} );
+
+	} );
+
 
 } );

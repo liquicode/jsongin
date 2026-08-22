@@ -59,7 +59,7 @@ jsongin.Unhybridize( 5 );
 - [`Hybridize( Document )`](./Hybridize.md), which produces the documents this restores.
 - [`Clone( Document )`](./Clone.md) and [`SafeClone( Document )`](./SafeClone.md), which copy a
   document without converting it.
-- [`Parse( JsonString )`](./Parse.md) and [`Format( Document )`](./Format.md)
+- [`Parse( JsonString, Options )`](./Parse.md) and [`Format( Value, Options )`](./Format.md)
 
 
 ## Examples

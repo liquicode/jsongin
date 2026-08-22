@@ -1120,17 +1120,28 @@ describe( '130) Engine Function Tests', () =>
 
 		it( 'should format a value which JSON has no representation for', () =>
 		{
-			// Format is jsongin's own writer, not JSON.stringify, and it writes the key with
-			// an empty value where JSON.stringify would drop the key. These are the four types
-			// with nothing to write: undefined, a symbol, a function, and a BigInt, which is
-			// the one of the four that does have a representation.
+			// These are the four types with nothing to write: undefined, a symbol, a function,
+			// and a BigInt, which is the one of the four that does have a representation.
 			assert.strictEqual( jsongin.Format( { a: 10n } ), '{"a":10}' );
 
-			// The other three produce a key with no value, which is not parseable JSON. Stated
-			// here as the behavior it is rather than asserted to be correct.
-			assert.strictEqual( jsongin.Format( { a: undefined } ), '{"a":}' );
-			assert.strictEqual( jsongin.Format( { a: Symbol( 'x' ) } ), '{"a":}' );
-			assert.strictEqual( jsongin.Format( { a: function () { return; } } ), '{"a":}' );
+			// ***The other three used to produce a key with no value, which is not parseable
+			// JSON.*** This test asserted that output and said in as many words that it was
+			// stated rather than blessed. It is now the JSON.stringify rule: the field is left
+			// out of a document, and an array element becomes null because dropping it would
+			// renumber everything after it.
+			//
+			// What changed is that the output has to be readable again. Format and Parse are
+			// meant to be inverses, and Parse read '{"a":}' back as the punctuation which
+			// followed the colon. See .plans/2026-08-22/process-language-spec.md, finding S1,
+			// and the Storage Round-Trip Tests in `100) Core Tests.js` for the whole rule.
+			assert.strictEqual( jsongin.Format( { a: undefined } ), '{}' );
+			assert.strictEqual( jsongin.Format( { a: Symbol( 'x' ) } ), '{}' );
+			assert.strictEqual( jsongin.Format( { a: function () { return; } } ), '{}' );
+			assert.strictEqual( jsongin.Format( [ undefined ] ), '[null]' );
+
+			// Nothing is lost when TypedValues is set, which is what a stored scope needs:
+			// $$REMOVE is bound to nothing, and that is not the same as being bound to null.
+			assert.strictEqual( jsongin.Format( { a: undefined }, { TypedValues: true } ), '{"a":{"$undefined":true}}' );
 
 			// At the top level there is no key, so the result is empty.
 			assert.strictEqual( jsongin.Format( undefined ), '' );

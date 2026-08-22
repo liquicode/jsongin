@@ -17,11 +17,33 @@ module.exports = function ( jsongin )
 	// Note that a fallback cannot be told apart from a successful parse which happened to
 	// produce a string: Parse( '"abc"' ) returns 'abc' because it parsed, and Parse( '"abc' )
 	// returns '"abc' because it did not. OpLog is what distinguishes them.
-	function Parse( JsonString )
+	// ***Strict turns the forgiveness off.*** Returning the text unchanged is right for user
+	// input and wrong for reading back something the engine wrote, where a truncated value has
+	// to be an error rather than a string which happens to look like one.
+	//
+	// ***TypedValues reads the forms Format writes for the values JSON cannot hold.*** See
+	// revive_recurse() below.
+	function Parse( JsonString, Options = {} )
 	{
+		let settings = {
+			Strict: false,
+			TypedValues: false,
+		};
+		if ( jsongin.ShortType( Options ) === 'o' )
+		{
+			if ( Options.Strict === true ) { settings.Strict = true; }
+			if ( Options.TypedValues === true ) { settings.TypedValues = true; }
+		}
+
 		if ( jsongin.ShortType( JsonString ) !== 's' )
 		{
-			if ( jsongin.OpLog ) { jsongin.OpLog( `Parse: The JsonString parameter must be a string. The value was returned unchanged.` ); }
+			let message = `The JsonString parameter must be a string.`;
+			if ( settings.Strict )
+			{
+				if ( jsongin.OpError ) { jsongin.OpError( `Parse: ${message}` ); }
+				throw new Error( `Parse: ${message}` );
+			}
+			if ( jsongin.OpLog ) { jsongin.OpLog( `Parse: ${message} The value was returned unchanged.` ); }
 			return JsonString;
 		}
 
@@ -29,14 +51,97 @@ module.exports = function ( jsongin )
 		{
 			let tokens = Tokenize( JsonString );
 			if ( tokens.length === 0 ) { throw new Error( `The string holds no value.` ); }
-			return BuildObject( tokens );
+			let value = BuildObject( tokens );
+			if ( settings.TypedValues ) { value = revive_recurse( value ); }
+			return value;
 		}
 		catch ( error )
 		{
+			if ( settings.Strict )
+			{
+				if ( jsongin.OpError ) { jsongin.OpError( `Parse: ${error.message}` ); }
+				throw error;
+			}
 			if ( jsongin.OpLog ) { jsongin.OpLog( `Parse: ${error.message} The string was returned unchanged.` ); }
 			return JsonString;
 		}
 	};
+
+
+	//---------------------------------------------------------------------
+	// Turns the tagged documents Format writes back into the values they stand for.
+	//
+	// ***A tag is only a tag when it is the whole document.*** { $date: ... } alongside any
+	// other field is an ordinary document which happens to use the name, which is the same
+	// reading MongoDB Extended JSON takes. It cannot tell a document whose only field is
+	// genuinely called $date from a tagged value, and neither can this - a limitation worth
+	// knowing about rather than one worth guessing around.
+	//
+	// A malformed tag is left exactly as it was found, so nothing is lost to a bad guess.
+	function revive_recurse( Node )
+	{
+		if ( Array.isArray( Node ) )
+		{
+			for ( let index = 0; index < Node.length; index++ )
+			{
+				Node[ index ] = revive_recurse( Node[ index ] );
+			}
+			return Node;
+		}
+
+		if ( ( Node === null ) || ( typeof Node !== 'object' ) ) { return Node; }
+
+		let keys = Object.keys( Node );
+		if ( keys.length === 1 )
+		{
+			let tag = keys[ 0 ];
+			let value = Node[ tag ];
+
+			if ( tag === '$undefined' )
+			{
+				if ( value === true ) { return undefined; }
+			}
+			else if ( tag === '$date' )
+			{
+				// The relaxed form, which is what Format writes for any time at or after the
+				// epoch.
+				if ( typeof value === 'string' )
+				{
+					let date = new Date( value );
+					if ( isNaN( date ) === false ) { return date; }
+				}
+
+				// ***The canonical form has to be read even though Format rarely writes it.***
+				// The driver uses it for every time before the epoch, so refusing it would
+				// mean jsongin could not read an ordinary Extended JSON document which
+				// happened to hold an old date.
+				if ( ( value !== null ) && ( typeof value === 'object' ) && ( Array.isArray( value ) === false ) )
+				{
+					let inner = Object.keys( value );
+					if ( ( inner.length === 1 ) && ( inner[ 0 ] === '$numberLong' ) )
+					{
+						let milliseconds = Number( value.$numberLong );
+						if ( isNaN( milliseconds ) === false ) { return new Date( milliseconds ); }
+					}
+				}
+			}
+			else if ( tag === '$regularExpression' )
+			{
+				if ( ( value !== null ) && ( typeof value === 'object' ) && ( typeof value.pattern === 'string' ) )
+				{
+					let flags = ( typeof value.options === 'string' ) ? value.options : '';
+					try { return new RegExp( value.pattern, flags ); }
+					catch ( error ) { return Node; }
+				}
+			}
+		}
+
+		for ( let index = 0; index < keys.length; index++ )
+		{
+			Node[ keys[ index ] ] = revive_recurse( Node[ keys[ index ] ] );
+		}
+		return Node;
+	}
 
 
 	//---------------------------------------------------------------------
