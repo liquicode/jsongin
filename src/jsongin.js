@@ -348,6 +348,21 @@ function NewJsongin( EngineSettings = {} )
 	};
 
 	//---------------------------------------------------------------------
+	// Step Operators
+	//
+	// The sixth registry, and the only one which is not MongoDB's. MongoDB has no process
+	// language, so these are jsongin extensions the way $eqx and $noop are: build/api-coverage
+	// does not count them, because counting them would change what its percentage means.
+	Engine.StepOperators = {
+
+		$do: require( './Operators/Step/do' )( Engine ),
+		$when: require( './Operators/Step/when' )( Engine ),
+		$call: require( './Operators/Step/call' )( Engine ),
+		$return: require( './Operators/Step/return' )( Engine ),
+
+	};
+
+	//---------------------------------------------------------------------
 	// Text Helper
 	Engine.Text = require( './Text' );
 
@@ -366,6 +381,18 @@ function NewJsongin( EngineSettings = {} )
 	Engine.Filter = require( './jsongin/Filter' )( Engine );
 	Engine.Sort = require( './jsongin/Sort' )( Engine );
 	Engine.Distinct = require( './jsongin/Distinct' )( Engine );
+
+	//---------------------------------------------------------------------
+	// The Process Runtime
+	//
+	// Four functions from one run to the next. They are named on the engine rather than
+	// grouped under an object because they are engine functions like Aggregate and Update,
+	// and because a run is a value the caller holds - there is nothing here to be a member of.
+	let process_runtime = require( './jsongin/Process' )( Engine );
+	Engine.ProcessStart = process_runtime.Start;
+	Engine.ProcessStep = process_runtime.Step;
+	Engine.ProcessExecute = process_runtime.Execute;
+	Engine.ProcessResume = process_runtime.Resume;
 
 	//---------------------------------------------------------------------
 	// Snapshots

@@ -265,6 +265,34 @@ jsongin.Invert( { hp: 10 }, { $inc: { hp: -3 } } );   // returns { $set: { hp: 1
 See [Invert](/docs/guides/jsongin/Invert.md).
 
 
+### The Process Runtime
+
+A process is a JSON document describing work, and a run is a JSON value describing how far that work has got.
+The engine is a pure function from one run to the next and holds nothing in between, so a run can be written down, moved, and picked up later.
+
+```js
+const checkout = {
+	Name: 'Checkout',
+	Steps: [
+		{ $do: { total: { $add: [ '$sub', '$tax' ] } } },
+		{ $call: { Name: 'ChargeCard', With: { amount: '$total' }, Into: 'receipt' } },
+		{ $return: '$receipt' },
+	],
+};
+
+let run = jsongin.ProcessExecute( checkout, jsongin.ProcessStart( checkout, { sub: 100, tax: 8 } ) );
+run.Status         // returns 'waiting'
+run.Waiting.With   // returns { amount: 108 }
+
+// $call does not call. The host does the work and hands the answer back.
+run = jsongin.ProcessExecute( checkout, jsongin.ProcessResume( checkout, run, { paid: true } ) );
+run.Result         // returns { paid: true }
+```
+
+See [The Process Runtime](/docs/guides/jsongin/Process.md) and
+[Step Operators](/docs/guides/jsongin/Step-Operators.md).
+
+
 ### Document Mechanics
 
 Read, write, and reshape a document by path.

@@ -32,6 +32,7 @@
         "api-coverage": "node build/api-coverage.js",
         "coverage": "node build/coverage.js",
     "scope-check": "node build/scope-check.js",
+        "process-check": "node build/process-check.js",
         "check-docs": "node build/docs-check.js",
         "run tests": "npx @liquicode/devops --tasks .\\build\\build.tasks.js run_tests",
         "build docs": "npx @liquicode/devops --tasks .\\build\\build.tasks.js build_docs",

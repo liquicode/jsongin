@@ -44,6 +44,13 @@
 
 <hr>
 
+- The Process Runtime
+
+	- [Processes and Runs](/guides/jsongin/Process.md)
+	- [Step Operators](/guides/jsongin/Step-Operators.md)
+
+<hr>
+
 - Snapshots
 
 	- [`Diff()`](/guides/jsongin/Diff.md)

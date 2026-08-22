@@ -200,6 +200,34 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 ### Added
 
+- ***The process runtime.*** A process is a JSON document describing work, and a run is a JSON
+  value describing how far that work has got. `ProcessStart()`, `ProcessStep()`,
+  `ProcessExecute()`, and `ProcessResume()` step one to the next and hold nothing between calls,
+  so a run can be written down, moved, and picked up later. See
+  [The Process Runtime](/docs/guides/jsongin/Process.md).
+- ***The step operators `$do`, `$when`, `$call`, and `$return`***, in a sixth registry. They are
+  `jsongin` operators rather than MongoDB ones, so `npm run api-coverage` does not count them.
+  See [Step Operators](/docs/guides/jsongin/Step-Operators.md).
+- ***`$do` has the semantics of the aggregation `$set` stage***, not of the update operator of
+  the same name. A process must compute, and the update family stores. `$inc`, `$mul`, and
+  `$push` have no stage equivalent, so a counter is incremented by writing the arithmetic out.
+- ***A `$when` check is a query***, and can hold `$expr` when an expression is wanted. A query
+  carries no variables, so a `$$name` the run bound is not visible inside a check.
+- ***`$call` does not call.*** The run suspends with a descriptor naming what it wants, and the
+  host does the work and the awaiting. The engine has no dependency and contains no `async`.
+- ***A run carries the name of the process it belongs to***, so stepping a stored run against
+  the wrong process fails at the first call rather than computing a wrong answer quietly.
+- ***`$$NOW` is fixed for a whole run***, the way it is fixed for a whole pipeline. A run
+  resumed an hour later keeps the instant it started with.
+- ***Nothing in the runtime throws.*** A failure is a run with `Status: 'failed'` and an `Error`
+  of `{ Code, Message, Cursor }`, because the point of a run is that it is a value which can be
+  stored and looked at later, and an error which vanished into a `throw` could not be.
+- ***`ProcessExecute()` takes a step budget***, 1000 by default, and fails with
+  `StepLimitExceeded` rather than never returning.
+- ***`npm run process-check`***, which checks the six invariants of the runtime — storage is
+  transparent, stepping is deterministic, `ProcessExecute()` equals repeated `ProcessStep()`,
+  runs are independent, stepping is total, and the input run is never modified — against twelve
+  processes at every step of each.
 - ***Expression variable scope.*** A name beginning with `$$` is a variable reference, resolved
   from the scope in effect where the expression is being evaluated rather than from the
   document. Every such name was refused outright before. See

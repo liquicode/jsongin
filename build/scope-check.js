@@ -56,6 +56,7 @@ const OPERATOR_DECLARATIONS = [
 	{ Member: 'Evaluate', First: 'Document' },
 	{ Member: 'Stage', First: 'Documents' },
 	{ Member: 'Accumulate', First: 'Documents' },
+	{ Member: 'Step', First: 'State' },
 ];
 
 // Helpers reached under more than one name. Seven modules write

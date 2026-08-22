@@ -641,6 +641,7 @@ function check_shared_names()
 		'As an Accumulator': 'AccumulatorOperators',
 		'As an Update Operator': 'UpdateOperators',
 		'As a Pipeline Stage': 'StageOperators',
+		'As a Step Operator': 'StepOperators',
 		// A projection operator is handled inside Project.js rather than registered, and
 		// 'Elsewhere' is free text by design. Neither has a registry to be checked against.
 		'As a Projection Operator': null,
@@ -650,7 +651,12 @@ function check_shared_names()
 	// ***Stages count as a role.*** $set, $count, and $unset each name a stage and something
 	// else, so leaving StageOperators out would have let exactly the collisions this section
 	// exists for go unnoticed.
-	const REGISTRIES = [ 'QueryOperators', 'ExpressionOperators', 'AccumulatorOperators', 'UpdateOperators', 'StageOperators' ];
+	//
+	// ***Step operators count as a role for the same reason***, before any of them collides
+	// with anything. None of $do, $when, $call or $return is a name used elsewhere today,
+	// which is exactly when this is cheap to add: the family which does collide will be found
+	// by the check rather than by a reader.
+	const REGISTRIES = [ 'QueryOperators', 'ExpressionOperators', 'AccumulatorOperators', 'UpdateOperators', 'StageOperators', 'StepOperators' ];
 
 	const NOT_SUPPORTED = '*(not supported)*';
 
