@@ -251,6 +251,11 @@ This version carries many breaking changes. Nearly all of them correct a behavio
   catch and a process must not be able to reach past the handlers around it.
 - ***`$call` does not call.*** The run suspends with a descriptor naming what it wants, and the
   host does the work and the awaiting. The engine has no dependency and contains no `async`.
+- ***Parallel work is the host's.*** There is no parallel step operator: the host starts a run
+  for each independent piece, runs them however it likes, and hands the results back through one
+  `$call`. Two runs stepped alternately never affect each other, which is checked rather than
+  assumed, so an operator for it would buy nothing and would cost a run being one position in
+  one document. See [Fanning Out](/docs/guides/jsongin/Step-Operators.md#fanning-out).
 - ***A run carries the name of the process it belongs to***, so stepping a stored run against
   the wrong process fails at the first call rather than computing a wrong answer quietly.
 - ***`$$NOW` is fixed for a whole run***, the way it is fixed for a whole pipeline. A run

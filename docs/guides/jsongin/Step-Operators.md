@@ -566,6 +566,81 @@ A result of nothing removes the field at `Into` rather than setting it to `undef
   the same rule `$do` follows and the same reason - a run has to stay storable.
 
 
+### Fanning Out
+
+***Work which can happen at the same time belongs to the host, not to the engine.***
+One `$call` may ask for several things at once, and the host is free to do them concurrently -
+  with `Promise.all()`, with a worker pool, with whatever it already uses - because the engine
+  is not inside that loop.
+
+Each piece of independent work can be a process of its own, run as a child of the call.
+
+```js
+const checking = {
+	Name: 'Checking',
+	Steps: [
+		{ $do: { score: { $multiply: [ '$weight', 10 ] } } },
+		{ $return: { name: '$name', passed: { $gte: [ '$score', 50 ] } } },
+	],
+};
+
+const ordering = {
+	Name: 'Ordering',
+	Steps: [
+		{ $call: { Name: 'RunChecks', With: { checks: '$checks' }, Into: 'results' } },
+		{
+			$when: {
+				Check: { 'results.passed': false },
+				Then: [ { $do: { decision: 'review' } } ],
+				Else: [ { $do: { decision: 'accept' } } ],
+			},
+		},
+		{ $return: '$decision' },
+	],
+};
+
+// The host's handler for the call. A real one awaits Promise.all() around this loop.
+function run_checks( Checks )
+{
+	let results = [];
+	for ( let check_index = 0; check_index < Checks.length; check_index++ )
+	{
+		let child = jsongin.ProcessStart( checking, Checks[ check_index ] );
+		results.push( jsongin.ProcessExecute( checking, child ).Result );
+	}
+	return results;
+}
+
+let order = jsongin.ProcessExecute( ordering, jsongin.ProcessStart( ordering,
+	{ checks: [ { name: 'credit', weight: 9 }, { name: 'fraud', weight: 3 } ] } ) );
+
+order.Waiting.Name			// returns 'RunChecks'
+order.Waiting.With.checks	// returns [ { name: 'credit', weight: 9 }, { name: 'fraud', weight: 3 } ]
+
+let checked = run_checks( order.Waiting.With.checks );
+order = jsongin.ProcessExecute( ordering, jsongin.ProcessResume( ordering, order, checked ) );
+
+order.Status		// returns 'done'
+order.Result		// returns 'review'
+```
+
+The parent is still ***one cursor and one state***, so it can be written down while the
+  children are outstanding and resumed by whoever picks it up next.
+[Invariant 4](./Process.md#the-invariants) - two runs stepped alternately never affect each
+  other - is what makes running the children at the same time safe, and it is checked rather
+  than assumed.
+
+If one of the children fails, the host says so through the fourth parameter of
+  `ProcessResume()`, and the parent's [`$try`](#$try) catches it the way it catches any other
+  failed call.
+
+***This is why there is no parallel step operator.***
+A branch of one would be a second live cursor, and a run would stop being one position in one
+  document - which is the property the loops, the exception handling and the storage are all
+  built on.
+See [What Is Not Built](./Process.md#what-is-not-built).
+
+
 <a id="$return"></a>$return
 ---------------------------------------------------------------------
 

@@ -1525,4 +1525,174 @@ describe( '300) Process Runtime Tests', () =>
 	} );
 
 
+
+	//---------------------------------------------------------------------
+	// ***Parallel work belongs to the host, and this is the pattern which shows it.***
+	// A $call handler starts one child run per item of work, drives each to completion, and
+	// resumes the parent with all of the results at once. The engine needs nothing for this:
+	// rule 4 of build/process-check.js already says that two runs stepped alternately never
+	// affect each other, which is exactly the property a host running them at the same time
+	// depends on. A real host would await Promise.all() around the loop below, and the engine
+	// cannot tell the difference, because it is never inside the loop.
+	describe( 'Fanning Out Through the Host', () =>
+	{
+
+		// The child process, run once per check.
+		function check_process()
+		{
+			return {
+				Name: 'Check',
+				Steps: [
+					{ $do: { score: { $multiply: [ '$weight', 10 ] } } },
+					{ $return: { name: '$name', score: '$score', passed: { $gte: [ '$score', 50 ] } } },
+				],
+			};
+		}
+
+		// The parent process, which asks for all of the checks at once and then reads the
+		// answers as ordinary state.
+		function order_process()
+		{
+			return {
+				Name: 'Order',
+				Steps: [
+					{ $call: { Name: 'RunChecks', With: { checks: '$checks' }, Into: 'results' } },
+					{ $do: { failures: { $size: { $filter: { input: '$results', as: 'r', cond: { $eq: [ '$$r.passed', false ] } } } } } },
+					{ $return: '$failures' },
+				],
+			};
+		}
+
+		// The host's handler for the RunChecks call. This is the whole of the fan-out.
+		function run_checks( Checks )
+		{
+			let child_process = check_process();
+			let results = [];
+			for ( let check_index = 0; check_index < Checks.length; check_index++ )
+			{
+				let child_run = jsongin.ProcessStart( child_process, Checks[ check_index ] );
+				child_run = jsongin.ProcessExecute( child_process, child_run );
+				results.push( child_run.Result );
+			}
+			return results;
+		}
+
+		function three_checks()
+		{
+			return [
+				{ name: 'credit', weight: 9 },
+				{ name: 'fraud', weight: 3 },
+				{ name: 'address', weight: 7 },
+			];
+		}
+
+		it( 'should resume the parent with the result of every child run', () =>
+		{
+			let process_document = order_process();
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { checks: three_checks() } ) );
+			assert.strictEqual( run.Status, 'waiting' );
+			assert.strictEqual( run.Waiting.Name, 'RunChecks' );
+
+			let results = run_checks( run.Waiting.With.checks );
+			run = jsongin.ProcessExecute( process_document, jsongin.ProcessResume( process_document, run, results ) );
+
+			assert.strictEqual( run.Status, 'done' );
+			assert.strictEqual( run.Result, 1 );
+			assert.deepStrictEqual( run.State.results, [
+				{ name: 'credit', score: 90, passed: true },
+				{ name: 'fraud', score: 30, passed: false },
+				{ name: 'address', score: 70, passed: true },
+			] );
+		} );
+
+		it( 'should leave the parent state untouched while the children run', () =>
+		{
+			let process_document = order_process();
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { checks: three_checks() } ) );
+			let before = JSON.stringify( run.State );
+
+			run_checks( run.Waiting.With.checks );
+
+			assert.strictEqual( JSON.stringify( run.State ), before );
+			assert.strictEqual( typeof run.State.results, 'undefined' );
+		} );
+
+		it( 'should let the parent branch on what the children returned', () =>
+		{
+			let process_document = {
+				Name: 'Order',
+				Steps: [
+					{ $call: { Name: 'RunChecks', With: { checks: '$checks' }, Into: 'results' } },
+					{
+						$when: {
+							Check: { 'results.passed': false },
+							Then: [ { $do: { decision: 'review' } } ],
+							Else: [ { $do: { decision: 'accept' } } ],
+						},
+					},
+					{ $return: '$decision' },
+				],
+			};
+
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { checks: three_checks() } ) );
+			let results = run_checks( run.Waiting.With.checks );
+			run = jsongin.ProcessExecute( process_document, jsongin.ProcessResume( process_document, run, results ) );
+			assert.strictEqual( run.Result, 'review' );
+
+			// The same process, with nothing for the children to complain about.
+			let all_good = [ { name: 'credit', weight: 9 }, { name: 'fraud', weight: 8 } ];
+			run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { checks: all_good } ) );
+			results = run_checks( run.Waiting.With.checks );
+			run = jsongin.ProcessExecute( process_document, jsongin.ProcessResume( process_document, run, results ) );
+			assert.strictEqual( run.Result, 'accept' );
+		} );
+
+		it( 'should write the parent down while its children are outstanding', () =>
+		{
+			let process_document = order_process();
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { checks: three_checks() } ) );
+
+			// ***The parent is one position and one state***, so it stores while the work it
+			// asked for is still in flight. This is what a parent holding several live cursors
+			// at once would have cost.
+			let stored = jsongin.Format( run, STORAGE );
+			let restored = jsongin.Parse( stored, STORAGE );
+
+			let results = run_checks( restored.Waiting.With.checks );
+			restored = jsongin.ProcessExecute( process_document, jsongin.ProcessResume( process_document, restored, results ) );
+			assert.strictEqual( restored.Status, 'done' );
+			assert.strictEqual( restored.Result, 1 );
+		} );
+
+		it( 'should offer a failed child to the parent $try', () =>
+		{
+			let process_document = {
+				Name: 'Order',
+				Steps: [
+					{
+						$try: {
+							Do: [ { $call: { Name: 'RunChecks', With: { checks: '$checks' }, Into: 'results' } } ],
+							Catch: [ { $do: { decision: 'defer', why: '$error.Message' } } ],
+							As: 'error',
+						},
+					},
+					{ $return: '$decision' },
+				],
+			};
+
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { checks: three_checks() } ) );
+			assert.strictEqual( run.Status, 'waiting' );
+
+			// One of the children failed, and the host says so rather than handing back results.
+			run = jsongin.ProcessResume( process_document, run, undefined, { Code: 'CheckFailed', Message: 'the fraud service is down' } );
+			run = jsongin.ProcessExecute( process_document, run );
+
+			assert.strictEqual( run.Status, 'done' );
+			assert.strictEqual( run.Result, 'defer' );
+			assert.strictEqual( run.State.why, 'the fraud service is down' );
+		} );
+
+	} );
+
+
 } );

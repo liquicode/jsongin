@@ -346,8 +346,17 @@ Named here so that nobody looks for them:
 - ***A continuation object beyond the run value itself.***
 - ***A caller scope carried into [`Query()`](./Query.md)***, which is why a `$when` check cannot
   see a `$$name` the run bound.
+- ***A parallel step operator.*** Parallel work is the host's: it starts a run for each
+  independent piece, runs them however it likes, and hands the results back through one
+  [`$call`](./Step-Operators.md#$call), which is written out as
+  [Fanning Out](./Step-Operators.md#fanning-out).
 
-Expected later: parallel steps.
+***A parallel step was expected here once.*** It was not built, because a branch of one would be
+  a second live cursor, and a run being ***one*** position in one document is the property that
+  the loops, the exception handling and the storage all rest on.
+[Invariant 4](#the-invariants) already says that two runs stepped alternately never affect each
+  other, which is exactly what a host running several of them at the same time needs, so there
+  was nothing left for an operator to add.
 
 
 ## See Also
