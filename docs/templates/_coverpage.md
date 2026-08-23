@@ -6,25 +6,29 @@
 
 <hr>
 
-> A JSON Engine for MongoDB-Style Queries and Data Structure Manipulation
+> <%- Context.Package.description %>
 
-> Full range of data Filtering, Sorting, Projection, and Update functions
+> Filter, Sort, Project, Update, and Aggregate JSON documents anywhere.
+
+> Covers <%- Context.Coverage.Percent %>% (<%- Context.Coverage.Implemented %>/<%- Context.Coverage.Total %>) of the MongoDB API (v6).
 
 <hr>
 
-- Accurate compatibility with MongoDB mechanics.
-- No dependencies. None. Zero.
-- 100% pure javascript.
-- Single minified file (~70k) for web deployment.
+<div class="cover-features">
+	<div class="cover-art" role="img" aria-label="jsongin engine"></div>
+	<ul class="cover-feature-list">
+		<li>100% pure javascript. No dependencies.</li>
+		<li>Faithfully reproduces MongoDB behavior.</li>
+		<li>100% parity with MongoDB across 988 behaviors, 219 operators.</li>
+		<li>Use extended syntax to define, store, and run a JSON based process.</li>
+		<li>Single minified file (~42k compressed) for web deployment.</li>
+		<li>All operations are in-memory. This is not a storage library.</li>
+	</ul>
+</div>
+
+<hr>
 
 [GitHub](https://github.com/liquicode/jsongin)
 [NPM](https://www.npmjs.com/package/@liquicode/jsongin)
 [Get Started](external/readme.md)
 
-
-<!-- background image -->
-<!-- ![jsongin](media/engine01-548x421.png) -->
-
-<!-- background color -->
-<!-- ![color](#cceeff) -->
-<!-- ![color](#2980B9) -->

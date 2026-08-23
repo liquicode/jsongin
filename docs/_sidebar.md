@@ -18,86 +18,70 @@
 
 - MongoDB Mechanics
 
+	- **Functions**
 	- [`Query()`](/guides/jsongin/Query.md)
 	- [`Evaluate()`](/guides/jsongin/Evaluate.md)
-	- [Scope](/guides/jsongin/Scope.md)
 	- [`Aggregate()`](/guides/jsongin/Aggregate.md)
 	- [`Filter()`](/guides/jsongin/Filter.md)
 	- [`Distinct()`](/guides/jsongin/Distinct.md)
 	- [`Sort()`](/guides/jsongin/Sort.md)
 	- [`Project()`](/guides/jsongin/Project.md)
 	- [`Update()`](/guides/jsongin/Update.md)
+	- **Scope**
+	- [Scope](/guides/jsongin/Scope.md)
 
 <hr>
 
 - MongoDB Operators
 
+	- **Operators**
 	- [Query Operators](/guides/jsongin/Query-Operators.md)
 	- [Expression Operators](/guides/jsongin/Expression-Operators.md)
 	- [Stage Operators](/guides/jsongin/Stage-Operators.md)
 	- [Accumulator Operators](/guides/jsongin/Accumulator-Operators.md)
 	- [Update Operators](/guides/jsongin/Update-Operators.md)
 	- [Projection Operators](/guides/jsongin/Projection-Operators.md)
-	- ---
+	- **Reference**
 	- [Operator Reference](/guides/Operator-Reference.md)
 	- [Operator Authoring](/guides/Operator-Authoring.md)
-
-<hr>
-
-- The Process Runtime
-
-	- [Processes and Runs](/guides/jsongin/Process.md)
-	- [Step Operators](/guides/jsongin/Step-Operators.md)
-
-<hr>
-
-- Snapshots
-
-	- [`Diff()`](/guides/jsongin/Diff.md)
-	- [`Invert()`](/guides/jsongin/Invert.md)
 
 <hr>
 
 - Document Mechanics
 
 	- [Document Manipulation](/guides/Document-Manipulation.md)
-
-	- **Working with Document Paths**
-
-		- [`SplitPath()`](/guides/jsongin/SplitPath.md)
-		- [`JoinPaths()`](/guides/jsongin/JoinPaths.md)
-
-	- **Get and Set Document Values**
-
-		- [`GetValue()`](/guides/jsongin/GetValue.md)
-		- [`ResolveCandidates()`](/guides/jsongin/ResolveCandidates.md)
-		- [`SetValue()`](/guides/jsongin/SetValue.md)
-		- [`DeleteValue()`](/guides/jsongin/DeleteValue.md)
-
-	- **Document Conversions**
-
-		- [`Parse()`](/guides/jsongin/Parse.md)
-		- [`Format()`](/guides/jsongin/Format.md)
-
-		- [`Flatten()`](/guides/jsongin/Flatten.md)
-		- [`Expand()`](/guides/jsongin/Expand.md)
-
-		- [`Hybridize()`](/guides/jsongin/Hybridize.md)
-		- [`Unhybridize()`](/guides/jsongin/Unhybridize.md)
-
-	- **Combining Documents**
-
-		- [`Merge()`](/guides/jsongin/Merge.md)
-
-<hr>
-
-- Object Matching and Cloning
-
+	- **Path Manipulation**
+	- [`SplitPath()`](/guides/jsongin/SplitPath.md)
+	- [`JoinPaths()`](/guides/jsongin/JoinPaths.md)
+	- **Value Manipulation**
+	- [`GetValue()`](/guides/jsongin/GetValue.md)
+	- [`ResolveCandidates()`](/guides/jsongin/ResolveCandidates.md)
+	- [`SetValue()`](/guides/jsongin/SetValue.md)
+	- [`DeleteValue()`](/guides/jsongin/DeleteValue.md)
+	- **Value Comparison**
 	- [`LooseEquals()`](/guides/jsongin/LooseEquals.md)
 	- [`StrictEquals()`](/guides/jsongin/StrictEquals.md)
 	- [`CompareValues()`](/guides/jsongin/CompareValues.md)
+	- **Document Manipulation**
+	- [`Merge()`](/guides/jsongin/Merge.md)
 	- [`Clone()`](/guides/jsongin/Clone.md)
 	- [`SafeClone()`](/guides/jsongin/SafeClone.md)
+	- **Document Snapshots**
+	- [`Diff()`](/guides/jsongin/Diff.md)
+	- [`Invert()`](/guides/jsongin/Invert.md)
+
+<hr>
+
+- Document Conversions
+
+	- **Conversion to String**
+	- [`Parse()`](/guides/jsongin/Parse.md)
+	- [`Format()`](/guides/jsongin/Format.md)
+	- **Conversion to Key-Value Pairs**
+	- [`Flatten()`](/guides/jsongin/Flatten.md)
+	- [`Expand()`](/guides/jsongin/Expand.md)
+	- [`Hybridize()`](/guides/jsongin/Hybridize.md)
+	- [`Unhybridize()`](/guides/jsongin/Unhybridize.md)
 
 <hr>
 
@@ -109,6 +93,13 @@
 	- [`AsDate()`](/guides/jsongin/AsDate.md)
 	- [`AsBoolean()`](/guides/jsongin/AsBoolean.md)
 	- [`IsQuery()`](/guides/jsongin/IsQuery.md)
+
+<hr>
+
+- The Process Runtime
+
+	- [Processes and Runs](/guides/jsongin/Process.md)
+	- [Step Operators](/guides/jsongin/Step-Operators.md)
 
 <hr>
 

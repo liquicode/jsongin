@@ -1,9 +1,49 @@
 'use strict';
 
+//---------------------------------------------------------------------
+// The operator coverage numbers, measured here rather than written into a page by
+// hand. api-coverage.js reads the Operator Reference tables, which is the same
+// source `npm run api-coverage` reports from, so a page and the report cannot
+// disagree.
+const API_COVERAGE = require( './api-coverage.js' ).Measure();
+
+
+//---------------------------------------------------------------------
+// The browser bundle's size, read from the file rather than remembered. publish_version
+// runs webpack before build_docs, so a release always reports the bundle it is shipping.
+// A missing bundle is not an error: the docs still have to build in a fresh clone.
+const BUNDLE_SIZE = measure_bundle_size();
+
+function measure_bundle_size()
+{
+	const LIB_FS = require( 'fs' );
+	const LIB_PATH = require( 'path' );
+	const LIB_ZLIB = require( 'zlib' );
+
+	let filename = LIB_PATH.resolve( __dirname, '..', 'dist', 'jsongin.min.js' );
+	if ( !LIB_FS.existsSync( filename ) ) { return { Kb: 0, CompressedKb: 0 }; }
+
+	let content = LIB_FS.readFileSync( filename );
+	let compressed = LIB_ZLIB.gzipSync( content, { level: 9 } );
+
+	// A CDN serves the bundle compressed, so both numbers are worth saying.
+	return {
+		Kb: Math.round( content.length / 1000 ),
+		CompressedKb: Math.round( compressed.length / 1000 ),
+	};
+}
+
+
 module.exports = {
 
 	Context: {
 		Package: require( '../package.json' ),
+		Bundle: BUNDLE_SIZE,
+		Coverage: {
+			Percent: API_COVERAGE.Percent.toFixed( 1 ),
+			Implemented: API_COVERAGE.Implemented,
+			Total: API_COVERAGE.Total,
+		},
 		AWS_ProfileName: 'admin',
 		AWS_BucketName: 'jsongin.liquicode.com',
 	},

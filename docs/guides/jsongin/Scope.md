@@ -21,16 +21,21 @@ That is what makes two evaluations independent of each other, and it is the prop
   else on this page follows from.
 
 The alternative — a stack of frames the engine pushes and pops — would have been a great deal
-  less code. It was not chosen, for four reasons which only matter if you intend to go where
-  this library is going:
+  less code. It was not chosen, for four reasons. Two of them have since arrived, and two are
+  standing non-goals which the choice keeps the door open for:
 
 - ***A closure captures its environment***, and a frame destroyed on pop cannot be captured.
+  Closures are a non-goal, so this one is still a door rather than a debt already paid.
 - ***A process suspends and resumes***, which needs the environment to be data you can store.
+  ***Built.*** A run carries its scope in the form [`ToJSON()`](#storing-a-scope) writes; see
+  [The Process Runtime](./Process.md).
 - ***A runtime eventually awaits.*** The first `await` inside an evaluation lets two processes
-  interleave through one stack. There is no `async` in the evaluator today, which is the only
+  interleave through one stack. There is still no `async` inside `src/`, which is the only
   reason ambient state would have been safe at all.
 - ***A runtime runs more than one process***, so the scope belongs to the process and the
-  engine stays stateless.
+  engine stays stateless. ***Built, and checked:*** rule 4 of
+  [the invariants](./Process.md#the-invariants) steps two runs alternately and holds that
+  neither can affect the other.
 
 ***The frames are chained rather than flattened.***
 Merging a child's bindings into a copy of its parent's would answer a lookup just as well and
@@ -56,6 +61,39 @@ jsongin.Evaluate( { a: 5 }, '$$ROOT.a' ) === 5
 
 Reach for a scope when you want to ***bind a name of your own*** from outside the expression
   language, or when you are writing an operator and have to pass along the one you were given.
+
+
+## Which Operators See a Scope
+
+Nearly every operator carries a scope, and nearly none of them do anything with it.
+
+| **Registry** | **Operators** | **Carry a `Scope`** | **Do something with it** |
+|--------------|--------------:|--------------------:|--------------------------|
+| Expression   | 134           | 134                 | `$let`, `$map`, `$filter`, `$reduce` |
+| Stage        | 21            | 21                  | `$addFields`, `$redact` |
+| Accumulator  | 20            | 20                  | none |
+| Step         | 8             | 8                   | `$call`, `$forEach`, `$return`, `$throw` |
+| Query        | 31            | ***none***          | `$expr` and `$exprx`, which build their own |
+| Update       | 14            | ***none***          | none |
+
+***183 of the 228 operators receive a scope, twelve build a frame, and not one of them looks
+  a name up.***
+Resolution happens in exactly one place, inside [`Evaluate()`](./Evaluate.md), and everything
+  else either passes the scope along untouched or adds a frame to it.
+The twelve which add one are doing one of two things: binding names a caller wrote, which is
+  [$let](./Expression-Operators.md#$let), [$map](./Expression-Operators.md#$map),
+  [$filter](./Expression-Operators.md#$filter) and
+  [$reduce](./Expression-Operators.md#$reduce); or rebinding `$$ROOT` and `$$CURRENT` to a
+  different document, which is every other operator in that column.
+
+***A query never receives one, and that is a boundary rather than an oversight.***
+`Query( Document, Criteria, Path )` takes a path where the other entry points take a scope, so
+  a `$$name` a caller bound cannot be seen from inside a query.
+That holds inside an [$expr](./Query-Operators.md#$expr) too, which builds a fresh scope from
+  the document it was handed rather than receiving one.
+It is why a [$when](./Step-Operators.md#$when) check in a process cannot read a variable the
+  run bound, and why a loop writes its element into the state instead of binding it.
+See [The Process Runtime](./Process.md).
 
 
 ## Building a Scope
@@ -205,6 +243,7 @@ It gives back a `$$NOW` which is a string and no `$$REMOVE` at all, which is exa
 - [`Format( Value, Options )`](./Format.md) and [`Parse( JsonString, Options )`](./Parse.md)
 - [`Evaluate( Document, Expression, Scope )`](./Evaluate.md)
 - [`Aggregate( Documents, Pipeline )`](./Aggregate.md)
+- [The Process Runtime](./Process.md) — which stores a scope on every run
 - [$let](./Expression-Operators.md#$let), [$map](./Expression-Operators.md#$map),
   [$filter](./Expression-Operators.md#$filter), [$reduce](./Expression-Operators.md#$reduce)
 - [$redact](./Stage-Operators.md#$redact)
