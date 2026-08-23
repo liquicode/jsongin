@@ -29,6 +29,20 @@ module.exports = function ( jsongin )
 	// fails. ProcessStep needs no budget: one step cannot loop.
 	const DEFAULT_MAX_STEPS = 1000;
 
+	// The failures a $try may not catch.
+	//
+	// ***This list is the line between an error and a bug.*** A process which mishandled a
+	// declined card is doing its job; a process with a misspelled operator name in it is
+	// broken, and a $try which swallowed that would turn every typo into a silently handled
+	// error. The step budget is on the list for a different reason: it is the caller's
+	// protection against a process which does not end, and a process must not be able to
+	// defeat it from the inside.
+	//
+	// ***An operator may not raise one of these on purpose either.*** $throw refuses to name
+	// a code on this list, so the line cannot be crossed from a process document.
+	const UNCATCHABLE = [ 'BadProcess', 'BadRun', 'NoSuchStep', 'UnknownOperator', 'ResumeNotWaiting', 'StepLimitExceeded' ];
+
+
 	// A cursor pairs an index with a branch name, so it is always an odd length: [ 1 ] is a
 	// top level step and [ 1, 'Then', 0 ] is the first step of a branch of it. A loop writes
 	// its branch element as [ 'Do', 3 ] instead, pairing the name with the iteration it is
@@ -256,6 +270,33 @@ module.exports = function ( jsongin )
 
 
 	//---------------------------------------------------------------------
+	// The registered operator of the step a cursor addresses, with its arguments, or null.
+	//
+	// Written once because three walks want it: the one which asks whether a step repeats, the
+	// one which asks whether a step catches, and nothing else may go reading Process.Steps by
+	// hand and get the shape checks subtly different.
+	function operator_at( Process, Cursor )
+	{
+		let located = locate( Process, Cursor );
+		if ( typeof located.Step === 'undefined' ) { return null; }
+
+		let step = located.Step;
+		if ( jsongin.ShortType( step ) !== 'o' ) { return null; }
+
+		let keys = Object.keys( step );
+		if ( keys.length !== 1 ) { return null; }
+
+		let operator = jsongin.StepOperators[ keys[ 0 ] ];
+		if ( typeof operator === 'undefined' ) { return null; }
+
+		let args = step[ keys[ 0 ] ];
+		if ( jsongin.ShortType( args ) !== 'o' ) { return null; }
+
+		return { Name: keys[ 0 ], Operator: operator, Args: args };
+	}
+
+
+	//---------------------------------------------------------------------
 	// Whether the step a cursor addresses asks for control back when a branch of it ends.
 	//
 	// ***This one declaration is the whole of what makes a loop possible.*** Every other step
@@ -265,18 +306,9 @@ module.exports = function ( jsongin )
 	// keeps a run stopped in the middle of one storable - there is no call stack to write down.
 	function repeats_at( Process, Cursor )
 	{
-		let located = locate( Process, Cursor );
-		if ( typeof located.Step === 'undefined' ) { return false; }
-
-		let step = located.Step;
-		if ( jsongin.ShortType( step ) !== 'o' ) { return false; }
-
-		let keys = Object.keys( step );
-		if ( keys.length !== 1 ) { return false; }
-
-		let operator = jsongin.StepOperators[ keys[ 0 ] ];
-		if ( typeof operator === 'undefined' ) { return false; }
-		return ( operator.Repeats === true );
+		let found = operator_at( Process, Cursor );
+		if ( found === null ) { return false; }
+		return ( found.Operator.Repeats === true );
 	}
 
 
@@ -322,6 +354,114 @@ module.exports = function ( jsongin )
 			}
 		}
 		return OVER;
+	}
+
+
+	//---------------------------------------------------------------------
+	// Whether the step a cursor addresses will catch a failure raised inside the named branch.
+	//
+	// An operator declares Catches: { From: 'Try', Into: 'Catch' } - the branch it guards, and
+	// the branch it handles with - the same way a loop declares Repeats. Naming them in the
+	// operator rather than here is what keeps this file from knowing that $try exists.
+	//
+	// ***A handler branch which is not there does not catch.*** The operator refuses that
+	// process itself; this returns null so that the search walks on out to a handler which
+	// can, rather than jumping into nothing.
+	function catches_at( Process, Cursor, Branch )
+	{
+		let found = operator_at( Process, Cursor );
+		if ( found === null ) { return null; }
+
+		let catches = found.Operator.Catches;
+		if ( jsongin.ShortType( catches ) !== 'o' ) { return null; }
+		if ( catches.From !== Branch ) { return null; }
+
+		let handler = found.Args[ catches.Into ];
+		if ( jsongin.ShortType( handler ) !== 'a' ) { return null; }
+		if ( handler.length === 0 ) { return null; }
+
+		return { Into: catches.Into, Args: found.Args };
+	}
+
+
+	//---------------------------------------------------------------------
+	// The nearest enclosing step which will catch a failure raised at this cursor, or null.
+	//
+	// ***The cursor is the search.*** It already records every step the run is inside and
+	// which branch of each it entered, so finding a handler is a walk outward through it
+	// rather than a stack the run would have to carry, store, and restore. This is the same
+	// property which lets a run stopped inside a loop be written down.
+	//
+	// ***A step entered through its own handler branch is skipped***, because catches_at asks
+	// which branch the failure came out of. That one question is what stops a failure raised
+	// inside a Catch from being handed back to the Catch it was raised in - which would be a
+	// loop that no budget is watching, since it is not a loop.
+	function handler_for( Process, Cursor )
+	{
+		if ( jsongin.ShortType( Cursor ) !== 'a' ) { return null; }
+
+		// The ancestors sit at every second position below the last, each one followed by the
+		// branch of it the run descended into.
+		let position = Cursor.length - 3;
+		while ( position >= 0 )
+		{
+			let at = Cursor.slice( 0, position + 1 );
+			let branch = Cursor[ position + 1 ];
+			let name = branch;
+			if ( jsongin.ShortType( branch ) === 'a' ) { name = branch[ 0 ]; }
+
+			let found = catches_at( Process, at, name );
+			if ( found !== null ) { return { Cursor: at, Into: found.Into, Args: found.Args }; }
+
+			position = position - 2;
+		}
+		return null;
+	}
+
+
+	//---------------------------------------------------------------------
+	// A failure raised by running a step: handed to an enclosing handler if there is one, and
+	// turned into a failed run if there is not.
+	//
+	// ***Only the failures which come from running a step come through here.*** A fault in the
+	// process document calls failed_run directly, and so does anything on the UNCATCHABLE
+	// list. The two guards are deliberately separate: the call site knows whether a failure
+	// came from running something, and the list knows which codes are nobody's to handle.
+	//
+	// ***The Catch branch sees the state as the failure left it.*** A step which changed the
+	// state and then failed did change it, and pretending otherwise would mean holding a copy
+	// of the state at every step in case one is needed - which is a transaction, and is not
+	// what this is.
+	function raise( Process, Run, Code, Message, Cursor )
+	{
+		if ( UNCATCHABLE.includes( Code ) === true ) { return failed_run( Process, Run, Code, Message, Cursor ); }
+
+		let handler = handler_for( Process, Cursor );
+		if ( handler === null ) { return failed_run( Process, Run, Code, Message, Cursor ); }
+
+		let state = {};
+		let scope = null;
+		if ( jsongin.ShortType( Run ) === 'o' )
+		{
+			if ( jsongin.ShortType( Run.State ) === 'o' ) { state = jsongin.SafeClone( Run.State ); }
+			if ( jsongin.ShortType( Run.Scope ) === 'o' ) { scope = Run.Scope; }
+		}
+		if ( scope === null ) { scope = new_scope(); }
+
+		// The error is written into the state, at the field the handler named, for the reason
+		// a loop writes its element there: a $when inside the handler is a query, and a query
+		// cannot see a variable. An operator which named no field catches without one.
+		if ( jsongin.ShortType( handler.Args.As ) === 's' )
+		{
+			jsongin.SetValue( state, handler.Args.As, {
+				Code: Code,
+				Message: Message,
+				Cursor: Cursor,
+			} );
+		}
+
+		let entered = handler.Cursor.concat( [ handler.Into, 0 ] );
+		return new_run( process_name( Process ), 'ready', entered, state, scope, null );
 	}
 
 
@@ -437,7 +577,7 @@ module.exports = function ( jsongin )
 				let argument_type = jsongin.ShortType( step[ key ] );
 				if ( operator.ArgTypes.includes( argument_type ) === false )
 				{
-					return failed_run( Process, Run, 'StepFailed',
+					return raise( Process, Run, 'StepFailed',
 						`Step operator [${key}] does not take an argument of type [${argument_type}]. It takes [${operator.ArgTypes}].`, cursor );
 				}
 			}
@@ -456,12 +596,12 @@ module.exports = function ( jsongin )
 				// StepFailed - so this reads a property rather than requiring one.
 				let code = 'StepFailed';
 				if ( jsongin.ShortType( error.Code ) === 's' ) { code = error.Code; }
-				return failed_run( Process, Run, code, error.message, cursor );
+				return raise( Process, Run, code, error.message, cursor );
 			}
 
 			if ( jsongin.ShortType( outcome ) !== 'o' )
 			{
-				return failed_run( Process, Run, 'StepFailed', `Step operator [${key}] did not report an outcome.`, cursor );
+				return raise( Process, Run, 'StepFailed', `Step operator [${key}] did not report an outcome.`, cursor );
 			}
 
 			// 'next' - the state may have changed, and the cursor moves on.
@@ -478,7 +618,7 @@ module.exports = function ( jsongin )
 			{
 				if ( jsongin.ShortType( outcome.Branch ) !== 's' )
 				{
-					return failed_run( Process, Run, 'StepFailed', `Step operator [${key}] named no branch to enter.`, cursor );
+					return raise( Process, Run, 'StepFailed', `Step operator [${key}] named no branch to enter.`, cursor );
 				}
 				// ***A loop pairs the branch name with the iteration it is entering***, so
 				// that climbing back out later says which one just finished. Every other
@@ -500,7 +640,7 @@ module.exports = function ( jsongin )
 			{
 				if ( jsongin.ShortType( outcome.Waiting ) !== 'o' )
 				{
-					return failed_run( Process, Run, 'StepFailed', `Step operator [${key}] suspended without saying what for.`, cursor );
+					return raise( Process, Run, 'StepFailed', `Step operator [${key}] suspended without saying what for.`, cursor );
 				}
 				return new_run( Run.Process, 'waiting', cursor, Run.State, Run.Scope, { Waiting: outcome.Waiting } );
 			}
@@ -512,7 +652,7 @@ module.exports = function ( jsongin )
 				return new_run( Run.Process, 'done', [], Run.State, Run.Scope, { Result: outcome.Result } );
 			}
 
-			return failed_run( Process, Run, 'StepFailed', `Step operator [${key}] reported an unrecognized action [${outcome.Action}].`, cursor );
+			return raise( Process, Run, 'StepFailed', `Step operator [${key}] reported an unrecognized action [${outcome.Action}].`, cursor );
 		}
 		catch ( error )
 		{
@@ -598,7 +738,10 @@ module.exports = function ( jsongin )
 				}
 				else if ( st_error === 'e' ) { message = Error_.message; }
 				else { message = String( Error_ ); }
-				return failed_run( Process, Run, code, message, Run.Cursor );
+
+				// ***A failed call is the failure a $try most exists for***, so it takes the
+				// same route a step's own failure takes rather than halting on the spot.
+				return raise( Process, Run, code, message, Run.Cursor );
 			}
 
 			let state = jsongin.SafeClone( Run.State );

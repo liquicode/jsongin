@@ -359,6 +359,8 @@ function NewJsongin( EngineSettings = {} )
 		$when: require( './Operators/Step/when' )( Engine ),
 		$while: require( './Operators/Step/while' )( Engine ),
 		$forEach: require( './Operators/Step/forEach' )( Engine ),
+		$try: require( './Operators/Step/try' )( Engine ),
+		$throw: require( './Operators/Step/throw' )( Engine ),
 		$call: require( './Operators/Step/call' )( Engine ),
 		$return: require( './Operators/Step/return' )( Engine ),
 

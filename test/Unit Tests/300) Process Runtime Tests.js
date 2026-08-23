@@ -682,6 +682,403 @@ describe( '300) Process Runtime Tests', () =>
 
 
 	//---------------------------------------------------------------------
+	describe( 'The $throw Step', () =>
+	{
+
+		function throwing( Thrown )
+		{
+			return { Name: 'Throwing', Steps: [ { $throw: Thrown } ] };
+		}
+
+		it( 'should halt the run when nothing catches it', () =>
+		{
+			let process_document = throwing( 'boom' );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.Status, 'failed' );
+			assert.strictEqual( run.Error.Message, 'boom' );
+		} );
+
+		it( 'should call a thrown string Thrown', () =>
+		{
+			let process_document = throwing( 'boom' );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.Error.Code, 'Thrown' );
+		} );
+
+		it( 'should take a Code and a Message from a thrown document', () =>
+		{
+			let process_document = throwing( { Code: 'CartEmpty', Message: 'nothing to charge for' } );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.Error.Code, 'CartEmpty' );
+			assert.strictEqual( run.Error.Message, 'nothing to charge for' );
+		} );
+
+		it( 'should evaluate the message as an expression', () =>
+		{
+			let process_document = throwing( { Code: 'NoCustomer', Message: { $concat: [ 'no such customer: ', '$who' ] } } );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { who: 'ada' } ) );
+			assert.strictEqual( run.Error.Message, 'no such customer: ada' );
+		} );
+
+		it( 'should name the cursor it was thrown at', () =>
+		{
+			let process_document = { Name: 'Late', Steps: [ { $do: { a: 1 } }, { $throw: 'boom' } ] };
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.deepStrictEqual( run.Error.Cursor, [ 1 ] );
+		} );
+
+		// ***A process must not be able to reach past every handler around it.*** The reserved
+		// codes are the ones a $try refuses to catch, so throwing one would halt a run whose
+		// caller had wrapped it precisely so that it would not.
+		it( 'should refuse a reserved code as a bad process', () =>
+		{
+			let process_document = throwing( { Code: 'BadProcess', Message: 'sneaky' } );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.Status, 'failed' );
+			assert.strictEqual( run.Error.Code, 'BadProcess' );
+			assert.ok( run.Error.Message.includes( 'reserved' ) );
+		} );
+
+		it( 'should refuse a reserved code even inside a try', () =>
+		{
+			let process_document = {
+				Name: 'Sneaky',
+				Steps: [ { $try: {
+					Do: [ { $throw: { Code: 'StepLimitExceeded', Message: 'sneaky' } } ],
+					Catch: [ { $do: { caught: true } } ],
+					As: 'error',
+				} } ],
+			};
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.Status, 'failed' );
+			assert.strictEqual( run.Error.Code, 'BadProcess' );
+			assert.strictEqual( 'caught' in run.State, false );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'The $try Step', () =>
+	{
+
+		function guarded( Do, Catch )
+		{
+			return {
+				Name: 'Guarded',
+				Steps: [
+					{ $try: { Do: Do, Catch: Catch, As: 'error' } },
+					{ $do: { after: true } },
+				],
+			};
+		}
+
+		it( 'should run the Catch branch when a step fails', () =>
+		{
+			let process_document = guarded( [ { $throw: 'boom' } ], [ { $do: { caught: true } } ] );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.Status, 'done' );
+			assert.strictEqual( run.State.caught, true );
+		} );
+
+		it( 'should write the error to the field named by As', () =>
+		{
+			let process_document = guarded( [ { $throw: { Code: 'CartEmpty', Message: 'no items' } } ], [ { $do: { seen: '$error.Code' } } ] );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.State.error.Code, 'CartEmpty' );
+			assert.strictEqual( run.State.error.Message, 'no items' );
+			assert.strictEqual( run.State.seen, 'CartEmpty' );
+		} );
+
+		// ***The error goes into the state so that a query can read it.*** A $$name could not
+		// be tested by the $when a handler most often wants to make.
+		it( 'should let a $when in the handler test the code', () =>
+		{
+			let process_document = guarded(
+				[ { $throw: { Code: 'CartEmpty', Message: 'no items' } } ],
+				[ { $when: {
+					Check: { 'error.Code': 'CartEmpty' },
+					Then: [ { $do: { why: 'empty cart' } } ],
+					Else: [ { $do: { why: 'something else' } } ],
+				} } ] );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.State.why, 'empty cart' );
+		} );
+
+		it( 'should carry on with the step after the try', () =>
+		{
+			let process_document = guarded( [ { $throw: 'boom' } ], [ { $do: { caught: true } } ] );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.State.after, true );
+		} );
+
+		it( 'should not run the Catch branch when the body succeeds', () =>
+		{
+			let process_document = guarded( [ { $do: { ran: true } } ], [ { $do: { caught: true } } ] );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.State.ran, true );
+			assert.strictEqual( 'caught' in run.State, false );
+			assert.strictEqual( run.State.after, true );
+		} );
+
+		// ***A step which changed the state and then failed did change it.*** Rolling that
+		// back would be a transaction, and this is not one.
+		it( 'should show the handler the state as the failure left it', () =>
+		{
+			let process_document = guarded(
+				[ { $do: { half: 'done' } }, { $throw: 'after the change' } ],
+				[ { $do: { saw: '$half' } } ] );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.State.saw, 'done' );
+		} );
+
+		it( 'should catch an operator which refused', () =>
+		{
+			let process_document = guarded(
+				[ { $forEach: { In: '$n', As: 'x', Do: [ { $do: { seen: true } } ] } } ],
+				[ { $do: { caught: '$error.Code' } } ] );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { n: 7 } ) );
+			assert.strictEqual( run.State.caught, 'StepFailed' );
+		} );
+
+		it( 'should catch a call the host reported as failed', () =>
+		{
+			let process_document = guarded(
+				[ { $call: { Name: 'Charge', With: {}, Into: 'receipt' } } ],
+				[ { $do: { declined: '$error.Code' } } ] );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.Status, 'waiting' );
+
+			run = jsongin.ProcessExecute( process_document,
+				jsongin.ProcessResume( process_document, run, undefined, { Code: 'CardDeclined', Message: 'no funds' } ) );
+			assert.strictEqual( run.Status, 'done' );
+			assert.strictEqual( run.State.declined, 'CardDeclined' );
+			assert.strictEqual( run.State.after, true );
+		} );
+
+		it( 'should catch a failure reported to a run which was stored while waiting', () =>
+		{
+			let process_document = guarded(
+				[ { $call: { Name: 'Charge', With: {}, Into: 'receipt' } } ],
+				[ { $do: { declined: '$error.Code' } } ] );
+			let waiting = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			let restored = jsongin.Parse( jsongin.Format( waiting, STORAGE ), STORAGE );
+
+			let run = jsongin.ProcessExecute( process_document,
+				jsongin.ProcessResume( process_document, restored, undefined, { Code: 'CardDeclined', Message: 'no funds' } ) );
+			assert.strictEqual( run.Status, 'done' );
+			assert.strictEqual( run.State.declined, 'CardDeclined' );
+		} );
+
+		it( 'should take no As at all', () =>
+		{
+			let process_document = {
+				Name: 'NoAs',
+				Steps: [ { $try: { Do: [ { $throw: 'boom' } ], Catch: [ { $do: { caught: true } } ] } } ],
+			};
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.Status, 'done' );
+			assert.strictEqual( run.State.caught, true );
+		} );
+
+		// ***Without this rule a handler which failed would hand itself its own failure.***
+		it( 'should not catch a failure raised inside its own Catch', () =>
+		{
+			let process_document = guarded(
+				[ { $throw: 'first' } ],
+				[ { $do: { ran: true } }, { $throw: 'second' } ] );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.Status, 'failed' );
+			assert.strictEqual( run.Error.Message, 'second' );
+			assert.strictEqual( run.State.ran, true );
+		} );
+
+		it( 'should let the try around it catch a failure raised inside a Catch', () =>
+		{
+			let process_document = {
+				Name: 'Nested',
+				Steps: [ { $try: {
+					Do: [ { $try: { Do: [ { $throw: 'inner' } ], Catch: [ { $throw: 'from the handler' } ], As: 'inner_error' } } ],
+					Catch: [ { $do: { outer: '$outer_error.Message' } } ],
+					As: 'outer_error',
+				} } ],
+			};
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.Status, 'done' );
+			assert.strictEqual( run.State.outer, 'from the handler' );
+		} );
+
+		it( 'should catch a failure raised inside a loop in its body', () =>
+		{
+			let process_document = {
+				Name: 'ThrowInLoop',
+				Steps: [
+					{ $do: { seen: [] } },
+					{ $try: {
+						Do: [ { $forEach: { In: '$items', As: 'item', Do: [
+							{ $do: { seen: { $concatArrays: [ '$seen', [ '$item' ] ] } } },
+							{ $when: { Check: { item: 2 }, Then: [ { $throw: 'the second one' } ] } },
+						] } } ],
+						Catch: [ { $do: { stopped: '$error.Message' } } ],
+						As: 'error',
+					} },
+				],
+			};
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { items: [ 1, 2, 3 ] } ) );
+			assert.strictEqual( run.Status, 'done' );
+			assert.deepStrictEqual( run.State.seen, [ 1, 2 ] );
+			assert.strictEqual( run.State.stopped, 'the second one' );
+		} );
+
+		// ***A loop abandoned by a failure never reaches its own tidying up.*** Documented
+		// rather than fixed: the alternative is unwinding, which this design does not do.
+		it( 'should leave an abandoned loop\'s As field on the state', () =>
+		{
+			let process_document = {
+				Name: 'Abandoned',
+				Steps: [ { $try: {
+					Do: [ { $forEach: { In: '$items', As: 'item', Do: [
+						{ $when: { Check: { item: 2 }, Then: [ { $throw: 'stop' } ] } },
+					] } } ],
+					Catch: [ { $do: { caught: true } } ],
+					As: 'error',
+				} } ],
+			};
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { items: [ 1, 2, 3 ] } ) );
+			assert.strictEqual( run.State.item, 2 );
+		} );
+
+		it( 'should catch on every pass of a loop it sits inside', () =>
+		{
+			let process_document = {
+				Name: 'GuardedLoop',
+				Steps: [
+					{ $do: { ok: 0, bad: 0 } },
+					{ $forEach: { In: '$items', As: 'item', Do: [
+						{ $try: {
+							Do: [ { $when: {
+								Check: { item: { $lt: 0 } },
+								Then: [ { $throw: 'negative' } ],
+								Else: [ { $do: { ok: { $add: [ '$ok', 1 ] } } } ],
+							} } ],
+							Catch: [ { $do: { bad: { $add: [ '$bad', 1 ] } } } ],
+							As: 'error',
+						} },
+					] } },
+				],
+			};
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { items: [ 1, -1, 2, -3 ] } ) );
+			assert.strictEqual( run.State.ok, 2 );
+			assert.strictEqual( run.State.bad, 2 );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'What a $try Does Not Catch', () =>
+	{
+
+		// ***The line between an error and a bug.*** A process which mishandles a declined
+		// card is doing its job; a process with a typo in it is broken, and a $try which
+		// swallowed that would turn every typo into a silently handled error.
+		function wrapping( Step )
+		{
+			return {
+				Name: 'Wrapping',
+				Steps: [ { $try: { Do: [ Step ], Catch: [ { $do: { caught: true } } ], As: 'error' } } ],
+			};
+		}
+
+		it( 'should not catch an operator which is not registered', () =>
+		{
+			let process_document = wrapping( { $nosuchthing: 1 } );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.Status, 'failed' );
+			assert.strictEqual( run.Error.Code, 'UnknownOperator' );
+			assert.strictEqual( 'caught' in run.State, false );
+		} );
+
+		it( 'should not catch a fault in the process document', () =>
+		{
+			let process_document = wrapping( { $while: { Check: { go: true }, Do: [] } } );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { go: true } ) );
+			assert.strictEqual( run.Status, 'failed' );
+			assert.strictEqual( run.Error.Code, 'BadProcess' );
+			assert.strictEqual( 'caught' in run.State, false );
+		} );
+
+		it( 'should not catch a step which is not a document with one key', () =>
+		{
+			let process_document = wrapping( 42 );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.Status, 'failed' );
+			assert.strictEqual( run.Error.Code, 'BadProcess' );
+			assert.strictEqual( 'caught' in run.State, false );
+		} );
+
+		// ***The budget is the caller's protection***, and a process must not be able to
+		// defeat it from the inside.
+		it( 'should not catch the step budget running out', () =>
+		{
+			let process_document = wrapping( { $while: { Check: { go: true }, Do: [ { $do: { n: { $add: [ '$n', 1 ] } } } ] } } );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { go: true, n: 0 } ), 25 );
+			assert.strictEqual( run.Status, 'failed' );
+			assert.strictEqual( run.Error.Code, 'StepLimitExceeded' );
+			assert.strictEqual( 'caught' in run.State, false );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'Arguments the $try Step Refuses', () =>
+	{
+
+		function refusing( Args )
+		{
+			return { Name: 'Refusing', Steps: [ { $try: Args } ] };
+		}
+
+		it( 'should refuse a missing Do', () =>
+		{
+			let process_document = refusing( { Catch: [ { $do: { a: 1 } } ] } );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.Error.Code, 'BadProcess' );
+		} );
+
+		it( 'should refuse an empty Do', () =>
+		{
+			let process_document = refusing( { Do: [], Catch: [ { $do: { a: 1 } } ] } );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.Error.Code, 'BadProcess' );
+		} );
+
+		it( 'should refuse a missing Catch', () =>
+		{
+			let process_document = refusing( { Do: [ { $do: { a: 1 } } ] } );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.Error.Code, 'BadProcess' );
+		} );
+
+		it( 'should refuse an empty Catch', () =>
+		{
+			let process_document = refusing( { Do: [ { $do: { a: 1 } } ], Catch: [] } );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.Error.Code, 'BadProcess' );
+		} );
+
+		it( 'should refuse an As which is not a field name', () =>
+		{
+			let process_document = refusing( { Do: [ { $do: { a: 1 } } ], Catch: [ { $do: { b: 2 } } ], As: 7 } );
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.Error.Code, 'BadProcess' );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
 	describe( 'The $call Step', () =>
 	{
 

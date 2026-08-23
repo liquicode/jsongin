@@ -242,6 +242,7 @@ That follows from what the design is for. The standing rule is that
 | `StepFailed` | an operator refused, an expression threw, or the host reported a failed call |
 | `ResumeNotWaiting` | `ProcessResume()` was called on a run which is not waiting |
 | `StepLimitExceeded` | `ProcessExecute()` ran out of budget |
+| `Thrown` | a [`$throw`](./Step-Operators.md#$throw) said so, and nothing caught it |
 
 ```js
 const wrong = { Name: 'Wrong', Steps: [ { $nosuchthing: 1 } ] };
@@ -254,6 +255,39 @@ refused.State			// returns {}
 
 A failed run keeps the state it had reached, so what the process managed to do before it broke
   is still there to look at.
+
+***A failure may be handled instead of halting.***
+[`$try`](./Step-Operators.md#$try) guards a list of steps, and a failure raised inside it sends
+  the run into that step's `Catch` branch rather than halting it.
+The search for a handler is ***a walk outward through the cursor***, which already records every
+  step the run is inside and which branch of each it entered - so nothing has to be carried on
+  the run for it, and a step entered through its own handler branch is skipped, which is what
+  keeps a failure raised inside a `Catch` from being handed back to that same `Catch`.
+
+```js
+const guarded_run = {
+	Name: 'GuardedRun',
+	Steps: [
+		{
+			$try: {
+				Do: [ { $throw: 'no good' } ],
+				Catch: [ { $do: { recovered: true } } ],
+				As: 'error',
+			},
+		},
+	],
+};
+
+let recovered = jsongin.ProcessExecute( guarded_run, jsongin.ProcessStart( guarded_run, {} ) );
+recovered.Status				// returns 'done'
+recovered.State.recovered		// returns true
+```
+
+***The first four codes in the table above, along with `ResumeNotWaiting` and
+  `StepLimitExceeded`, are never caught.***
+A fault in the process document must not be swallowed by that document's own error handler, and
+  the step budget is the caller's protection rather than the process's to defeat.
+See [`$try`](./Step-Operators.md#$try) for the whole of that line.
 
 
 ## Storage
@@ -313,8 +347,7 @@ Named here so that nobody looks for them:
 - ***A caller scope carried into [`Query()`](./Query.md)***, which is why a `$when` check cannot
   see a `$$name` the run bound.
 
-Expected later: `$try` / `$throw` / `$catch` - a failed run halts today and nothing catches -
-  and parallel steps.
+Expected later: parallel steps.
 
 
 ## See Also

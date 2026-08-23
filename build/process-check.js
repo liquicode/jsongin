@@ -38,6 +38,12 @@
 		   one would be a defect, so the budget is an invariant rather than a convenience.
 		   Nothing could test this until a step operator could loop.
 
+		8. A failure is caught only where it should be.
+		   A $try catches a failure raised by running a step, and nothing else. A fault in
+		   the process document must not be swallowed by that document's own error handler,
+		   and a failure raised inside a Catch branch must not be caught by the Catch it was
+		   raised in - which would be a loop no budget covers, since it is not one.
+
 	***The comparison is written here rather than borrowed from the engine.*** LooseEquals has
 	opinions about type coercion and Format has opinions about what JSON can hold, and rule 1
 	exists precisely to check the second of those - a comparison built on Format would agree
@@ -403,6 +409,215 @@ FIXTURES[ 1 ].Process = FIXTURES[ 0 ].Process;
 // which may run them, and it runs them through ProcessExecute, which is the only function
 // with a budget to enforce.
 
+// The fixtures which fail on purpose.
+//
+// ***Each one says where its failure should end up***, which is the whole of rule 8. Caught
+// records whether the Catch branch ran, observed through a marker it writes rather than
+// guessed at: a branch which did not run cannot have written it.
+
+const CATCH_FIXTURES = [
+
+	{
+		Name: 'a throw inside a try, which is caught',
+		Process: {
+			Name: 'Caught',
+			Steps: [
+				{
+					$try: {
+						Do: [ { $throw: 'boom' } ],
+						Catch: [ { $do: { caught: true } } ],
+						As: 'error',
+					},
+				},
+			],
+		},
+		Input: {},
+		Calls: {},
+		Expect: { Status: 'done', Code: null, Caught: true },
+	},
+
+	{
+		Name: 'a throw with no try around it, which halts the run',
+		Process: {
+			Name: 'Uncaught',
+			Steps: [ { $throw: 'boom' } ],
+		},
+		Input: {},
+		Calls: {},
+		Expect: { Status: 'failed', Code: 'Thrown', Caught: false },
+	},
+
+	{
+		Name: 'a try whose body succeeds, which never runs its Catch',
+		Process: {
+			Name: 'NoFailure',
+			Steps: [
+				{
+					$try: {
+						Do: [ { $do: { ran: true } } ],
+						Catch: [ { $do: { caught: true } } ],
+						As: 'error',
+					},
+				},
+			],
+		},
+		Input: {},
+		Calls: {},
+		Expect: { Status: 'done', Code: null, Caught: false },
+	},
+
+	{
+		Name: 'an operator which refused, which is a failure a step raised',
+		Process: {
+			Name: 'BadArgument',
+			Steps: [
+				{
+					$try: {
+						Do: [ { $forEach: { In: '$n', As: 'x', Do: [ { $do: { seen: true } } ] } } ],
+						Catch: [ { $do: { caught: true } } ],
+						As: 'error',
+					},
+				},
+			],
+		},
+		Input: { n: 7 },
+		Calls: {},
+		Expect: { Status: 'done', Code: null, Caught: true },
+	},
+
+	{
+		Name: 'a fault in the process document, which a try must not swallow',
+		Process: {
+			Name: 'BadInside',
+			Steps: [
+				{
+					$try: {
+						Do: [ { $while: { Check: { go: true }, Do: [] } } ],
+						Catch: [ { $do: { caught: true } } ],
+						As: 'error',
+					},
+				},
+			],
+		},
+		Input: { go: true },
+		Calls: {},
+		Expect: { Status: 'failed', Code: 'BadProcess', Caught: false },
+	},
+
+	{
+		Name: 'an operator which is not registered, which a try must not swallow either',
+		Process: {
+			Name: 'UnknownInside',
+			Steps: [
+				{
+					$try: {
+						Do: [ { $nosuchthing: 1 } ],
+						Catch: [ { $do: { caught: true } } ],
+						As: 'error',
+					},
+				},
+			],
+		},
+		Input: {},
+		Calls: {},
+		Expect: { Status: 'failed', Code: 'UnknownOperator', Caught: false },
+	},
+
+	{
+		Name: 'a failure inside a Catch, which its own Catch must not catch',
+		Process: {
+			Name: 'CatchFails',
+			Steps: [
+				{
+					$try: {
+						Do: [ { $throw: 'first' } ],
+						Catch: [ { $do: { caught: true } }, { $throw: 'second' } ],
+						As: 'error',
+					},
+				},
+			],
+		},
+		Input: {},
+		Calls: {},
+		Expect: { Status: 'failed', Code: 'Thrown', Caught: true },
+	},
+
+	{
+		Name: 'a failure inside a Catch, caught by the try around it',
+		Process: {
+			Name: 'NestedCatch',
+			Steps: [
+				{
+					$try: {
+						Do: [
+							{
+								$try: {
+									Do: [ { $throw: 'inner' } ],
+									Catch: [ { $throw: 'from the handler' } ],
+									As: 'inner_error',
+								},
+							},
+						],
+						Catch: [ { $do: { caught: true } } ],
+						As: 'outer_error',
+					},
+				},
+			],
+		},
+		Input: {},
+		Calls: {},
+		Expect: { Status: 'done', Code: null, Caught: true },
+	},
+
+	{
+		Name: 'a call the host reported as failed, caught by the try around it',
+		Process: {
+			Name: 'CallFails',
+			Steps: [
+				{
+					$try: {
+						Do: [ { $call: { Name: 'Charge', With: {}, Into: 'receipt' } } ],
+						Catch: [ { $do: { caught: true } } ],
+						As: 'error',
+					},
+				},
+			],
+		},
+		Input: {},
+		Calls: {},
+		Fail: { Charge: { Code: 'CardDeclined', Message: 'no funds' } },
+		Expect: { Status: 'done', Code: null, Caught: true },
+	},
+
+	{
+		Name: 'a throw inside a loop inside a try',
+		Process: {
+			Name: 'ThrowInLoop',
+			Steps: [
+				{
+					$try: {
+						Do: [
+							{
+								$forEach: {
+									In: '$items', As: 'item',
+									Do: [ { $when: { Check: { item: 2 }, Then: [ { $throw: 'the second one' } ] } } ],
+								},
+							},
+						],
+						Catch: [ { $do: { caught: true } } ],
+						As: 'error',
+					},
+				},
+			],
+		},
+		Input: { items: [ 1, 2, 3 ] },
+		Calls: {},
+		Expect: { Status: 'done', Code: null, Caught: true },
+	},
+
+];
+
+
 const RUNAWAY_FIXTURES = [
 
 	{
@@ -699,10 +914,23 @@ function drive( Report, Fixture, CheckSteps, From )
 			if ( ( run.Waiting !== null ) && ( typeof run.Waiting === 'object' ) ) { waiting_name = run.Waiting.Name; }
 			let result = deep_clone( Fixture.Calls[ waiting_name ] );
 
+			// ***A fixture may say that the host's call failed rather than succeeded.***
+			// ProcessResume takes the failure in a fourth parameter, so the path which turns
+			// a host failure into a run is reachable from here and is driven like any other.
+			let failure = null;
+			if ( ( Fixture.Fail !== null ) && ( typeof Fixture.Fail === 'object' ) )
+			{
+				if ( typeof Fixture.Fail[ waiting_name ] !== 'undefined' ) { failure = Fixture.Fail[ waiting_name ]; }
+			}
+
 			let before = deep_clone( run );
 			let held = run;
 			let resumed = attempt( Report, Fixture.Name, 'ProcessResume',
-				function () { return jsongin.ProcessResume( process_document, held, result ); } );
+				function ()
+				{
+					if ( failure !== null ) { return jsongin.ProcessResume( process_document, held, undefined, failure ); }
+					return jsongin.ProcessResume( process_document, held, result );
+				} );
 			if ( !deep_equals( before, held ) )
 			{
 				finding( Report, 6, Fixture.Name,
@@ -844,6 +1072,49 @@ function check_independence( Report, Left, Right )
 
 
 //---------------------------------------------------------------------
+// Rule 8 - a failure is caught only where it should be.
+//
+// ***This rule is a line, not a feature.*** Catching is easy to build and easy to build too
+// widely: a $try which swallowed a misspelled operator name would turn every typo in a
+// process into a silently handled error, and a Catch which caught its own failure would spin
+// where no budget is watching. So each fixture says where its failure should end up, and the
+// three answers - caught, halted, and halted despite a handler being right there - are checked
+// apart from one another.
+function check_catching( Report, Fixture )
+{
+	let run = drive( Report, Fixture, false );
+	if ( run === null ) { return; }
+
+	let expected = Fixture.Expect;
+
+	if ( run.Status !== expected.Status )
+	{
+		finding( Report, 8, Fixture.Name,
+			'the run ended ' + run.Status + ' rather than ' + expected.Status + '.'
+			+ '\n         ' + describe( run ) );
+		return;
+	}
+
+	let code = null;
+	if ( ( run.Error !== null ) && ( typeof run.Error === 'object' ) ) { code = run.Error.Code; }
+	if ( code !== expected.Code )
+	{
+		finding( Report, 8, Fixture.Name,
+			'the run failed with [' + code + '] rather than [' + expected.Code + '].' );
+	}
+
+	// The marker a Catch branch writes. A branch which did not run cannot have written it, so
+	// this reads whether the handler ran rather than inferring it from the outcome.
+	let caught = ( run.State.caught === true );
+	if ( caught !== expected.Caught )
+	{
+		let said = expected.Caught ? 'the Catch branch did not run, and should have' : 'the Catch branch ran, and should not have';
+		finding( Report, 8, Fixture.Name, said + '.' );
+	}
+}
+
+
+//---------------------------------------------------------------------
 // Rule 7 - a runaway loop is failed, not hung.
 //
 // ***The narrow claim is the checkable one.*** Whether a given process halts is not something
@@ -896,10 +1167,10 @@ function check_budget( Report, Fixture )
 function Check()
 {
 	let report = {
-		Counts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 },
+		Counts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 },
 		Findings: [],
 		Missing: [],
-		Fixtures: FIXTURES.length + RUNAWAY_FIXTURES.length,
+		Fixtures: FIXTURES.length + CATCH_FIXTURES.length + RUNAWAY_FIXTURES.length,
 	};
 
 	for ( let index = 0; index < RUNTIME_FUNCTIONS.length; index++ )
@@ -923,6 +1194,16 @@ function Check()
 		check_independence( report, FIXTURES[ index ], other );
 	}
 
+	// ***The catch fixtures answer to the first six rules as well.*** A caught failure
+	// produces an ordinary run, so it has to be storable, deterministic, and independent like
+	// any other - which is the claim most worth checking and the one rule 8 does not make.
+	for ( let index = 0; index < CATCH_FIXTURES.length; index++ )
+	{
+		drive( report, CATCH_FIXTURES[ index ], true );
+		check_execute( report, CATCH_FIXTURES[ index ] );
+		check_catching( report, CATCH_FIXTURES[ index ] );
+	}
+
 	for ( let index = 0; index < RUNAWAY_FIXTURES.length; index++ )
 	{
 		check_budget( report, RUNAWAY_FIXTURES[ index ] );
@@ -941,6 +1222,7 @@ const RULE_NAMES = {
 	5: 'ProcessStep is total',
 	6: 'the input run is not modified',
 	7: 'a runaway loop is failed, not hung',
+	8: 'a failure is caught only where it should be',
 };
 
 
@@ -1004,6 +1286,7 @@ function main()
 module.exports = {
 	Check: Check,
 	FIXTURES: FIXTURES,
+	CATCH_FIXTURES: CATCH_FIXTURES,
 	RUNAWAY_FIXTURES: RUNAWAY_FIXTURES,
 	DeepEquals: deep_equals,
 };

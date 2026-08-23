@@ -205,8 +205,8 @@ This version carries many breaking changes. Nearly all of them correct a behavio
   `ProcessExecute()`, and `ProcessResume()` step one to the next and hold nothing between calls,
   so a run can be written down, moved, and picked up later. See
   [The Process Runtime](/docs/guides/jsongin/Process.md).
-- ***The step operators `$do`, `$when`, `$while`, `$forEach`, `$call`, and `$return`***, in a
-  sixth registry. They are
+- ***The step operators `$do`, `$when`, `$while`, `$forEach`, `$try`, `$throw`, `$call`, and
+  `$return`***, in a sixth registry. They are
   `jsongin` operators rather than MongoDB ones, so `npm run api-coverage` does not count them.
   See [Step Operators](/docs/guides/jsongin/Step-Operators.md).
 - ***`$do` has the semantics of the aggregation `$set` stage***, not of the update operator of
@@ -231,6 +231,24 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 - ***A loop with an empty body is a `BadProcess`***, because it could neither make progress nor
   end. A step operator may now name the code it fails with, so a fault in the process document
   is reported as one rather than as a generic `StepFailed`.
+- ***`$try` handles a failure instead of halting the run.*** A failure raised inside its `Do`
+  branch sends the run into its `Catch` branch. The search for a handler is a walk outward
+  through the cursor, which already records every step the run is inside and which branch of
+  each it entered, so nothing is carried on the run for it. A failure raised inside a `Catch`
+  is offered to the next `$try` outward and never back to the `Catch` it came from.
+- ***A `$try` catches a failure raised by running a step, and nothing else.*** `BadProcess`,
+  `BadRun`, `NoSuchStep`, `UnknownOperator`, `ResumeNotWaiting` and `StepLimitExceeded` halt
+  the run whatever it is wrapped in. That line is the difference between an error and a bug: a
+  process which mishandles a declined card is doing its job, while a `$try` which swallowed a
+  misspelled operator name would turn every typo into a silently handled error. The budget is
+  on the list because it is the caller's protection and not the process's to defeat.
+- ***The error is written into the state***, at the field `As` names, as `{ Code, Message,
+  Cursor }` — so a `$when` in the handler can route on it, which it could not do with a
+  variable. The handler sees the state as the failure left it; there is no unwinding.
+- ***`$throw` fails a run on purpose***, from a string or from a `{ Code, Message }` document,
+  and defaults the code to `Thrown` so a deliberate failure can be told from an engine one. It
+  may not name one of the engine's own codes, since those are the ones a `$try` refuses to
+  catch and a process must not be able to reach past the handlers around it.
 - ***`$call` does not call.*** The run suspends with a descriptor naming what it wants, and the
   host does the work and the awaiting. The engine has no dependency and contains no `async`.
 - ***A run carries the name of the process it belongs to***, so stepping a stored run against
@@ -243,10 +261,11 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 - ***`ProcessExecute()` takes a step budget***, 1000 by default, and fails with
   `StepLimitExceeded` rather than never returning. This is what stops a loop whose check never
   becomes false. `ProcessStep()` takes no budget, because one step cannot loop.
-- ***`npm run process-check`***, which checks the seven invariants of the runtime — storage is
+- ***`npm run process-check`***, which checks the eight invariants of the runtime — storage is
   transparent, stepping is deterministic, `ProcessExecute()` equals repeated `ProcessStep()`,
-  runs are independent, stepping is total, the input run is never modified, and a runaway loop
-  is failed rather than hung — against twenty-two processes at every step of each.
+  runs are independent, stepping is total, the input run is never modified, a runaway loop is
+  failed rather than hung, and a failure is caught only where it should be — against thirty-two
+  processes at every step of each.
 - ***Expression variable scope.*** A name beginning with `$$` is a variable reference, resolved
   from the scope in effect where the expression is being evaluated rather than from the
   document. Every such name was refused outright before. See

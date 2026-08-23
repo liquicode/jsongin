@@ -13,6 +13,8 @@ A process is a document with a `Steps` array, and each step is one document with
 | [`$when`](#$when)          | `{ $when: { Check: query, Then: [ steps ], Else: [ steps ] } }`    |
 | [`$while`](#$while)        | `{ $while: { Check: query, Do: [ steps ] } }`                      |
 | [`$forEach`](#$forEach)    | `{ $forEach: { In: expression, As: 'path', Do: [ steps ] } }`      |
+| [`$try`](#$try)            | `{ $try: { Do: [ steps ], Catch: [ steps ], As: 'path' } }`        |
+| [`$throw`](#$throw)        | `{ $throw: expression }`                                           |
 | [`$call`](#$call)          | `{ $call: { Name: 'name', With: { ... }, Into: 'path' } }`         |
 | [`$return`](#$return)      | `{ $return: expression }`                                          |
 
@@ -340,6 +342,184 @@ This is deliberate, and it is one more reason [`ProcessExecute()`](./Process.md)
 So is a missing `As`, or an `Index` which is not a field name.
 An `In` which does not produce an array is a `StepFailed` instead, because that one depends on
   what the run has computed rather than on how the process was written.
+
+
+<a id="$try"></a>$try
+---------------------------------------------------------------------
+
+Usage: `$try: { Do: [ steps ], Catch: [ steps ], As: 'path' }`
+
+Runs a list of steps, and runs a second list instead of halting if one of them fails.
+
+| **Argument** | **Meaning**                                                              |
+|--------------|--------------------------------------------------------------------------|
+| `Do`         | The steps to run.                                                        |
+| `Catch`      | The steps to run instead if one of them fails.                           |
+| `As`         | Optional. Names a field where the error is written before `Catch` runs.  |
+
+```js
+const guarded = {
+	Name: 'Guarded',
+	Steps: [
+		{
+			$try: {
+				Do: [ { $throw: { Code: 'CartEmpty', Message: 'nothing to charge for' } } ],
+				Catch: [ { $do: { paid: false, why: '$error.Message' } } ],
+				As: 'error',
+			},
+		},
+		{ $do: { finished: true } },
+	],
+};
+
+let handled = jsongin.ProcessExecute( guarded, jsongin.ProcessStart( guarded, {} ) );
+handled.Status			// returns 'done'
+handled.State.why		// returns 'nothing to charge for'
+handled.State.finished	// returns true
+```
+
+***The error goes into the state, not into a variable***, for the reason a loop's element does:
+  a [`$when`](#$when) in the handler is a query, and [`Query()`](./Query.md) takes no scope.
+Written into the state, the handler can route on it.
+
+```js
+const routed = {
+	Name: 'Routed',
+	Steps: [
+		{
+			$try: {
+				Do: [ { $throw: { Code: 'CartEmpty', Message: 'no items' } } ],
+				Catch: [ {
+					$when: {
+						Check: { 'error.Code': 'CartEmpty' },
+						Then: [ { $do: { why: 'empty cart' } } ],
+						Else: [ { $do: { why: 'something else' } } ],
+					},
+				} ],
+				As: 'error',
+			},
+		},
+	],
+};
+
+let sorted = jsongin.ProcessExecute( routed, jsongin.ProcessStart( routed, {} ) );
+sorted.State.why		// returns 'empty cart'
+```
+
+***A `$try` catches a failure raised by running a step, and nothing else.***
+An operator which refused, a [`$throw`](#$throw), and a call the host reported as failed
+  through [`ProcessResume()`](./Process.md) are all caught.
+***A fault in the process document is not.***
+
+| Never caught | |
+|---|---|
+| `BadProcess` | `BadRun` |
+| `NoSuchStep` | `UnknownOperator` |
+| `ResumeNotWaiting` | `StepLimitExceeded` |
+
+That line is the difference between an error and a bug.
+A process which mishandles a declined card is doing its job;
+  a process with a misspelled operator name in it is broken, and a `$try` which swallowed that
+  would turn every typo into a silently handled error.
+
+```js
+const typo = {
+	Name: 'Typo',
+	Steps: [ { $try: { Do: [ { $nosuchthing: 1 } ], Catch: [ { $do: { caught: true } } ], As: 'error' } } ],
+};
+
+let unswallowed = jsongin.ProcessExecute( typo, jsongin.ProcessStart( typo, {} ) );
+unswallowed.Status			// returns 'failed'
+unswallowed.Error.Code		// returns 'UnknownOperator'
+```
+
+`StepLimitExceeded` is on the list for a different reason.
+It is the caller's protection against a process which does not end, and a process must not be
+  able to defeat it from the inside.
+
+***A failure raised inside `Catch` is not caught by the same `Catch`.***
+It is offered to the next `$try` outward, and halts the run if there is none.
+Without that rule a handler which failed would hand itself its own failure forever.
+
+```js
+const rethrown = {
+	Name: 'Rethrown',
+	Steps: [ { $try: { Do: [ { $throw: 'first' } ], Catch: [ { $throw: 'second' } ], As: 'error' } } ],
+};
+
+let escaped = jsongin.ProcessExecute( rethrown, jsongin.ProcessStart( rethrown, {} ) );
+escaped.Status				// returns 'failed'
+escaped.Error.Message		// returns 'second'
+```
+
+***The handler sees the state as the failure left it.***
+A step which changed the state and then failed did change it.
+Rolling that back would mean holding a copy of the state at every step in case one were
+  needed, which is a transaction and is not what this is.
+The same follows for a loop abandoned part way: it never reaches its own tidying up, so the
+  field its `As` named is still on the state when the handler runs.
+
+***The field `As` names stays after the handler runs.***
+Unlike a loop's `As`, which is rewritten every pass and would otherwise leave the last element
+  behind, an error is written once and deliberately.
+Take it off with `{ $do: { error: '$$REMOVE' } }` when it is not wanted.
+
+***A `$try` needs both branches.***
+A missing or empty `Do` has nothing to guard and a missing or empty `Catch` catches nothing,
+  and both are a `BadProcess` - the same reading a loop with no body gets.
+
+
+<a id="$throw"></a>$throw
+---------------------------------------------------------------------
+
+Usage: `$throw: expression`
+
+Fails the run on purpose.
+
+The expression is evaluated against the current state, and may produce either form:
+
+| Produces | Becomes |
+|---|---|
+| a string | `{ Code: 'Thrown', Message: <the string> }` |
+| a document | `{ Code, Message }`, with `Code` defaulting to `Thrown` |
+
+```js
+const complaining = { Name: 'Complaining', Steps: [ { $throw: 'the cart is empty' } ] };
+
+let complained = jsongin.ProcessExecute( complaining, jsongin.ProcessStart( complaining, {} ) );
+complained.Status		// returns 'failed'
+complained.Error		// returns { Code: 'Thrown', Message: 'the cart is empty', Cursor: [ 0 ] }
+```
+
+The nearest enclosing [`$try`](#$try) catches it.
+With no `$try` around it the run halts, which is what the example above did.
+
+***`Thrown` is the default code so that a deliberate failure can be told from an engine one.***
+A handler which cares can check it.
+
+```js
+const named = {
+	Name: 'Named',
+	Steps: [ { $throw: { Code: 'NoCustomer', Message: { $concat: [ 'no such customer: ', '$who' ] } } } ],
+};
+
+let complaint = jsongin.ProcessExecute( named, jsongin.ProcessStart( named, { who: 'ada' } ) );
+complaint.Error.Code		// returns 'NoCustomer'
+complaint.Error.Message		// returns 'no such customer: ada'
+```
+
+***A `$throw` may not name one of the engine's own codes.***
+Those are the codes a [`$try`](#$try) refuses to catch, so a process which could raise one
+  would be able to reach past every handler around it and halt the run - which is the caller's
+  decision to make and not the process's.
+Naming one is itself a `BadProcess`.
+
+```js
+const sneaky = { Name: 'Sneaky', Steps: [ { $throw: { Code: 'BadProcess', Message: 'let me out' } } ] };
+
+let denied = jsongin.ProcessExecute( sneaky, jsongin.ProcessStart( sneaky, {} ) );
+denied.Error.Code		// returns 'BadProcess'
+```
 
 
 <a id="$call"></a>$call
