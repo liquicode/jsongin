@@ -292,6 +292,396 @@ describe( '300) Process Runtime Tests', () =>
 
 
 	//---------------------------------------------------------------------
+	describe( 'The $while Step', () =>
+	{
+
+		function counting_process()
+		{
+			return {
+				Name: 'CountUp',
+				Steps: [
+					{ $while: { Check: { n: { $lt: 3 } }, Do: [ { $do: { n: { $add: [ '$n', 1 ] } } } ] } },
+					{ $do: { after: true } },
+				],
+			};
+		}
+
+		it( 'should run the body until the check stops matching', () =>
+		{
+			let process_document = counting_process();
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { n: 0 } ) );
+			assert.strictEqual( run.State.n, 3 );
+			assert.strictEqual( run.State.after, true );
+		} );
+
+		it( 'should run the body no times at all when the check is false to begin with', () =>
+		{
+			let process_document = counting_process();
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { n: 5 } ) );
+			assert.strictEqual( run.State.n, 5 );
+			assert.strictEqual( run.State.after, true );
+		} );
+
+		it( 'should push the body onto the cursor', () =>
+		{
+			let process_document = counting_process();
+			let run = jsongin.ProcessStep( process_document, jsongin.ProcessStart( process_document, { n: 0 } ) );
+			assert.deepStrictEqual( run.Cursor, [ 0, 'Do', 0 ] );
+		} );
+
+		// ***This is the difference between a loop and a branch, stated as a test.*** Every
+		// other step is left behind once a branch of it ends; a $while is arrived at again.
+		it( 'should return to the loop step when the body ends, rather than past it', () =>
+		{
+			let process_document = counting_process();
+			let run = jsongin.ProcessStart( process_document, { n: 0 } );
+			run = jsongin.ProcessStep( process_document, run );		// enter the body
+			run = jsongin.ProcessStep( process_document, run );		// run the body's one step
+			assert.deepStrictEqual( run.Cursor, [ 0 ] );
+		} );
+
+		it( 'should carry on with the step after the loop once the check fails', () =>
+		{
+			let process_document = counting_process();
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { n: 3 } ) );
+			assert.strictEqual( run.Status, 'done' );
+			assert.strictEqual( run.State.after, true );
+		} );
+
+		it( 'should refuse an empty body as a bad process', () =>
+		{
+			let process_document = { Name: 'Spin', Steps: [ { $while: { Check: { go: true }, Do: [] } } ] };
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { go: true } ) );
+			assert.strictEqual( run.Status, 'failed' );
+			assert.strictEqual( run.Error.Code, 'BadProcess' );
+		} );
+
+		it( 'should refuse a missing body as a bad process', () =>
+		{
+			let process_document = { Name: 'NoBody', Steps: [ { $while: { Check: { go: true } } } ] };
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { go: true } ) );
+			assert.strictEqual( run.Status, 'failed' );
+			assert.strictEqual( run.Error.Code, 'BadProcess' );
+		} );
+
+		it( 'should refuse a missing check as a bad process', () =>
+		{
+			let process_document = { Name: 'NoCheck', Steps: [ { $while: { Do: [ { $do: { a: 1 } } ] } } ] };
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, {} ) );
+			assert.strictEqual( run.Status, 'failed' );
+			assert.strictEqual( run.Error.Code, 'BadProcess' );
+		} );
+
+		function runaway_process()
+		{
+			return {
+				Name: 'Forever',
+				Steps: [
+					{ $while: { Check: { go: true }, Do: [ { $do: { spins: { $add: [ '$spins', 1 ] } } } ] } },
+				],
+			};
+		}
+
+		it( 'should be stopped by the step budget when the check never fails', () =>
+		{
+			let process_document = runaway_process();
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { go: true, spins: 0 } ) );
+			assert.strictEqual( run.Status, 'failed' );
+			assert.strictEqual( run.Error.Code, 'StepLimitExceeded' );
+		} );
+
+		it( 'should be stopped at the budget the caller named', () =>
+		{
+			let process_document = runaway_process();
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { go: true, spins: 0 } ), 25 );
+			assert.strictEqual( run.Status, 'failed' );
+			assert.strictEqual( run.Error.Code, 'StepLimitExceeded' );
+			assert.ok( run.Error.Message.includes( '25' ) );
+		} );
+
+		// ***ProcessStep needs no budget, because one step cannot loop.*** A caller stepping
+		// a runaway loop by hand is not doing anything wrong and is never stopped.
+		it( 'should never be stopped by a budget when stepped one step at a time', () =>
+		{
+			let process_document = runaway_process();
+			let run = jsongin.ProcessStart( process_document, { go: true, spins: 0 } );
+			for ( let index = 0; index < 50; index++ )
+			{
+				run = jsongin.ProcessStep( process_document, run );
+				assert.strictEqual( run.Status, 'ready' );
+			}
+			assert.strictEqual( run.State.spins, 25 );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	describe( 'The $forEach Step', () =>
+	{
+
+		function summing_process()
+		{
+			return {
+				Name: 'SumItems',
+				Steps: [
+					{ $do: { total: 0 } },
+					{
+						$forEach: {
+							In: '$items',
+							As: 'item',
+							Index: 'i',
+							Do: [ { $do: { total: { $add: [ '$total', '$item' ] } } } ],
+						},
+					},
+				],
+			};
+		}
+
+		it( 'should run the body once for each element', () =>
+		{
+			let process_document = summing_process();
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { items: [ 1, 2, 3, 4 ] } ) );
+			assert.strictEqual( run.State.total, 10 );
+		} );
+
+		it( 'should write each element to the field named by As', () =>
+		{
+			let process_document = {
+				Name: 'Collect',
+				Steps: [
+					{ $do: { seen: [] } },
+					{ $forEach: { In: '$items', As: 'item', Do: [ { $do: { seen: { $concatArrays: [ '$seen', [ '$item' ] ] } } } ] } },
+				],
+			};
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { items: [ 'a', 'b', 'c' ] } ) );
+			assert.deepStrictEqual( run.State.seen, [ 'a', 'b', 'c' ] );
+		} );
+
+		it( 'should write the position to the field named by Index', () =>
+		{
+			let process_document = {
+				Name: 'Positions',
+				Steps: [
+					{ $do: { seen: [] } },
+					{ $forEach: { In: '$items', As: 'item', Index: 'i', Do: [ { $do: { seen: { $concatArrays: [ '$seen', [ '$i' ] ] } } } ] } },
+				],
+			};
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { items: [ 'a', 'b', 'c' ] } ) );
+			assert.deepStrictEqual( run.State.seen, [ 0, 1, 2 ] );
+		} );
+
+		// ***The two fields belong to the loop, so the loop takes them back.*** A process
+		// which ran a loop does not carry its last element around for the rest of the run.
+		it( 'should remove As and Index from the state when the loop ends', () =>
+		{
+			let process_document = summing_process();
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { items: [ 1, 2 ] } ) );
+			assert.strictEqual( 'item' in run.State, false );
+			assert.strictEqual( 'i' in run.State, false );
+		} );
+
+		it( 'should leave the state alone when the array is empty', () =>
+		{
+			let process_document = summing_process();
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { items: [], item: 'mine' } ) );
+			assert.strictEqual( run.State.item, 'mine' );
+			assert.strictEqual( run.State.total, 0 );
+		} );
+
+		// ***The iteration is control state, so it lives in the cursor.*** Nothing about
+		// where the loop has got to is kept in the document it is working on.
+		it( 'should keep the iteration in the cursor', () =>
+		{
+			let process_document = summing_process();
+			let run = jsongin.ProcessStart( process_document, { items: [ 1, 2 ] } );
+			run = jsongin.ProcessStep( process_document, run );		// the $do
+			run = jsongin.ProcessStep( process_document, run );		// entering the first pass
+			assert.deepStrictEqual( run.Cursor, [ 1, [ 'Do', 0 ], 0 ] );
+		} );
+
+		// ***This is the reason the runtime tells the operator it is being re-entered.***
+		// Working it out from the Index field instead would start this loop at pass 100.
+		it( 'should start at the first element even when the input already carries the Index field', () =>
+		{
+			let process_document = {
+				Name: 'PreSet',
+				Steps: [
+					{ $forEach: { In: '$items', As: 'item', Index: 'i', Do: [ { $do: { seen: { $add: [ '$seen', 1 ] } } } ] } },
+				],
+			};
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { items: [ 'a', 'b' ], i: 99, seen: 0 } ) );
+			assert.strictEqual( run.State.seen, 2 );
+			assert.strictEqual( 'i' in run.State, false );
+		} );
+
+		it( 'should run a loop inside a loop', () =>
+		{
+			let process_document = {
+				Name: 'Pairs',
+				Steps: [
+					{ $do: { seen: 0 } },
+					{
+						$forEach: {
+							In: '$rows', As: 'row',
+							Do: [ { $forEach: { In: '$row', As: 'cell', Do: [ { $do: { seen: { $add: [ '$seen', '$cell' ] } } } ] } } ],
+						},
+					},
+				],
+			};
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { rows: [ [ 1, 2 ], [ 3 ] ] } ) );
+			assert.strictEqual( run.State.seen, 6 );
+		} );
+
+		it( 'should run a branch inside a loop', () =>
+		{
+			let process_document = {
+				Name: 'ClassifyEach',
+				Steps: [
+					{ $do: { big: 0, small: 0 } },
+					{
+						$forEach: {
+							In: '$values', As: 'value',
+							Do: [ {
+								$when: {
+									Check: { value: { $gt: 10 } },
+									Then: [ { $do: { big: { $add: [ '$big', 1 ] } } } ],
+									Else: [ { $do: { small: { $add: [ '$small', 1 ] } } } ],
+								},
+							} ],
+						},
+					},
+				],
+			};
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { values: [ 5, 50, 7 ] } ) );
+			assert.strictEqual( run.State.big, 1 );
+			assert.strictEqual( run.State.small, 2 );
+		} );
+
+		// ***A loop body may suspend, which is the point of stepping a pass at a time.***
+		it( 'should suspend inside a pass and resume into the next one', () =>
+		{
+			let process_document = {
+				Name: 'ChargeEach',
+				Steps: [
+					{ $do: { paid: [] } },
+					{
+						$forEach: {
+							In: '$orders', As: 'order',
+							Do: [
+								{ $call: { Name: 'Charge', With: { amount: '$order' }, Into: 'receipt' } },
+								{ $do: { paid: { $concatArrays: [ '$paid', [ '$receipt' ] ] } } },
+							],
+						},
+					},
+				],
+			};
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { orders: [ 10, 20 ] } ) );
+			assert.strictEqual( run.Status, 'waiting' );
+			assert.strictEqual( run.Waiting.With.amount, 10 );
+
+			run = jsongin.ProcessExecute( process_document, jsongin.ProcessResume( process_document, run, { ok: 1 } ) );
+			assert.strictEqual( run.Status, 'waiting' );
+			assert.strictEqual( run.Waiting.With.amount, 20 );
+
+			run = jsongin.ProcessExecute( process_document, jsongin.ProcessResume( process_document, run, { ok: 2 } ) );
+			assert.strictEqual( run.Status, 'done' );
+			assert.deepStrictEqual( run.State.paid, [ { ok: 1 }, { ok: 2 } ] );
+		} );
+
+		it( 'should carry a run suspended in the middle of a pass through storage', () =>
+		{
+			let process_document = {
+				Name: 'ChargeEach',
+				Steps: [
+					{
+						$forEach: {
+							In: '$orders', As: 'order',
+							Do: [ { $call: { Name: 'Charge', With: { amount: '$order' }, Into: 'receipt' } } ],
+						},
+					},
+				],
+			};
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { orders: [ 10, 20 ] } ) );
+			let restored = jsongin.Parse( jsongin.Format( run, STORAGE ), STORAGE );
+			assert.deepStrictEqual( restored.Cursor, run.Cursor );
+
+			let resumed = jsongin.ProcessExecute( process_document, jsongin.ProcessResume( process_document, restored, { ok: 1 } ) );
+			assert.strictEqual( resumed.Status, 'waiting' );
+			assert.strictEqual( resumed.Waiting.With.amount, 20 );
+		} );
+
+		// ***In is evaluated again before each pass***, which makes a work list which the
+		// body may add to. Documented as deliberate, and tested so it stays that way.
+		it( 'should see an array the body has added to', () =>
+		{
+			let process_document = {
+				Name: 'Growing',
+				Steps: [
+					{ $do: { seen: [] } },
+					{
+						$forEach: {
+							In: '$queue', As: 'job',
+							Do: [
+								{ $do: { seen: { $concatArrays: [ '$seen', [ '$job' ] ] } } },
+								{ $when: { Check: { job: 1 }, Then: [ { $do: { queue: { $concatArrays: [ '$queue', [ 2 ] ] } } } ] } },
+							],
+						},
+					},
+				],
+			};
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { queue: [ 1 ] } ) );
+			assert.deepStrictEqual( run.State.seen, [ 1, 2 ] );
+		} );
+
+		it( 'should fail when In does not produce an array', () =>
+		{
+			let process_document = {
+				Name: 'NotAnArray',
+				Steps: [ { $forEach: { In: '$n', As: 'x', Do: [ { $do: { seen: true } } ] } } ],
+			};
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { n: 7 } ) );
+			assert.strictEqual( run.Status, 'failed' );
+			assert.strictEqual( run.Error.Code, 'StepFailed' );
+		} );
+
+		it( 'should refuse a missing As as a bad process', () =>
+		{
+			let process_document = {
+				Name: 'NoAs',
+				Steps: [ { $forEach: { In: '$items', Do: [ { $do: { seen: true } } ] } } ],
+			};
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { items: [ 1 ] } ) );
+			assert.strictEqual( run.Status, 'failed' );
+			assert.strictEqual( run.Error.Code, 'BadProcess' );
+		} );
+
+		it( 'should refuse an empty body as a bad process', () =>
+		{
+			let process_document = {
+				Name: 'NoBody',
+				Steps: [ { $forEach: { In: '$items', As: 'item', Do: [] } } ],
+			};
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { items: [ 1 ] } ) );
+			assert.strictEqual( run.Status, 'failed' );
+			assert.strictEqual( run.Error.Code, 'BadProcess' );
+		} );
+
+		it( 'should refuse an Index which is not a field name as a bad process', () =>
+		{
+			let process_document = {
+				Name: 'BadIndex',
+				Steps: [ { $forEach: { In: '$items', As: 'item', Index: 7, Do: [ { $do: { seen: true } } ] } } ],
+			};
+			let run = jsongin.ProcessExecute( process_document, jsongin.ProcessStart( process_document, { items: [ 1 ] } ) );
+			assert.strictEqual( run.Status, 'failed' );
+			assert.strictEqual( run.Error.Code, 'BadProcess' );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
 	describe( 'The $call Step', () =>
 	{
 

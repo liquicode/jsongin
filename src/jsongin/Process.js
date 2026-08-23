@@ -30,7 +30,9 @@ module.exports = function ( jsongin )
 	const DEFAULT_MAX_STEPS = 1000;
 
 	// A cursor pairs an index with a branch name, so it is always an odd length: [ 1 ] is a
-	// top level step and [ 1, 'Then', 0 ] is the first step of a branch of it. This guards
+	// top level step and [ 1, 'Then', 0 ] is the first step of a branch of it. A loop writes
+	// its branch element as [ 'Do', 3 ] instead, pairing the name with the iteration it is
+	// running, which keeps the length odd and keeps the whole position storable. This guards
 	// the walk below against a cursor which has been edited by hand into something else.
 	const CURSOR_LIMIT = 1000;
 
@@ -62,6 +64,19 @@ module.exports = function ( jsongin )
 			}
 		}
 		return run;
+	}
+
+
+	//---------------------------------------------------------------------
+	// The Reentry field of the run a walk produced, or nothing at all.
+	//
+	// ***Left off rather than set to null***, for the reason given at new_run: an optional
+	// field which is present and empty is one more thing storage has to carry back exactly,
+	// and process-check rule 1 is unforgiving about it.
+	function reentry_extra( Reentry )
+	{
+		if ( Reentry === null ) { return null; }
+		return { Reentry: Reentry };
 	}
 
 
@@ -194,10 +209,17 @@ module.exports = function ( jsongin )
 			let args = step[ keys[ 0 ] ];
 			if ( jsongin.ShortType( args ) !== 'o' ) { return null; }
 
+			// ***A branch element is a name, or a name paired with an iteration.*** A loop
+			// writes [ 'Do', 3 ] where every other step writes 'Do', because the iteration is
+			// control state and the cursor is where a run keeps its control state. Holding it
+			// here rather than in the State is what lets a loop own no field of the document
+			// it is working on.
 			let branch = Prefix[ index + 1 ];
-			if ( jsongin.ShortType( branch ) !== 's' ) { return null; }
+			let name = branch;
+			if ( jsongin.ShortType( branch ) === 'a' ) { name = branch[ 0 ]; }
+			if ( jsongin.ShortType( name ) !== 's' ) { return null; }
 
-			let next = args[ branch ];
+			let next = args[ name ];
 			if ( jsongin.ShortType( next ) !== 'a' ) { return null; }
 
 			list = next;
@@ -234,30 +256,72 @@ module.exports = function ( jsongin )
 
 
 	//---------------------------------------------------------------------
-	// The position of the next step.
+	// Whether the step a cursor addresses asks for control back when a branch of it ends.
+	//
+	// ***This one declaration is the whole of what makes a loop possible.*** Every other step
+	// is finished with once one of its branches ends, so the walk below steps past it; a step
+	// operator which declares Repeats is asked again instead, and decides for itself whether
+	// to run its branch once more or to move on. The loop lives in the cursor, which is what
+	// keeps a run stopped in the middle of one storable - there is no call stack to write down.
+	function repeats_at( Process, Cursor )
+	{
+		let located = locate( Process, Cursor );
+		if ( typeof located.Step === 'undefined' ) { return false; }
+
+		let step = located.Step;
+		if ( jsongin.ShortType( step ) !== 'o' ) { return false; }
+
+		let keys = Object.keys( step );
+		if ( keys.length !== 1 ) { return false; }
+
+		let operator = jsongin.StepOperators[ keys[ 0 ] ];
+		if ( typeof operator === 'undefined' ) { return false; }
+		return ( operator.Repeats === true );
+	}
+
+
+	//---------------------------------------------------------------------
+	// The position of the next step, and the branch element it climbed out of to get there.
 	//
 	// Increment the last element. If that runs past the end of the branch, drop it along with
 	// the branch name above it and increment the element before. Repeat. An empty cursor
 	// means the process is over.
+	//
+	// ***The exception is a step which repeats***, which the walk lands on rather than steps
+	// past. The branch element it climbed out of comes back as Reentry, because a loop has to
+	// know which iteration just ended and that element is where the iteration is kept.
+	//
+	// ***Reentry cannot be worked out from the position afterward***, which is why the two are
+	// returned together. A cursor of [ 1 ] is the second top level step whether the walk
+	// arrived there from [ 0 ] or climbed out of [ 1, [ 'Do', 3 ], 2 ]. Only the walk can tell
+	// those apart, and a loop has to.
 	function advance( Process, Cursor )
 	{
+		const OVER = { Cursor: [], Reentry: null };
+
 		let cursor = Cursor.slice();
 		let turns = 0;
 		while ( ( cursor.length > 0 ) && ( turns < CURSOR_LIMIT ) )
 		{
 			turns++;
 			let last = cursor.length - 1;
-			if ( jsongin.ShortType( cursor[ last ] ) !== 'n' ) { return []; }
+			if ( jsongin.ShortType( cursor[ last ] ) !== 'n' ) { return OVER; }
 			cursor[ last ] = cursor[ last ] + 1;
 
 			let list = list_at( Process, cursor.slice( 0, last ) );
-			if ( list === null ) { return []; }
-			if ( cursor[ last ] < list.length ) { return cursor; }
+			if ( list === null ) { return OVER; }
+			if ( cursor[ last ] < list.length ) { return { Cursor: cursor, Reentry: null }; }
 
 			cursor.pop();								// the index
-			if ( cursor.length > 0 ) { cursor.pop(); }	// the branch name it sat in
+			let branch = null;
+			if ( cursor.length > 0 ) { branch = cursor.pop(); }	// the branch name it sat in
+
+			if ( ( cursor.length > 0 ) && ( repeats_at( Process, cursor ) === true ) )
+			{
+				return { Cursor: cursor, Reentry: branch };
+			}
 		}
-		return [];
+		return OVER;
 	}
 
 
@@ -315,6 +379,12 @@ module.exports = function ( jsongin )
 			let cursor = Run.Cursor;
 			let located = locate( Process, cursor );
 
+			// The branch element a loop climbed out of to arrive here, carried by the run
+			// since the step which produced it. A run which is not re-entering a loop has no
+			// such field at all.
+			let reentry = null;
+			if ( jsongin.ShortType( Run.Reentry ) === 'a' ) { reentry = Run.Reentry; }
+
 			// A cursor past the end of its branch is not an error, it is how a branch ends.
 			// Walking out of it here rather than when the branch was entered is what keeps an
 			// empty branch, an empty process, and a process which simply ran out of steps all
@@ -324,7 +394,9 @@ module.exports = function ( jsongin )
 			{
 				turns++;
 				if ( turns > CURSOR_LIMIT ) { return failed_run( Process, Run, 'NoSuchStep', `The cursor could not be advanced.`, cursor ); }
-				cursor = advance( Process, cursor );
+				let moved = advance( Process, cursor );
+				cursor = moved.Cursor;
+				reentry = moved.Reentry;
 				located = locate( Process, cursor );
 			}
 
@@ -373,11 +445,18 @@ module.exports = function ( jsongin )
 			let outcome = null;
 			try
 			{
-				outcome = operator.Step( Run.State, step[ key ], scope_of( Run ) );
+				outcome = operator.Step( Run.State, step[ key ], scope_of( Run ), { Reentry: reentry } );
 			}
 			catch ( error )
 			{
-				return failed_run( Process, Run, 'StepFailed', error.message, cursor );
+				// ***An operator may name the code it failed with.*** A step operator which
+				// finds the process malformed rather than the state wrong says BadProcess,
+				// and the caller is told which of the two it is looking at. An operator which
+				// throws an ordinary Error, as all four of the first ones do, still gets
+				// StepFailed - so this reads a property rather than requiring one.
+				let code = 'StepFailed';
+				if ( jsongin.ShortType( error.Code ) === 's' ) { code = error.Code; }
+				return failed_run( Process, Run, code, error.message, cursor );
 			}
 
 			if ( jsongin.ShortType( outcome ) !== 'o' )
@@ -390,7 +469,8 @@ module.exports = function ( jsongin )
 			{
 				let state = Run.State;
 				if ( jsongin.ShortType( outcome.State ) === 'o' ) { state = outcome.State; }
-				return new_run( Run.Process, 'ready', advance( Process, cursor ), state, Run.Scope, null );
+				let moved = advance( Process, cursor );
+				return new_run( Run.Process, 'ready', moved.Cursor, state, Run.Scope, reentry_extra( moved.Reentry ) );
 			}
 
 			// 'enter' - the cursor descends into a branch of this step.
@@ -400,8 +480,19 @@ module.exports = function ( jsongin )
 				{
 					return failed_run( Process, Run, 'StepFailed', `Step operator [${key}] named no branch to enter.`, cursor );
 				}
-				let entered = cursor.concat( [ outcome.Branch, 0 ] );
-				return new_run( Run.Process, 'ready', entered, Run.State, Run.Scope, null );
+				// ***A loop pairs the branch name with the iteration it is entering***, so
+				// that climbing back out later says which one just finished. Every other
+				// operator enters a plain name and the pair form never appears.
+				let element = outcome.Branch;
+				if ( jsongin.ShortType( outcome.Iteration ) === 'n' ) { element = [ outcome.Branch, outcome.Iteration ]; }
+
+				// ***Entering may change the state***, which is how a loop binds the element
+				// it is about to work on. Nothing else needs this, and nothing else uses it.
+				let state = Run.State;
+				if ( jsongin.ShortType( outcome.State ) === 'o' ) { state = outcome.State; }
+
+				let entered = cursor.concat( [ element, 0 ] );
+				return new_run( Run.Process, 'ready', entered, state, Run.Scope, null );
 			}
 
 			// 'wait' - the cursor stays where it is until ProcessResume moves it.
@@ -526,7 +617,10 @@ module.exports = function ( jsongin )
 				else { jsongin.SetValue( state, into, jsongin.SafeClone( Result ) ); }
 			}
 
-			return new_run( Run.Process, 'ready', advance( Process, Run.Cursor ), state, Run.Scope, null );
+			// A call which was the last step of a loop body climbs back out to the loop, so
+			// this walk can find a re-entry exactly as the one in Step can.
+			let moved = advance( Process, Run.Cursor );
+			return new_run( Run.Process, 'ready', moved.Cursor, state, Run.Scope, reentry_extra( moved.Reentry ) );
 		}
 		catch ( error )
 		{

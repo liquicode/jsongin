@@ -33,6 +33,11 @@
 		6. The input run is never modified.
 		   Every function returns a new value.
 
+		7. A runaway loop is failed, not hung.
+		   A process which never halts is a process. ProcessExecute never coming back from
+		   one would be a defect, so the budget is an invariant rather than a convenience.
+		   Nothing could test this until a step operator could loop.
+
 	***The comparison is written here rather than borrowed from the engine.*** LooseEquals has
 	opinions about type coercion and Format has opinions about what JSON can hold, and rule 1
 	exists precisely to check the second of those - a comparison built on Format would agree
@@ -232,11 +237,207 @@ const FIXTURES = [
 		Calls: {},
 	},
 
+	{
+		Name: 'a while loop which counts up',
+		Process: {
+			Name: 'CountUp',
+			Steps: [
+				{ $do: { n: 0 } },
+				{ $while: { Check: { n: { $lt: 3 } }, Do: [ { $do: { n: { $add: [ '$n', 1 ] } } } ] } },
+				{ $return: '$n' },
+			],
+		},
+		Input: {},
+		Calls: {},
+	},
+
+	{
+		Name: 'a while loop whose check is false to begin with',
+		Process: {
+			Name: 'NeverRuns',
+			Steps: [
+				{ $while: { Check: { go: true }, Do: [ { $do: { touched: true } } ] } },
+				{ $do: { after: true } },
+			],
+		},
+		Input: { go: false },
+		Calls: {},
+	},
+
+	{
+		Name: 'a forEach which accumulates a total',
+		Process: {
+			Name: 'SumItems',
+			Steps: [
+				{ $do: { total: 0 } },
+				{
+					$forEach: {
+						In: '$items',
+						As: 'item',
+						Index: 'i',
+						Do: [ { $do: { total: { $add: [ '$total', '$item' ] } } } ],
+					},
+				},
+				{ $return: '$$ROOT' },
+			],
+		},
+		Input: { items: [ 1, 2, 3, 4 ] },
+		Calls: {},
+	},
+
+	{
+		Name: 'a forEach over an empty array, which binds nothing',
+		Process: {
+			Name: 'SumNothing',
+			Steps: [
+				{ $do: { total: 0 } },
+				{ $forEach: { In: '$items', As: 'item', Do: [ { $do: { total: { $add: [ '$total', '$item' ] } } } ] } },
+				{ $return: '$$ROOT' },
+			],
+		},
+		Input: { items: [] },
+		Calls: {},
+	},
+
+	{
+		Name: 'a call inside a loop body, which is a run suspended mid iteration',
+		Process: {
+			Name: 'ChargeEach',
+			Steps: [
+				{ $do: { paid: [] } },
+				{
+					$forEach: {
+						In: '$orders',
+						As: 'order',
+						Do: [
+							{ $call: { Name: 'Charge', With: { amount: '$order' }, Into: 'receipt' } },
+							{ $do: { paid: { $concatArrays: [ '$paid', [ '$receipt' ] ] } } },
+						],
+					},
+				},
+				{ $return: '$paid' },
+			],
+		},
+		Input: { orders: [ 10, 20 ] },
+		Calls: { Charge: { ok: true } },
+	},
+
+	{
+		Name: 'a branch inside a loop body, which is a parent that does not repeat',
+		Process: {
+			Name: 'ClassifyEach',
+			Steps: [
+				{ $do: { big: 0, small: 0 } },
+				{
+					$forEach: {
+						In: '$values',
+						As: 'value',
+						Do: [
+							{
+								$when: {
+									Check: { value: { $gt: 10 } },
+									Then: [ { $do: { big: { $add: [ '$big', 1 ] } } } ],
+									Else: [ { $do: { small: { $add: [ '$small', 1 ] } } } ],
+								},
+							},
+						],
+					},
+				},
+				{ $return: '$$ROOT' },
+			],
+		},
+		Input: { values: [ 5, 50, 7 ] },
+		Calls: {},
+	},
+
+	{
+		Name: 'a loop inside a loop, which is two repeating cursors at once',
+		Process: {
+			Name: 'Pairs',
+			Steps: [
+				{ $do: { seen: 0 } },
+				{
+					$forEach: {
+						In: '$rows',
+						As: 'row',
+						Do: [
+							{
+								$forEach: {
+									In: '$row',
+									As: 'cell',
+									Do: [ { $do: { seen: { $add: [ '$seen', '$cell' ] } } } ],
+								},
+							},
+						],
+					},
+				},
+				{ $return: '$seen' },
+			],
+		},
+		Input: { rows: [ [ 1, 2 ], [ 3 ] ] },
+		Calls: {},
+	},
+
+	{
+		Name: 'a while loop with an empty body, which is a bad process',
+		Process: {
+			Name: 'Spin',
+			Steps: [ { $while: { Check: { go: true }, Do: [] } } ],
+		},
+		Input: { go: true },
+		Calls: {},
+	},
+
 ];
 
 // The Else fixture runs the same process as the first one. Sharing the object rather than
 // copying it also means a second run of one process is among the pairs rule 4 tests.
 FIXTURES[ 1 ].Process = FIXTURES[ 0 ].Process;
+
+
+//---------------------------------------------------------------------
+// The fixtures which do not end.
+//
+// ***These are kept apart from the list above rather than flagged inside it***, because every
+// other rule drives a fixture until it halts and these never would. Rule 7 is the only thing
+// which may run them, and it runs them through ProcessExecute, which is the only function
+// with a budget to enforce.
+
+const RUNAWAY_FIXTURES = [
+
+	{
+		Name: 'a while loop whose check never becomes false',
+		Process: {
+			Name: 'Forever',
+			Steps: [
+				{ $while: { Check: { go: true }, Do: [ { $do: { spins: { $add: [ '$spins', 1 ] } } } ] } },
+			],
+		},
+		Input: { go: true, spins: 0 },
+		Calls: {},
+	},
+
+	{
+		Name: 'a loop whose body puts back what the check takes away',
+		Process: {
+			Name: 'Sisyphus',
+			Steps: [
+				{
+					$while: {
+						Check: { n: { $lt: 3 } },
+						Do: [
+							{ $do: { n: { $add: [ '$n', 1 ] } } },
+							{ $do: { n: 0 } },
+						],
+					},
+				},
+			],
+		},
+		Input: { n: 0 },
+		Calls: {},
+	},
+
+];
 
 
 //---------------------------------------------------------------------
@@ -643,13 +844,62 @@ function check_independence( Report, Left, Right )
 
 
 //---------------------------------------------------------------------
+// Rule 7 - a runaway loop is failed, not hung.
+//
+// ***The narrow claim is the checkable one.*** Whether a given process halts is not something
+// this file can decide, so it does not try. What it checks is that a process which plainly
+// cannot halt comes back at all, comes back failed, and says which limit it hit.
+//
+// ***A caller's limit is checked alongside the default***, because a default which works and
+// an override which is quietly ignored look identical from the outside.
+function check_budget( Report, Fixture )
+{
+	let process_document = Fixture.Process;
+	let started = attempt( Report, Fixture.Name, 'ProcessStart',
+		function () { return jsongin.ProcessStart( process_document, Fixture.Input ); } );
+	if ( !started.Ok ) { return; }
+
+	const LIMITS = [ null, 25 ];
+	for ( let index = 0; index < LIMITS.length; index++ )
+	{
+		let limit = LIMITS[ index ];
+		let named = ( limit === null ) ? 'the default' : ( 'MaxSteps ' + limit );
+
+		let executed = attempt( Report, Fixture.Name, 'ProcessExecute',
+			function ()
+			{
+				if ( limit === null ) { return jsongin.ProcessExecute( process_document, deep_clone( started.Value ) ); }
+				return jsongin.ProcessExecute( process_document, deep_clone( started.Value ), limit );
+			} );
+		if ( !executed.Ok ) { continue; }
+
+		let run = executed.Value;
+		if ( run.Status !== 'failed' )
+		{
+			finding( Report, 7, Fixture.Name,
+				'a loop which cannot end came back with Status [' + run.Status + '] rather than failed, at ' + named + '.' );
+			continue;
+		}
+
+		let code = null;
+		if ( ( run.Error !== null ) && ( typeof run.Error === 'object' ) ) { code = run.Error.Code; }
+		if ( code !== 'StepLimitExceeded' )
+		{
+			finding( Report, 7, Fixture.Name,
+				'a loop which cannot end failed with [' + code + '] rather than StepLimitExceeded, at ' + named + '.' );
+		}
+	}
+}
+
+
+//---------------------------------------------------------------------
 function Check()
 {
 	let report = {
-		Counts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
+		Counts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 },
 		Findings: [],
 		Missing: [],
-		Fixtures: FIXTURES.length,
+		Fixtures: FIXTURES.length + RUNAWAY_FIXTURES.length,
 	};
 
 	for ( let index = 0; index < RUNTIME_FUNCTIONS.length; index++ )
@@ -673,6 +923,11 @@ function Check()
 		check_independence( report, FIXTURES[ index ], other );
 	}
 
+	for ( let index = 0; index < RUNAWAY_FIXTURES.length; index++ )
+	{
+		check_budget( report, RUNAWAY_FIXTURES[ index ] );
+	}
+
 	return report;
 }
 
@@ -685,6 +940,7 @@ const RULE_NAMES = {
 	4: 'runs are independent',
 	5: 'ProcessStep is total',
 	6: 'the input run is not modified',
+	7: 'a runaway loop is failed, not hung',
 };
 
 
@@ -748,6 +1004,7 @@ function main()
 module.exports = {
 	Check: Check,
 	FIXTURES: FIXTURES,
+	RUNAWAY_FIXTURES: RUNAWAY_FIXTURES,
 	DeepEquals: deep_equals,
 };
 

@@ -74,12 +74,13 @@ run.State		// returns { sub: 100, tax: 8 }
 |---|---|
 | `Process` | The `Name` of the process this run belongs to, or `null` for a process with no name. |
 | `Status`  | `ready` - a step is waiting to run. `waiting` - suspended on a `$call`. `done` - halted with a `Result`. `failed` - halted with an `Error`. |
-| `Cursor`  | The position of the ***next*** step. `[ 1, 'Then', 0 ]` is the first step of the `Then` branch of step 1. An empty cursor means the process is over. |
+| `Cursor`  | The position of the ***next*** step. `[ 1, 'Then', 0 ]` is the first step of the `Then` branch of step 1. A loop writes its branch element as a pair, so `[ 1, [ 'Do', 3 ], 0 ]` is the first step of the fourth pass. An empty cursor means the process is over. |
 | `State`   | The document the process is working on. `ProcessStart()` sets it from `Input`, cloned. |
 | `Scope`   | The variable bindings, in the stored form [`Scope.ToJSON()`](./Scope.md) writes. |
 | `Waiting` | Present only while `Status` is `waiting`. `{ Name, With, Into }`. |
 | `Result`  | Present only when `Status` is `done` ***and there is a value***. |
 | `Error`   | Present only when `Status` is `failed`. `{ Code, Message, Cursor }`. |
+| `Reentry` | Present only while the cursor has just climbed back into a loop. The branch element it came out of, which is how a loop learns which pass just ended. |
 
 ***The run has no methods.*** Everything on it is data.
 
@@ -175,6 +176,14 @@ If that runs past the end of the branch, drop it along with the branch name abov
   increment the element before.
 Repeat. An empty cursor means the process is over.
 
+***The one exception is a step which repeats***, which the walk lands on rather than steps past.
+That single rule is the whole of what makes [`$while`](./Step-Operators.md#$while) and
+  [`$forEach`](./Step-Operators.md#$forEach) loops rather than branches: every other step is
+  finished with once one of its branches ends, while a loop is arrived at again and decides for
+  itself whether to run its body once more or to move on.
+The loop therefore lives ***in the cursor***, and a run stopped in the middle of a pass is an
+  ordinary run which can be stored and picked up later - there is no call stack to write down.
+
 ```js
 const branching = {
 	Name: 'Branching',
@@ -226,7 +235,7 @@ That follows from what the design is for. The standing rule is that
 
 | Code | Raised when |
 |---|---|
-| `BadProcess` | the process is not a document with a `Steps` array, or a step is not a document with exactly one key |
+| `BadProcess` | the process is not a document with a `Steps` array, a step is not a document with exactly one key, or a step operator found its own arguments malformed - a `$while` with an empty `Do`, say |
 | `BadRun` | the run is not shaped as a run, or belongs to a different process |
 | `NoSuchStep` | the cursor addresses a step which is not there |
 | `UnknownOperator` | a step names an operator which is not registered |
@@ -304,8 +313,8 @@ Named here so that nobody looks for them:
 - ***A caller scope carried into [`Query()`](./Query.md)***, which is why a `$when` check cannot
   see a `$$name` the run bound.
 
-Expected later, and not in this first slice: `$while` and `$forEach`, `$try` / `$throw` /
-  `$catch`, and parallel steps.
+Expected later: `$try` / `$throw` / `$catch` - a failed run halts today and nothing catches -
+  and parallel steps.
 
 
 ## See Also

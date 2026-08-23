@@ -11,6 +11,8 @@ A process is a document with a `Steps` array, and each step is one document with
 |----------------------------|--------------------------------------------------------------------|
 | [`$do`](#$do)              | `{ $do: { field: expression, ... } }`                              |
 | [`$when`](#$when)          | `{ $when: { Check: query, Then: [ steps ], Else: [ steps ] } }`    |
+| [`$while`](#$while)        | `{ $while: { Check: query, Do: [ steps ] } }`                      |
+| [`$forEach`](#$forEach)    | `{ $forEach: { In: expression, As: 'path', Do: [ steps ] } }`      |
 | [`$call`](#$call)          | `{ $call: { Name: 'name', With: { ... }, Into: 'path' } }`         |
 | [`$return`](#$return)      | `{ $return: expression }`                                          |
 
@@ -136,6 +138,208 @@ That is what makes a run suspended inside a branch storable: the position is dat
 [`Query()`](./Query.md) takes no scope, so a `$$name` the run bound is not visible inside
   `Check`, not even within an `$expr`.
 Compute the value into the state with `$do` first, and check the field.
+
+
+<a id="$while"></a>$while
+---------------------------------------------------------------------
+
+Usage: `$while: { Check: query, Do: [ steps ] }`
+
+Runs a list of steps over and over, for as long as the state matches a query.
+
+```js
+const counting = {
+	Name: 'Counting',
+	Steps: [
+		{
+			$while: {
+				Check: { remaining: { $gt: 0 } },
+				Do: [
+					{ $do: { remaining: { $subtract: [ '$remaining', 1 ] } } },
+					{ $do: { done: { $add: [ '$done', 1 ] } } },
+				],
+			},
+		},
+	],
+};
+
+let counted = jsongin.ProcessExecute( counting, jsongin.ProcessStart( counting, { remaining: 3, done: 0 } ) );
+counted.State		// returns { remaining: 0, done: 3 }
+```
+
+***The check is made before each pass, so a loop may run no times at all.***
+
+```js
+const never = {
+	Name: 'Never',
+	Steps: [
+		{ $while: { Check: { go: true }, Do: [ { $do: { spun: true } } ] } },
+		{ $do: { after: true } },
+	],
+};
+
+let skipped = jsongin.ProcessExecute( never, jsongin.ProcessStart( never, { go: false } ) );
+skipped.State		// returns { go: false, after: true }
+```
+
+***One pass is several steps, not one.***
+The loop is re-entered through the cursor: entering the body pushes `[ 0, 'Do', 0 ]`, and the
+  end of the body returns to `[ 0 ]` rather than moving past it, which is the one way a loop
+  differs from a branch.
+A run stopped in the middle of a pass is an ordinary run which can be stored and picked up
+  later, which is what lets a [`$call`](#$call) sit inside a loop body.
+
+***A loop with no body is a bad process.***
+It could not make progress and could not end, so it fails at the step rather than quietly not
+  looping.
+This is the one place where an empty branch is an error: a missing `Then` means there is
+  nothing to do, while a missing `Do` means there is nothing which could ever change the
+  answer to `Check`.
+
+```js
+const spinning = { Name: 'Spinning', Steps: [ { $while: { Check: { go: true }, Do: [] } } ] };
+
+let refused = jsongin.ProcessExecute( spinning, jsongin.ProcessStart( spinning, { go: true } ) );
+refused.Status			// returns 'failed'
+refused.Error.Code		// returns 'BadProcess'
+```
+
+***A loop which does not end is stopped by the budget, not by this operator.***
+[`ProcessExecute()`](./Process.md) fails a run with `StepLimitExceeded` after `MaxSteps` steps,
+  1000 by default.
+[`ProcessStep()`](./Process.md) needs no budget, because one step cannot loop.
+
+```js
+const forever = {
+	Name: 'Forever',
+	Steps: [ { $while: { Check: { go: true }, Do: [ { $do: { spins: { $add: [ '$spins', 1 ] } } } ] } } ],
+};
+
+let stopped = jsongin.ProcessExecute( forever, jsongin.ProcessStart( forever, { go: true, spins: 0 } ), 25 );
+stopped.Status			// returns 'failed'
+stopped.Error.Code		// returns 'StepLimitExceeded'
+```
+
+***`Check` does not carry the run's variables***, the same rule [`$when`](#$when) follows and for
+  the same reason.
+
+
+<a id="$forEach"></a>$forEach
+---------------------------------------------------------------------
+
+Usage: `$forEach: { In: expression, As: 'path', Index: 'path', Do: [ steps ] }`
+
+Runs a list of steps once for each element of an array.
+
+| **Argument** | **Meaning**                                                              |
+|--------------|--------------------------------------------------------------------------|
+| `In`         | An expression which must produce an array.                               |
+| `As`         | Names a field in the state where each element is written.                |
+| `Index`      | Optional. Names a field where the element's position is written.         |
+| `Do`         | The steps to run for each element.                                       |
+
+```js
+const summing = {
+	Name: 'Summing',
+	Steps: [
+		{ $do: { total: 0 } },
+		{
+			$forEach: {
+				In: '$items',
+				As: 'item',
+				Do: [ { $do: { total: { $add: [ '$total', '$item' ] } } } ],
+			},
+		},
+	],
+};
+
+let summed = jsongin.ProcessExecute( summing, jsongin.ProcessStart( summing, { items: [ 1, 2, 3, 4 ] } ) );
+summed.State		// returns { items: [ 1, 2, 3, 4 ], total: 10 }
+```
+
+***The element is written into the state, not bound as a `$$name`.***
+That is the whole reason the loop is usable.
+`Check` in a [`$when`](#$when) or a [`$while`](#$while) is a query, and [`Query()`](./Query.md)
+  takes no scope, so a `$$name` would be invisible to exactly the test a loop body most often
+  wants to make.
+Written into the state it is reachable both ways - as `'$item'` in an expression and as
+  `{ item: ... }` in a query.
+
+```js
+const classifying = {
+	Name: 'Classifying',
+	Steps: [
+		{ $do: { big: 0, small: 0 } },
+		{
+			$forEach: {
+				In: '$values', As: 'value',
+				Do: [ {
+					$when: {
+						Check: { value: { $gt: 10 } },
+						Then: [ { $do: { big: { $add: [ '$big', 1 ] } } } ],
+						Else: [ { $do: { small: { $add: [ '$small', 1 ] } } } ],
+					},
+				} ],
+			},
+		},
+	],
+};
+
+let classified = jsongin.ProcessExecute( classifying, jsongin.ProcessStart( classifying, { values: [ 5, 50, 7 ] } ) );
+classified.State.big		// returns 1
+classified.State.small		// returns 2
+```
+
+`Index` is optional, and names a field which is written alongside the element.
+
+```js
+const positions = {
+	Name: 'Positions',
+	Steps: [
+		{ $do: { seen: [] } },
+		{
+			$forEach: {
+				In: '$items', As: 'item', Index: 'at',
+				Do: [ { $do: { seen: { $concatArrays: [ '$seen', [ '$at' ] ] } } } ],
+			},
+		},
+	],
+};
+
+let placed = jsongin.ProcessExecute( positions, jsongin.ProcessStart( positions, { items: [ 'a', 'b', 'c' ] } ) );
+placed.State.seen		// returns [ 0, 1, 2 ]
+```
+
+***`As` and `Index` name fields the loop owns***, and they are removed from the state when the
+  loop ends, so a process which ran a loop does not carry its last element around afterward.
+A loop which ran no passes removes nothing, because it wrote nothing.
+
+```js
+let tidied = jsongin.ProcessExecute( summing, jsongin.ProcessStart( summing, { items: [ 1, 2 ] } ) );
+Object.keys( tidied.State ).includes( 'item' )		// returns false
+```
+
+***The iteration lives in the cursor, not in the state.***
+The branch element is `[ 'Do', 3 ]` while the fourth pass is running, which is why a plain
+  branch writes `'Then'` and a loop writes a pair.
+Nothing about where the loop has got to is kept in the document it is working on, which is
+  what lets a run be stored in the middle of a pass and resumed.
+
+```js
+let entered = jsongin.ProcessStep( summing, jsongin.ProcessStep( summing, jsongin.ProcessStart( summing, { items: [ 1, 2 ] } ) ) );
+entered.Cursor		// returns [ 1, [ 'Do', 0 ], 0 ]
+```
+
+***`In` is evaluated again before each pass.***
+A body which appends to the array is a work list which grows, and a body which shortens it
+  ends the loop early.
+This is deliberate, and it is one more reason [`ProcessExecute()`](./Process.md) has a budget:
+  a body which appends forever fails with `StepLimitExceeded` rather than running forever.
+
+***A loop with no body is a bad process***, the same as it is for [`$while`](#$while).
+So is a missing `As`, or an `Index` which is not a field name.
+An `In` which does not produce an array is a `StepFailed` instead, because that one depends on
+  what the run has computed rather than on how the process was written.
 
 
 <a id="$call"></a>$call
