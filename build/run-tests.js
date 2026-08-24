@@ -18,7 +18,9 @@ const path = require( 'path' );
 const { spawnSync } = require( 'child_process' );
 
 const REPO_ROOT = path.resolve( __dirname, '..' );
-const MOCHA_BIN = path.join( REPO_ROOT, 'node_modules/mocha/bin/mocha.js' );
+// Resolved rather than joined onto REPO_ROOT: under the jsonx workspace, node_modules is
+// hoisted to the folder above this repo and there is no node_modules/mocha here at all.
+const MOCHA_BIN = require.resolve( 'mocha/bin/mocha.js' );
 const MOCHA_OPTS = [ '-u', 'bdd', '--timeout', '0', '--slow', '10' ];
 
 const SUITES = [

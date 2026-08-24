@@ -51,7 +51,7 @@
         "compare"
     ],
     "devDependencies": {
-        "@liquicode/devops": "^0.0.20",
+        "@liquicode/devops": "^0.0.21",
         "@liquicode/lib-json": "^0.1.5",
         "@seald-io/nedb": "^4.0.2",
         "babel-polyfill": "6.x",

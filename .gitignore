@@ -8,6 +8,7 @@
 bower_components
 node_modules
 npm-debug.log
+package-lock.json
 .node_history
 
 claude.md
