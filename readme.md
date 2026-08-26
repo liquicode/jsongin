@@ -70,7 +70,7 @@ Because your instructions are data rather than code, they can be stored in a dat
 - ***Developing and testing without a database running.***
   Work against an in-memory collection during development and switch to a real server for
   deployment without rewriting your queries.
-  See [@liquicode/jsonstor](https://github.com/liquicode/jsonstor) for storage adapters which
+  See [@liquicode/jsonstor](http://jsonstor.liquicode.com) for storage adapters which
   carry one query interface across many platforms and mediums.
 
 - ***Deciding things about a document.***

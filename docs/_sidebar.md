@@ -138,8 +138,11 @@
 - More Information
 
 	- [Addendum / Random](/guides/Addendum.md)
+	- ***Testing***
 	- [Testing](/guides/Testing.md)
 	- [Testing Output](/external/tests.md)
+	- **Other**
+	- [@liquicode/jsonstor](http://jsonstor.liquicode.com)
 	- [Project History](/external/history.md)
 	- [Software License](/external/license.md)
 	- [Software Version](/external/version.md)

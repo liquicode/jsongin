@@ -91,24 +91,23 @@ module.exports = {
 			$ExecuteEjs: {
 				ejs_file: 'docs/templates/readme.md',
 				use_eval: true,
-				// debug_script: { filename: 'docs/templates/readme.md.script.js' },
-				out: { filename: 'docs/external/readme.md' },
+				out: { filename: 'readme.md' },
 			}
 		},
-		{ $CopyFile: { from: 'docs/external/readme.md', to: 'readme.md' } },
 
 		// Generate: version.md
 		{
 			$ExecuteEjs: {
 				ejs_string: '<%- Context.Package.version %>',
 				use_eval: true,
-				out: { filename: 'docs/external/version.md' },
+				out: { filename: 'version.md' },
 			}
 		},
-		{ $CopyFile: { from: 'docs/external/version.md', to: 'version.md' } },
 
 		// Copy other files to the docs external area.
 		{ $EnsureFolder: { folder: 'docs/external' } },
+		{ $CopyFile: { from: 'readme.md', to: 'docs/external/readme.md' } },
+		{ $CopyFile: { from: 'version.md', to: 'docs/external/version.md' } },
 		{ $CopyFile: { from: 'license.md', to: 'docs/external/license.md' } },
 		{ $CopyFile: { from: 'history.md', to: 'docs/external/history.md' } },
 		{ $CopyFile: { from: 'tests.md', to: 'docs/external/tests.md' } },
