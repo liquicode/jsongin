@@ -104,12 +104,12 @@ Each kind of document you write is answered by its own family of operators:
 
 | The document you write | The operators which read it | The functions which take it |
 |---|---|---|
-| A ***query*** - which documents match | Query Operators | `Query()`, `Filter()` |
-| A ***projection*** - which fields to keep | Projection Operators | `Project()` |
-| An ***update*** - how a document changes | Update Operators | `Update()`, `Diff()`, `Invert()` |
-| An ***expression*** - a value computed from a document | Expression Operators | `Evaluate()` |
-| A ***pipeline*** - stages a set of documents flows through | Stages and Accumulators | `Aggregate()` |
-| A ***process*** - work to be carried out | Step Operators | `ProcessStart()`, `ProcessStep()`, `ProcessExecute()`, `ProcessResume()` |
+| A ***query*** - which documents match | [Query Operators](/docs/guides/jsongin/Query-Operators.md) | [`Query()`](/docs/guides/jsongin/Query.md), [`Filter()`](/docs/guides/jsongin/Filter.md) |
+| A ***projection*** - which fields to keep | [Projection Operators](/docs/guides/jsongin/Projection-Operators.md) | [`Project()`](/docs/guides/jsongin/Project.md) |
+| An ***update*** - how a document changes | [Update Operators](/docs/guides/jsongin/Update-Operators.md) | [`Update()`](/docs/guides/jsongin/Update.md), [`Diff()`](/docs/guides/jsongin/Diff.md), [`Invert()`](/docs/guides/jsongin/Invert.md) |
+| An ***expression*** - a value computed from a document | [Expression Operators](/docs/guides/jsongin/Expression-Operators.md) | [`Evaluate()`](/docs/guides/jsongin/Evaluate.md) |
+| A ***pipeline*** - stages a set of documents flows through | [Stages](/docs/guides/jsongin/Stage-Operators.md) and [Accumulators](/docs/guides/jsongin/Accumulator-Operators.md) | [`Aggregate()`](/docs/guides/jsongin/Aggregate.md) |
+| A ***process*** - work to be carried out | [Step Operators](/docs/guides/jsongin/Step-Operators.md) | [`ProcessStart()`](/docs/guides/jsongin/Process.md), [`ProcessStep()`](/docs/guides/jsongin/Process.md), [`ProcessExecute()`](/docs/guides/jsongin/Process.md), [`ProcessResume()`](/docs/guides/jsongin/Process.md) |
 
 ***The families are not islands.***
 The expression language is the same wherever it turns up: inside an `$expr` in a query, in a
