@@ -15,7 +15,9 @@
 <hr>
 
 <div class="cover-features">
-	<div class="cover-art" role="img" aria-label="jsongin engine"></div>
+	<div class="cover-art" role="img" aria-label="jsongin engine">
+		<img src="media/engine01-548x421.png" alt="jsongin engine">
+	</div>
 	<ul class="cover-feature-list">
 		<li>100% pure javascript. No dependencies.</li>
 		<li>Faithfully reproduces MongoDB behavior.</li>
