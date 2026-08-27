@@ -23,8 +23,8 @@ This runs the unit tests and the ***jsongin parity inventory***. It needs nothin
   one fails under `jsongin` by design; running them here would make a red `npm test` ambiguous.
   Kept out, ***a red `npm test` always means a regression in `jsongin` itself***.
 
-> ***All three gap inventories are empty as of 2026-08-21***, which is the finished state of a
-  family rather than a missing file. See [How the Tests are Organized](#how-the-tests-are-organized).
+> ***There are no gap suites at present.*** That is the finished state of a family rather than
+  a missing file. See [How the Tests are Organized](#how-the-tests-are-organized).
 
 ```bash
 npm run parity-test-mongodb
@@ -58,7 +58,8 @@ npm run scope-check
 This one needs no server and reads the source rather than running it. It asserts that every
   operator and every helper which evaluates an expression declares a trailing `Scope`, and that
   no call site drops it. See [Operator Authoring](./Operator-Authoring.md#the-scope-contract)
-  for why a contract that ~175 files each have to remember gets a checker instead.
+  for why a contract which over 180 operators and helpers each have to remember gets a checker
+  instead.
 
 ```bash
 npm run api-coverage
@@ -147,12 +148,14 @@ Nothing below the top level names an engine, so ***adding a suite is a one line 
 Every driver exposes the same interface — `SetData`, `Find`, `Update`, `Aggregate`, and so on —
   so the ***same test suite*** can be pointed at `jsongin` or at a real database.
 
-***The MongoDB driver holds one client for the whole run.*** It used to connect and close around
-  every call, which is two connections per test; past a few hundred tests that exhausts the
-  machine's ephemeral ports, because a closed connection sits in `TIME_WAIT` for minutes. A full
-  baseline run began failing a scattering of unrelated tests with `EADDRINUSE` — always a network
-  error and never an assertion, but a baseline which is only usually green is not a baseline.
-  A `MongoClient` is already a connection pool, so one is opened on first use and reused.
+***The MongoDB driver holds one client for the whole run.*** A `MongoClient` is already a
+  connection pool, so one is opened on first use and reused.
+
+> ***Do not open a connection per call in a driver you write.*** That is two connections per
+  test, and a closed one sits in `TIME_WAIT` for minutes, so a few hundred tests can exhaust
+  the ephemeral ports on the machine. The suite then fails with `EADDRINUSE` on tests which
+  have nothing to do with each other — always a network error, never an assertion. A baseline
+  which is only usually green is not a baseline.
 
 The driver closes it from a mocha `after` hook it registers itself, rather than each runner
   remembering to. That matters because `build/parity.js` writes its runners fresh on every
@@ -311,18 +314,17 @@ Eight things are checked, all of them cheap to detect and expensive to find by r
 
 ***`anchors` exists because `links` reads only half of a target.***
 A link is a file and a fragment, and resolving the file says nothing about whether the heading
-  is there. Five Operator Reference rows pointed at operator entries which had not been written
-  yet and `check-docs` stayed green for two commits. A page's anchors are its explicit
-  `<a id="...">` tags plus the slug docsify derives from each heading — both the `##` form and
-  the underlined form the operator pages use — numbered on a repeat the way docsify numbers
-  them.
+  is there — a row can point at an operator entry nobody has written yet and the `links` check
+  will still pass. A page's anchors are its explicit `<a id="...">` tags plus the slug docsify
+  derives from each heading — both the `##` form and the underlined form the operator pages
+  use — numbered on a repeat the way docsify numbers them.
 
 ***The last two exist because documentation drifts where nothing reads it.***
 `inventory` guards the table [`api-coverage`](#coverage) counts, since a coverage number is only
   worth having if the table behind it is checked.
-`shared` was added after the shared-name tables went stale in ***three consecutive families***:
-  every family which adds an operator name that already exists elsewhere invalidates a claim
-  there, and `inventory` reads only the main tables.
+`shared` guards the shared-name tables, which go stale easily: adding an operator name that
+  already exists elsewhere invalidates a claim there, and `inventory` reads only the main
+  tables.
 A prose claim in those tables is deliberately not parsed — write `*(not supported)*` when the
   claim is meant to be checked.
 
