@@ -112,6 +112,18 @@ module.exports = {
 		{ $CopyFile: { from: 'history.md', to: 'docs/external/history.md' } },
 		{ $CopyFile: { from: 'tests.md', to: 'docs/external/tests.md' } },
 
+		// Rebuild the browser bundle and copy it into the playground, where it becomes
+		// the page's "current build" entry. That is how the playground is exercised
+		// against code which has not been released.
+		//
+		// The name begins with a tilde, so `.gitignore` excludes it from source control
+		// and update_aws_docs excludes it from the S3 sync. The published site therefore
+		// offers published versions only, and the entry appears just where the file was
+		// built - the page adds it only when the file is really there.
+		{ $RunTask: { task: 'run_webpack' } },
+		{ $EnsureFolder: { folder: 'docs/playground' } },
+		{ $CopyFile: { from: 'dist/jsongin.min.js', to: 'docs/playground/~jsongin.local.js' } },
+
 		// Check the generated docs.
 		// Halts the build on a code fence which does not parse, a link which does not
 		// resolve, or a page which nothing links to.
@@ -144,9 +156,13 @@ module.exports = {
 	update_aws_docs: [
 
 		// Update aws s3 bucket with package docs.
+		// The tilde excludes keep build_docs' local-only playground bundle out of the
+		// published site, the way `.gitignore` keeps it out of source control. `aws s3
+		// sync` reads neither `.gitignore` nor anything like it, so this has to be said
+		// here. The first pattern covers a nested file, the second one at the top.
 		{
 			$Shell: {
-				command: 'set "AWS_PROFILE=${AWS_ProfileName}" & aws s3 sync docs s3://${AWS_BucketName}',
+				command: 'set "AWS_PROFILE=${AWS_ProfileName}" & aws s3 sync docs s3://${AWS_BucketName} --exclude "*/~*" --exclude "~*"',
 				out: { console: true },
 				err: { console: true },
 			},

@@ -1,0 +1,922 @@
+<!-- index.html -->
+
+<!DOCTYPE html>
+<html>
+
+<!-- The jsongin Playground.
+     This page is self contained and has no dependencies of its own. It runs either
+     embedded in the documentation site (see docs/guides/Playground.md) or opened
+     directly in a browser. -->
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1">
+	<title>jsongin Playground</title>
+
+	<!-- Pick the theme before first paint to avoid a flash. When this page is embedded
+	     in the documentation site it shares that site's origin, so it reads the very
+	     same preference the site's theme button writes. -->
+	<script>
+		( function ()
+		{
+			var saved = null;
+			try { saved = localStorage.getItem( 'jsongin-theme' ); } catch ( error ) { saved = null; }
+			var dark = saved ? ( saved === 'dark' ) : window.matchMedia( '(prefers-color-scheme: dark)' ).matches;
+			document.documentElement.setAttribute( 'data-theme', dark ? 'dark' : 'light' );
+		} )();
+	</script>
+
+	<style>
+		:root
+		{
+			--color-bg: #ffffff;
+			--color-panel: #f6f8fa;
+			--color-text: #24292f;
+			--color-muted: #6b7280;
+			--color-border: #d8dee4;
+			--color-accent: #2980B9;
+			--color-error-bg: #fdf1f0;
+			--color-error-text: #a11f1f;
+			--color-ok: #1a7f37;
+		}
+
+		:root[ data-theme="dark" ]
+		{
+			--color-bg: #14181d;
+			--color-panel: #1b2027;
+			--color-text: #d7dde5;
+			--color-muted: #97a1ae;
+			--color-border: #30373f;
+			--color-accent: #58a6ff;
+			--color-error-bg: #2b1b1b;
+			--color-error-text: #ff8080;
+			--color-ok: #57ab5a;
+		}
+
+		html, body
+		{
+			height: 100%;
+			margin: 0;
+			/* The page itself never scrolls. Only the panels which can grow do, so an
+			   embedded copy never puts a second full height scrollbar under the site's. */
+			overflow: hidden;
+		}
+
+		body
+		{
+			display: flex;
+			flex-direction: column;
+			gap: 0.75em;
+			padding: 1em;
+			box-sizing: border-box;
+			background: var( --color-bg );
+			color: var( --color-text );
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+			font-size: 14px;
+		}
+
+		/*---------------------------------------------------------------------*/
+		/* Controls */
+
+		.controls
+		{
+			display: flex;
+			flex-wrap: wrap;
+			align-items: flex-end;
+			gap: 0.75em;
+		}
+
+		.control
+		{
+			display: flex;
+			flex-direction: column;
+			gap: 0.25em;
+		}
+
+		.control label
+		{
+			font-size: 0.78rem;
+			font-weight: 700;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			color: var( --color-muted );
+		}
+
+		select, button
+		{
+			font-family: inherit;
+			font-size: 0.95rem;
+			padding: 0.4em 0.6em;
+			border: 1px solid var( --color-border );
+			border-radius: 6px;
+			background: var( --color-panel );
+			color: var( --color-text );
+		}
+
+		button
+		{
+			cursor: pointer;
+			font-weight: 700;
+			background: var( --color-accent );
+			border-color: var( --color-accent );
+			color: #ffffff;
+			padding: 0.45em 1.4em;
+		}
+
+		button:disabled
+		{
+			opacity: 0.5;
+			cursor: default;
+		}
+
+		.signature
+		{
+			flex: 1 1 100%;
+			font-family: ui-monospace, Menlo, Consolas, monospace;
+			font-size: 0.85rem;
+			color: var( --color-muted );
+		}
+
+		/*---------------------------------------------------------------------*/
+		/* Panes */
+
+		.panes
+		{
+			flex: 1 1 auto;
+			display: flex;
+			gap: 0.75em;
+			min-height: 0;
+		}
+
+		.column
+		{
+			flex: 1 1 0;
+			display: flex;
+			flex-direction: column;
+			gap: 0.75em;
+			min-width: 0;
+			min-height: 0;
+		}
+
+		/* One box per parameter, so a command with three parameters gets three. They
+		   share the column and scroll together when there are too many to fit. */
+		#parameter-panes
+		{
+			overflow: auto;
+		}
+
+		.pane
+		{
+			flex: 1 1 0;
+			display: flex;
+			flex-direction: column;
+			min-height: 5.5em;
+		}
+
+		.pane label
+		{
+			font-size: 0.78rem;
+			font-weight: 700;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			color: var( --color-muted );
+			margin-bottom: 0.25em;
+		}
+
+		.pane label .kind
+		{
+			font-weight: 400;
+			text-transform: none;
+			letter-spacing: 0;
+			opacity: 0.8;
+		}
+
+		textarea, .result
+		{
+			flex: 1 1 auto;
+			min-height: 0;
+			width: 100%;
+			box-sizing: border-box;
+			padding: 0.6em;
+			border: 1px solid var( --color-border );
+			border-radius: 6px;
+			background: var( --color-panel );
+			color: var( --color-text );
+			font-family: ui-monospace, Menlo, Consolas, monospace;
+			font-size: 0.86rem;
+			line-height: 1.45;
+			resize: none;
+			overflow: auto;
+		}
+
+		.result
+		{
+			margin: 0;
+			white-space: pre-wrap;
+			word-break: break-word;
+		}
+
+		.result.is-error
+		{
+			background: var( --color-error-bg );
+			color: var( --color-error-text );
+			border-color: var( --color-error-text );
+		}
+
+		.status
+		{
+			font-size: 0.82rem;
+			color: var( --color-muted );
+			min-height: 1.2em;
+		}
+
+		.status.is-error { color: var( --color-error-text ); }
+		.status.is-ok { color: var( --color-ok ); }
+
+		@media ( max-width: 720px )
+		{
+			.panes { flex-direction: column; }
+			html, body { overflow: auto; }
+		}
+	</style>
+
+</head>
+
+<body>
+
+	<div class="controls">
+		<div class="control">
+			<label for="version-select">jsongin version</label>
+			<select id="version-select"></select>
+		</div>
+		<div class="control">
+			<label for="command-select">Command</label>
+			<select id="command-select"></select>
+		</div>
+		<div class="control">
+			<label for="run-button">&nbsp;</label>
+			<button id="run-button" type="button">Run</button>
+		</div>
+		<div class="signature" id="signature"></div>
+	</div>
+
+	<div class="panes">
+		<div class="column" id="parameter-panes"></div>
+		<div class="column">
+			<div class="pane">
+				<label for="result-output">Result</label>
+				<pre class="result" id="result-output"></pre>
+			</div>
+		</div>
+	</div>
+
+	<div class="status" id="status"></div>
+
+	<script>
+		( function ()
+		{
+
+			//---------------------------------------------------------------------
+			// The versions offered.
+			//
+			// Every published version ships dist/jsongin.min.js in its npm tarball, so
+			// unpkg serves each one.
+			//
+			// The "current build" entry is different, and conditional. build_docs writes
+			// the freshly packed bundle beside this page as a tilde prefixed file, which
+			// is excluded from source control and from the S3 sync, so it exists only
+			// where somebody built it. The page therefore offers that entry only after
+			// finding the file, which is what keeps the published site to published
+			// versions without this page needing to know where it is running.
+			//---------------------------------------------------------------------
+
+			var PUBLISHED_VERSIONS = [
+				'0.0.23', '0.0.22', '0.0.21', '0.0.20', '0.0.19', '0.0.18', '0.0.17',
+				'0.0.16', '0.0.15', '0.0.14', '0.0.12', '0.0.11', '0.0.10', '0.0.9',
+				'0.0.8', '0.0.7', '0.0.6', '0.0.5', '0.0.4', '0.0.3', '0.0.2', '0.0.1',
+			];
+
+			var LOCAL_SCRIPT_URL = '~jsongin.local.js';
+
+			function version_script_url( Version )
+			{
+				if ( Version === 'current' ) { return LOCAL_SCRIPT_URL; }
+				return 'https://unpkg.com/@liquicode/jsongin@' + Version + '/dist/jsongin.min.js';
+			}
+
+			function version_label( Version )
+			{
+				if ( Version === 'current' ) { return 'current build'; }
+				return Version;
+			}
+
+			//---------------------------------------------------------------------
+			// The commands offered.
+			//
+			// This list is the user facing surface, in the order the documentation
+			// presents it. It is filtered against whatever the loaded version actually
+			// exports, so an older version simply does not offer what it never had.
+			//
+			// Each command names its parameters and gets one box for each. The names
+			// have to live here rather than be read from the library, because the
+			// browser bundle is minified and its parameter names are mangled. A
+			// parameter marked Optional may be left empty, and is then not passed at
+			// all - which is not the same as passing an empty value.
+			//
+			// Kind 'json' is read with JSON.parse. Kind 'text' is handed over verbatim,
+			// which is what a path, or a piece of JSON source, wants.
+			//---------------------------------------------------------------------
+
+			var COMMANDS = [
+				{
+					Name: 'Query',
+					Signature: 'Query( Document, Criteria )',
+					Parameters: [
+						{ Label: 'Document', Kind: 'json', Default: '{\n\t"name": "Alice",\n\t"age": 34,\n\t"tags": [ "staff", "admin" ]\n}' },
+						{ Label: 'Criteria', Kind: 'json', Default: '{ "age": { "$gte": 21 } }' },
+					],
+				},
+				{
+					Name: 'Filter',
+					Signature: 'Filter( Documents, Criteria )',
+					Parameters: [
+						{ Label: 'Documents (array)', Kind: 'json', Default: '[\n\t{ "name": "Alice", "active": true },\n\t{ "name": "Bob", "active": false }\n]' },
+						{ Label: 'Criteria', Kind: 'json', Default: '{ "active": true }' },
+					],
+				},
+				{
+					Name: 'Sort',
+					Signature: 'Sort( Documents, SortCriteria )',
+					Parameters: [
+						{ Label: 'Documents (array)', Kind: 'json', Default: '[\n\t{ "n": 3 },\n\t{ "n": 1 },\n\t{ "n": 2 }\n]' },
+						{ Label: 'SortCriteria', Kind: 'json', Default: '{ "n": 1 }' },
+					],
+				},
+				{
+					Name: 'Distinct',
+					Signature: 'Distinct( Documents, DistinctCriteria )',
+					Parameters: [
+						{ Label: 'Documents (array)', Kind: 'json', Default: '[\n\t{ "city": "NY" },\n\t{ "city": "LA" },\n\t{ "city": "NY" }\n]' },
+						{ Label: 'DistinctCriteria', Kind: 'json', Default: '{ "city": 1 }' },
+					],
+				},
+				{
+					Name: 'Aggregate',
+					Signature: 'Aggregate( Documents, Pipeline )',
+					Parameters: [
+						{ Label: 'Documents (array)', Kind: 'json', Default: '[\n\t{ "team": "red", "points": 3 },\n\t{ "team": "red", "points": 5 },\n\t{ "team": "blue", "points": 4 }\n]' },
+						{ Label: 'Pipeline (array of stages)', Kind: 'json', Default: '[\n\t{ "$group": { "_id": "$team", "score": { "$sum": "$points" } } },\n\t{ "$sort": { "score": -1 } }\n]' },
+					],
+				},
+				{
+					Name: 'Project',
+					Signature: 'Project( Document, Projection )',
+					Parameters: [
+						{ Label: 'Document', Kind: 'json', Default: '{\n\t"a": 1,\n\t"b": 2,\n\t"c": 3\n}' },
+						{ Label: 'Projection', Kind: 'json', Default: '{ "a": 1, "b": 1 }' },
+					],
+				},
+				{
+					Name: 'Update',
+					Signature: 'Update( Document, Updates )',
+					Parameters: [
+						{ Label: 'Document', Kind: 'json', Default: '{\n\t"count": 1,\n\t"name": "Alice"\n}' },
+						{ Label: 'Updates', Kind: 'json', Default: '{ "$inc": { "count": 1 } }' },
+					],
+				},
+				{
+					Name: 'Evaluate',
+					Signature: 'Evaluate( Document, Expression )',
+					Parameters: [
+						{ Label: 'Document', Kind: 'json', Default: '{\n\t"price": 10,\n\t"qty": 3\n}' },
+						{ Label: 'Expression', Kind: 'json', Default: '{ "$multiply": [ "$price", "$qty" ] }' },
+					],
+				},
+				{
+					Name: 'GetValue',
+					Signature: 'GetValue( Document, Path )',
+					Parameters: [
+						{ Label: 'Document', Kind: 'json', Default: '{\n\t"user": { "name": "Alice" }\n}' },
+						{ Label: 'Path', Kind: 'text', Default: 'user.name' },
+					],
+				},
+				{
+					Name: 'SetValue',
+					Signature: 'SetValue( Document, Path, Value )',
+					Parameters: [
+						{ Label: 'Document', Kind: 'json', Default: '{\n\t"user": { "name": "Alice" }\n}' },
+						{ Label: 'Path', Kind: 'text', Default: 'user.name' },
+						{ Label: 'Value', Kind: 'json', Default: '"Bob"' },
+					],
+				},
+				{
+					Name: 'DeleteValue',
+					Signature: 'DeleteValue( Document, Path )',
+					Parameters: [
+						{ Label: 'Document', Kind: 'json', Default: '{\n\t"user": { "name": "Alice" },\n\t"temp": true\n}' },
+						{ Label: 'Path', Kind: 'text', Default: 'temp' },
+					],
+				},
+				{
+					Name: 'Merge',
+					Signature: 'Merge( DocumentA, DocumentB )',
+					Parameters: [
+						{ Label: 'DocumentA', Kind: 'json', Default: '{\n\t"a": 1,\n\t"nested": { "x": 1 }\n}' },
+						{ Label: 'DocumentB', Kind: 'json', Default: '{\n\t"b": 2,\n\t"nested": { "y": 2 }\n}' },
+					],
+				},
+				{
+					Name: 'Diff',
+					Signature: 'Diff( Before, After )',
+					Parameters: [
+						{ Label: 'Before', Kind: 'json', Default: '{\n\t"a": 1,\n\t"b": 2\n}' },
+						{ Label: 'After', Kind: 'json', Default: '{ "a": 9 }' },
+					],
+				},
+				{
+					Name: 'Invert',
+					Signature: 'Invert( Before, Patch )',
+					Parameters: [
+						{ Label: 'Before', Kind: 'json', Default: '{ "a": 1 }' },
+						{ Label: 'Patch', Kind: 'json', Default: '{ "$set": { "a": 2 } }' },
+					],
+				},
+				{
+					Name: 'Flatten',
+					Signature: 'Flatten( Document )',
+					Parameters: [
+						{ Label: 'Document', Kind: 'json', Default: '{\n\t"user": { "name": "Alice", "roles": [ "a", "b" ] }\n}' },
+					],
+				},
+				{
+					Name: 'Expand',
+					Signature: 'Expand( Document )',
+					Parameters: [
+						{ Label: 'Document (flat)', Kind: 'json', Default: '{\n\t"user.name": "Alice",\n\t"user.age": 34\n}' },
+					],
+				},
+				{
+					Name: 'Format',
+					Signature: 'Format( Value, Options )',
+					Parameters: [
+						{ Label: 'Value', Kind: 'json', Default: '{\n\t"a": 1,\n\t"b": [ 1, 2 ]\n}' },
+						{ Label: 'Options', Kind: 'json', Optional: true, Default: '{ "Whitespace": 1 }' },
+					],
+				},
+				{
+					Name: 'Parse',
+					Signature: 'Parse( JsonString, Options )',
+					Parameters: [
+						{ Label: 'JsonString', Kind: 'text', Default: '{ a: 1, b: \'two\' }' },
+						{ Label: 'Options', Kind: 'json', Optional: true, Default: '' },
+					],
+				},
+				{
+					Name: 'ShortType',
+					Signature: 'ShortType( Value )',
+					Parameters: [
+						{ Label: 'Value', Kind: 'json', Default: '[ 1, 2, 3 ]' },
+					],
+				},
+				{
+					Name: 'CompareValues',
+					Signature: 'CompareValues( ValueA, ValueB )',
+					Parameters: [
+						{ Label: 'ValueA', Kind: 'json', Default: '1' },
+						{ Label: 'ValueB', Kind: 'json', Default: '"a string"' },
+					],
+				},
+			];
+
+			//---------------------------------------------------------------------
+			// Elements and state.
+			//---------------------------------------------------------------------
+
+			var version_select = document.getElementById( 'version-select' );
+			var command_select = document.getElementById( 'command-select' );
+			var run_button = document.getElementById( 'run-button' );
+			var parameter_panes = document.getElementById( 'parameter-panes' );
+			var result_output = document.getElementById( 'result-output' );
+			var signature_text = document.getElementById( 'signature' );
+			var status_text = document.getElementById( 'status' );
+
+			var engine = null;
+			var engine_cache = {};
+			var load_token = 0;
+
+			//---------------------------------------------------------------------
+			// Reporting.
+			//---------------------------------------------------------------------
+
+			function set_status( Message, Kind )
+			{
+				status_text.textContent = Message;
+				status_text.className = 'status';
+				if ( Kind ) { status_text.classList.add( Kind ); }
+			}
+
+			function show_result( Text, IsError )
+			{
+				result_output.textContent = Text;
+				result_output.className = 'result';
+				if ( IsError ) { result_output.classList.add( 'is-error' ); }
+			}
+
+			//---------------------------------------------------------------------
+			// Loading a version.
+			//
+			// The export shape changed at 0.0.19. Before it, the bundle exports a
+			// factory which must be called to get an engine; from it, the export is the
+			// engine itself. Detecting the shape covers both without a per version flag.
+			//---------------------------------------------------------------------
+
+			function normalize_engine( Exported )
+			{
+				if ( typeof Exported === 'function' ) { return Exported( {} ); }
+				return Exported;
+			}
+
+			function load_version( Version )
+			{
+				load_token = load_token + 1;
+				var this_token = load_token;
+
+				if ( engine_cache[ Version ] )
+				{
+					engine = engine_cache[ Version ];
+					on_engine_ready( Version );
+					return;
+				}
+
+				engine = null;
+				run_button.disabled = true;
+				command_select.disabled = true;
+				set_status( 'Loading jsongin ' + version_label( Version ) + ' ...' );
+
+				var old_script = document.getElementById( 'version-script' );
+				if ( old_script ) { old_script.remove(); }
+
+				// Clear the globals so a failed load can never be mistaken for the
+				// version which happened to be loaded before it.
+				try { delete window.jsongin; } catch ( error ) { window.jsongin = undefined; }
+				try { delete window.liquicode; } catch ( error ) { window.liquicode = undefined; }
+
+				var script = document.createElement( 'script' );
+				script.id = 'version-script';
+
+				var timeout_handle = setTimeout( function ()
+				{
+					if ( this_token !== load_token ) { return; }
+					report_load_failure( Version, 'the request timed out' );
+				}, 15000 );
+
+				script.onload = function ()
+				{
+					clearTimeout( timeout_handle );
+					if ( this_token !== load_token ) { return; }
+					if ( typeof window.jsongin === 'undefined' )
+					{
+						report_load_failure( Version, 'the script loaded but defined no jsongin global' );
+						return;
+					}
+					engine = normalize_engine( window.jsongin );
+					engine_cache[ Version ] = engine;
+					on_engine_ready( Version );
+				};
+
+				script.onerror = function ()
+				{
+					clearTimeout( timeout_handle );
+					if ( this_token !== load_token ) { return; }
+					report_load_failure( Version, 'the script could not be fetched' );
+				};
+
+				script.src = version_script_url( Version );
+				document.head.appendChild( script );
+			}
+
+			function report_load_failure( Version, Reason )
+			{
+				engine = null;
+				run_button.disabled = true;
+				command_select.disabled = true;
+				set_status( 'Could not load jsongin ' + version_label( Version ) + ' - ' + Reason + '.', 'is-error' );
+				show_result( 'jsongin ' + version_label( Version ) + ' did not load, because ' + Reason + '.\n\nEvery version except the current build is fetched from unpkg, so this page needs a network connection to offer them.', true );
+			}
+
+			function on_engine_ready( Version )
+			{
+				run_button.disabled = false;
+				command_select.disabled = false;
+
+				var wanted = command_select.value;
+				build_command_list();
+
+				if ( wanted && has_command( wanted ) )
+				{
+					command_select.value = wanted;
+					apply_command();
+					set_status( 'jsongin ' + version_label( Version ) + ' ready.', 'is-ok' );
+				}
+				else if ( wanted )
+				{
+					command_select.value = 'Query';
+					apply_command();
+					set_status( 'jsongin ' + version_label( Version ) + ' has no ' + wanted + '(), so the command changed to Query().', 'is-ok' );
+				}
+				else
+				{
+					apply_command();
+					set_status( 'jsongin ' + version_label( Version ) + ' ready.', 'is-ok' );
+				}
+			}
+
+			//---------------------------------------------------------------------
+			// The command list, filtered against what this version really exports.
+			//---------------------------------------------------------------------
+
+			function build_command_list()
+			{
+				command_select.innerHTML = '';
+				var index = 0;
+				for ( index = 0; index < COMMANDS.length; index++ )
+				{
+					var command = COMMANDS[ index ];
+					if ( !engine ) { continue; }
+					if ( typeof engine[ command.Name ] !== 'function' ) { continue; }
+					var option = document.createElement( 'option' );
+					option.value = command.Name;
+					option.textContent = command.Name + '()';
+					command_select.appendChild( option );
+				}
+			}
+
+			function has_command( Name )
+			{
+				var index = 0;
+				for ( index = 0; index < command_select.options.length; index++ )
+				{
+					if ( command_select.options[ index ].value === Name ) { return true; }
+				}
+				return false;
+			}
+
+			function find_command( Name )
+			{
+				var index = 0;
+				for ( index = 0; index < COMMANDS.length; index++ )
+				{
+					if ( COMMANDS[ index ].Name === Name ) { return COMMANDS[ index ]; }
+				}
+				return null;
+			}
+
+			//---------------------------------------------------------------------
+			// One box per parameter, rebuilt whenever the command changes.
+			//---------------------------------------------------------------------
+
+			function apply_command()
+			{
+				var command = find_command( command_select.value );
+				parameter_panes.innerHTML = '';
+				show_result( '' );
+				if ( !command )
+				{
+					signature_text.textContent = '';
+					return;
+				}
+				signature_text.textContent = command.Signature;
+
+				var index = 0;
+				for ( index = 0; index < command.Parameters.length; index++ )
+				{
+					var parameter = command.Parameters[ index ];
+
+					var pane = document.createElement( 'div' );
+					pane.className = 'pane';
+
+					var label = document.createElement( 'label' );
+					label.setAttribute( 'for', 'parameter-' + index );
+					label.textContent = parameter.Label + ' ';
+
+					var kind = document.createElement( 'span' );
+					kind.className = 'kind';
+					kind.textContent = '(' + ( parameter.Kind === 'text' ? 'text' : 'JSON' ) + ( parameter.Optional ? ', optional' : '' ) + ')';
+					label.appendChild( kind );
+
+					var box = document.createElement( 'textarea' );
+					box.id = 'parameter-' + index;
+					box.spellcheck = false;
+					box.value = parameter.Default;
+
+					pane.appendChild( label );
+					pane.appendChild( box );
+					parameter_panes.appendChild( pane );
+				}
+			}
+
+			function parameter_box( Index )
+			{
+				return document.getElementById( 'parameter-' + Index );
+			}
+
+			//---------------------------------------------------------------------
+			// Running.
+			//---------------------------------------------------------------------
+
+			function run_command()
+			{
+				var command = find_command( command_select.value );
+				if ( !command ) { return; }
+				if ( !engine )
+				{
+					set_status( 'No version is loaded.', 'is-error' );
+					return;
+				}
+
+				var call_arguments = [];
+				var index = 0;
+				for ( index = 0; index < command.Parameters.length; index++ )
+				{
+					var parameter = command.Parameters[ index ];
+					var box = parameter_box( index );
+					var text = box ? box.value : '';
+
+					if ( parameter.Optional && text.trim().length === 0 )
+					{
+						// An optional parameter left empty is not passed at all, which is
+						// not the same as passing an empty value.
+						break;
+					}
+
+					if ( parameter.Kind === 'text' )
+					{
+						call_arguments.push( text );
+						continue;
+					}
+
+					try
+					{
+						call_arguments.push( JSON.parse( text ) );
+					}
+					catch ( error )
+					{
+						set_status( 'The ' + parameter.Label + ' box is not valid JSON.', 'is-error' );
+						show_result( 'Could not read the ' + parameter.Label + ' box as JSON.\n\n' + error.message, true );
+						return;
+					}
+				}
+
+				// Some commands answer with a flag and do their real work by changing the
+				// first parameter in place, so the returned value alone would not show
+				// what happened.
+				var first_is_json = ( command.Parameters.length > 0 ) && ( command.Parameters[ 0 ].Kind === 'json' );
+				var before_text = first_is_json ? describe_result( call_arguments[ 0 ] ) : null;
+
+				try
+				{
+					var result = engine[ command.Name ].apply( engine, call_arguments );
+					var output = describe_result( result );
+					if ( before_text !== null )
+					{
+						var after_text = describe_result( call_arguments[ 0 ] );
+						if ( after_text !== before_text )
+						{
+							output = output + '\n\n--- ' + command.Parameters[ 0 ].Label + ' after the call ---\n\n' + after_text;
+						}
+					}
+					show_result( output, false );
+					set_status( command.Name + '() returned ' + type_note( result ) + '.', 'is-ok' );
+				}
+				catch ( error )
+				{
+					show_result( error.message, true );
+					set_status( command.Name + '() threw an error.', 'is-error' );
+				}
+			}
+
+			// A returned false or null is an answer, not a failure, so it is rendered as
+			// a result. Only a thrown error is shown as an error.
+			function describe_result( Value )
+			{
+				if ( typeof Value === 'undefined' ) { return 'undefined'; }
+				try
+				{
+					return JSON.stringify( Value, null, 4 );
+				}
+				catch ( error )
+				{
+					return String( Value );
+				}
+			}
+
+			function type_note( Value )
+			{
+				if ( Value === null ) { return 'null'; }
+				if ( typeof Value === 'undefined' ) { return 'undefined'; }
+				if ( Array.isArray( Value ) ) { return 'an array of ' + Value.length; }
+				return typeof Value;
+			}
+
+			//---------------------------------------------------------------------
+			// Theme, kept in step with the documentation site.
+			//---------------------------------------------------------------------
+
+			function apply_theme( Saved )
+			{
+				var dark = Saved ? ( Saved === 'dark' ) : window.matchMedia( '(prefers-color-scheme: dark)' ).matches;
+				document.documentElement.setAttribute( 'data-theme', dark ? 'dark' : 'light' );
+			}
+
+			// A storage event fires in every other context of this origin, so toggling
+			// the site's theme retimes this page while it sits in the frame.
+			window.addEventListener( 'storage', function ( Event )
+			{
+				if ( Event.key === 'jsongin-theme' ) { apply_theme( Event.newValue ); }
+			} );
+
+			//---------------------------------------------------------------------
+			// Wire up and start.
+			//---------------------------------------------------------------------
+
+			function build_version_list( IncludeCurrent )
+			{
+				version_select.innerHTML = '';
+
+				if ( IncludeCurrent )
+				{
+					var option = document.createElement( 'option' );
+					option.value = 'current';
+					option.textContent = 'current build';
+					version_select.appendChild( option );
+				}
+
+				var index = 0;
+				for ( index = 0; index < PUBLISHED_VERSIONS.length; index++ )
+				{
+					var published = document.createElement( 'option' );
+					published.value = PUBLISHED_VERSIONS[ index ];
+					published.textContent = PUBLISHED_VERSIONS[ index ];
+					version_select.appendChild( published );
+				}
+			}
+
+			// Look for a local build before offering it. A script element is used rather
+			// than a fetch because this page also has to work opened straight from disk,
+			// where a fetch would be refused and a script element still loads. The probe
+			// is the load, so finding the file costs nothing extra.
+			function start()
+			{
+				set_status( 'Looking for a local build ...' );
+
+				var probe = document.createElement( 'script' );
+				probe.id = 'version-script';
+
+				probe.onload = function ()
+				{
+					if ( typeof window.jsongin === 'undefined' )
+					{
+						start_without_current();
+						return;
+					}
+					engine = normalize_engine( window.jsongin );
+					engine_cache[ 'current' ] = engine;
+					build_version_list( true );
+					version_select.value = 'current';
+					on_engine_ready( 'current' );
+				};
+
+				probe.onerror = function ()
+				{
+					probe.remove();
+					start_without_current();
+				};
+
+				probe.src = LOCAL_SCRIPT_URL;
+				document.head.appendChild( probe );
+			}
+
+			// No local build, which is the published site's normal state.
+			function start_without_current()
+			{
+				build_version_list( false );
+				version_select.value = PUBLISHED_VERSIONS[ 0 ];
+				load_version( PUBLISHED_VERSIONS[ 0 ] );
+			}
+
+			version_select.addEventListener( 'change', function ()
+			{
+				load_version( version_select.value );
+			} );
+
+			command_select.addEventListener( 'change', apply_command );
+			run_button.addEventListener( 'click', run_command );
+
+			start();
+
+		} )();
+	</script>
+
+</body>
+
+</html>

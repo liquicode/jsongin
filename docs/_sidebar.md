@@ -11,6 +11,7 @@
 	- [Main](/external/readme.md)
 	- [NodeJS Usage](/guides/Usage-NodeJS.md)
 	- [Browser Usage](/guides/Usage-Browser.md)
+	- [Playground](/guides/Playground.md)
 	- [Library Guide](/guides/Library-Guide.md)
 	- [OpLog](/guides/OpLog.md)
 
