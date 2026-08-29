@@ -723,11 +723,11 @@
       ✔ should reject a non-object UpdateFields for $pullAll
       ✔ should reject a non-object UpdateFields for $pull
     Operator OpError Reporting
-      ✔ should report from every expression operator which rejects its argument (189ms)
-      ✔ should report from every update operator which rejects its argument (22ms)
-      ✔ should report from every accumulator which rejects its argument (19ms)
-      ✔ should report from every stage which rejects its argument (32ms)
-      ✔ should report from the query operators which reject their argument (46ms)
+      ✔ should report from every expression operator which rejects its argument (145ms)
+      ✔ should report from every update operator which rejects its argument (15ms)
+      ✔ should report from every accumulator which rejects its argument (16ms)
+      ✔ should report from every stage which rejects its argument (18ms)
+      ✔ should report from the query operators which reject their argument (25ms)
     Aggregation Argument Validation
       ✔ should reject a non-array Documents to every accumulator
       ✔ should reject a document in the pipeline which is not an object
@@ -1370,7 +1370,7 @@
         ✔ should set the current date for nested values
         ✔ should give each field its own Date rather than a shared one
         ✔ should store a value which answers to a date query
-        ✔ should report an invalid date specification and fail (8ms)
+        ✔ should report an invalid date specification and fail (7ms)
         ✔ should apply the valid fields even when another one is invalid
     Array Update Operator Tests
       $addToSet Tests
@@ -1489,7 +1489,7 @@
       ✔ should keep a date through a computed field
 
 
-  1256 passing (681ms)
+  1256 passing (518ms)
 ```
 
 ## Parity Tests
@@ -2263,7 +2263,7 @@ jsongin Parity Tests
           ✔ should count the encoded bytes of a document with $bsonSize
       Date Operator Tests
         Reading the Parts of a Date
-          ✔ should read the year with $year (20ms)
+          ✔ should read the year with $year (17ms)
           ✔ should read the month with $month
           ✔ should read the day of the month with $dayOfMonth
           ✔ should read the day of the week with $dayOfWeek
@@ -2707,7 +2707,7 @@ jsongin Parity Tests
           ✔ should refuse a shorthand name which is a field path
 
 
-  988 passing (438ms)
+  988 passing (302ms)
 ```
 
 ## Summary
