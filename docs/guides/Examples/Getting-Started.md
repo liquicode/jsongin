@@ -19,7 +19,7 @@ The module's default export is a ready-to-use engine ***instance***:
 const jsongin = require( '@liquicode/jsongin' );
 
 jsongin.Library.name === '@liquicode/jsongin'
-jsongin.Library.version === '0.1.0'
+typeof jsongin.Library.version === 'string'   // the installed version, such as '0.1.1'
 ```
 
 One instance is all most applications need. When you want isolated settings or your

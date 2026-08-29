@@ -26,10 +26,16 @@ If `CaseSensitive` is set to `true`, then all strings are lower-cased prior to s
 ## Examples
 
 
-### It find the entire string (case sensitive)
+### It finds the entire string (case sensitive)
 ```js
 jsongin.Text.FindBetween( 'The red fox', '', '', true ) === 'The red fox'
 jsongin.Text.FindBetween( 'The red fox', null, null, true ) === 'The red fox'
+```
+
+### It finds the entire string (case insensitive)
+```js
+jsongin.Text.FindBetween( 'The red fox', '', '', false ) === 'The red fox'
+jsongin.Text.FindBetween( 'The red fox', null, null, false ) === 'The red fox'
 ```
 
 ### It finds text at start of string (case sensitive)
@@ -38,22 +44,16 @@ jsongin.Text.FindBetween( 'The red fox', '', ' ', true ) === 'The'
 jsongin.Text.FindBetween( 'The red fox', null, ' ', true ) === 'The'
 ```
 
-### It finds text in middle of string (case sensitive)
-```js
-jsongin.Text.FindBetween( 'The red fox', 'The', 'fox', true ) === ' red '
-jsongin.Text.FindBetween( 'The red fox', 'THE', 'FOX', true ) === null
-```
-
-### It find the entire string (case insensitive)
-```js
-jsongin.Text.FindBetween( 'The red fox', '', '', false ) === 'The red fox'
-jsongin.Text.FindBetween( 'The red fox', null, null, false ) === 'The red fox'
-```
-
 ### It finds text at start of string (case insensitive)
 ```js
 jsongin.Text.FindBetween( 'The red fox', '', ' ', false ) === 'The'
 jsongin.Text.FindBetween( 'The red fox', null, ' ', false ) === 'The'
+```
+
+### It finds text in middle of string (case sensitive)
+```js
+jsongin.Text.FindBetween( 'The red fox', 'The', 'fox', true ) === ' red '
+jsongin.Text.FindBetween( 'The red fox', 'THE', 'FOX', true ) === null
 ```
 
 ### It finds text in middle of string (case insensitive)

@@ -28,46 +28,92 @@ Goals
 Similar Projects
 ---------------------------------------------------------------------
 
-The projects below fall into two groups.
-Some are ***query engines***, which apply MongoDB-style criteria to objects you already have.
-The rest are ***databases***, which own the storage and offer querying as one part of a larger
-  whole.
-`jsongin` belongs to the first group, and does not store anything.
+The projects below fall into three groups.
+
+***Query filters*** decide whether a document matches a criteria object, and stop there.
+***Engines*** implement more of the MongoDB language than the query alone: projection, update,
+  the expression language, and the aggregation pipeline.
+***Databases*** own the storage and offer querying as one part of a larger whole.
+
+`jsongin` is in the second group and stores nothing — you bring the objects.
+It implements 219 of the 254 operators MongoDB documents, across five operator families, and
+  adds document mechanics which none of the projects here provide: `Flatten`, `Expand`,
+  `Hybridize`, `Diff`, and `Invert`.
 
 Where a project is marked as having been ***measured***, it was run against the `jsongin` test
   suite through a driver in `test/Parity Tests/Drivers`, so the compatibility note is an
   observation rather than an impression.
+Versions, publication dates, and download figures were read from npm in August 2026.
 
-**Query engines**
+**Query filters**
 
-- [mingo](https://www.npmjs.com/package/mingo) :
-	A MongoDB-style querying mechanism for in-memory collections.
-	A full and mature implementation, covering the query language and the aggregation pipeline
-	with a large operator set.
-	***Differs*** : broader and larger than `jsongin`, and squarely aimed at querying.
-	`jsongin` implements a smaller aggregation subset but adds the document mechanics —
-	paths, `Flatten`, `Expand`, `Hybridize`, `Diff`, `Invert` — which are half of what it is for.
+- [sift](https://www.npmjs.com/package/sift) :
+	MongoDB query filtering in Javascript, and the most widely used package in this list by a
+	wide margin — roughly 6.7 million downloads a week.
+	Twenty three query operators, no dependencies, and a tree-shakeable build for callers who
+	want only a few of them.
+	***Differs*** : query testing only, and deliberately so.
+	No projection, update, aggregation, or document mechanics.
+	Where `jsongin` is trying to be MongoDB, `sift` is trying to be small.
+
+- [@ucast/mongo](https://www.npmjs.com/package/@ucast/mongo) and
+	[@ucast/mongo2js](https://www.npmjs.com/package/@ucast/mongo2js) :
+	Parses a MongoDB query into an abstract syntax tree, which `mongo2js` evaluates against
+	Javascript objects and other `ucast` packages translate into SQL or ORM conditions.
+	Widely used, largely by way of `CASL`.
+	***Differs*** : a translation layer rather than an engine.
+	Query only, and its value is in the number of targets it can emit rather than in matching
+	MongoDB's own semantics exactly. (`jsonstor` supports a similar translation layer)
 
 - [json-criteria](https://www.npmjs.com/package/json-criteria) :
-	A MongoDB-style querying mechanism.
 	Tests whether a document satisfies a criteria object.
 	Minimal MongoDB compatibility. *(measured)*
+	Last published in 2015.
 	***Differs*** : query testing only. No projection, update, aggregation, or document mechanics.
+
+**Engines**
+
+- [mingo](https://www.npmjs.com/package/mingo) :
+	The closest thing to a peer this library has, and the one worth comparing against.
+	Query, projection, update, and the aggregation pipeline with accumulators, expressions, and
+	window operators. Actively maintained, no dependencies, written in Typescript.
+	***Differs*** : `mingo` reaches further into the pipeline.
+	Its stage set is a superset of this one, adding `$setWindowFields` along with `$lookup`,
+	`$graphLookup`, `$unionWith`, `$out`, and `$merge` — all but the first of which presuppose
+	collections, which `jsongin` does not have.
+	What `jsongin` adds is on the other side: the document mechanics listed above, and a parity
+	suite which compares each implemented behavior against a running MongoDB server rather than
+	asserting compatibility in prose.
 
 **Databases**
 
+> **NOTE**: See the [jsonstor](http://jsonstor.liquicode.com) project which combines `jsongin` with storages across multiple database platforms such as memory, file, MongoDB server, MySql server, etc. This additional functionality is not directly considered in this comparison.
+
 - [nedb](https://www.npmjs.com/package/nedb) : 
-	A MongoDB-style querying mechanism.
-	Create and manage memory-based and file-based data collections.
-	No longer maintained by the author(s).
+	A file-based embedded data store with a MongoDB-style query API.
+	Last published in 2016 and no longer maintained by the author(s), though still widely
+	installed.
 	Minimal MongoDB compatibility. *(measured)*
 	***Differs*** : owns its storage, indexes, and persistence.
-	`jsongin` has no storage of its own — you bring the objects.
+	`jsongin` on its own has no storage — you bring the objects.
 
 - [@seald-io/nedb](https://www.npmjs.com/package/@seald-io/nedb) : 
 	A currently maintained fork of `nedb`, adding a promise-based API.
 	Minimal MongoDB compatibility. *(measured)*
 	***Differs*** : as `nedb`.
+
+- [LokiJS](https://www.npmjs.com/package/lokijs) :
+	An in-memory document database with a MongoDB-flavored query syntax and optional
+	persistence adapters.
+	Still heavily downloaded, but abandoned by its authors — last published in 2021, and
+	dropped as a storage engine by `RxDB` over query matching and data loss defects.
+	***Differs*** : a database rather than an engine, and one which should not be chosen for
+	new work.
+
+- [minimongo](https://www.npmjs.com/package/minimongo) :
+	A client-side implementation of the MongoDB API which synchronizes to a server, from
+	mWater. Unrelated to the Meteor package of the same name.
+	***Differs*** : the point of it is the synchronization, which `jsongin` has no notion of.
 
 - [Mongo-Local-DB](https://www.npmjs.com/package/mongo-local-db) :
 	A small local datastore with a MongoDB-flavored API, persisting collections to JSON files.
@@ -75,7 +121,7 @@ Where a project is marked as having been ***measured***, it was run against the 
 	surface than any of the others here.
 
 - [RxDB](https://www.npmjs.com/package/rxdb) :
-	A reactive, offline-first NoSQL database for Javascript.
+	A reactive, local-first NoSQL database for Javascript.
 	Documents are validated against a schema, queries are observable and re-emit when the
 	underlying data changes, and collections can replicate to a server.
 	***Differs*** : an entire database, of which querying is one part.
@@ -83,11 +129,12 @@ Where a project is marked as having been ***measured***, it was run against the 
 	functions over objects and holds no state.
 
 - [realm](https://www.npmjs.com/package/realm) :
-	An embedded object database with a native core and Javascript bindings, offering live
-	objects and synchronization to MongoDB Atlas.
+	An embedded object database with a native core and Javascript bindings.
 	***Differs*** : native code rather than pure Javascript, with its own object model and its
 	own query language rather than MongoDB query documents.
-	Note that MongoDB has since deprecated the Atlas Device SDKs, which include this one.
+	MongoDB deprecated the Atlas Device SDKs in September 2024 and ended Atlas Device Sync on
+	30 September 2025. The SDK continues as an open source local database without the
+	synchronization which was most of the reason to reach for it.
 
 
 Object Cloning

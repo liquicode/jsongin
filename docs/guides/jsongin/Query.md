@@ -86,7 +86,7 @@ Each operator is described in detail, with examples, in
 ***Note on dates*** :
 A `Date` has its own short type `d`, so the comparison operators handle dates directly.
 `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$in`, and `$nin` all compare dates by their time
-  value, and `$type` selects them with either `'date'` or `9`.
+  value, and `$type` selects them with either `'date'` or (BSON type) `9`.
 A date is never equal to the string or number which represents it: `$eq` against an ISO string
   or a timestamp is `false`.
 See [`ShortType()`](./ShortType.md) for why dates are treated as their own type.

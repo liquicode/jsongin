@@ -10,11 +10,8 @@ To create an instance with custom settings, use the `NewJsongin( Settings )` fac
 See [NodeJS Usage](./Usage-NodeJS.md) for both forms.
 
 
-jsongin Functions
+MongoDB Mechanics
 ---------------------------------------------------------------------
-
-
-### MongoDB Mechanics
 
 `jsongin` implements functions that mirror MongoDB query and update functionality.
 
@@ -55,7 +52,8 @@ jsongin Functions
 > See the [Operator Authoring](./Operator-Authoring.md) document to add operators of your own.
 
 
-### Snapshots
+Snapshots
+---------------------------------------------------------------------
 
 These functions describe the difference between two documents as an update document, which is
 the same shape `Update()` applies. They are the primitives behind undo/redo, save states, and
@@ -70,20 +68,8 @@ replay.
   Any update operator inverts, not only the ones `Diff` writes.
 
 
-### The Process Runtime
-
-***It is not here any more.*** A process is a JSON document describing work and a run is a
-JSON value describing how far that work has got, and neither of them is MongoDB's. The
-runtime moved into a library of its own so that `jsongin` keeps one method — MongoDB decides
-what correct means — and the process language keeps its own.
-
-It still computes with this engine. Every expression a step evaluates and every criteria a
-step tests is `Evaluate()` and `Query()`, unchanged.
-
-See [@liquicode/jsonproc](http://jsonproc.liquicode.com).
-
-
-### Document Mechanics
+Document Mechanics
+---------------------------------------------------------------------
 
 These functions allow you to manipulate Javascript objects and arrays.
 They all share the concept of a document path that is expressed in dot-notation.
@@ -148,7 +134,8 @@ They all share the concept of a document path that is expressed in dot-notation.
 > See the [Document Manipulation](./Document-Manipulation.md) document for more information on how to use these functions.
 
 
-### Object Equality and Cloning
+Object Equality and Cloning
+---------------------------------------------------------------------
 
 - [StrictEquals( DocumentA, DocumentB )](./jsongin/StrictEquals.md)
   : Performs a strict equality comparison between two values.
@@ -178,7 +165,8 @@ They all share the concept of a document path that is expressed in dot-notation.
   Fields listed in `Exceptions` are copied by reference rather than by value.
 
 
-### Data Types and Conversions
+Data Types and Conversions
+---------------------------------------------------------------------
 
 - [ShortType( Value )](./jsongin/ShortType.md)
   : Returns the single-character `ShortType` of a value.
@@ -200,7 +188,8 @@ They all share the concept of a document path that is expressed in dot-notation.
   Note that the empty string `""` and the empty array `[]` are both true.
 
 
-### Text Functions
+Text Functions
+---------------------------------------------------------------------
 
 The `Text` module is reachable at `jsongin.Text`.
 
@@ -211,33 +200,16 @@ The `Text` module is reachable at `jsongin.Text`.
 - [SearchReplacements( Text, ReplacementMap, CaseSensitive )](./Text/SearchReplacements.md)
 
 
-### Diagnostics
-
-- `OpLog` and `OpError`
-  : Two optional handler functions which explain why an operation behaved the way it did.
-  See the [OpLog](./OpLog.md) document.
-
-
-### Settings
+Settings
+---------------------------------------------------------------------
 
 Settings are given to the `NewJsongin( Settings )` factory method.
+The module's default export is an engine which was built with all of the defaults.
 
-There is ***no path extension setting***. jsongin's path syntax is MongoDB's path syntax, so
-  there is nothing to turn on:
-
-- A ***non numeric key against an array*** is not a write target.
-  [`SetValue`](./jsongin/SetValue.md) throws and [`DeleteValue`](./jsongin/DeleteValue.md)
-    returns `false`, which is what makes the update operators agree with MongoDB.
-  Reaching through an array on the write side requires the all positional operator,
-    `'a.$[].x'`.
-- A ***negative index*** is not an index. There is no reverse indexing anywhere in the engine.
-
-  Reading through an array by field name still works, because MongoDB does traverse arrays
-    when it resolves a query path: [`GetValue`](./jsongin/GetValue.md) reads through one, and
-    a query like `{ 'users.id': 101 }` matches an array of objects the way it does in MongoDB.
-
-- `OpLog` and `OpError`
-  : See Diagnostics above.
+| **Setting** | **Description**                                                                |
+|-------------|--------------------------------------------------------------------------------|
+| `OpLog`     | An optional function (such as `console.log`) which receives ***explanations***: an operation completed, but did not do what you may have expected. Defaults to `null`, which emits nothing. See the [OpLog](./OpLog.md) document. |
+| `OpError`   | An optional function (such as `console.error`) which receives ***errors***: an operation could not be performed and threw. The message is emitted in addition to the thrown error. Defaults to `null`, which emits nothing. See the [OpLog](./OpLog.md) document. |
 
 
 MongoDB References

@@ -17,7 +17,7 @@ An operator module exports a ***factory function*** which takes the engine and r
   operator object:
 
 ```js
-// docs-check: skip - an operator module, shown as it appears in its own file.
+// docs-check: skip - an operator module, not a call.
 'use strict';
 
 module.exports = function ( jsongin )
@@ -51,12 +51,6 @@ Every operator carries one:
 |----------------|:--------:|---------------------------------------------------------------------------|
 | `Engine`       |    o     | The engine instance this operator belongs to.                            |
 
-> ***Removed in v0.1.0*** : `OperatorType`, a category name which was carried by all 75
-  operators and read by nothing. Unlike `ValueTypes` and `ArgTypes` there was nothing a
-  dispatcher could do with it — a label cannot refuse anything — so it could not make the
-  engine more correct, and the diagnostics and grouping it was said to serve never
-  materialized. Which kind an operator is remains determined by its registry, as below.
-
 
 ## The Five Kinds of Operator
 
@@ -70,11 +64,6 @@ The kind is determined by which registry you put it in.
 | `UpdateOperators`       | `Update`      | `TopLevel`, `ValueTypes`   |          no         |
 | `StageOperators`        | `Stage`       | `ArgTypes`                 |         ***yes***   |
 | `AccumulatorOperators`  | `Accumulate`  | `ArgTypes`                 |         ***yes***   |
-
-> ***There was a sixth.*** `StepOperators` moved out with the process runtime; see
-  [@liquicode/jsonproc](http://jsonproc.liquicode.com/#/guides/Operator-Authoring.md). A step
-  operator is registered on a `jsonproc` runtime rather than on an engine, and it computes
-  through the engine that runtime holds.
 
 The three which evaluate expressions take a `Scope` and pass it along. See
   [The Scope Contract](#the-scope-contract) below, which is the one rule in this document that
@@ -156,12 +145,6 @@ There is no declaration for it: the count means something different for each ope
   `$literal` never counts its argument at all, `$cond` takes three operands or one object, and
   the variadic operators take any number — so a single declared number could not be enforced
   without carving out exceptions for the operators it does not fit.
-
-> ***Removed in v0.1.0*** : `ArgCount`, which declared that number on 22 operators and was read
-  by nothing. 13 operators already enforced exactly what they declared, 6 were variadic and
-  declared `null`, and the remaining two were wrong. What an engine refuses is now measured
-  rather than declared, by
-  `test/Parity Tests/Aggregate Tests/test-suite/Expression Rejection Tests.js`.
 
 
 ### Update Operators
@@ -248,7 +231,7 @@ Four rules, and `npm run scope-check` reads all four out of the source:
   the top of any helper which evaluates:
 
 ```js
-// docs-check: skip - the opening line of a helper, shown as it appears in its own file.
+// docs-check: skip - Scope is the caller's own parameter.
 jsongin.Scope.Require( Scope, 'myfamily.ReadArgs' );
 ```
 
@@ -318,7 +301,7 @@ Because the registry belongs to the instance, an operator you add to one engine 
 A query operator which matches a string field by its prefix:
 
 ```js
-// docs-check: skip - an operator module, shown as it appears in its own file.
+// docs-check: skip - an operator module, not a call.
 'use strict';
 
 module.exports = function ( jsongin )
@@ -391,11 +374,6 @@ Returns the absolute value of a number.
 ***This is required, and it is checked.*** `npm run check-docs` verifies that every file under
   `src/Operators/` has one, and fails the build when one is missing. Helper modules, whose names
   begin with an underscore, are not operators and are skipped.
-
-The check exists because the convention did not hold on its own: it stood at 56 of 85 operators
-  before the check was written, with the query and update operators ignoring it almost entirely.
-  That is the same lesson the `OperatorType` and `ArgCount` members taught when they were
-  deleted for being declared and never read — ***an unenforced convention drifts***.
 
 Note that nothing ***reads*** these blocks to generate anything. They are documentation kept
   beside the code, and the check only asserts that they are present.

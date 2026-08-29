@@ -70,23 +70,9 @@ Read the [`Query()`](./jsongin/Query.md) document to understand how these operat
 | Bitwise       |      Yes      | [$bitsAnyClear](./jsongin/Query-Operators.md#$bitsAnyClear)  | Matches numeric or binary values in which any bit from a set of bit positions has a value of 0.                                               |
 | Bitwise       |      Yes      | [$bitsAnySet](./jsongin/Query-Operators.md#$bitsAnySet)    | Matches numeric or binary values in which any bit from a set of bit positions has a value of 1.                                               |
 | Miscellaneous |      Yes      | [$comment](./jsongin/Query-Operators.md#$comment)       | Adds a comment to a query predicate.                                                                                                          |
-| Miscellaneous |       -       | $rand          | Generates a random float between 0 and 1. Not a query operator; see the note below.                                                           |
-| Miscellaneous |       -       | $natural       | A hint forcing a forward or reverse collection scan. Not a query operator; see the note below.                                                |
+| Miscellaneous |       -       | $rand          | Generates a random float between 0 and 1. Not a query operator.                                                           |
+| Miscellaneous |       -       | $natural       | A hint forcing a forward or reverse collection scan. Not a query operator.                                                |
 | Miscellaneous |      Yes      | [$sampleRate](./jsongin/Query-Operators.md#$sampleRate)    | Randomly selects documents at a given rate.                                                                                                   |
-
-***Note on `$rand` and `$natural`*** :
-MongoDB lists these two among the query operators, and ***neither is a predicate***, so neither
-  can be marked supported here however much of it is built. A server refuses `{ $rand: {} }`
-  and `{ $natural: 1 }` as criteria, and so does `jsongin`.
-
-`$rand` is an ***expression***, and it is implemented as one: reach it from a criteria through
-  [`$expr`](./jsongin/Query-Operators.md#$expr), as in
-  `{ $expr: { $lt: [ { $rand: {} }, 0.5 ] } }`. Its row in the Expression Operators section is
-  the one which counts it.
-
-`$natural` names a ***collection scan direction***, which is a property of a collection rather
-  than of a document. `Query()` matches one document at a time and has no scan to direct, so
-  there is nothing here for it to mean.
 
 ***Note on dates*** :
 A `Date` has its own short type `d`, so the comparison operators handle dates directly.
@@ -375,8 +361,11 @@ Only `false`, `0`, `null`, and missing values are treated as false by the logica
   conditional operators. Note that the empty string `""` and the empty array `[]` are true.
 
 ***Note on system variables*** :
-The expression system variables (`$$ROOT`, `$$CURRENT`, `$$NOW`, `$$REMOVE`) are not supported.
-An expression which uses one throws an error rather than mistaking it for a field reference.
+The expression system variables (`$$ROOT`, `$$CURRENT`, `$$NOW`, `$$REMOVE`) resolve wherever
+  an expression is evaluated, which includes the pipeline stages below and `$expr` within a
+  query. See [Variables](./jsongin/Expression-Operators.md#variables).
+A plain query clause and an update operator evaluate no expressions, so `'$$NOW'` there is the
+  literal string rather than a date.
 
 
 ## Aggregation Pipeline Stages
@@ -475,7 +464,7 @@ These two were introduced in ***MongoDB 7.0*** and the parity baseline is a 6.0.
   that reason rather than because they are hard: there is nothing to measure an implementation
   against. Building them means bringing up a 7.0 baseline first and re-running the whole parity
   suite there. See `test/Parity Tests/Aggregate Tests/test-suite/Accumulator Operator Tests.js`,
-  which records the refusal so the boundary is measured rather than remembered.
+  which records the refusal.
 
 ***Note on non-numeric values*** :
 `$sum` and `$avg` ignore the values which are not numbers, while the expression operators throw
@@ -533,7 +522,7 @@ There is also a difference in shape which makes them easy to tell apart at a gla
 | `$set`         | `{ $set: { hp: 5 } }` sets a document field, by dotted path.          | `{ $setField: { field: 'hp', input: '$s', value: 5 } }` answers a copy with the field set, and names the field rather than a path. |
 | `$unset`       | `{ $unset: { hp: 0 } }` removes a document field, by dotted path.     | `{ $unsetField: { field: 'hp', input: '$s' } }` answers a copy without it, and names the field rather than a path. |
 
-***`$unset` carries three meanings***, which is one more than `$set`: an update operator, a
+***`$unset` carries three meanings***: an update operator, a
   ***pipeline stage*** which removes fields from every document in a stream, and — under the
   name `$unsetField` — an expression operator. The update operator and the stage both take a
   dotted ***path***; only `$unsetField` takes a field ***name***.

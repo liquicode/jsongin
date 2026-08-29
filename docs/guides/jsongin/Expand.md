@@ -26,27 +26,31 @@ The `Document` parameter can be an object.
 ## Examples
 
 
-### It flattens a hierarchical document
+### It expands a flat document into a hierarchical one
 ```js
-let document = {
+let flattened = {
 	id: 1001,
-	user:
-	{
-		name: 'Alice',
-		location: 'East',
-	},
-	tags: [ 'Staff', 'Dept. A' ],
+	'user.name': 'Alice',
+	'user.location': 'East',
+	'tags.0': 'Staff',
+	'tags.1': 'Dept. A',
 };
 
-let flattened = jsongin.Flatten( document );
-// flattened is {
+let expanded = jsongin.Expand( flattened );
+// expanded is {
 // 	id: 1001,
-// 	'user.name': 'Alice',
-// 	'user.location': 'East',
-// 	'tags.0': 'Staff',
-// 	'tags.1': 'Dept. A',
+// 	user:
+// 	{
+// 		name: 'Alice',
+// 		location: 'East',
+// 	},
+// 	tags: [ 'Staff', 'Dept. A' ],
 // };
 ```
+
+The document does not have to have come from `Flatten()`.
+Any object whose keys are dot notation paths can be expanded, which is what makes `Expand` a
+  way to write a nested document as a flat list of paths.
 
 ### Use Expand() to turn a flattened document back into a hierarchical document
 ```js
@@ -65,38 +69,58 @@ let expanded = jsongin.Expand( flattened );
 // expanded matches document
 ```
 
-### It should flatten an empty document
+### A numeric path element builds an array
 ```js
-let flattened = jsongin.Flatten( {} );
-// flattened is {}
+let expanded = jsongin.Expand( { 'tags.0': 'Staff', 'tags.1': 'Dept. A' } );
+// expanded is { tags: [ 'Staff', 'Dept. A' ] }, and expanded.tags is a real array
 ```
 
-### It should flatten an array
+This is the one place in `jsongin` where a numeric path element creates an array.
+Everywhere else it creates a document, which is the rule MongoDB follows for an update.
+
+An index which nothing fills is filled with `null`, because an array cannot leave a position
+  out:
+
 ```js
-let flattened = jsongin.Flatten( [ 1, 2, 'three' ] );
-// flattened is {
-// 	0: 1,
-// 	1: 2,
-// 	2: 'three',
-// }
+let expanded = jsongin.Expand( { 'tags.2': 'Dept. C' } );
+// expanded is { tags: [ null, null, 'Dept. C' ] }
 ```
 
-### It should flatten an empty array
+### It should expand an empty document
 ```js
-let flattened = jsongin.Flatten( [] );
-// flattened is {}
+let expanded = jsongin.Expand( {} );
+// expanded is {}
 ```
 
 ### It preserves empty objects and arrays
 ```js
-let expanded = jsongin.Expand( jsongin.Flatten( { a: {}, b: [] } ) );
+let expanded = jsongin.Expand( { a: {}, b: [] } );
 // expanded is { a: {}, b: [] }, and expanded.b is a real array
 ```
 
-### It should not flatten a non-document
+### It keeps a date whole
 ```js
-let flattened = jsongin.Flatten( 3.14 ); // throws error: Document must be an object or array.
+let expanded = jsongin.Expand( { 'user.created': new Date( 1700000000000 ) } );
+( expanded.user.created instanceof Date ) === true
 ```
+
+### It should not expand a non-document
+```js
+jsongin.Expand( 3.14 );       // throws error: Document must be an object.
+jsongin.Expand( [ 1, 2 ] );   // throws error: Document must be an object.
+```
+
+`Expand` requires an object, where [`Flatten`](./Flatten.md) accepts an object or an array.
+An array holds no paths to expand, and the result is always an object in any case.
+
+### It should not expand paths which contradict each other
+```js
+let expanded = jsongin.Expand( { a: 1, 'a.b': 2 } );
+// throws error: The element [b] of the path [a.b] must reference an object or array.
+```
+
+`a` cannot be both the number `1` and the object which holds `b`.
+`Flatten` never produces such a pair, so this only arises in a flat document written by hand.
 
 
 ## Round Trip Limitations

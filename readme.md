@@ -2,7 +2,7 @@
 
 > Home: [http://jsongin.liquicode.com](http://jsongin.liquicode.com)
 >
-> Version: 0.1.0
+> Version: 0.1.1
 
 > ### WARNING:
 >

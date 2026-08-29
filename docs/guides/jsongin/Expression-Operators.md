@@ -1254,11 +1254,6 @@ Twenty operators, and what separates them is mostly their ***operand rules*** ra
 | null is empty       | is read as an empty string                 | `$toLower`, `$toUpper`, `$strcasecmp`, the three substrings      |
 | null is refused     | is an error                                | `$strLenBytes`, `$strLenCP`                                      |
 
-The dividing line is ***MongoDB 3.4***: the operators which predate it also render a number
-  instead of refusing it, and everything added since refuses one. `jsongin` follows MongoDB here
-  rather than making the family consistent, because a query written against one has to mean the
-  same thing against the other.
-
 ***Six operators come in a byte form and a code point form.***
 The byte forms count UTF-8 bytes and the code point forms count characters as a reader would.
 They differ only where the text is not ASCII: `'héllo'` is five code points and six bytes,
@@ -1993,7 +1988,7 @@ MongoDB has `int`, `long`, and `double` as separate BSON types and tags a conver
 
 The BSON type of a value, by name.
 
-***A missing field has a type of its own, and it is not null.***
+***A missing field has a type of its own.***
 A field which is not there is `'missing'`, where a field holding a null is `'null'`.
 
 A number is an `int` when it is whole and inside the 32 bit range, and a `double` otherwise -
@@ -2218,7 +2213,7 @@ jsongin.Evaluate( document, { $convert: { input: '$empty', to: 'int', onError: -
 # Set Operators
 
 
-***These read an array as a set, and that changes what it means.***
+***These operators read an array as a set.***
 Order stops mattering and repeats stop counting, so `[ 1, 1, 2 ]` and `[ 2, 1 ]` are the same
   set.
 
@@ -2227,10 +2222,10 @@ A set has no order of its own, so sorting is the only choice which gives the sam
   the same set however it was written. Across types that order is: `null`, then numbers, then
   strings, then objects, then arrays, then booleans, then dates.
 
-***Two elements are the same when their contents are.***
-Documents and arrays compare by content, so `[ { a: 1 } ]` and `[ { a: 1 } ]` hold the same
-  element. A number and the string of that number do not, and neither do `{ a: 1, b: 2 }` and
-  `{ b: 2, a: 1 }` — a document is compared field by field in the order it holds them.
+***Set-ness reaches exactly one level down.***
+Order stops mattering for the array handed to the operator, and nowhere else. Each element
+  inside it is compared whole, by the same [CompareValues](./CompareValues.md) which `Sort()`
+  and the comparison operators use, and is never itself re-read as a set.
 
 ***The family disagrees with itself about a null operand***, and `jsongin` reproduces that
   rather than tidying it up, because an expression has to mean the same thing against both
@@ -2414,7 +2409,7 @@ jsongin.Evaluate( document, { $anyElementTrue: [ [] ] } );
 | [$getField](#$getField) | `null` | no value at all — the field is left out |
 | [$setField](#$setField), [$unsetField](#$unsetField) | `null` | `null` for a missing input; anything else is refused |
 
-***The shorthand forms read a system variable, and both work.*** `{ $getField: 'name' }` reads
+***The shorthand forms read a system variable.*** `{ $getField: 'name' }` reads
   the field from `$$CURRENT`, and `{ $setField: { ..., value: '$$REMOVE' } }` removes one —
   which is the only way to add, replace, or remove a field with a single operator.
   [$unsetField](#$unsetField) is the other way to remove one, and takes no value at all.

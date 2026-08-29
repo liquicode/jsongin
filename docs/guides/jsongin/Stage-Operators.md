@@ -618,21 +618,7 @@ jsongin.Aggregate( records, [ { $redact: '$$ROOT' } ] );   // throws
 
 ## Stages Which Are Not Implemented
 
-`$documents` is the only one of the twelve stages this project set out to build which is not
-  here.
-
-> ***`$redact` was the other, until v0.1.0.*** It walks a document level by level and asks an
-  expression what to do with each one, and the expression answers by evaluating to
-  `$$DESCEND`, `$$PRUNE`, or `$$KEEP` — which [`Evaluate()`](./Evaluate.md) had no way to
-  express, because it had no variable scope to bind them in. The scope was built, and the
-  stage with it. See [$redact](#$redact) above.
-
-***`$documents` is a source stage of a database-level aggregation.*** It replaces the input
-  rather than transforming it, which is why MongoDB allows it in `db.aggregate()` and refuses
-  it against a collection. [`Aggregate()`](./Aggregate.md) always takes the documents it works
-  on, so there is no position for such a stage to occupy.
-
-The other stages MongoDB documents and `jsongin` does not implement — `$lookup`, `$graphLookup`,
+Stages MongoDB documents and `jsongin` does not implement — `$lookup`, `$graphLookup`,
   `$merge`, `$out`, `$unionWith`, `$geoNear`, `$collStats`, `$indexStats`, `$setWindowFields`,
   and `$vectorSearch` — need a collection, an index, or a second collection to join against, and
   `jsongin` works on an array of documents. See the

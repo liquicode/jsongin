@@ -10,7 +10,7 @@
 |---------------|:-----------------:|----------------------------------------------------|
 | Document      |        (any)      | The document to evaluate the expression against.   |
 | Expression    |        (any)      | The expression to evaluate.                        |
-| Scope         |         o         | Optional. The variables in effect. One is made for the occasion when it is not given. |
+| Scope         |         o         | Optional. The variables in effect.                 |
 
 
 ## Description

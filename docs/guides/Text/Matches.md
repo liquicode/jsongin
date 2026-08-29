@@ -33,25 +33,15 @@ jsongin.Text.Matches( 'The red fox', 'The red fox', true ) === true
 jsongin.Text.Matches( 'The red fox', 'Not the red fox', true ) === false
 ```
 
-### It matches text at start of string (case sensitive)
-```js
-jsongin.Text.Matches( 'The red fox', 'The *', true ) === true
-```
-
-### It matches text in middle of string (case sensitive)
-```js
-jsongin.Text.Matches( 'The red fox', 'The * fox', true ) === true
-```
-
-### It matches text at end of string (case sensitive)
-```js
-jsongin.Text.Matches( 'The red fox', '* fox', true ) === true
-```
-
 ### It matches entire string (case insensitive)
 ```js
 jsongin.Text.Matches( 'THE RED FOX', 'The red fox', false ) === true
 jsongin.Text.Matches( 'THE RED FOX', 'Not the red fox', false ) === false
+```
+
+### It matches text at start of string (case sensitive)
+```js
+jsongin.Text.Matches( 'The red fox', 'The *', true ) === true
 ```
 
 ### It matches text at start of string (case insensitive)
@@ -59,9 +49,19 @@ jsongin.Text.Matches( 'THE RED FOX', 'Not the red fox', false ) === false
 jsongin.Text.Matches( 'THE RED FOX', 'The *', false ) === true
 ```
 
+### It matches text in middle of string (case sensitive)
+```js
+jsongin.Text.Matches( 'The red fox', 'The * fox', true ) === true
+```
+
 ### It matches text in middle of string (case insensitive)
 ```js
 jsongin.Text.Matches( 'THE RED FOX', 'The * fox', false ) === true
+```
+
+### It matches text at end of string (case sensitive)
+```js
+jsongin.Text.Matches( 'The red fox', '* fox', true ) === true
 ```
 
 ### It matches text at end of string (case insensitive)
