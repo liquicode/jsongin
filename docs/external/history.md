@@ -200,77 +200,13 @@ This version carries many breaking changes. Nearly all of them correct a behavio
 
 ### Added
 
-- ***The process runtime.*** A process is a JSON document describing work, and a run is a JSON
-  value describing how far that work has got. `ProcessStart()`, `ProcessStep()`,
-  `ProcessExecute()`, and `ProcessResume()` step one to the next and hold nothing between calls,
-  so a run can be written down, moved, and picked up later. See
-  [The Process Runtime](/docs/guides/jsongin/Process.md).
-- ***The step operators `$do`, `$when`, `$while`, `$forEach`, `$try`, `$throw`, `$call`, and
-  `$return`***, in a sixth registry. They are
-  `jsongin` operators rather than MongoDB ones, so `npm run api-coverage` does not count them.
-  See [Step Operators](/docs/guides/jsongin/Step-Operators.md).
-- ***`$do` has the semantics of the aggregation `$set` stage***, not of the update operator of
-  the same name. A process must compute, and the update family stores. `$inc`, `$mul`, and
-  `$push` have no stage equivalent, so a counter is incremented by writing the arithmetic out.
-- ***A `$when` check is a query***, and can hold `$expr` when an expression is wanted. A query
-  carries no variables, so a `$$name` the run bound is not visible inside a check.
-- ***`$while` and `$forEach` loop by returning to the step***, rather than by unrolling one.
-  The cursor lands back on the loop when its body ends instead of moving past it, which is the
-  one way a loop differs from a branch. One pass is therefore several steps, and a run stopped
-  in the middle of a pass is an ordinary run which can be stored and picked up later — which is
-  what lets a `$call` sit inside a loop body.
-- ***A `$forEach` element is written into the state***, at the field `As` names, rather than
-  bound as a `$$name`. A query carries no variables, so a `$$name` would be invisible to
-  exactly the `$when` a loop body most often wants to make. `Index` optionally names a field
-  for the position. Both are fields the loop owns, and both are removed when it ends.
-- ***The iteration lives in the cursor***, whose branch element is `[ 'Do', 3 ]` during the
-  fourth pass where an ordinary branch writes `'Then'`. Nothing about where a loop has got to
-  is kept in the document it is working on.
-- ***`$forEach` evaluates `In` again before each pass***, so a body which appends to the array
-  is a work list which grows and a body which shortens it ends the loop early.
-- ***A loop with an empty body is a `BadProcess`***, because it could neither make progress nor
-  end. A step operator may now name the code it fails with, so a fault in the process document
-  is reported as one rather than as a generic `StepFailed`.
-- ***`$try` handles a failure instead of halting the run.*** A failure raised inside its `Do`
-  branch sends the run into its `Catch` branch. The search for a handler is a walk outward
-  through the cursor, which already records every step the run is inside and which branch of
-  each it entered, so nothing is carried on the run for it. A failure raised inside a `Catch`
-  is offered to the next `$try` outward and never back to the `Catch` it came from.
-- ***A `$try` catches a failure raised by running a step, and nothing else.*** `BadProcess`,
-  `BadRun`, `NoSuchStep`, `UnknownOperator`, `ResumeNotWaiting` and `StepLimitExceeded` halt
-  the run whatever it is wrapped in. That line is the difference between an error and a bug: a
-  process which mishandles a declined card is doing its job, while a `$try` which swallowed a
-  misspelled operator name would turn every typo into a silently handled error. The budget is
-  on the list because it is the caller's protection and not the process's to defeat.
-- ***The error is written into the state***, at the field `As` names, as `{ Code, Message,
-  Cursor }` — so a `$when` in the handler can route on it, which it could not do with a
-  variable. The handler sees the state as the failure left it; there is no unwinding.
-- ***`$throw` fails a run on purpose***, from a string or from a `{ Code, Message }` document,
-  and defaults the code to `Thrown` so a deliberate failure can be told from an engine one. It
-  may not name one of the engine's own codes, since those are the ones a `$try` refuses to
-  catch and a process must not be able to reach past the handlers around it.
-- ***`$call` does not call.*** The run suspends with a descriptor naming what it wants, and the
-  host does the work and the awaiting. The engine has no dependency and contains no `async`.
-- ***Parallel work is the host's.*** There is no parallel step operator: the host starts a run
-  for each independent piece, runs them however it likes, and hands the results back through one
-  `$call`. Two runs stepped alternately never affect each other, which is checked rather than
-  assumed, so an operator for it would buy nothing and would cost a run being one position in
-  one document. See [Fanning Out](/docs/guides/jsongin/Step-Operators.md#fanning-out).
-- ***A run carries the name of the process it belongs to***, so stepping a stored run against
-  the wrong process fails at the first call rather than computing a wrong answer quietly.
-- ***`$$NOW` is fixed for a whole run***, the way it is fixed for a whole pipeline. A run
-  resumed an hour later keeps the instant it started with.
-- ***Nothing in the runtime throws.*** A failure is a run with `Status: 'failed'` and an `Error`
-  of `{ Code, Message, Cursor }`, because the point of a run is that it is a value which can be
-  stored and looked at later, and an error which vanished into a `throw` could not be.
-- ***`ProcessExecute()` takes a step budget***, 1000 by default, and fails with
-  `StepLimitExceeded` rather than never returning. This is what stops a loop whose check never
-  becomes false. `ProcessStep()` takes no budget, because one step cannot loop.
-- ***`npm run process-check`***, which checks the eight invariants of the runtime — storage is
-  transparent, stepping is deterministic, `ProcessExecute()` equals repeated `ProcessStep()`,
-  runs are independent, stepping is total, the input run is never modified, a runaway loop is
-  failed rather than hung, and a failure is caught only where it should be — against thirty-two
-  processes at every step of each.
+- ***The process runtime moved out, into [@liquicode/jsonproc](http://jsonproc.liquicode.com).***
+  It was built here, during this version's development, as `ProcessStart()` and the rest, in
+  a sixth `StepOperators` registry, and no released version of `jsongin` ever carried it. It
+  is a language of its own and none of it is MongoDB's — so it lives in a library of its own,
+  and `jsongin` keeps one method: MongoDB decides what correct means. Nothing about the runtime
+  changed except its names and the fact that it now holds the engine rather than being held by
+  it.
 - ***Expression variable scope.*** A name beginning with `$$` is a variable reference, resolved
   from the scope in effect where the expression is being evaluated rather than from the
   document. Every such name was refused outright before. See

@@ -22,7 +22,7 @@
 		<li>100% pure javascript. No dependencies.</li>
 		<li>Faithfully reproduces MongoDB behavior.</li>
 		<li>100% parity with MongoDB across 988 behaviors, 219 operators.</li>
-		<li>Use extended syntax to define, store, and run a JSON based process.</li>
+		<li>Snapshot, diff, and undo document changes.</li>
 		<li>Single minified file (~42k compressed) for web deployment.</li>
 		<li>All operations are in-memory. This is not a storage library.</li>
 	</ul>

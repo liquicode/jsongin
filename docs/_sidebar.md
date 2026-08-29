@@ -97,13 +97,6 @@
 
 <hr>
 
-- The Process Runtime
-
-	- [Processes and Runs](/guides/jsongin/Process.md)
-	- [Step Operators](/guides/jsongin/Step-Operators.md)
-
-<hr>
-
 - Text Functions
 
 	- [`Compare()`](/guides/Text/Compare.md)
@@ -143,6 +136,7 @@
 	- [Testing](/guides/Testing.md)
 	- [Testing Output](/external/tests.md)
 	- **Other**
+	- [@liquicode/jsonproc](http://jsonproc.liquicode.com)
 	- [@liquicode/jsonstor](http://jsonstor.liquicode.com)
 	- [Project History](/external/history.md)
 	- [Software License](/external/license.md)

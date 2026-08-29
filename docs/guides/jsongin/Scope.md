@@ -28,13 +28,13 @@ The alternative — a stack of frames the engine pushes and pops — would have 
   Closures are a non-goal, so this one is still a door rather than a debt already paid.
 - ***A process suspends and resumes***, which needs the environment to be data you can store.
   ***Built.*** A run carries its scope in the form [`ToJSON()`](#storing-a-scope) writes; see
-  [The Process Runtime](./Process.md).
+  [The Process Runtime](http://jsonproc.liquicode.com/#/guides/jsonproc/Process.md).
 - ***A runtime eventually awaits.*** The first `await` inside an evaluation lets two processes
   interleave through one stack. There is still no `async` inside `src/`, which is the only
   reason ambient state would have been safe at all.
 - ***A runtime runs more than one process***, so the scope belongs to the process and the
   engine stays stateless. ***Built, and checked:*** rule 4 of
-  [the invariants](./Process.md#the-invariants) steps two runs alternately and holds that
+  [the invariants](http://jsonproc.liquicode.com/#/guides/jsonproc/Process.md?id=the-invariants) steps two runs alternately and holds that
   neither can affect the other.
 
 ***The frames are chained rather than flattened.***
@@ -91,9 +91,9 @@ The twelve which add one are doing one of two things: binding names a caller wro
   a `$$name` a caller bound cannot be seen from inside a query.
 That holds inside an [$expr](./Query-Operators.md#$expr) too, which builds a fresh scope from
   the document it was handed rather than receiving one.
-It is why a [$when](./Step-Operators.md#$when) check in a process cannot read a variable the
+It is why a [$when](http://jsonproc.liquicode.com/#/guides/jsonproc/Step-Operators.md?id=$when) check in a process cannot read a variable the
   run bound, and why a loop writes its element into the state instead of binding it.
-See [The Process Runtime](./Process.md).
+See [The Process Runtime](http://jsonproc.liquicode.com/#/guides/jsonproc/Process.md).
 
 
 ## Building a Scope
@@ -243,7 +243,7 @@ It gives back a `$$NOW` which is a string and no `$$REMOVE` at all, which is exa
 - [`Format( Value, Options )`](./Format.md) and [`Parse( JsonString, Options )`](./Parse.md)
 - [`Evaluate( Document, Expression, Scope )`](./Evaluate.md)
 - [`Aggregate( Documents, Pipeline )`](./Aggregate.md)
-- [The Process Runtime](./Process.md) — which stores a scope on every run
+- [The Process Runtime](http://jsonproc.liquicode.com/#/guides/jsonproc/Process.md) — which stores a scope on every run
 - [$let](./Expression-Operators.md#$let), [$map](./Expression-Operators.md#$map),
   [$filter](./Expression-Operators.md#$filter), [$reduce](./Expression-Operators.md#$reduce)
 - [$redact](./Stage-Operators.md#$redact)

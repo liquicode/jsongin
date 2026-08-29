@@ -72,24 +72,15 @@ replay.
 
 ### The Process Runtime
 
-A process is a JSON document describing work, and a run is a JSON value describing how far that
-work has got. The engine is a pure function from one run to the next and holds nothing between
-calls, so a run can be written down, moved, and picked up later.
+***It is not here any more.*** A process is a JSON document describing work and a run is a
+JSON value describing how far that work has got, and neither of them is MongoDB's. The
+runtime moved into a library of its own so that `jsongin` keeps one method — MongoDB decides
+what correct means — and the process language keeps its own.
 
-See [The Process Runtime](./jsongin/Process.md) for the run value and the rules, and
-[Step Operators](./jsongin/Step-Operators.md) for `$do`, `$when`, `$call` and `$return`.
+It still computes with this engine. Every expression a step evaluates and every criteria a
+step tests is `Evaluate()` and `Query()`, unchanged.
 
-- [ProcessStart( Process, Input )](./jsongin/Process.md)
-  : Begins a run, with `Input` as its state.
-
-- [ProcessStep( Process, Run )](./jsongin/Process.md)
-  : Runs one step and returns a new run. Stepping a halted run is a no-op.
-
-- [ProcessExecute( Process, Run, MaxSteps )](./jsongin/Process.md)
-  : Steps until the run is no longer ready. `MaxSteps` defaults to 1000.
-
-- [ProcessResume( Process, Run, Result, Error )](./jsongin/Process.md)
-  : Hands a waiting run the result of the call it suspended on, or the failure of it.
+See [@liquicode/jsonproc](http://jsonproc.liquicode.com).
 
 
 ### Document Mechanics

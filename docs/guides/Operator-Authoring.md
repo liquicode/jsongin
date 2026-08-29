@@ -58,7 +58,7 @@ Every operator carries one:
   materialized. Which kind an operator is remains determined by its registry, as below.
 
 
-## The Six Kinds of Operator
+## The Five Kinds of Operator
 
 Which remaining members an operator needs depends on what kind it is.
 The kind is determined by which registry you put it in.
@@ -70,13 +70,13 @@ The kind is determined by which registry you put it in.
 | `UpdateOperators`       | `Update`      | `TopLevel`, `ValueTypes`   |          no         |
 | `StageOperators`        | `Stage`       | `ArgTypes`                 |         ***yes***   |
 | `AccumulatorOperators`  | `Accumulate`  | `ArgTypes`                 |         ***yes***   |
-| `StepOperators`         | `Step`        | `ArgTypes`                 |         ***yes***   |
 
-A step operator which loops also declares `Repeats: true`, which is what makes the runtime
-  land back on the step when a pass of its body ends instead of walking past it.
-  `$while` and `$forEach` are the only two.
+> ***There was a sixth.*** `StepOperators` moved out with the process runtime; see
+  [@liquicode/jsonproc](http://jsonproc.liquicode.com/#/guides/Operator-Authoring.md). A step
+  operator is registered on a `jsonproc` runtime rather than on an engine, and it computes
+  through the engine that runtime holds.
 
-The four which evaluate expressions take a `Scope` and pass it along. See
+The three which evaluate expressions take a `Scope` and pass it along. See
   [The Scope Contract](#the-scope-contract) below, which is the one rule in this document that
   is checked mechanically.
 
@@ -219,40 +219,6 @@ Accumulators belong to the `$group` stage and cannot be used with `Evaluate` or 
   document should not abort the report.
 
 
-### Step Operators
-
-```
-Step: function ( State, Args, Scope, Position )
-```
-
-Carries out one step of a process and says what the runtime should do next.
-See [The Process Runtime](./jsongin/Process.md) for the run value these move through.
-
-- `State` is the document the process is working on.
-- `Args` is whatever the step wrote as the operator's value.
-- `Position` is a document carrying `Reentry`: the branch element the cursor climbed out
-  of, such as `[ 'Do', 3 ]`, or `null` when the step is being reached rather than returned
-  to. Only a repeating operator needs it.
-
-***A step operator returns an outcome rather than a value***, which is the one way this kind
-  differs from every other. The outcome is a document naming an `Action`:
-
-| **Action** | **Means**                          | **Also reads**                        |
-|------------|------------------------------------|---------------------------------------|
-| `next`     | the step is done, move on          | `State`, when the step changed it     |
-| `enter`    | descend into a branch of this step | `Branch` (required), `Iteration`, `State` |
-| `wait`     | suspend until the host answers     | `Waiting` (required)                  |
-| `halt`     | the run is over                    | `Result`                              |
-
-Anything else - an outcome which is not a document, or an `Action` outside those four -
-  fails the run with `StepFailed`.
-
-***An operator may name the code it fails with*** by setting `Code` on the error it throws.
-A fault the operator can see in the process document rather than in the state should say
-  `BadProcess`, so that a caller is told which of the two it is looking at.
-An operator which throws an ordinary `Error` gets `StepFailed`.
-
-
 ## The Scope Contract
 
 <a id="the-scope-contract"></a>
@@ -270,11 +236,8 @@ Four rules, and `npm run scope-check` reads all four out of the source:
 2. Every helper which evaluates takes `Scope` as its ***last*** parameter. The test is what the
    body does, not what its first parameter is called: a query range test and an update
    arithmetic helper both take a `Document` and neither one ever evaluates anything.
-3. Every operator module declares its `Evaluate` / `Stage` / `Accumulate` / `Step` with a
-   `Scope`. It is the trailing parameter for the first three. A step operator which needs
-   the cursor takes `Position` after it, so `$while`, `$forEach`, `$try` and `$throw`
-   carry the scope in the third slot rather than the last. The rule compares against the
-   two-argument form, so those four satisfy it by not being that form.
+3. Every operator module declares its `Evaluate` / `Stage` / `Accumulate` with a `Scope`,
+   as its trailing parameter.
 4. Every call of such a helper passes as many arguments as it declares. This is the rule that
    earns its place: `date.ReadDateArgs` has an optional `ExtraFields` ahead of its scope, and
    seventeen operators had left it off, so appending an argument put every one of those scopes
