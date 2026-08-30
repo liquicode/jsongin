@@ -135,9 +135,10 @@
 	- ***Testing***
 	- [Testing](/guides/Testing.md)
 	- [Testing Output](/external/tests.md)
-	- **Other**
-	- [@liquicode/jsonproc](http://jsonproc.liquicode.com)
+	- **Libraries**
 	- [@liquicode/jsonstor](http://jsonstor.liquicode.com)
+	- [@liquicode/jsonproc](http://jsonproc.liquicode.com)
+	- **Other**
 	- [Project History](/external/history.md)
 	- [Software License](/external/license.md)
 	- [Software Version](/external/version.md)

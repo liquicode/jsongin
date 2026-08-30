@@ -16,9 +16,21 @@
         }
     ],
     "main": "src/jsongin.js",
+    "types": "./types/jsongin.d.ts",
+    "exports": {
+        ".": {
+            "types": "./types/jsongin.d.ts",
+            "import": "./src/jsongin.mjs",
+            "require": "./src/jsongin.js",
+            "default": "./src/jsongin.js"
+        },
+        "./dist/*": "./dist/*",
+        "./package.json": "./package.json"
+    },
     "files": [
         "src",
         "dist",
+        "types",
         "docs/guides",
         "license.md",
         "readme.md",
@@ -32,6 +44,7 @@
         "api-coverage": "node build/api-coverage.js",
         "coverage": "node build/coverage.js",
         "scope-check": "node build/scope-check.js",
+        "types-check": "node build/types-check.js",
         "check-docs": "node build/docs-check.js",
         "run tests": "npx @liquicode/devops --tasks .\\build\\build.tasks.js run_tests",
         "build docs": "npx @liquicode/devops --tasks .\\build\\build.tasks.js build_docs",

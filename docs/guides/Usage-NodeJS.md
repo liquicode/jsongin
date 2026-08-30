@@ -27,6 +27,47 @@ This instance has logging turned off.
 For most uses it is all you need.
 
 
+## Import jsongin as an ES Module
+
+The library is CommonJS, and an ESM wrapper ships beside it so that both import forms work:
+
+```mjs
+import jsongin from '@liquicode/jsongin';
+import { Query, Evaluate, Project } from '@liquicode/jsongin';
+```
+
+***There is one engine, whichever way you load it.***
+`require()` and `import` reach the same object, because the wrapper re-exports the CommonJS
+  module rather than being a second build of it.
+That matters because the operator registries belong to an instance, so an operator registered
+  through one handle has to be visible through the other.
+A separate ESM build would have given you two engines which disagreed.
+
+***`OpLog` and `OpError` are not named exports.***
+They are mutable settings, and a named ESM export binds once at load time — `import { OpLog }`
+  would hand back the `null` it held then and go on handing it back after you had assigned a
+  logger.
+Reach them through the default export, where an assignment lands on the engine:
+
+```mjs
+import jsongin from '@liquicode/jsongin';
+jsongin.OpLog = function ( Message ) { console.log( Message ); };
+```
+
+Every other member of the engine is a named export.
+
+
+## Use jsongin from TypeScript
+
+A hand-written declaration ships in `types/`, so an editor completes the engine's surface and a
+  TypeScript project compiles against it with no `@types` package to install.
+
+***TypeScript is supported and never required.***
+There is no TypeScript in the source and no compiler in the build.
+`npm run types-check` compares the declaration and the ESM wrapper against the engine which is
+  actually running, so neither one can quietly fall behind it.
+
+
 ## Create an Instance with Custom Settings
 
 To configure the engine, call the `NewJsongin( Settings )` factory method:
