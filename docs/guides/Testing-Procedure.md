@@ -1,7 +1,7 @@
 # @liquicode/jsongin
 
 
-# Testing
+# Testing Procedure
 
 `jsongin` claims accurate compatibility with MongoDB.
 That claim is only worth as much as the tests behind it, so the suite is organized to make it

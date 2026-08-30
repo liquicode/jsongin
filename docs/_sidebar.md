@@ -133,7 +133,7 @@
 
 	- [Addendum / Random](/guides/Addendum.md)
 	- ***Testing***
-	- [Testing](/guides/Testing.md)
+	- [Testing Procedure](/guides/Testing-Procedure.md)
 	- [Testing Output](/external/tests.md)
 	- **Libraries**
 	- [@liquicode/jsonstor](http://jsonstor.liquicode.com)

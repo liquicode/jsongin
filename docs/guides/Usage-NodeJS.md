@@ -39,9 +39,7 @@ import { Query, Evaluate, Project } from '@liquicode/jsongin';
 ***There is one engine, whichever way you load it.***
 `require()` and `import` reach the same object, because the wrapper re-exports the CommonJS
   module rather than being a second build of it.
-That matters because the operator registries belong to an instance, so an operator registered
-  through one handle has to be visible through the other.
-A separate ESM build would have given you two engines which disagreed.
+  So, an operator registered through one handle will be visible through the other.
 
 ***`OpLog` and `OpError` are not named exports.***
 They are mutable settings, and a named ESM export binds once at load time — `import { OpLog }`
@@ -62,10 +60,8 @@ Every other member of the engine is a named export.
 A hand-written declaration ships in `types/`, so an editor completes the engine's surface and a
   TypeScript project compiles against it with no `@types` package to install.
 
-***TypeScript is supported and never required.***
-There is no TypeScript in the source and no compiler in the build.
-`npm run types-check` compares the declaration and the ESM wrapper against the engine which is
-  actually running, so neither one can quietly fall behind it.
+***TypeScript is supported but never required.***
+There is no TypeScript in the source and no compiler in the build. `jsongin` is pure Javascript.
 
 
 ## Create an Instance with Custom Settings

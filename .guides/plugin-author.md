@@ -47,4 +47,4 @@ The registries are plain objects on the instance:
 - Add it to the table in `docs/guides/Operator-Reference.md` and give it a section in the
   relevant guide.
 - Add tests to the matching `2xx` file in `test/`. See
-  [`docs/guides/Testing.md`](../docs/guides/Testing.md).
+  [`docs/guides/Testing-Procedure.md`](../docs/guides/Testing-Procedure.md).
