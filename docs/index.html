@@ -155,10 +155,27 @@
 			font-weight: 700;
 		}
 
+		/* ---- Cover page: reserve the banner's box before the image arrives ----
+		   The banner is written as markdown, so it carries no width and height
+		   attributes and has no intrinsic size until it loads. Without a reserved
+		   box the whole cover shifts down when it arrives, which is visible only
+		   on a first visit - a refresh reads the image from cache and lays out
+		   correctly at first paint. 400x100 is the file's own size. */
+		img[alt="logo"]
+		{
+			width: 400px;
+			max-width: 100%;
+			aspect-ratio: 4 / 1;
+		}
+
 		/* ---- Cover page: engine image beside the feature list ----
 		   A flex row: the art container has a fixed height; the image scales
 		   to fill that height, with width auto-scaled to preserve aspect ratio.
-		   The row is centered and shrinks to fit. */
+		   The row is centered and shrinks to fit.
+		   The <img> in _coverpage.md carries width and height attributes for the
+		   same reason the banner rule above exists: this row is `width: max-content`
+		   and centered, so an image with no ratio yet resolves `width: auto` to
+		   zero and the row lays out as the feature list alone, then re-centers. */
 		.cover-features
 		{
 			display: flex;
