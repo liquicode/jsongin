@@ -5,6 +5,34 @@
 
 
 
+v0.1.1 (2026-08-31)
+---------------------------------------------------------------------
+
+Nothing in the engine changed. This release is about ***reaching*** it: the package now declares
+  how it is loaded, and one way of loading it which never worked now does.
+
+- ***ESM named imports work.*** `import { Query } from '@liquicode/jsongin'` used to answer
+  `Named export 'Query' not found`. The engine's surface is assigned at construction, so a static
+  reader had nothing to find. `src/jsongin.mjs` re-exports the CommonJS module, which means
+  `require()` and `import` reach ***one*** engine — an operator registered through either is
+  visible to both.
+  *CommonJS, the browser bundle, and ESM `default` import were already working and are unchanged.*
+- ***`OpLog` and `OpError` are deliberately not named exports.*** They are mutable settings, and
+  a named export binds at load time, so `import { OpLog }` would hand back the `null` it held
+  then and go on doing so after you had set one. Reach them through the default export, where an
+  assignment lands on the engine:
+  `import jsongin from '@liquicode/jsongin'`, then `jsongin.OpLog = function ( Message ) { ... };`
+- ***TypeScript declarations ship with the package.*** `types/jsongin.d.ts` describes the engine
+  surface, and `npm run types-check` holds it against the ESM exports and the running engine, so
+  the three cannot drift.
+- ***Breaking — deep imports.*** The package now has an `exports` map, which names the CommonJS
+  entry, the ESM entry, the declarations, `./dist/*` for the browser bundle, and
+  `./package.json`. A path into the package other than those is no longer reachable, so
+  `require( '@liquicode/jsongin/src/Text.js' )` and the like must go through the engine instead.
+  *Nothing which imported the package itself is affected.*
+- Documentation updates throughout. The Testing guide is now Testing Procedure.
+
+
 v0.1.0 (2026-08-28)
 ---------------------------------------------------------------------
 
