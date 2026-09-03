@@ -3,6 +3,9 @@
     "version": "0.1.2",
     "description": "A JSON Engine for MongoDB-Style Queries and Data Structure Manipulation",
     "license": "MIT",
+    "engines": {
+        "node": ">=10.4.0"
+    },
     "homepage": "http://jsongin.liquicode.com",
     "repository": {
         "type": "git",
