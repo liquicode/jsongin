@@ -53,11 +53,32 @@ module.exports = function ()
 	};
 
 
-	// MongoDB running in a local container.
+	//---------------------------------------------------------------------
+	// ***Where the MongoDB server is.***
+	//
+	// `JSONGIN_MONGODB_URL` moves this run to another machine:
+	//
+	//		export JSONGIN_MONGODB_URL=mongodb://cube4:27017
+	//
+	// The default stays `localhost` so that nothing changes for somebody running a container
+	// beside their editor. ***The variable exists because the fleet these suites are measured
+	// against does not live on the development machine***, and until it existed the only way
+	// to reach that fleet was to edit this line - which is a change that gets committed by
+	// accident.
+	//
+	// ***This is deliberately not `JSONSTOR_MONGODB_URL`.*** jsongin is upstream of the whole
+	// family and must not learn the name of anything downstream of it, so the two products
+	// each carry their own variable even though they can name the same server.
+	let mongodb_url = process.env.JSONGIN_MONGODB_URL;
+	if ( ( typeof mongodb_url !== 'string' ) || ( mongodb_url === '' ) )
+	{
+		mongodb_url = 'mongodb://localhost:27017';
+	}
+
 	let mongodb_settings = {
 		database_name: 'test',								// Name of the MongoDB database.
 		collection_name: 'jsongin-UnitTests',					// Name of the MongoDB collection.
-		connection_string: 'mongodb://localhost:27017',		// Connection string to the MongoDB server.
+		connection_string: mongodb_url,						// Connection string to the MongoDB server.
 	};
 
 

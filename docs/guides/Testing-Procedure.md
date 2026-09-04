@@ -31,7 +31,17 @@ npm run parity-test-mongodb
 ```
 
 This runs the shared suites against a real MongoDB server, establishing the baseline of what
-  MongoDB actually does. It needs a server at `localhost:27017`.
+  MongoDB actually does. It needs a server, and looks for one at `localhost:27017`.
+
+***Set `JSONGIN_MONGODB_URL` to measure against a server somewhere else***, which is what to do
+  when the MongoDB you compare against is not on the machine you are working on:
+
+```bash
+export JSONGIN_MONGODB_URL=mongodb://cube4:27017
+```
+
+***Unset, it is `localhost:27017`***, so nothing changes for a container running beside your
+  editor. It is the only variable these suites read, and it aims `parity-report` as well.
 
 ```bash
 npm run parity-test-jsongin

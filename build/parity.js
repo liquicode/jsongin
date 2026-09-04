@@ -30,7 +30,12 @@
 		npm run parity-report
 		npm run parity-report -- --verbose      (list every compared test, not just the gaps)
 
-	Requires a MongoDB server at localhost:27017. See test/Parity Tests/Drivers/MongoDB-Driver.js.
+	Requires a MongoDB server. It is looked for at localhost:27017 unless JSONGIN_MONGODB_URL
+	names another one:
+
+		export JSONGIN_MONGODB_URL=mongodb://cube4:27017
+
+	See test/Parity Tests/Drivers/MongoDB-Driver.js.
 
 	Note what this does and does not measure. It reports the share of shared-suite assertions
 	which both engines satisfy. It cannot report behavior no shared suite exercises yet, so a
