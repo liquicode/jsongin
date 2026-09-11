@@ -13,6 +13,7 @@
 	- [Browser Usage](/guides/Usage-Browser.md)
 	- [Playground](/guides/Playground.md)
 	- [Library Guide](/guides/Library-Guide.md)
+	- [LLM Context](/guides/Llm-Context.md)
 	- [OpLog](/guides/OpLog.md)
 
 <hr>

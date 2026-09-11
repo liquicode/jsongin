@@ -40,6 +40,10 @@
 		operators   Every registered operator must carry an /*md block describing its usage,
 		            so that an operator cannot be added without being written up.
 
+		llm         Every registered query and update operator must be named in
+		            docs/guides/Llm-Context.md, which is hand written and would otherwise
+		            fall behind the engine without anything saying so.
+
 		inventory   Every 'Yes' row of the Operator Reference must name an operator which is
 		            actually registered, and every registered operator must have a 'Yes' row.
 		            The reference is the inventory build/api-coverage.js counts to report how
@@ -1044,6 +1048,67 @@ function check_examples( Files )
 
 
 //---------------------------------------------------------------------
+// ***The LLM context document must name every operator a caller can write.***
+//
+// `docs/guides/Llm-Context.md` is a derivation: it exists to be pasted into a model prompt
+// whole, in place of a retrieval over the corpus, because a translation question is about
+// somebody's data and the corpus is about operators - so the nearest matching page is still
+// the wrong page. A hand written derivation is denser and better ordered than anything
+// generated from the reference, and the price of writing it by hand is that it can fall
+// behind the engine silently. This is that price paid.
+//
+// ***Only the operators a caller can emit are required.*** Expression, stage and accumulator
+// operators are reachable from a query only through `$expr`, and listing all 175 of them
+// would defeat the purpose of a document short enough to paste.
+
+function check_llm_context()
+{
+	const REGISTRIES = [ 'QueryOperators', 'UpdateOperators' ];
+
+	let page = LIB_PATH.join( DOCS, 'guides', 'Llm-Context.md' );
+	let findings = [];
+	let checked = 0;
+
+	if ( !LIB_FS.existsSync( page ) )
+	{
+		findings.push( {
+			Path: LIB_PATH.relative( REPO, page ),
+			Detail: 'The LLM context document is missing.',
+		} );
+		return { Checked: 0, Unit: 'operators', Findings: findings };
+	}
+
+	let text = LIB_FS.readFileSync( page, 'utf8' );
+
+	for ( let index = 0; index < REGISTRIES.length; index++ )
+	{
+		let registry = LIB_JSONGIN[ REGISTRIES[ index ] ];
+		if ( !registry ) { continue; }
+
+		let names = Object.keys( registry );
+		for ( let n = 0; n < names.length; n++ )
+		{
+			checked++;
+
+			// ***Written as `$name` with a word boundary after it***, so that `$in` is not
+			// found inside `$inc` and a document which happens to mention a longer operator
+			// is not credited with the shorter one.
+			let pattern = new RegExp( '\\' + names[ n ] + '(?![A-Za-z0-9_])' );
+			if ( pattern.test( text ) ) { continue; }
+
+			findings.push( {
+				Path: LIB_PATH.relative( REPO, page ),
+				Detail: names[ n ] + ' is a registered ' + REGISTRIES[ index ].replace( 'Operators', '' ).toLowerCase()
+					+ ' operator and the LLM context document does not mention it.',
+			} );
+		}
+	}
+
+	return { Checked: checked, Unit: 'operators', Findings: findings };
+}
+
+
+//---------------------------------------------------------------------
 function report( Name, Result )
 {
 	let count = Result.Findings.length;
@@ -1089,6 +1154,7 @@ function main()
 	failures += report( 'orphans', check_orphans( doc_files ) );
 	failures += report( 'operators', check_operator_blocks() );
 	failures += report( 'inventory', check_operator_inventory() );
+	failures += report( 'llm', check_llm_context() );
 	failures += report( 'shared', check_shared_names() );
 	failures += report( 'examples', check_examples( all_files ) );
 	console.log( '' );
