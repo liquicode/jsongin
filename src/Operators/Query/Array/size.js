@@ -8,7 +8,7 @@ Usage: `$size: count`
 Matches an array field which has exactly `count` elements.
 
 The field must actually be an array: a scalar never matches, not even `{ $size: 1 }`.
-The count must be a non-negative integer.
+The count must be a non-negative integer; a fraction or a negative is refused.
 
 Note that this is the ***query*** `$size`, which selects documents. The ***expression*** `$size`
   returns the length instead.
@@ -31,12 +31,21 @@ module.exports = function ( jsongin )
 		{
 			try
 			{
-				// Validate Expression
+				// A count is a whole number of elements. Anything else cannot mean anything
+				// and is refused, as MongoDB refuses it. This used to answer false for a
+				// fraction or a negative, which a caller could not tell from an array of some
+				// other size. Verified against MongoDB 6.0.28, 7.0.40 and 8.3.8.
 				let match_type = jsongin.ShortType( MatchValue );
 				if ( match_type !== 'n' )
 				{
+					// A direct call answers false for a value of the wrong type, which is the
+					// API's promise; through Query() the ValueTypes check has already refused it.
 					if ( jsongin.OpLog ) { jsongin.OpLog( `$size: requires a number but found type [${match_type}] instead at [${Path}].` ); }
 					return false;
+				}
+				if ( ( Number.isInteger( MatchValue ) === false ) || ( MatchValue < 0 ) )
+				{
+					throw new Error( `$size: requires a non-negative integer but found [${MatchValue}] at [${Path}].` );
 				}
 
 				// $size asks about an array, so only a candidate which is an array can satisfy

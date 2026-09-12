@@ -144,6 +144,34 @@ module.exports = function ( Driver )
 					await refused( { a: [ { n: 1 }, { n: 2 } ] }, { $rename: { 'a.$[].n': 'x' } } ), true );
 			} );
 
+		it( 'should refuse an all positional path beside an index into the same array', async () =>
+		{
+			// 'a.$[].n' names the n of every element, so it already names 'a.0.n'. Writing
+			// both is the same conflict as writing one path twice, and it is a conflict of
+			// the paths ***as written***: an empty array, or an index past the end, does not
+			// excuse it. jsongin used to expand the operator first and let the later of the
+			// two writes win.
+			assert.strictEqual( await refused( { a: [ { n: 1 }, { n: 2 } ] }, { $set: { 'a.$[].n': 0, 'a.0.n': 9 } } ), true );
+			assert.strictEqual( await refused( { a: [ 1, 2 ] }, { $set: { 'a.$[]': 0, 'a.1': 9 } } ), true );
+			assert.strictEqual( await refused( { a: [ 1 ] }, { $set: { 'a.$[]': 0, 'a.x': 9 } } ), true );
+			assert.strictEqual( await refused( { a: [] }, { $set: { 'a.$[].n': 0, 'a.0.n': 9 } } ), true );
+			assert.strictEqual( await refused( { a: [ { n: 1 } ] }, { $set: { 'a.$[].n': 0, 'a.5.n': 9 } } ), true );
+			assert.strictEqual( await refused( { a: [ { n: 1 } ] }, { $set: { 'a.$[].n': 0 }, $inc: { 'a.0.n': 1 } } ), true );
+			assert.strictEqual( await refused( { a: [ { n: [ 1 ] } ] }, { $set: { 'a.$[].n.$[]': 0, 'a.$[].n.0': 9 } } ), true );
+			assert.strictEqual( await refused( { a: [ [ 1 ] ] }, { $set: { 'a.$[].$[]': 0, 'a.0.0': 9 } } ), true );
+			assert.strictEqual( await refused( { a: [ { b: [ 1 ] } ] }, { $set: { 'a.$[].b.$[]': 0, 'a.0.b.0': 9 } } ), true );
+		} );
+
+		it( 'should still write two fields of every element', async () =>
+		{
+			// The counterpart: different fields below the same elements do not conflict,
+			// within one operator or across two.
+			let document = await applied( { a: [ { n: 1 } ] }, { $set: { 'a.$[].n': 0, 'a.$[].m': 1 } } );
+			assert.deepStrictEqual( document.a, [ { n: 0, m: 1 } ] );
+			document = await applied( { a: [ { n: 1 } ] }, { $set: { 'a.$[].n': 0 }, $inc: { 'a.$[].m': 1 } } );
+			assert.deepStrictEqual( document.a, [ { n: 0, m: 1 } ] );
+		} );
+
 		it( 'should apply the same rule to $min and $max', async () =>
 		{
 			let document = await applied(

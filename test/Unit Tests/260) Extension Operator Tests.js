@@ -116,8 +116,9 @@ describe( '260) Extension Operator Tests', () =>
 		it( 'should not allow $expr to appear within a field', () =>
 		{
 			// $expr is a top level operator. Use $exprx to address a sub-document.
-			let result = find( entities, { stats: { $expr: { $gt: [ '$dmg', '$armor' ] } } } );
-			assert.ok( result.length === 0 );
+			// It is refused rather than left unmatched: MongoDB reports an unknown operator
+			// there, and so does jsongin since the parity repairs of 2026-09-11.
+			assert.throws( function () { find( entities, { stats: { $expr: { $gt: [ '$dmg', '$armor' ] } } } ); }, /cannot appear below a field/ );
 		} );
 
 

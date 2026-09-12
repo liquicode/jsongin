@@ -18,8 +18,10 @@
 	A candidate list keeps them distinct. The first document yields the candidates 1 and 2,
 	neither an array. The second yields the one candidate [ 5, 6 ].
 
-	The rules below were measured against MongoDB 6.0.1 rather than assumed. See
-	.plans/2026-08-14/parity-explicit-operators-through-arrays.md for the sweep.
+	The rules below were measured against MongoDB 6.0.1 rather than assumed, and the two
+	which concern a missing field against MongoDB 6.0.28, 7.0.40 and 8.3.8. See
+	.plans/2026-08-14/parity-explicit-operators-through-arrays.md for the first sweep and the
+	jsonx root's .plans/jsongin-parity-repairs.md for the second.
 
 	This landed ahead of the operators which use it, so that the mechanism could be proven on
 	its own before any operator changed behavior. That migration has happened: it is registered
@@ -32,9 +34,9 @@ module.exports = function ( jsongin )
 
 	//---------------------------------------------------------------------
 	// Returns an array of the values which Path can mean within Document.
-	// An empty array means the path resolves to nothing, which is how a missing field is
-	// reported. This is not the same as a path which resolves to undefined, which yields one
-	// candidate holding undefined.
+	// An empty array means the path resolves to nothing. This is not the same as a path
+	// which resolves to undefined, which yields one candidate holding undefined - and it is
+	// not the same as a missing field either, which is what Report is for.
 	//
 	// ExpandArrays is what makes an array field also offer each of its elements, which is the
 	// rule ordinary equality follows. Pass false to get only the values the path lands on.
@@ -42,7 +44,16 @@ module.exports = function ( jsongin )
 	// itself, so an element which is another array is a value it tests, not a second array to
 	// look inside. Verified against MongoDB 6.0.1, where { a: { $elemMatch: { x: 1 } } } does
 	// not match { a: [ [ { x: 1 } ] ] }.
-	function ResolveCandidates( Document, Path, ExpandArrays = true )
+	//
+	// Report, when an object is given, has Missing set true when the path met a ***missing
+	// field***: a document which lacks the key, or a scalar or null which the path runs on
+	// below after reaching it through a field name. That is the case MongoDB matches against
+	// null. A path which reaches nothing any other way - through an array holding no document
+	// to descend into, an index past the end, or below an element reached by index - is not a
+	// missing field, and null does not match it. The list alone cannot carry the distinction:
+	// { a: [ { b: 1 }, { c: 1 } ] } at 'a.b' yields the candidate 1 ***and*** a missing field,
+	// and { 'a.b': null } matches it. Verified against MongoDB 6.0.28, 7.0.40 and 8.3.8.
+	function ResolveCandidates( Document, Path, ExpandArrays = true, Report = null )
 	{
 		try
 		{
@@ -66,12 +77,12 @@ module.exports = function ( jsongin )
 				// than being returned directly, so that an array document offers its elements
 				// the same way an array field does. An operator called with a bare value
 				// rather than a path relies on this.
-				resolve_node( Document, [], 0, candidates, ExpandArrays );
+				resolve_node( Document, [], 0, candidates, ExpandArrays, Report );
 				return candidates;
 			}
 
 			let path_elements = jsongin.SplitPath( Path );
-			resolve_node( Document, path_elements, 0, candidates, ExpandArrays );
+			resolve_node( Document, path_elements, 0, candidates, ExpandArrays, Report );
 			return candidates;
 		}
 		catch ( error )
@@ -83,8 +94,16 @@ module.exports = function ( jsongin )
 
 
 	//---------------------------------------------------------------------
+	// Records that the path met a missing field. See Report above.
+	function report_missing( Report )
+	{
+		if ( jsongin.ShortType( Report ) === 'o' ) { Report.Missing = true; }
+	};
+
+
+	//---------------------------------------------------------------------
 	// Walks one path element and appends whatever it finds to Candidates.
-	function resolve_node( Node, PathElements, Index, Candidates, ExpandArrays )
+	function resolve_node( Node, PathElements, Index, Candidates, ExpandArrays, Report )
 	{
 		// The path is used up, so this node is what the path means.
 		if ( Index >= PathElements.length )
@@ -114,30 +133,47 @@ module.exports = function ( jsongin )
 
 		if ( st_node === 'a' )
 		{
-			if ( st_key === 'n' )
-			{
-				// A numeric key indexes the array, as MongoDB does when it resolves a query
-				// path: { 'a.2': 3 } matches { a: [ 1, 2, 3 ] }.
-				// A negative index addresses nothing. MongoDB has no reverse indexing: it
-				// reads '-1' as a field name, and an array has no such field, so
-				// { 'a.-1': 3 } matches nothing. Verified against MongoDB 6.0.1.
-				let element_index = key;
-				if ( element_index < 0 ) { return; }
-				if ( element_index >= Node.length ) { return; }
-				resolve_node( Node[ element_index ], PathElements, Index + 1, Candidates, ExpandArrays );
-				return;
-			}
-
-			// A non numeric key against an array is looked for in each element.
-			// The key is not used up here: it applies to the elements, not to the array.
+			// The key is looked for in each element which is a document, ***whatever the key
+			// looks like***. The key is not used up here: it applies to the elements, not to
+			// the array.
 			//
 			// Only object elements are descended into. An array which sits directly inside
 			// another array is not traversed without an index, which is what MongoDB does:
-			// { 'a.c': 1 } does not match { a: [ [ { c: 1 } ] ] }.
+			// { 'a.c': 1 } does not match { a: [ [ { c: 1 } ] ] }. A scalar or a null element
+			// is not a document lacking the field, so it reports nothing - which is why
+			// { 'a.b': null } does not match { a: [ 1 ] }, while a document element lacking
+			// the key does report a missing field, which is why it matches { a: [ { c: 1 } ] }.
+			//
+			// A numeric key takes this branch too. MongoDB reads '0' against an array as an
+			// index ***and*** as a field name of each document element, and both readings
+			// contribute: { 'a.0': 'x' } matches { a: [ { '0': 'x' } ] }. This used to read it
+			// as an index only. Verified against MongoDB 6.0.28, 7.0.40 and 8.3.8.
 			for ( let index = 0; index < Node.length; index++ )
 			{
 				if ( jsongin.ShortType( Node[ index ] ) !== 'o' ) { continue; }
-				resolve_node( Node[ index ], PathElements, Index, Candidates, ExpandArrays );
+				resolve_node( Node[ index ], PathElements, Index, Candidates, ExpandArrays, Report );
+			}
+
+			if ( st_key === 'n' )
+			{
+				// A numeric key also indexes the array, as MongoDB does when it resolves a
+				// query path: { 'a.2': 3 } matches { a: [ 1, 2, 3 ] }.
+				// A negative index addresses nothing. MongoDB has no reverse indexing: it
+				// reads '-1' as a field name, and an array has no such field, so
+				// { 'a.-1': 3 } matches nothing. Verified against MongoDB 6.0.1.
+				// An index past the end addresses nothing either, and nothing is not a missing
+				// field: { 'a.5': null } does not match { a: [ 1 ] }.
+				let element_index = key;
+				if ( element_index < 0 ) { return; }
+				if ( element_index >= Node.length ) { return; }
+
+				// The element the index leads to. When the path runs on below it and it is a
+				// scalar or a null, the path reaches nothing rather than a missing field:
+				// { 'a.0.b': null } does not match { a: [ 1 ] }, though { 'a.b': null } does
+				// match { a: 1 }. A document or an array carries on with ordinary semantics.
+				let element = Node[ element_index ];
+				if ( ( ( Index + 1 ) < PathElements.length ) && ( 'oa'.includes( jsongin.ShortType( element ) ) === false ) ) { return; }
+				resolve_node( element, PathElements, Index + 1, Candidates, ExpandArrays, Report );
 			}
 			return;
 		}
@@ -146,12 +182,18 @@ module.exports = function ( jsongin )
 		{
 			// A field which is not there contributes no candidate, which is what lets
 			// $exists tell { a: [ { y: 1 } ] } from { a: [ { x: 1 } ] } for the path 'a.x'.
-			if ( Object.prototype.hasOwnProperty.call( Node, key ) === false ) { return; }
-			resolve_node( Node[ key ], PathElements, Index + 1, Candidates, ExpandArrays );
+			// It is a missing field, which is what lets { a: null } match a document with no
+			// a, and { 'a.b': null } match { a: [ { c: 1 } ] }.
+			if ( Object.prototype.hasOwnProperty.call( Node, key ) === false ) { report_missing( Report ); return; }
+			resolve_node( Node[ key ], PathElements, Index + 1, Candidates, ExpandArrays, Report );
 			return;
 		}
 
-		// A scalar has no fields to descend into.
+		// A scalar or a null has no fields to descend into. Reached through a field name it
+		// is a missing field - { 'a.b': null } matches { a: 5 } and { a: null } - and this is
+		// the only way it can be reached with path remaining: an index into an array does not
+		// descend into a scalar, above, and an array iteration skips one.
+		report_missing( Report );
 		return;
 	};
 

@@ -133,7 +133,7 @@ declare module '@liquicode/jsongin'
 		SplitPath( Path: string ): string[];
 		JoinPaths( ...Paths: string[] ): string;
 		GetValue( Document: JsonDocument, Path: string ): any;
-		ResolveCandidates( Document: JsonDocument, Path: string, ExpandArrays?: boolean ): string[];
+		ResolveCandidates( Document: JsonDocument, Path: string, ExpandArrays?: boolean, Report?: { Missing?: boolean } ): any[];
 		SetValue( Document: JsonDocument, Path: string, Value: any, CreateArrays?: boolean ): boolean;
 		DeleteValue( Document: JsonDocument, Path: string ): boolean;
 

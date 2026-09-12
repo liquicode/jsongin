@@ -1062,6 +1062,18 @@ describe( '100) Core Tests', () =>
 			assert.strictEqual( jsongin.JoinPaths( 'users', null, 'name' ), 'users.name' );
 		} );
 
+		it( 'It keeps an empty element inside a path', () => 
+		{
+			// An empty ***path*** is nothing, and is ignored like undefined. An empty
+			// ***element*** inside a path names a field called '' and is kept: 'a.' is the
+			// field '' inside a, and it used to join as 'a'.
+			assert.strictEqual( jsongin.JoinPaths( '', 'name' ), 'name' );
+			assert.strictEqual( jsongin.JoinPaths( 'a.', 'b' ), 'a..b' );
+			assert.strictEqual( jsongin.JoinPaths( 'a', 'b.' ), 'a.b.' );
+			assert.strictEqual( jsongin.JoinPaths( 'a', '.b' ), 'a..b' );
+			assert.strictEqual( jsongin.JoinPaths( [ 'a', '' ] ), 'a.' );
+		} );
+
 		it( 'It throws an error when an invalid path segment is given', () => 
 		{
 			try

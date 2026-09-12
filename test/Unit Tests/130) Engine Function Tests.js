@@ -1160,6 +1160,49 @@ describe( '130) Engine Function Tests', () =>
 			assert.throws( function () { jsongin.ResolveCandidates( { a: 1 }, true ); }, /Path is invalid/ );
 		} );
 
+		it( 'should read a numeric path element on an array as an index and as a field name', () =>
+		{
+			// Both readings contribute, the way MongoDB reads a query path: the element at
+			// the index, and the field of that name in every element which is a document.
+			assert.deepStrictEqual( jsongin.ResolveCandidates( { a: [ 'x', 'y' ] }, 'a.0' ), [ 'x' ] );
+			assert.deepStrictEqual( jsongin.ResolveCandidates( { a: [ { '0': 'x' } ] }, 'a.0' ), [ 'x', { '0': 'x' } ] );
+			assert.deepStrictEqual( jsongin.ResolveCandidates( { a: [ 'y', { '0': 'x' } ] }, 'a.0' ), [ 'x', 'y' ] );
+			assert.deepStrictEqual( jsongin.ResolveCandidates( { a: [ { '1': 'x' } ] }, 'a.1' ), [ 'x' ] );
+		} );
+
+		it( 'should report a missing field apart from an empty candidate list', () =>
+		{
+			// Report.Missing is what $eq reads to match null against a missing field, and it
+			// is set only for a field a document lacks or a path which runs on below a scalar
+			// reached by field name - never for an array which offered no document, an index
+			// past the end, or a scalar reached by index. The candidate list can be empty
+			// either way, and it can be non-empty with the field missing as well.
+			function resolve( Document, Path )
+			{
+				let report = { Missing: false };
+				let candidates = jsongin.ResolveCandidates( Document, Path, true, report );
+				return { Candidates: candidates, Missing: report.Missing };
+			}
+			assert.deepStrictEqual( resolve( {}, 'a' ), { Candidates: [], Missing: true } );
+			assert.deepStrictEqual( resolve( { a: 5 }, 'a.b' ), { Candidates: [], Missing: true } );
+			assert.deepStrictEqual( resolve( { a: null }, 'a.b' ), { Candidates: [], Missing: true } );
+			assert.deepStrictEqual( resolve( { a: [ { c: 1 } ] }, 'a.b' ), { Candidates: [], Missing: true } );
+			assert.deepStrictEqual( resolve( { a: [ { b: 1 }, { c: 1 } ] }, 'a.b' ), { Candidates: [ 1 ], Missing: true } );
+			assert.deepStrictEqual( resolve( { a: [ {} ] }, 'a.0.b' ), { Candidates: [], Missing: true } );
+
+			assert.deepStrictEqual( resolve( { a: [] }, 'a.b' ), { Candidates: [], Missing: false } );
+			assert.deepStrictEqual( resolve( { a: [ 1 ] }, 'a.b' ), { Candidates: [], Missing: false } );
+			assert.deepStrictEqual( resolve( { a: [ [ {} ] ] }, 'a.b' ), { Candidates: [], Missing: false } );
+			assert.deepStrictEqual( resolve( { a: [ 1 ] }, 'a.5' ), { Candidates: [], Missing: false } );
+			assert.deepStrictEqual( resolve( { a: [ 1 ] }, 'a.0.b' ), { Candidates: [], Missing: false } );
+			assert.deepStrictEqual( resolve( { a: [ { b: [] } ] }, 'a.b.c' ), { Candidates: [], Missing: false } );
+			assert.deepStrictEqual( resolve( { a: 1 }, 'a' ), { Candidates: [ 1 ], Missing: false } );
+
+			// Without a report object the walk is the same and nothing is reported.
+			assert.deepStrictEqual( jsongin.ResolveCandidates( {}, 'a' ), [] );
+			assert.deepStrictEqual( jsongin.ResolveCandidates( {}, 'a', true, null ), [] );
+		} );
+
 	} );
 
 

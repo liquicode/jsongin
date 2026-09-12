@@ -76,6 +76,17 @@ module.exports = function ( jsongin )
 						refuse( `Operator [${key}] cannot appear at the top level of a query. Only logical operators can appear at the top level of a query.` );
 					}
 				}
+				else if ( jsongin.QueryOperators[ key ].TopLevel && ( jsongin.QueryOperators[ key ].FieldLevel !== true ) )
+				{
+					// The reverse. A top level operator combines or annotates whole criteria,
+					// and below a field there is no criteria to combine: MongoDB reports an
+					// unknown operator for { a: { $or: [ ... ] } }, and the same for $and,
+					// $nor, $expr and $comment, wherever the field sits - inside $not, inside
+					// a logical branch, inside $elemMatch. This used to evaluate them there.
+					// An extension which belongs at both levels, $exprx, says so with
+					// FieldLevel. Verified against MongoDB 6.0.28, 7.0.40 and 8.3.8.
+					refuse( `Operator [${key}] cannot appear below a field. It can only appear at the top level of a query, and was found at [${Path}].` );
+				}
 				// Evaluate operator.
 				let sub_query = Criteria[ key ];
 				if ( typeof sub_query === 'undefined' )

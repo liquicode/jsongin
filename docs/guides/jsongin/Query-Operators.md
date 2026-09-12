@@ -1014,8 +1014,8 @@ jsongin.Query( document, { $expr: { $lt: [ '$stats.hp', '$stats.max' ] } } ) ===
 // At the top level, $exprx behaves exactly like $expr.
 jsongin.Query( document, { $exprx: { $gt: [ '$dmg', '$armor' ] } } ) === true
 
-// $expr does not work within a field. It finds no such fields and does not match.
-jsongin.Query( document, { stats: { $expr: { $lt: [ '$hp', '$max' ] } } } ) === false
+// $expr does not work within a field. It is refused there, as MongoDB refuses it.
+jsongin.Query( document, { stats: { $expr: { $lt: [ '$hp', '$max' ] } } } ) // throws
 ```
 
 

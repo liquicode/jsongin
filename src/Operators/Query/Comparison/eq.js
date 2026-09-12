@@ -17,6 +17,11 @@ A regexp given here is a value to compare against rather than a pattern to test 
   `{ f: { $eq: /re/ } }` matches only a field which is itself that regexp, while the implicit
   form `{ f: /re/ }` pattern matches. That asymmetry is MongoDB's.
 
+`null` matches a field holding `null` ***and a missing field***: one the document does not
+  have, or a path which runs on below a scalar. Through an array it matches only when some
+  element is a document lacking the field. An empty array, an array holding no documents, and
+  an index past the end are not missing fields, and `null` does not match them.
+
 */
 
 module.exports = function ( jsongin )
@@ -107,12 +112,18 @@ module.exports = function ( jsongin )
 				// into a single array. That gathered array was indistinguishable from a field
 				// which genuinely held an array, so { 'a.x': { $eq: 1 } } compared [ 1, 2 ]
 				// against 1 and found nothing, while the implicit form matched.
-				let candidates = jsongin.ResolveCandidates( Document, Path, ExpandArrays );
+				let report = { Missing: false };
+				let candidates = jsongin.ResolveCandidates( Document, Path, ExpandArrays, report );
 
-				// A path which resolves to nothing is still compared, so that { a: null }
-				// matches a document which has no 'a'. MongoDB matches null against a missing
-				// field.
-				if ( candidates.length === 0 ) { candidates = [ undefined ]; }
+				// A missing field is compared as undefined, so that { a: null } matches a
+				// document which has no 'a'. MongoDB matches null against a missing field.
+				//
+				// ***Only a missing field***, which ResolveCandidates reports apart from the
+				// candidate list. This used to substitute undefined for any empty list, which
+				// made { 'a.b': null } match { a: [] } and { a: [ 1 ] }: an array which offered
+				// no document to descend into is not a document lacking the field, and MongoDB
+				// matches neither. Verified against MongoDB 6.0.28, 7.0.40 and 8.3.8.
+				if ( report.Missing === true ) { candidates.push( undefined ); }
 
 				for ( let index = 0; index < candidates.length; index++ )
 				{

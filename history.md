@@ -8,6 +8,43 @@
 v0.1.2 (current)
 ---------------------------------------------------------------------
 
+***The engine answers as MongoDB does in eight more places***, each one measured against
+  MongoDB 6.0.28, 7.0.40 and 8.3.8 before it was changed, and each one asserted in the parity
+  suites, which grew from 988 to 1016 compared behaviors. The measurement and the map of what
+  each change reaches across the family are in the jsonx root's `.plans/jsongin-parity-repairs.md`.
+
+- ***`null` no longer matches through an array which offers no document.*** `{ 'a.b': null }`
+  used to match `{ a: [] }` and `{ a: [ 1 ] }`. It matches `{ a: [ { c: 1 } ] }`, `{ a: 5 }` and
+  a document with no `a`, which is MongoDB's rule, and `$eq`, `$in`, `$gte`, `$lte` and their
+  negations follow it. `ResolveCandidates` reports a missing field apart from its candidate
+  list, through a new optional `Report` parameter.
+- ***A numeric path element on an array is an index and a field name.*** `{ 'a.0': 'x' }`
+  matches `{ a: [ { '0': 'x' } ] }`, as it does in MongoDB. It used to be read as an index only.
+- ***An empty path element names a field called `''`.*** `{ 'a.': 1 }` matches
+  `{ a: { '': 1 } }`. `JoinPaths` used to drop the element, so the query read the field `a`.
+- ***A top level operator below a field is refused.*** `{ a: { $or: [ ... ] } }` answered, and
+  so did `$and`, `$nor`, `$expr` and `$comment` there; MongoDB reports an unknown operator. An
+  operator which belongs at both levels declares `FieldLevel: true`, which the extensions
+  `$exprx` and `$noop` do. Inside `$elemMatch`, `$expr` and `$sampleRate` are refused as well.
+- ***`$size` refuses a fraction or a negative***, ***`$mod` reads its divisor and remainder as
+  integers***, ***`$type` refuses a type MongoDB does not name***, and ***`$all` refuses a mix
+  of `$elemMatch` and values*** or any other operator expression. Each used to answer `false`.
+- ***`$rename` is validated.*** A target which is not a string, a source or a target which is
+  an array element, and a source and target on the same path are refused; and a target takes
+  part in the conflict check, so `{ $rename: { a: 'b' }, $set: { b: 2 } }` is refused rather
+  than applied.
+- ***An update path with an empty field name is refused***, and so is creating a top level
+  field whose name begins with `$`. `$unset`, `$pop`, `$pull`, `$pullAll` and a `$rename`
+  source may still name one.
+- ***The all positional operator conflicts as written.*** `{ $set: { 'a.$[].n': 0, 'a.0.n': 9 } }`
+  is refused whatever `a` holds. The later write used to win silently.
+- ***`$currentDate: { f: false }` sets the date***, as MongoDB does, instead of being refused.
+
+***Two deviations are deliberate, and each is recorded as a gap test.*** An update document
+  with no operators is a no-op, because `Diff` answers `{}` for no change and promises to round
+  trip through `Update`; and a field called `''` at the top of a document cannot be named by a
+  path, since the empty path is the document itself.
+
 
 
 v0.1.1 (2026-08-31)

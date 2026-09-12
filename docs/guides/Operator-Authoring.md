@@ -114,7 +114,7 @@ Use `Engine.GetValue( Document, Path )` to read the field being tested.
 
 | **Member**   | **Description**                                                                |
 |--------------|---------------------------------------------------------------------------------|
-| `TopLevel`   | `true` when the operator may appear as a key of the query itself, rather than only within a field. `$and` and `$noop` are `true`; `$gt` is `false`. |
+| `TopLevel`   | `true` when the operator appears as a key of the query itself, `false` when it appears within a field. `$and` is `true`; `$gt` is `false`. A `true` operator is refused within a field unless it also declares `FieldLevel: true`, which `$exprx` and `$noop` do. |
 | `ValueTypes` | The [ShortTypes](./jsongin/ShortType.md) this operator accepts as its `MatchValue`. A query which gives it anything else is rejected, and the clause does not match. |
 
 

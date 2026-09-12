@@ -106,6 +106,17 @@ module.exports = function ( jsongin )
 	{
 		for ( let key in Criteria )
 		{
+			// A top level operator other than a logical one has no element to apply to.
+			// $expr and $sampleRate apply to the top level document and nothing else, and
+			// MongoDB refuses them here. $comment is tolerated beside a field, as it is at
+			// the top. Verified against MongoDB 6.0.28, 7.0.40 and 8.3.8.
+			let operator = jsongin.QueryOperators[ key ];
+			if ( ( typeof operator !== 'undefined' ) && ( operator.TopLevel === true ) && ( operator.FieldLevel !== true )
+				&& ( LOGICAL.includes( key ) === false ) && ( key !== '$comment' ) )
+			{
+				throw new Error( `$elemMatch: Operator [${key}] can only be applied to the top level document.` );
+			}
+
 			if ( LOGICAL.includes( key ) === false ) { continue; }
 
 			let value = Criteria[ key ];

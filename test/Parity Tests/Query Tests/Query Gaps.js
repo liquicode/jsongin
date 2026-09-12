@@ -22,7 +22,8 @@
 
 	A family leaves this file by being built, and by nothing else.
 
-	***It is empty, which is the finished state of a family rather than a missing file.*** The
+	***It holds no operator family, which is the finished state of a family rather than a
+	missing file***, and one behavior gap kept on purpose, which says why beside the test. The
 	bitwise operators, the query $mod, $comment, and $sampleRate were written here on
 	2026-08-20 and graduated the same day to
 	`test-suite/Bitwise and Miscellaneous Query Tests.js`.
@@ -34,13 +35,28 @@
 	document. Neither can ever be registered here. See `.reviews/2026-08-19/review.md`.
 */
 
+const assert = require( 'assert' );
+
 module.exports = function ( Driver )
 {
 
 	//---------------------------------------------------------------------
 	describe( 'Query Gaps', function ()
 	{
-		// No family is currently measured as a gap. See the note above.
+
+		// ***A behavior gap, and a limit of the path syntax.*** MongoDB reads { '': 1 } as a
+		// query on a top level field called ''. A jsongin path is a string, and the empty
+		// string is the path of the document itself, so no path can name that field: the
+		// query reaches the document and finds it is not 1. Below a field the empty name
+		// works - 'a.' is the field '' inside a - and Path Semantics Tests.js asserts it.
+		// Measured 2026-09-11 against MongoDB 6.0.28, 7.0.40 and 8.3.8.
+		it( 'should read an empty field name at the top of a document', async () =>
+		{
+			await Driver.SetData( [ { '': 1 } ] );
+			assert.strictEqual( ( await Driver.Find( { '': 1 } ) ).length, 1 );
+			assert.strictEqual( ( await Driver.Find( { '': { $exists: true } } ) ).length, 1 );
+		} );
+
 	} );
 
 };

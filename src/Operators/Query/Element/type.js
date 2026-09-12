@@ -12,12 +12,25 @@ Matches a field which is of the given BSON type, named either as a string such a
 Through an array, the field matches when the array ***itself*** is of the type or when ***any***
   element is.
 
+A type MongoDB does not name is refused rather than matched against nothing.
+
 Note that this is the ***query*** `$type`. There is no expression operator of this name here.
 
 */
 
 module.exports = function ( jsongin )
 {
+
+	// Every BSON type MongoDB names, by alias and by number, whether or not jsongin can produce
+	// a value of it. A type not in these lists is refused rather than answered.
+	// MongoDB Ref: https://www.mongodb.com/docs/manual/reference/operator/query/type
+	const TYPE_ALIASES = [
+		'double', 'string', 'object', 'array', 'binData', 'undefined', 'objectId', 'bool', 'date',
+		'null', 'regex', 'dbPointer', 'javascript', 'symbol', 'javascriptWithScope', 'int',
+		'timestamp', 'long', 'decimal', 'minKey', 'maxKey', 'number',
+	];
+	const TYPE_CODES = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, -1, 127 ];
+
 
 	let operator =
 	{
@@ -37,8 +50,37 @@ module.exports = function ( jsongin )
 				// Validate Expression.
 				// A single type may be given, or an array of them, and any one matching is a
 				// match. Both the BSON type number and its alias are accepted.
+				if ( 'nsa'.includes( jsongin.ShortType( MatchValue ) ) === false )
+				{
+					// A direct call answers false for a value of the wrong type, which is the
+					// API's promise; through Query() the ValueTypes check has already refused it.
+					if ( jsongin.OpLog ) { jsongin.OpLog( `$type: requires a number, string or array but found type [${jsongin.ShortType( MatchValue )}] instead at [${Path}].` ); }
+					return false;
+				}
 				let match_values = MatchValue;
 				if ( jsongin.ShortType( match_values ) !== 'a' ) { match_values = [ match_values ]; }
+
+				// Every type asked for must be one MongoDB names, by alias or by number. An
+				// unknown type can match nothing, and MongoDB refuses it rather than
+				// answering; this used to answer false. Verified against MongoDB 6.0.28, 7.0.40 and 8.3.8.
+				if ( match_values.length === 0 ) { throw new Error( `$type: requires at least one type at [${Path}].` ); }
+				for ( let match_index = 0; match_index < match_values.length; match_index++ )
+				{
+					let match_value = match_values[ match_index ];
+					let match_type = jsongin.ShortType( match_value );
+					if ( match_type === 'n' )
+					{
+						if ( TYPE_CODES.includes( match_value ) === false ) { throw new Error( `$type: [${match_value}] is not a BSON type number at [${Path}].` ); }
+					}
+					else if ( match_type === 's' )
+					{
+						if ( TYPE_ALIASES.includes( match_value ) === false ) { throw new Error( `$type: [${match_value}] is not a BSON type alias at [${Path}].` ); }
+					}
+					else
+					{
+						throw new Error( `$type: requires a type number or alias but found type [${match_type}] at [${Path}].` );
+					}
+				}
 
 				// $type asks about each value the path can mean.
 				//

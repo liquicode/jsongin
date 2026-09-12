@@ -9,7 +9,8 @@ Usage: `$currentDate: { field: true, ... }`
 
 Sets a field to the current date and time, creating it when it is not there.
 
-`true` and `{ $type: 'date' }` both store a `Date`.
+`true`, `false` and `{ $type: 'date' }` all store a `Date`; `false` is not a way to leave the
+  field alone.
 
 `{ $type: 'timestamp' }` stores the time as a ***number*** of milliseconds. MongoDB stores a
   BSON `Timestamp` there, which is a type with no JSON representation, so this is a deviation
@@ -51,11 +52,10 @@ module.exports = function ( jsongin )
 
 					if ( st_date_spec === 'b' )
 					{
-						// Only true asks for the current date. false is not a date specification.
-						if ( date_spec === true )
-						{
-							value = new Date( timestamp.getTime() );
-						}
+						// Either boolean asks for the current date. false is not "leave the
+						// field alone": MongoDB sets the date for it exactly as for true, and
+						// this used to refuse it as malformed. Verified against MongoDB 6.0.28, 7.0.40 and 8.3.8.
+						value = new Date( timestamp.getTime() );
 					}
 					else if ( st_date_spec === 'o' )
 					{

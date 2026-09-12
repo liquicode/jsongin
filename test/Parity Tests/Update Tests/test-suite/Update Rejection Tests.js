@@ -43,6 +43,22 @@ module.exports = function ( Driver )
 
 
 	//---------------------------------------------------------------------
+	// Applies the update and answers the one document it produced, without its _id, for the
+	// counterpart tests: the updates which look like the refusals and are not.
+	async function applied( Document, Update )
+	{
+		await Driver.SetData( [ Document ] );
+		let result = await Driver.Update( {}, Update );
+		assert.ok( result, 'the update returned nothing' );
+		assert.strictEqual( result.length, 1, 'the update did not report one document' );
+		let document = Object.assign( {}, result[ 0 ] );
+		delete document._id;
+		return document;
+	}
+
+
+	//---------------------------------------------------------------------
+	//---------------------------------------------------------------------
 	describe( 'Update Rejection Tests', () =>
 	{
 
@@ -191,6 +207,162 @@ module.exports = function ( Driver )
 			assert.ok( await refused( { a: 1 }, { $set: 5 } ) );
 			assert.ok( await refused( { a: 1 }, { $unset: 'a' } ) );
 			assert.ok( await refused( { a: 1 }, { $inc: [ 1 ] } ) );
+		} );
+
+		it( 'should refuse a $rename whose target is not a string', async () =>
+		{
+			// Checked before the document is looked at, so a source which is not there does
+			// not excuse it.
+			assert.ok( await refused( { a: 1 }, { $rename: { a: 5 } } ) );
+			assert.ok( await refused( { x: 1 }, { $rename: { a: 5 } } ) );
+		} );
+
+		it( 'should refuse a $rename whose source and target are on the same path', async () =>
+		{
+			// The same field, or one inside the other: there is no order of removing and
+			// writing which leaves something sensible behind. jsongin used to leave the
+			// first alone and nest the second inside itself.
+			assert.ok( await refused( { a: 1 }, { $rename: { a: 'a' } } ) );
+			assert.ok( await refused( { a: { b: 1 } }, { $rename: { 'a.b': 'a.b' } } ) );
+			assert.ok( await refused( { a: { b: 1 } }, { $rename: { a: 'a.b' } } ) );
+			assert.ok( await refused( { a: { b: 1 } }, { $rename: { 'a.b': 'a' } } ) );
+			assert.ok( await refused( { x: 1 }, { $rename: { a: 'a' } } ) );
+			assert.ok( await refused( { x: 1 }, { $rename: { a: 'a.b' } } ) );
+		} );
+
+		it( 'should refuse a $rename whose source is an array element', async () =>
+		{
+			// A rename moves a field of a document. An array element is not one, whether the
+			// element itself or a field of it is named. jsongin used to leave a null behind
+			// where the element had been.
+			assert.ok( await refused( { a: [ 1 ] }, { $rename: { 'a.0': 'c' } } ) );
+			assert.ok( await refused( { a: [ { b: 1 } ] }, { $rename: { 'a.0': 'c' } } ) );
+			assert.ok( await refused( { a: [ { b: 1 } ] }, { $rename: { 'a.0.b': 'c' } } ) );
+			assert.ok( await refused( { a: [ [ 1 ] ] }, { $rename: { 'a.0.0': 'c' } } ) );
+			assert.ok( await refused( { a: { b: [ { c: 1 } ] } }, { $rename: { 'a.b.0.c': 'd' } } ) );
+		} );
+
+		it( 'should refuse a $rename whose target is an array element', async () =>
+		{
+			assert.ok( await refused( { a: 1, b: [ 1 ] }, { $rename: { a: 'b.0' } } ) );
+			assert.ok( await refused( { a: 1, b: [ 1 ] }, { $rename: { a: 'b.x' } } ) );
+			assert.ok( await refused( { a: 1, b: { c: [ 1 ] } }, { $rename: { a: 'b.c.0' } } ) );
+			assert.ok( await refused( { a: { b: 1 }, c: [] }, { $rename: { 'a.b': 'c.d.e' } } ) );
+		} );
+
+		it( 'should refuse a $rename which conflicts with another operator at its target', async () =>
+		{
+			// A rename writes its target as surely as $set writes its field, so the target
+			// takes part in the conflict check like any other written path. It used to be
+			// invisible there, because the check claimed only the keys of each operator and
+			// the target is a value.
+			assert.ok( await refused( { a: 1 }, { $rename: { a: 'b' }, $set: { b: 2 } } ) );
+			assert.ok( await refused( { a: 1 }, { $rename: { a: 'b' }, $inc: { b: 1 } } ) );
+			assert.ok( await refused( { a: 1 }, { $rename: { a: 'b' }, $unset: { b: 1 } } ) );
+			assert.ok( await refused( { a: 1 }, { $rename: { a: 'b' }, $set: { 'b.c': 2 } } ) );
+			assert.ok( await refused( { a: 1 }, { $rename: { a: 'b' }, $unset: { 'b.c': 1 } } ) );
+			assert.ok( await refused( { a: 1 }, { $rename: { a: 'b' }, $push: { b: 1 } } ) );
+			// And the source, which it removes.
+			assert.ok( await refused( { a: 1 }, { $rename: { a: 'b' }, $set: { a: 2 } } ) );
+			assert.ok( await refused( { a: 1 }, { $rename: { a: 'b' }, $unset: { a: 1 } } ) );
+			// Whether or not the source is there.
+			assert.ok( await refused( { x: 1 }, { $rename: { a: 'b' }, $set: { b: 1 } } ) );
+		} );
+
+		it( 'should refuse two $renames which write the same target', async () =>
+		{
+			assert.ok( await refused( { a: 1, b: 2 }, { $rename: { a: 'c', b: 'c' } } ) );
+			assert.ok( await refused( { a: 1, b: 1 }, { $rename: { a: 'x', b: 'x.y' } } ) );
+			assert.ok( await refused( { a: 1, c: 1 }, { $rename: { a: 'b', c: 'b.d' } } ) );
+			// A chain is a conflict too: b is written by one rename and removed by the other.
+			assert.ok( await refused( { a: 1, b: 1 }, { $rename: { a: 'b', b: 'c' } } ) );
+			assert.ok( await refused( { x: 1 }, { $rename: { a: 'b', b: 'c' } } ) );
+		} );
+
+		it( 'should still apply a $rename which merely has nothing to do', async () =>
+		{
+			// The counterparts. A source which is not there is a no-op, including one whose
+			// path would name an array element if the array were there; a numeric element
+			// against a document is a field name; and a rename into a nested target which is
+			// not there creates documents on the way, never arrays.
+			let document;
+			document = await applied( { x: 1 }, { $rename: { 'a.0': 'c' } } );
+			assert.deepStrictEqual( document, { x: 1 } );
+			document = await applied( { a: { '0': 1 } }, { $rename: { 'a.0': 'c' } } );
+			assert.deepStrictEqual( document, { a: {}, c: 1 } );
+			document = await applied( { a: 1 }, { $rename: { a: 'b.0' } } );
+			assert.deepStrictEqual( document, { b: { '0': 1 } } );
+			document = await applied( { a: { c: 1 } }, { $rename: { 'a.c': 'a.d' }, $set: { 'a.e': 1 } } );
+			assert.deepStrictEqual( document, { a: { d: 1, e: 1 } } );
+			document = await applied( { a: [ 1 ] }, { $rename: { a: 'b' } } );
+			assert.deepStrictEqual( document, { b: [ 1 ] } );
+		} );
+
+		it( 'should refuse an update path with an empty field name', async () =>
+		{
+			// 'a.' names a field called '' inside a, which a query may read but an update may
+			// not write. Every operator is held to it, and so is a $rename target. jsongin
+			// used to create the field.
+			assert.ok( await refused( {}, { $set: { 'a.': 1 } } ) );
+			assert.ok( await refused( {}, { $set: { '.a': 1 } } ) );
+			assert.ok( await refused( {}, { $set: { 'a..b': 1 } } ) );
+			assert.ok( await refused( {}, { $set: { 'a.b.': 1 } } ) );
+			assert.ok( await refused( {}, { $push: { 'a.': 1 } } ) );
+			assert.ok( await refused( { a: 1 }, { $unset: { 'a.': 1 } } ) );
+			assert.ok( await refused( { a: 1 }, { $unset: { '.a': 1 } } ) );
+			assert.ok( await refused( { a: 1 }, { $rename: { a: 'b.' } } ) );
+			assert.ok( await refused( { a: 1 }, { $rename: { a: 'b..c' } } ) );
+			assert.ok( await refused( { a: 1 }, { $rename: { 'a.': 'b' } } ) );
+			assert.ok( await refused( { a: 1 }, { $set: { '': 1 } } ) );
+		} );
+
+		it( 'should refuse writing a top level field whose name begins with a dollar sign', async () =>
+		{
+			// An operator which can create a field refuses to create one which would read as
+			// an operator. jsongin used to write it.
+			assert.ok( await refused( {}, { $set: { '$x': 1 } } ) );
+			assert.ok( await refused( { $x: 1 }, { $set: { '$x': 2 } } ) );
+			assert.ok( await refused( {}, { $inc: { '$x': 1 } } ) );
+			assert.ok( await refused( { $x: 1 }, { $mul: { '$x': 2 } } ) );
+			assert.ok( await refused( { $x: 1 }, { $min: { '$x': 0 } } ) );
+			assert.ok( await refused( { $x: 1 }, { $max: { '$x': 2 } } ) );
+			assert.ok( await refused( { $x: [ 1 ] }, { $push: { '$x': 2 } } ) );
+			assert.ok( await refused( { $x: [ 1 ] }, { $addToSet: { '$x': 2 } } ) );
+			assert.ok( await refused( { $x: 1 }, { $currentDate: { '$x': true } } ) );
+			assert.ok( await refused( { a: 1 }, { $rename: { a: '$b' } } ) );
+			assert.ok( await refused( { $x: 1 }, { $rename: { '$x': '$y' } } ) );
+		} );
+
+		it( 'should still reach a dollar prefixed field which is nested, removed, or a $rename source', async () =>
+		{
+			// The counterparts, each one measured: below another field the name is allowed,
+			// and an operator which only removes or moves what is there is not creating one.
+			let document;
+			document = await applied( {}, { $set: { 'a.$x': 1 } } );
+			assert.deepStrictEqual( document, { a: { $x: 1 } } );
+			document = await applied( { a: { $x: 1 } }, { $inc: { 'a.$x': 1 } } );
+			assert.deepStrictEqual( document, { a: { $x: 2 } } );
+			document = await applied( { a: 1 }, { $rename: { a: 'b.$c' } } );
+			assert.deepStrictEqual( document, { b: { $c: 1 } } );
+			document = await applied( { $x: 1 }, { $unset: { '$x': 1 } } );
+			assert.deepStrictEqual( document, {} );
+			document = await applied( { $x: [ 1 ] }, { $pop: { '$x': 1 } } );
+			assert.deepStrictEqual( document, { $x: [] } );
+			document = await applied( { $x: [ 1 ] }, { $pull: { '$x': 1 } } );
+			assert.deepStrictEqual( document, { $x: [] } );
+			document = await applied( { $x: [ 1, 2 ] }, { $pullAll: { '$x': [ 1 ] } } );
+			assert.deepStrictEqual( document, { $x: [ 2 ] } );
+			document = await applied( { $x: 1 }, { $rename: { '$x': 'y' } } );
+			assert.deepStrictEqual( document, { y: 1 } );
+		} );
+
+		it( 'should apply an operator with no fields as a no-op', async () =>
+		{
+			// The spelling of "change nothing" the two engines share. An update document
+			// with no operator at all is a different thing: MongoDB refuses it and jsongin
+			// applies it, on purpose, and Update Gaps.js records the difference.
+			let document = await applied( { a: 1 }, { $set: {} } );
+			assert.deepStrictEqual( document, { a: 1 } );
 		} );
 
 		it( 'should still apply two operators which touch different paths', async () =>

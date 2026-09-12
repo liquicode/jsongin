@@ -1,7 +1,7 @@
 # @liquicode/jsongin
 
 
-# ResolveCandidates( Document, Path, ExpandArrays )
+# ResolveCandidates( Document, Path, ExpandArrays, Report )
 
 
 ## Parameters
@@ -11,6 +11,7 @@
 | Document      |       o, a        | The document to resolve the path within.                                            |
 | Path          |       s, n        | The path to resolve.                                                                |
 | ExpandArrays  |         b         | Whether an array also offers each of its elements. Defaults to `true`. Optional.    |
+| Report        |         o         | Receives `Missing: true` when the path met a missing field. Optional.               |
 
 
 ## Description
@@ -41,9 +42,45 @@ jsongin.ResolveCandidates( { a: [ { x: [ 1, 2 ] } ] }, 'a.x' );
 
 An operator matches when ***any*** candidate satisfies it.
 
-An ***empty list*** means the path resolves to nothing, which is how a missing field is
-  reported. That is not the same as a path which resolves to `undefined`, which yields one
-  candidate holding `undefined`.
+An ***empty list*** means the path resolves to nothing. That is not the same as a path which
+  resolves to `undefined`, which yields one candidate holding `undefined` - and it is not the
+  same as a ***missing field***, which is what `Report` is for.
+
+
+## A missing field
+
+MongoDB matches `null` against a field which is not there, and "not there" has a precise
+  meaning: a document which lacks the field, or a path which runs on below a scalar or a `null`
+  it reached through a field name. A path which reaches nothing any other way is ***not*** a
+  missing field: an array which offered no document to descend into, an index past the end of
+  an array, or a path which runs on below an element reached by index.
+
+The candidate list cannot carry that distinction on its own, because it can be empty either way,
+  and it can be non-empty with the field missing as well. So the walk reports it apart, on the
+  `Report` object when one is given:
+
+```js
+let report = { Missing: false };
+
+jsongin.ResolveCandidates( { a: [ { c: 1 } ] }, 'a.b', true, report );
+// [] and report.Missing is true: a document element lacks b
+
+jsongin.ResolveCandidates( { a: [ { b: 1 }, { c: 1 } ] }, 'a.b', true, report );
+// [ 1 ] and report.Missing is true: one element has b and one lacks it
+
+jsongin.ResolveCandidates( { a: 5 }, 'a.b', true, report );
+// [] and report.Missing is true: the path runs on below a scalar reached by field name
+
+jsongin.ResolveCandidates( { a: [] }, 'a.b', true, report );
+// [] and report.Missing is false: the array offered no document
+
+jsongin.ResolveCandidates( { a: [ 1 ] }, 'a.0.b', true, report );
+// [] and report.Missing is false: the element the index led to is a scalar
+```
+
+[`$eq`](../Operator-Reference.md), `$gte` and `$lte` are the operators which read it, and
+  through them `$in`, `$ne`, `$nin` and the implicit form. `$exists` does not: it asks whether
+  the list is empty, and a missing field and an empty array both leave it empty.
 
 
 ## Rules
@@ -94,8 +131,25 @@ jsongin.ResolveCandidates( { a: [ [ { c: 1 } ] ] }, 'a.0.0.c' );
 // [ 1 ]
 ```
 
-***A numeric key indexes an array***, counting from the end when negative, exactly as
-  [`GetValue`](./GetValue.md) does.
+***A numeric key against an array is an index into it and a field name of each element.***
+Both readings contribute. A negative number, or one past the end, indexes nothing, since there
+  is no reverse indexing; it is still looked for as a field name of each element which is a
+  document.
+
+```js
+jsongin.ResolveCandidates( { a: [ 'x', 'y' ] }, 'a.0' );
+// [ 'x' ]
+
+jsongin.ResolveCandidates( { a: [ 'y', { '0': 'x' } ] }, 'a.0' );
+// [ 'x', 'y' ]        the field '0' of the document element, and the element at index 0
+
+jsongin.ResolveCandidates( { a: [ 'x', 'y' ] }, 'a.-1' );
+// []
+```
+
+***An empty path element names a field called `''`.***
+`'a.'` is the field `''` inside `a`. An empty ***path*** is the document itself, so the field
+  `''` at the top of a document is the one field no path can name.
 
 
 ## See Also

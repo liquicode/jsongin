@@ -435,6 +435,14 @@ module.exports = function ( Driver )
 				assert.ok( document.d instanceof Date );
 			} );
 
+			it( 'should store a date for false as well', async () =>
+			{
+				// false is not "do not set the date". MongoDB reads either boolean as the
+				// request for one, and jsongin used to refuse false as malformed.
+				let document = await applied( { d: 0 }, { $currentDate: { d: false } } );
+				assert.ok( document.d instanceof Date );
+			} );
+
 			it( 'should create the field when it is not there', async () =>
 			{
 				let document = await applied( { other: 1 }, { $currentDate: { d: true } } );

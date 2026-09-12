@@ -27,6 +27,7 @@ module.exports = function ( jsongin )
 		//---------------------------------------------------------------------
 		Engine: jsongin,
 		TopLevel: true,
+		FieldLevel: true,
 		// Whatever Evaluate() takes, which is any expression rather than only an operator object.
 		ValueTypes: 'bnsdloaru',
 

@@ -589,7 +589,9 @@ describe( '250) Update Operator Tests', () =>
 
 			it( 'should report an invalid date specification and fail', () =>
 			{
-				let cases = [ {}, { $type: 5 }, { $type: 'nonsense' }, { type: 'date' }, false, 0, 'timestamp', null ];
+				// false is not in this list: MongoDB reads it as true, and so does jsongin
+				// since the parity repairs of 2026-09-11. The parity suite asserts that.
+				let cases = [ {}, { $type: 5 }, { $type: 'nonsense' }, { type: 'date' }, 0, 'timestamp', null ];
 				for ( let index = 0; index < cases.length; index++ )
 				{
 					let messages = [];

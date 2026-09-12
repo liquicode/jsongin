@@ -11,7 +11,8 @@ Divides the field by the divisor and matches when the remainder is the one given
   one takes two operands and returns a remainder, while this one takes a divisor and the
   remainder to look for, and returns whether the field matches.
 
-A fractional field is truncated toward zero before the division.
+A fractional field is truncated toward zero before the division, and so are the divisor and
+  the remainder: `[ 5.5, 1 ]` asks the same question as `[ 5, 1 ]`.
 A field which is not a number does not match.
 The array must hold exactly two numbers, and a divisor of zero is refused.
 
@@ -44,6 +45,13 @@ module.exports = function ( jsongin )
 				{
 					throw new Error( `$mod: requires a numeric divisor and remainder at [${Path}].` );
 				}
+
+				// The operands are read as integers, truncated toward zero, so [ 5.5, 1 ]
+				// asks the same question as [ 5, 1 ] and 0.5 is a divisor of zero. MongoDB
+				// truncates both; this used to compare against the fractions as written,
+				// which nothing ever satisfied. Verified against MongoDB 6.0.28, 7.0.40 and 8.3.8.
+				divisor = Math.trunc( divisor );
+				remainder = Math.trunc( remainder );
 				if ( divisor === 0 )
 				{
 					throw new Error( `$mod: cannot divide by zero at [${Path}].` );

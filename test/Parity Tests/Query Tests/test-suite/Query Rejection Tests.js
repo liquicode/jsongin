@@ -170,6 +170,97 @@ module.exports = function ( Driver )
 			assert.strictEqual( ( await Driver.Find( { v: { $elemMatch: { $not: { $gt: 1 } } } } ) ).length, 1 );
 		} );
 
+		it( 'should refuse a top level operator below a field', async () =>
+		{
+			// $and, $or, $nor, $expr and $comment combine or annotate whole criteria. Below a
+			// field there is no criteria to combine, and MongoDB reports an unknown operator.
+			// jsongin used to evaluate them there, so { a: { $or: [ { $gt: 0 } ] } } answered
+			// where it should have refused.
+			let documents = [ { a: 1 } ];
+			assert.ok( await refused( documents, { a: { $or: [ { $gt: 0 } ] } } ) );
+			assert.ok( await refused( documents, { a: { $nor: [ { $gt: 5 } ] } } ) );
+			assert.ok( await refused( documents, { a: { $and: [ { $gt: 0 } ] } } ) );
+			assert.ok( await refused( documents, { a: { $expr: { $gt: [ '$a', 0 ] } } } ) );
+			assert.ok( await refused( documents, { a: { $comment: 'x' } } ) );
+			assert.ok( await refused( documents, { a: { $gt: 0, $comment: 'x' } } ) );
+			// Wherever the field is: inside $not, inside a logical branch, inside $elemMatch.
+			assert.ok( await refused( documents, { a: { $not: { $or: [ { $gt: 0 } ] } } } ) );
+			assert.ok( await refused( documents, { a: { $not: { $and: [ { $gt: 0 } ] } } } ) );
+			assert.ok( await refused( documents, { $and: [ { a: { $or: [ { $gt: 0 } ] } } ] } ) );
+			assert.ok( await refused( documents, { $or: [ { a: { $comment: 'x' } } ] } ) );
+			assert.ok( await refused( [ { a: [ { x: 1 } ] } ], { a: { $elemMatch: { x: { $or: [ { $gt: 0 } ] } } } } ) );
+		} );
+
+		it( 'should refuse $expr inside $elemMatch', async () =>
+		{
+			// The logical operators are legitimate inside $elemMatch, because its criteria is
+			// a criteria in its own right. $expr is not: it applies to the top level document
+			// and nothing else, and $elemMatch has only an element to offer it.
+			let documents = [ { a: [ { x: 1 } ] } ];
+			assert.ok( await refused( documents, { a: { $elemMatch: { $expr: { $gt: [ '$x', 0 ] } } } } ) );
+			assert.ok( await refused( documents, { a: { $elemMatch: { $sampleRate: 1 } } } ) );
+			// The counterpart: a logical operator, and a $comment beside a field.
+			await Driver.SetData( documents );
+			assert.strictEqual( ( await Driver.Find( { a: { $elemMatch: { $or: [ { x: 1 } ] } } } ) ).length, 1 );
+			assert.strictEqual( ( await Driver.Find( { a: { $elemMatch: { $nor: [ { x: 2 } ] } } } ) ).length, 1 );
+			assert.strictEqual( ( await Driver.Find( { a: { $elemMatch: { x: 1, $comment: 'x' } } } ) ).length, 1 );
+		} );
+
+		it( 'should refuse a $size which is not a non-negative integer', async () =>
+		{
+			// A count is a whole number of elements. A fraction or a negative cannot be one,
+			// and jsongin used to answer false for both rather than saying so.
+			let documents = [ { a: [ 1, 2 ] } ];
+			assert.ok( await refused( documents, { a: { $size: 2.5 } } ) );
+			assert.ok( await refused( documents, { a: { $size: -1 } } ) );
+			// A whole number written with a fraction part is still a whole number.
+			await Driver.SetData( documents );
+			assert.strictEqual( ( await Driver.Find( { a: { $size: 2.0 } } ) ).length, 1 );
+		} );
+
+		it( 'should refuse a $mod whose divisor truncates to zero', async () =>
+		{
+			// The operands are read as integers, so 0.5 is a divisor of zero.
+			assert.ok( await refused( [ { a: 11 } ], { a: { $mod: [ 0.5, 0 ] } } ) );
+		} );
+
+		it( 'should refuse a $type it does not know', async () =>
+		{
+			// A type which does not exist can match nothing, which used to be the answer.
+			let documents = [ { a: 1 } ];
+			assert.ok( await refused( documents, { a: { $type: 'bogus' } } ) );
+			assert.ok( await refused( documents, { a: { $type: 'Int' } } ) );
+			assert.ok( await refused( documents, { a: { $type: 0 } } ) );
+			assert.ok( await refused( documents, { a: { $type: 20 } } ) );
+			assert.ok( await refused( documents, { a: { $type: 99 } } ) );
+			assert.ok( await refused( documents, { a: { $type: 1.5 } } ) );
+			assert.ok( await refused( documents, { a: { $type: [] } } ) );
+			assert.ok( await refused( documents, { a: { $type: [ 'int', 'bogus' ] } } ) );
+			assert.ok( await refused( documents, { a: { $type: [ 'int', [] ] } } ) );
+			// Every type MongoDB names is accepted, whether or not jsongin can produce it.
+			await Driver.SetData( documents );
+			assert.strictEqual( ( await Driver.Find( { a: { $type: 'minKey' } } ) ).length, 0 );
+			assert.strictEqual( ( await Driver.Find( { a: { $type: 'decimal' } } ) ).length, 0 );
+			assert.strictEqual( ( await Driver.Find( { a: { $type: 127 } } ) ).length, 0 );
+			assert.strictEqual( ( await Driver.Find( { a: { $type: 5 } } ) ).length, 0 );
+			assert.strictEqual( ( await Driver.Find( { a: { $type: [ 'int', 1 ] } } ) ).length, 1 );
+		} );
+
+		it( 'should refuse an $all which mixes $elemMatch with anything else', async () =>
+		{
+			// $all takes values, or it takes $elemMatch criteria; the two forms do not mix,
+			// and no other operator expression is allowed inside it at all.
+			let documents = [ { a: [ { b: 1 } ] } ];
+			assert.ok( await refused( documents, { a: { $all: [ { $elemMatch: { b: 1 } }, 1 ] } } ) );
+			assert.ok( await refused( documents, { a: { $all: [ 1, { $elemMatch: { b: 1 } } ] } } ) );
+			assert.ok( await refused( documents, { a: { $all: [ { $elemMatch: { b: 1 } }, { c: 1 } ] } } ) );
+			assert.ok( await refused( [ { a: [ 1 ] } ], { a: { $all: [ { $gt: 0 } ] } } ) );
+			// The counterparts: each form on its own.
+			await Driver.SetData( documents );
+			assert.strictEqual( ( await Driver.Find( { a: { $all: [ { $elemMatch: { b: 1 } }, { $elemMatch: { b: { $gt: 0 } } } ] } } ) ).length, 1 );
+			assert.strictEqual( ( await Driver.Find( { a: { $all: [ { b: 1 } ] } } ) ).length, 1 );
+		} );
+
 		it( 'should still answer a query which is merely unsatisfied', async () =>
 		{
 			// The counterpart to every rejection above. A query which is well formed and

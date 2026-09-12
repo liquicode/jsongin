@@ -45,11 +45,13 @@ module.exports = function ( jsongin )
 		// a single array, and then scanned that array with the raw comparison operators. A
 		// field which genuinely held an array was gathered into an array of arrays, and
 		// comparing an array against a number coerces to NaN, so it never matched.
-		let candidates = jsongin.ResolveCandidates( Document, Path, ExpandArrays );
+		let report = { Missing: false };
+		let candidates = jsongin.ResolveCandidates( Document, Path, ExpandArrays, report );
 
-		// A path which resolves to nothing is still compared, so that a missing field can
-		// satisfy { $gte: null } the way MongoDB does.
-		if ( candidates.length === 0 ) { candidates = [ undefined ]; }
+		// A missing field is compared as undefined, so that it can satisfy { $gte: null } the
+		// way MongoDB does. Only a missing field: see $eq for why an empty candidate list is
+		// not one, and ResolveCandidates for what is. Verified against MongoDB 6.0.28, 7.0.40 and 8.3.8.
+		if ( report.Missing === true ) { candidates.push( undefined ); }
 
 		let match_type = jsongin.ShortType( MatchValue );
 		let found_comparable = false;

@@ -170,6 +170,19 @@ module.exports = function ( Driver )
 				assert.strictEqual( await refused( { v: { $mod: [ 'a', 0 ] } } ), true );
 			} );
 
+			it( 'should read the $mod operands as integers', async () =>
+			{
+				// The divisor and the remainder are truncated toward zero before anything is
+				// divided, so [ 5.5, 1 ] asks the same question as [ 5, 1 ]. jsongin used to
+				// compare against the fractions as written, which nothing ever satisfied.
+				assert.ok( await matches( { _id: 1, v: 11 }, { v: { $mod: [ 5.5, 1 ] } } ) );
+				assert.ok( await matches( { _id: 1, v: 11 }, { v: { $mod: [ 5.9, 1 ] } } ) );
+				assert.ok( await matches( { _id: 1, v: 11 }, { v: { $mod: [ 5, 1.9 ] } } ) );
+				assert.ok( await matches( { _id: 1, v: 11 }, { v: { $mod: [ 5.5, 1.5 ] } } ) );
+				assert.ok( await matches( { _id: 1, v: 11 }, { v: { $mod: [ -5.5, 1 ] } } ) );
+				assert.ok( !await matches( { _id: 1, v: 10 }, { v: { $mod: [ 5.5, 1 ] } } ) );
+			} );
+
 			it( 'should select everything with $comment', async () =>
 			{
 				// ***A comment is not a predicate.*** It annotates the query and selects

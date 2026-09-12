@@ -13,6 +13,9 @@ Each value is delegated to `$eq`, so the values may be sub-documents, arrays, or
 `$all` is `$in` with an `AND` between the values rather than an `OR`.
 An empty list matches nothing.
 
+The list may instead hold `{ $elemMatch: criteria }` documents, one element having to satisfy
+  each. The two forms do not mix, and no other operator expression may appear in the list.
+
 */
 
 module.exports = function ( jsongin )
@@ -59,14 +62,38 @@ module.exports = function ( jsongin )
 					return false;
 				}
 
+				// $all takes values, or it takes $elemMatch criteria, and the two forms do not
+				// mix: every entry is a { $elemMatch: ... } document or none is. No other
+				// operator expression is allowed inside it at all. MongoDB refuses both; this
+				// used to answer false for the mix and to evaluate the expression.
+				// Verified against MongoDB 6.0.28, 7.0.40 and 8.3.8.
+				let elem_match_form = null;
+				for ( let index = 0; index < MatchValue.length; index++ )
+				{
+					let entry = MatchValue[ index ];
+					let is_elem_match = false;
+					if ( jsongin.ShortType( entry ) === 'o' )
+					{
+						is_elem_match = ( Object.keys( entry )[ 0 ] === '$elemMatch' );
+						if ( ( is_elem_match === false ) && jsongin.IsQuery( entry ) )
+						{
+							throw new Error( `$all: an operator expression cannot appear inside $all at [${Path}].` );
+						}
+					}
+					if ( elem_match_form === null ) { elem_match_form = is_elem_match; }
+					if ( elem_match_form !== is_elem_match )
+					{
+						throw new Error( `$all: $elemMatch and values cannot be mixed inside $all at [${Path}].` );
+					}
+				}
+
 				for ( let index = 0; index < MatchValue.length; index++ )
 				{
 					let result = false;
-					let match_sub_type = jsongin.ShortType( MatchValue[ index ] );
-					if ( match_sub_type === 'o' )
+					if ( elem_match_form === true )
 					{
-						// An operator document, such as the { $elemMatch: { ... } } form.
-						result = jsongin.Query( Document, MatchValue[ index ], Path );
+						// Only the $elemMatch is read. MongoDB ignores any other key beside it.
+						result = jsongin.Query( Document, { $elemMatch: MatchValue[ index ].$elemMatch }, Path );
 					}
 					else
 					{

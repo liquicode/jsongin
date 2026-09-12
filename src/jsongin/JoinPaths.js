@@ -28,6 +28,11 @@ module.exports = function ( jsongin )
 				let sub_elements = [];
 				for ( let segment_index = 0; segment_index < segments.length; segment_index++ )
 				{
+					// An empty element inside a path names a field called '', and is kept.
+					// SplitPath reads an empty ***path*** as the document itself and returns
+					// nothing for it, which used to drop the element here: 'a.' joined as 'a',
+					// so a query on the field '' read the field 'a' instead. Verified against MongoDB 6.0.28, 7.0.40 and 8.3.8.
+					if ( segments[ segment_index ] === '' ) { sub_elements.push( '' ); continue; }
 					let parts = jsongin.SplitPath( segments[ segment_index ] );
 					sub_elements.push( ...parts );
 				}
