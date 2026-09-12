@@ -43,6 +43,13 @@ module.exports = function ( Driver )
 			assert.ok( await refused( [ { a: 1 } ], { $not: { a: 2 } } ) );
 		} );
 
+		it( 'should refuse an empty $not', async () =>
+		{
+			// There is nothing to negate. jsongin used to answer false, which a caller could
+			// not tell from a field which met the condition. Found on 2026-09-12.
+			assert.ok( await refused( [ { a: 1 } ], { a: { $not: {} } } ) );
+		} );
+
 		it( 'should accept $nor at the top level', async () =>
 		{
 			// The counterpart to the test above: this is the spelling which is allowed, so a

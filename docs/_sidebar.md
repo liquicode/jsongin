@@ -95,6 +95,17 @@
 	- [`AsDate()`](/guides/jsongin/AsDate.md)
 	- [`AsBoolean()`](/guides/jsongin/AsBoolean.md)
 	- [`IsQuery()`](/guides/jsongin/IsQuery.md)
+	- [`ValidateQuery()`](/guides/jsongin/ValidateQuery.md)
+
+<hr>
+
+- Work with JSON Schema
+
+	- [JSON Schema](/guides/JSON-Schema.md)
+	- [`ValidateDocument()`](/guides/jsongin/ValidateDocument.md)
+	- [`InferSchema()`](/guides/jsongin/InferSchema.md)
+	- [`InitSchema()`](/guides/jsongin/InitSchema.md)
+	- [`ProjectSchema()`](/guides/jsongin/ProjectSchema.md)
 
 <hr>
 

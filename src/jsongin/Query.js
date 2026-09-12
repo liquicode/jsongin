@@ -68,51 +68,8 @@ module.exports = function ( jsongin )
 			// Check for operator.
 			if ( typeof jsongin.QueryOperators[ key ] !== 'undefined' )
 			{
-				// Check for top level operator.
-				if ( Path === '' )
-				{
-					if ( !jsongin.QueryOperators[ key ].TopLevel )
-					{
-						refuse( `Operator [${key}] cannot appear at the top level of a query. Only logical operators can appear at the top level of a query.` );
-					}
-				}
-				else if ( jsongin.QueryOperators[ key ].TopLevel && ( jsongin.QueryOperators[ key ].FieldLevel !== true ) )
-				{
-					// The reverse. A top level operator combines or annotates whole criteria,
-					// and below a field there is no criteria to combine: MongoDB reports an
-					// unknown operator for { a: { $or: [ ... ] } }, and the same for $and,
-					// $nor, $expr and $comment, wherever the field sits - inside $not, inside
-					// a logical branch, inside $elemMatch. This used to evaluate them there.
-					// An extension which belongs at both levels, $exprx, says so with
-					// FieldLevel. Verified against MongoDB 6.0.28, 7.0.40 and 8.3.8.
-					refuse( `Operator [${key}] cannot appear below a field. It can only appear at the top level of a query, and was found at [${Path}].` );
-				}
-				// Evaluate operator.
-				let sub_query = Criteria[ key ];
-				if ( typeof sub_query === 'undefined' )
-				{
-					refuse( `Operator [${key}] cannot be set to undefined. Use $exists to test if a field exists in the document.` );
-				}
-
-				// Check the value against the types the operator says it takes.
-				// An operator is still free to validate its own value, and does when it is
-				// called directly rather than through here.
 				let operator = jsongin.QueryOperators[ key ];
-				if ( jsongin.ShortType( operator.ValueTypes ) === 's' )
-				{
-					let value_type = jsongin.ShortType( sub_query );
-					if ( operator.ValueTypes.includes( value_type ) === false )
-					{
-						refuse( `Operator [${key}] does not take a value of type [${value_type}]. It takes [${operator.ValueTypes}].` );
-					}
-				}
-
-				// Fold a sibling $options into the pattern, so that $regex stays a one value
-				// operator like every other one and never has to see the rest of the criteria.
-				if ( ( key === '$regex' ) && ( typeof Criteria.$options !== 'undefined' ) )
-				{
-					sub_query = combine_regex_options( sub_query, Criteria.$options, Path );
-				}
+				let sub_query = check_operator( key, Criteria, Path );
 
 				let result = operator.Query( Document, sub_query, Path );
 				if ( result === false )
@@ -153,6 +110,224 @@ module.exports = function ( jsongin )
 			}
 		}
 		return true; // Implicit $and
+	};
+
+
+	//---------------------------------------------------------------------
+	// The checks every operator gets before it is evaluated, or validated: that it sits at a
+	// level it belongs to, that it has a value, and that the value is a type it takes. Returns
+	// the operand to hand the operator, with a sibling $options folded into a $regex.
+	//
+	// ***Shared by Query and ValidateQuery***, so that what one refuses the other refuses.
+	function check_operator( key, Criteria, Path )
+	{
+		let operator = jsongin.QueryOperators[ key ];
+
+		// Check for top level operator.
+		if ( Path === '' )
+		{
+			if ( !operator.TopLevel )
+			{
+				refuse( `Operator [${key}] cannot appear at the top level of a query. Only logical operators can appear at the top level of a query.` );
+			}
+		}
+		else if ( operator.TopLevel && ( operator.FieldLevel !== true ) )
+		{
+			// The reverse. A top level operator combines or annotates whole criteria,
+			// and below a field there is no criteria to combine: MongoDB reports an
+			// unknown operator for { a: { $or: [ ... ] } }, and the same for $and,
+			// $nor, $expr and $comment, wherever the field sits - inside $not, inside
+			// a logical branch, inside $elemMatch. This used to evaluate them there.
+			// An extension which belongs at both levels, $exprx, says so with
+			// FieldLevel. Verified against MongoDB 6.0.28, 7.0.40 and 8.3.8.
+			refuse( `Operator [${key}] cannot appear below a field. It can only appear at the top level of a query, and was found at [${Path}].` );
+		}
+
+		let sub_query = Criteria[ key ];
+		if ( typeof sub_query === 'undefined' )
+		{
+			refuse( `Operator [${key}] cannot be set to undefined. Use $exists to test if a field exists in the document.` );
+		}
+
+		// Check the value against the types the operator says it takes.
+		// An operator is still free to validate its own value, and does when it is
+		// called directly rather than through here.
+		if ( jsongin.ShortType( operator.ValueTypes ) === 's' )
+		{
+			let value_type = jsongin.ShortType( sub_query );
+			if ( operator.ValueTypes.includes( value_type ) === false )
+			{
+				refuse( `Operator [${key}] does not take a value of type [${value_type}]. It takes [${operator.ValueTypes}].` );
+			}
+		}
+
+		// Fold a sibling $options into the pattern, so that $regex stays a one value
+		// operator like every other one and never has to see the rest of the criteria.
+		if ( ( key === '$regex' ) && ( typeof Criteria.$options !== 'undefined' ) )
+		{
+			sub_query = combine_regex_options( sub_query, Criteria.$options, Path );
+		}
+		return sub_query;
+	};
+
+
+	//---------------------------------------------------------------------
+	// Checks a criteria the way Query would, without a document and without stopping early.
+	//
+	// ***Query refuses a mistake only when it reaches it***, and evaluation stops at the first
+	// condition which is false - so `{ a: 2, b: { $size: 2.5 } }` against `{ a: 1 }` answers
+	// false and never sees the $size. A storage deciding whether to send a criteria to a
+	// server has no document to evaluate, and an empty collection has none to refuse with.
+	// This walks every operator at every level and applies the same checks Query applies:
+	// the shared ones in check_operator, then whatever the operator itself refuses, asked by
+	// evaluating it against an empty document. That evaluation is for its refusals only; its
+	// answer means nothing and is not returned.
+	//
+	// The operators which carry criteria are walked here rather than through their own
+	// evaluation, because evaluation short-circuits: $and stops at its first false branch,
+	// and $elemMatch never evaluates against a document with no array. The shapes are each
+	// operator's own - see Logical/*.js and Array/elemMatch.js, whose validate_criteria this
+	// mirrors for the element form.
+	const LOGICAL = [ '$and', '$or', '$nor', '$not' ];
+
+	function ValidateQuery( Criteria, Path = '' )
+	{
+		if ( jsongin.ShortType( Criteria ) !== 'o' )
+		{
+			refuse( `The Criteria parameter must be an object.` );
+		}
+		Path = jsongin.SplitPath( Path ).join( '.' );
+
+		for ( let key in Criteria )
+		{
+			if ( key === '$options' )
+			{
+				if ( typeof Criteria.$regex === 'undefined' )
+				{
+					refuse( `$options needs a $regex beside it at [${Path}].` );
+				}
+				continue;
+			}
+
+			if ( typeof jsongin.QueryOperators[ key ] !== 'undefined' )
+			{
+				validate_operator( key, Criteria, Path );
+				continue;
+			}
+
+			if ( key.startsWith( '$' ) )
+			{
+				refuse( `Unknown operator [${key}] at [${Path}].` );
+			}
+
+			let sub_query = Criteria[ key ];
+			let sub_query_path = jsongin.JoinPaths( Path, key );
+			if ( jsongin.IsQuery( sub_query ) )
+			{
+				ValidateQuery( sub_query, sub_query_path );
+			}
+			else if ( typeof sub_query === 'undefined' )
+			{
+				refuse( `The implicit $eq operator cannot be set to undefined. Use $exists to test if a field exists in the document.` );
+			}
+		}
+		return;
+	};
+
+
+	// One operator: the shared checks, the criteria it carries, then its own refusals.
+	function validate_operator( key, Criteria, Path )
+	{
+		let operator = jsongin.QueryOperators[ key ];
+		let sub_query = check_operator( key, Criteria, Path );
+		let sub_type = jsongin.ShortType( sub_query );
+
+		if ( ( key === '$and' ) || ( key === '$or' ) || ( key === '$nor' ) )
+		{
+			if ( sub_type === 'a' )
+			{
+				for ( let index = 0; index < sub_query.length; index++ ) { ValidateQuery( sub_query[ index ], Path ); }
+			}
+		}
+		else if ( key === '$not' )
+		{
+			if ( sub_type === 'o' ) { ValidateQuery( sub_query, Path ); }
+		}
+		else if ( key === '$elemMatch' )
+		{
+			if ( sub_type === 'o' ) { validate_element_criteria( sub_query, Path ); }
+		}
+		else if ( key === '$all' )
+		{
+			if ( sub_type === 'a' )
+			{
+				for ( let index = 0; index < sub_query.length; index++ )
+				{
+					let entry = sub_query[ index ];
+					if ( ( jsongin.ShortType( entry ) === 'o' ) && ( Object.keys( entry )[ 0 ] === '$elemMatch' ) )
+					{
+						validate_operator( '$elemMatch', entry, Path );
+					}
+				}
+			}
+		}
+
+		// The operator's own checks, which it makes before looking at a document.
+		operator.Query( {}, sub_query, Path );
+		return;
+	};
+
+
+	// The criteria an $elemMatch carries, in the shape element_matches reads it: a logical key
+	// combines element criteria, another operator applies to the element itself, and anything
+	// else is a field of the element.
+	function validate_element_criteria( Criteria, Path )
+	{
+		for ( let key in Criteria )
+		{
+			let value = Criteria[ key ];
+			let value_type = jsongin.ShortType( value );
+			if ( LOGICAL.includes( key ) )
+			{
+				if ( key === '$not' )
+				{
+					if ( value_type === 'o' ) { validate_element_criteria( value, Path ); }
+				}
+				else if ( value_type === 'a' )
+				{
+					for ( let index = 0; index < value.length; index++ )
+					{
+						if ( jsongin.ShortType( value[ index ] ) === 'o' ) { validate_element_criteria( value[ index ], Path ); }
+					}
+				}
+				continue;
+			}
+			if ( typeof jsongin.QueryOperators[ key ] !== 'undefined' )
+			{
+				// Applied to the element, so a top level operator has no element to apply to -
+				// which is $elemMatch's own rule, asked below through its evaluation. One which
+				// declares ElementLevel applies to an element as it does to a document, and is
+				// asked for its own refusals the way the top level asks.
+				if ( jsongin.QueryOperators[ key ].ElementLevel === true )
+				{
+					jsongin.QueryOperators[ key ].Query( {}, value, '' );
+					continue;
+				}
+				if ( ( key !== '$comment' ) && !( operator_is_top_level_only( key ) ) ) { validate_operator( key, Criteria, Path ); }
+				continue;
+			}
+			let sub_criteria = {};
+			sub_criteria[ key ] = value;
+			ValidateQuery( sub_criteria, Path );
+		}
+		return;
+	};
+
+
+	function operator_is_top_level_only( key )
+	{
+		let operator = jsongin.QueryOperators[ key ];
+		return ( ( operator.TopLevel === true ) && ( operator.FieldLevel !== true ) );
 	};
 
 
@@ -200,5 +375,8 @@ module.exports = function ( jsongin )
 
 
 	//---------------------------------------------------------------------
-	return Query;
+	return {
+		Query: Query,
+		ValidateQuery: ValidateQuery,
+	};
 };

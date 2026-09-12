@@ -10,13 +10,13 @@
 
 > Filter, Sort, Project, Update, and Aggregate JSON documents anywhere.
 
-> Covers 86.2% (219/254) of the MongoDB API (v6).
+> Covers 86.6% (220/254) of the MongoDB API (v6).
 
 <hr>
 
 <div class="cover-features">
 	<div class="cover-art" role="img" aria-label="jsongin engine">
-		<img src="media/engine01-548x421.png" alt="jsongin engine">
+		<img src="media/engine01-274x211.png" alt="jsongin engine" width="274" height="211">
 	</div>
 	<ul class="cover-feature-list">
 		<li>Document filtering, projection, and sorting.</li>

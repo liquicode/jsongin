@@ -126,6 +126,65 @@ describe( '130) Engine Function Tests', () =>
 
 
 	//---------------------------------------------------------------------
+	describe( 'ValidateQuery Tests', () =>
+	{
+
+		it( 'should accept every criteria Query accepts', () =>
+		{
+			jsongin.ValidateQuery( {} );
+			jsongin.ValidateQuery( { a: 1 } );
+			jsongin.ValidateQuery( { a: { $gt: 1, $lt: 5 }, b: /x/, c: { $regex: 'x', $options: 'i' } } );
+			jsongin.ValidateQuery( { $or: [ { a: 1 }, { $and: [ { b: { $in: [ 1, 2 ] } }, { c: { $not: { $gt: 1 } } } ] } ] } );
+			jsongin.ValidateQuery( { a: { $elemMatch: { b: 1, c: { $gt: 1 } } }, d: { $elemMatch: { $gt: 1, $lt: 5 } } } );
+			jsongin.ValidateQuery( { a: { $elemMatch: { $or: [ { b: 1 }, { c: 1 } ] } } } );
+			jsongin.ValidateQuery( { a: { $all: [ { $elemMatch: { b: 1 } }, { $elemMatch: { c: 1 } } ] } } );
+			jsongin.ValidateQuery( { $expr: { $gt: [ '$a', 1 ] }, $comment: 'x' } );
+			jsongin.ValidateQuery( { 'a.b': null, 'a.0': { $exists: false } } );
+		} );
+
+		it( 'should refuse what Query refuses', () =>
+		{
+			assert.throws( () => jsongin.ValidateQuery( { $nope: 1 } ) );
+			assert.throws( () => jsongin.ValidateQuery( { $and: [] } ) );
+			assert.throws( () => jsongin.ValidateQuery( { $and: { a: 1 } } ) );
+			assert.throws( () => jsongin.ValidateQuery( { $not: { a: 1 } } ) );
+			assert.throws( () => jsongin.ValidateQuery( { a: { $or: [ { $gt: 0 } ] } } ) );
+			assert.throws( () => jsongin.ValidateQuery( { a: { $size: 2.5 } } ) );
+			assert.throws( () => jsongin.ValidateQuery( { a: { $size: -1 } } ) );
+			assert.throws( () => jsongin.ValidateQuery( { a: { $mod: [ 0, 1 ] } } ) );
+			assert.throws( () => jsongin.ValidateQuery( { a: { $type: 'bogus' } } ) );
+			assert.throws( () => jsongin.ValidateQuery( { a: { $all: [ { $elemMatch: { b: 1 } }, 1 ] } } ) );
+			assert.throws( () => jsongin.ValidateQuery( { a: { $regex: 'x', $options: 'q' } } ) );
+			assert.throws( () => jsongin.ValidateQuery( { a: { $options: 'i' } } ) );
+			assert.throws( () => jsongin.ValidateQuery( { a: undefined } ) );
+		} );
+
+		it( 'should refuse a mistake behind a condition Query would never reach', () =>
+		{
+			// Query stops at the first false condition; a document with a: 1 never reaches
+			// the $size. ValidateQuery walks everything.
+			assert.strictEqual( jsongin.Query( { a: 1 }, { a: 2, b: { $size: 2.5 } } ), false );
+			assert.throws( () => jsongin.ValidateQuery( { a: 2, b: { $size: 2.5 } } ) );
+			assert.throws( () => jsongin.ValidateQuery( { $or: [ { a: 1 }, { b: { $type: 'bogus' } } ] } ) );
+			assert.throws( () => jsongin.ValidateQuery( { $and: [ { a: 1 }, { b: { $or: [ { $gt: 0 } ] } } ] } ) );
+			assert.throws( () => jsongin.ValidateQuery( { a: { $not: { $size: -1 } } } ) );
+			assert.throws( () => jsongin.ValidateQuery( { a: { $elemMatch: { b: { $size: 2.5 } } } } ) );
+			assert.throws( () => jsongin.ValidateQuery( { a: { $elemMatch: { b: { $or: [ { $gt: 0 } ] } } } } ) );
+			assert.throws( () => jsongin.ValidateQuery( { a: { $elemMatch: { $expr: { $gt: [ '$a', 1 ] } } } } ) );
+			assert.throws( () => jsongin.ValidateQuery( { a: { $all: [ { $elemMatch: { b: { $size: 2.5 } } } ] } } ) );
+		} );
+
+		it( 'should refuse a criteria which is not an object', () =>
+		{
+			assert.throws( () => jsongin.ValidateQuery( 'abc' ) );
+			assert.throws( () => jsongin.ValidateQuery( null ) );
+			assert.throws( () => jsongin.ValidateQuery() );
+			assert.throws( () => jsongin.ValidateQuery( [ { a: 1 } ] ) );
+		} );
+
+	} );
+
+
 	describe( 'IsQuery Tests', () =>
 	{
 
@@ -1201,6 +1260,257 @@ describe( '130) Engine Function Tests', () =>
 			// Without a report object the walk is the same and nothing is reported.
 			assert.deepStrictEqual( jsongin.ResolveCandidates( {}, 'a' ), [] );
 			assert.deepStrictEqual( jsongin.ResolveCandidates( {}, 'a', true, null ), [] );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	// The JSON Schema functions. The evaluator itself is measured against the specification's
+	// own test suite in 170); these tests state the engine's own answers - the findings it
+	// returns, its options, and how a value JSON has no form for is read.
+	describe( 'ValidateDocument Tests', () =>
+	{
+
+		it( 'should return no findings for a valid document', () =>
+		{
+			let schema = { type: 'object', required: [ 'a' ], properties: { a: { type: 'integer' }, b: { type: 'array', items: { type: 'string' } } } };
+			assert.deepStrictEqual( jsongin.ValidateDocument( { a: 1, b: [ 'x' ] }, schema ), [] );
+			assert.deepStrictEqual( jsongin.ValidateDocument( { a: 1 }, schema ), [] );
+			assert.deepStrictEqual( jsongin.ValidateDocument( 42, true ), [] );
+		} );
+
+		it( 'should return one finding per failed assertion, in the basic output form', () =>
+		{
+			let findings = jsongin.ValidateDocument( { a: 'x', c: 1 }, { required: [ 'a', 'b' ], properties: { a: { type: 'integer' } } } );
+			assert.strictEqual( findings.length, 2 );
+			assert.deepStrictEqual( findings[ 0 ], { valid: false, keywordLocation: '/required', absoluteKeywordLocation: '#/required', instanceLocation: '', error: 'The property [b] is required.' } );
+			assert.strictEqual( findings[ 1 ].keywordLocation, '/properties/a/type' );
+			assert.strictEqual( findings[ 1 ].instanceLocation, '/a' );
+			assert.strictEqual( jsongin.ValidateDocument( 42, false ).length, 1 );
+		} );
+
+		it( 'should locate a finding through a reference', () =>
+		{
+			let schema = { $defs: { N: { type: 'number' } }, properties: { a: { $ref: '#/$defs/N' } } };
+			let findings = jsongin.ValidateDocument( { a: 'x' }, schema );
+			assert.strictEqual( findings.length, 1 );
+			assert.strictEqual( findings[ 0 ].keywordLocation, '/properties/a/$ref/type' );
+			assert.strictEqual( findings[ 0 ].absoluteKeywordLocation, '#/$defs/N/type' );
+		} );
+
+		it( 'should read the dialect from $schema, and from the Dialect option when the schema is silent', () =>
+		{
+			let draft4 = { maximum: 5, exclusiveMaximum: true };
+			assert.strictEqual( jsongin.ValidateDocument( 5, draft4 ).length, 0 );
+			assert.strictEqual( jsongin.ValidateDocument( 5, draft4, { Dialect: 'draft-04' } ).length, 1 );
+			assert.strictEqual( jsongin.ValidateDocument( 5, Object.assign( { $schema: 'http://json-schema.org/draft-04/schema#' }, draft4 ) ).length, 1 );
+			assert.strictEqual( jsongin.ValidateDocument( 5, Object.assign( { $schema: 'http://json-schema.org/draft-04/schema#' }, draft4 ), { Dialect: '2020-12' } ).length, 1 );
+		} );
+
+		it( 'should reach a remote schema through the Registry option and never the network', () =>
+		{
+			let registry = { 'https://example.com/schemas/id.json': { type: 'string', minLength: 3 } };
+			let schema = { properties: { id: { $ref: 'https://example.com/schemas/id.json' } } };
+			assert.strictEqual( jsongin.ValidateDocument( { id: 'abc' }, schema, { Registry: registry } ).length, 0 );
+			assert.strictEqual( jsongin.ValidateDocument( { id: 'ab' }, schema, { Registry: registry } ).length, 1 );
+			assert.throws( () => jsongin.ValidateDocument( { id: 'abc' }, schema ) );
+		} );
+
+		it( 'should treat a format as an annotation unless FormatAssertion is set', () =>
+		{
+			let schema = { format: 'ipv4' };
+			assert.strictEqual( jsongin.ValidateDocument( 'nope', schema ).length, 0 );
+			assert.strictEqual( jsongin.ValidateDocument( 'nope', schema, { FormatAssertion: true } ).length, 1 );
+			assert.strictEqual( jsongin.ValidateDocument( '10.0.0.1', schema, { FormatAssertion: true } ).length, 0 );
+			assert.strictEqual( jsongin.ValidateDocument( 'anything', { format: 'no-such-format' }, { FormatAssertion: true } ).length, 0 );
+		} );
+
+		it( 'should read undefined as absent, a date as a string, and a regexp as its source', () =>
+		{
+			assert.strictEqual( jsongin.ValidateDocument( { a: undefined }, { required: [ 'a' ] } ).length, 1 );
+			assert.strictEqual( jsongin.ValidateDocument( { a: undefined }, { properties: { a: false } } ).length, 0 );
+			let date = new Date( 1700000000000 );
+			assert.strictEqual( jsongin.ValidateDocument( date, { type: 'string', format: 'date-time' }, { FormatAssertion: true } ).length, 0 );
+			assert.strictEqual( jsongin.ValidateDocument( date, { type: 'number' } ).length, 1 );
+			assert.strictEqual( jsongin.ValidateDocument( date, { const: '2023-11-14T22:13:20.000Z' } ).length, 0 );
+			assert.strictEqual( jsongin.ValidateDocument( /ab+c/i, { type: 'string', pattern: '^ab' } ).length, 0 );
+			assert.strictEqual( jsongin.ValidateDocument( /ab+c/i, { const: 'ab+c' } ).length, 0 );
+		} );
+
+		it( 'should call a whole number an integer, since Javascript has one number type', () =>
+		{
+			assert.strictEqual( jsongin.ValidateDocument( 1.0, { type: 'integer' } ).length, 0 );
+			assert.strictEqual( jsongin.ValidateDocument( 1.5, { type: 'integer' } ).length, 1 );
+		} );
+
+		it( 'should refuse what it cannot evaluate', () =>
+		{
+			assert.throws( () => jsongin.ValidateDocument( 1, { type: 'string' }, { Dialect: 'draft-99' } ) );
+			assert.throws( () => jsongin.ValidateDocument( 1, { $ref: 'nowhere.json' } ) );
+			assert.throws( () => jsongin.ValidateDocument( 1, 'not a schema' ) );
+			assert.throws( () => jsongin.ValidateDocument( { a: 1 }, { properties: { a: 42 } } ) );
+		} );
+
+	} );
+
+
+	describe( 'InferSchema Tests', () =>
+	{
+		const DOCUMENTS = [
+			{ id: 1, name: 'Alice', tags: [ 'a', 'b' ], profile: { role: 'admin', level: 2 }, joined: new Date( 1700000000000 ) },
+			{ id: 2, name: 'Bob', tags: [], profile: { role: 'user' }, joined: new Date( 1700000000000 ), note: null },
+			{ id: 3, name: null, tags: [ 'c' ], profile: { role: 'user', level: 1.5 }, joined: new Date( 1700000000000 ), note: 'x' },
+		];
+
+		it( 'should describe one document', () =>
+		{
+			let schema = jsongin.InferSchema( DOCUMENTS[ 0 ] );
+			assert.strictEqual( schema.$schema, 'https://json-schema.org/draft/2020-12/schema' );
+			assert.strictEqual( schema.type, 'object' );
+			assert.deepStrictEqual( schema.required, [ 'id', 'name', 'tags', 'profile', 'joined' ] );
+			assert.deepStrictEqual( schema.properties.id, { type: 'integer' } );
+			assert.deepStrictEqual( schema.properties.tags, { type: 'array', items: { type: 'string' } } );
+			assert.deepStrictEqual( schema.properties.joined, { type: 'string', format: 'date-time' } );
+			assert.deepStrictEqual( schema.properties.profile.properties.level, { type: 'integer' } );
+		} );
+
+		it( 'should describe the union of many documents', () =>
+		{
+			let schema = jsongin.InferSchema( DOCUMENTS );
+			assert.deepStrictEqual( schema.required, [ 'id', 'name', 'tags', 'profile', 'joined' ] );
+			assert.deepStrictEqual( schema.properties.name.type, [ 'string', 'null' ] );
+			assert.deepStrictEqual( schema.properties.note.type, [ 'null', 'string' ] );
+			assert.deepStrictEqual( schema.properties.profile.required, [ 'role' ] );
+			assert.deepStrictEqual( schema.properties.profile.properties.level, { type: 'number' } );
+			assert.deepStrictEqual( schema.properties.tags, { type: 'array', items: { type: 'string' } } );
+		} );
+
+		it( 'should require a field by the share of documents which carry it', () =>
+		{
+			assert.deepStrictEqual( jsongin.InferSchema( DOCUMENTS, { RequiredThreshold: 0.5 } ).required, [ 'id', 'name', 'tags', 'profile', 'joined', 'note' ] );
+			assert.strictEqual( typeof jsongin.InferSchema( DOCUMENTS, { RequiredThreshold: 0 } ).required, 'undefined' );
+		} );
+
+		it( 'should list the distinct values of a scalar field when asked and they are few', () =>
+		{
+			let schema = jsongin.InferSchema( DOCUMENTS, { MaxDistinct: 2 } );
+			assert.deepStrictEqual( schema.properties.profile.properties.role.enum, [ 'admin', 'user' ] );
+			assert.strictEqual( typeof schema.properties.name.enum, 'undefined' );
+			assert.strictEqual( typeof jsongin.InferSchema( DOCUMENTS ).properties.profile.properties.role.enum, 'undefined' );
+		} );
+
+		it( 'should produce a schema its own documents satisfy', () =>
+		{
+			let schema = jsongin.InferSchema( DOCUMENTS, { MaxDistinct: 4 } );
+			for ( let index = 0; index < DOCUMENTS.length; index++ )
+			{
+				assert.deepStrictEqual( jsongin.ValidateDocument( DOCUMENTS[ index ], schema, { FormatAssertion: true } ), [] );
+			}
+			assert.strictEqual( jsongin.ValidateDocument( { id: 'x' }, schema ).length > 0, true );
+		} );
+
+		it( 'should describe nothing from nothing, and refuse what is not a document', () =>
+		{
+			assert.deepStrictEqual( jsongin.InferSchema( [] ), { $schema: 'https://json-schema.org/draft/2020-12/schema' } );
+			assert.deepStrictEqual( jsongin.InferSchema( {} ), { $schema: 'https://json-schema.org/draft/2020-12/schema', type: 'object' } );
+			assert.throws( () => jsongin.InferSchema( 42 ) );
+			assert.throws( () => jsongin.InferSchema( 'abc' ) );
+			assert.throws( () => jsongin.InferSchema( {}, { Dialect: 'draft-99' } ) );
+		} );
+
+	} );
+
+
+	describe( 'InitSchema Tests', () =>
+	{
+		const SCHEMA = {
+			type: 'object',
+			required: [ 'name', 'count', 'flags' ],
+			properties: {
+				name: { type: 'string' },
+				count: { type: 'integer', default: 10 },
+				flags: { type: 'array' },
+				editor: { type: 'object', properties: { tabs: { type: 'integer', default: 4 }, wrap: { type: 'boolean', default: true } }, default: {} },
+				theme: { type: 'string', default: 'light' },
+				notes: { type: [ 'string', 'null' ] },
+			},
+		};
+
+		it( 'should fill an absent field from its default, through nested objects', () =>
+		{
+			assert.deepStrictEqual( jsongin.InitSchema( {}, SCHEMA ), { count: 10, editor: { tabs: 4, wrap: true }, theme: 'light' } );
+			assert.deepStrictEqual( jsongin.InitSchema( null, SCHEMA ), { count: 10, editor: { tabs: 4, wrap: true }, theme: 'light' } );
+			assert.deepStrictEqual( jsongin.InitSchema( undefined, SCHEMA ), { count: 10, editor: { tabs: 4, wrap: true }, theme: 'light' } );
+		} );
+
+		it( 'should leave a present field as it is, and never modify the document given', () =>
+		{
+			let document = { count: 3, editor: { tabs: 2 }, extra: 'kept' };
+			let result = jsongin.InitSchema( document, SCHEMA );
+			assert.deepStrictEqual( result, { count: 3, editor: { tabs: 2, wrap: true }, extra: 'kept', theme: 'light' } );
+			assert.deepStrictEqual( document, { count: 3, editor: { tabs: 2 }, extra: 'kept' } );
+			assert.notStrictEqual( result.editor, document.editor );
+		} );
+
+		it( 'should give a required field with no default its empty value only when ForceRequired is set', () =>
+		{
+			assert.deepStrictEqual( jsongin.InitSchema( {}, SCHEMA, { ForceRequired: true } ), { name: '', count: 10, flags: [], editor: { tabs: 4, wrap: true }, theme: 'light' } );
+			let typed = { required: [ 'a', 'b', 'c', 'd', 'e', 'f' ], properties: { a: { type: 'number' }, b: { type: 'boolean' }, c: { type: 'null' }, d: { type: 'object' }, e: { type: [ 'integer', 'string' ] }, f: {} } };
+			assert.deepStrictEqual( jsongin.InitSchema( {}, typed, { ForceRequired: true } ), { a: 0, b: false, c: null, d: {}, e: 0 } );
+			assert.deepStrictEqual( jsongin.InitSchema( {}, typed ), {} );
+		} );
+
+		it( 'should read the schema through $ref and allOf', () =>
+		{
+			let schema = { $defs: { Base: { properties: { kind: { default: 'base' } } } }, allOf: [ { $ref: '#/$defs/Base' }, { properties: { size: { default: 1 } } } ], properties: { own: { default: true } } };
+			assert.deepStrictEqual( jsongin.InitSchema( {}, schema ), { own: true, kind: 'base', size: 1 } );
+		} );
+
+		it( 'should refuse a document which is not an object', () =>
+		{
+			assert.throws( () => jsongin.InitSchema( 'abc', SCHEMA ) );
+			assert.throws( () => jsongin.InitSchema( [ 1 ], SCHEMA ) );
+		} );
+
+	} );
+
+
+	describe( 'ProjectSchema Tests', () =>
+	{
+		const DOCUMENT = { id: 1, user: { name: 'Alice', location: 'East', secret: 'x' }, tags: [ 'a' ], items: [ { sku: 'A', qty: 1, cost: 5 }, { sku: 'B', qty: 2, cost: 6 } ], extra: true };
+
+		it( 'should keep the fields the schema names, at every depth', () =>
+		{
+			let schema = { properties: { id: { type: 'integer' }, user: { properties: { name: {}, location: {} } }, tags: { type: 'array' } } };
+			assert.deepStrictEqual( jsongin.ProjectSchema( DOCUMENT, schema ), { id: 1, user: { name: 'Alice', location: 'East' }, tags: [ 'a' ] } );
+		} );
+
+		it( 'should reach into the elements of an array through items', () =>
+		{
+			let schema = { properties: { items: { type: 'array', items: { properties: { sku: {}, qty: {} } } } } };
+			assert.deepStrictEqual( jsongin.ProjectSchema( DOCUMENT, schema ), { items: [ { sku: 'A', qty: 1 }, { sku: 'B', qty: 2 } ] } );
+		} );
+
+		it( 'should leave out a named field the document lacks, and name nothing from a schema with no properties', () =>
+		{
+			assert.deepStrictEqual( jsongin.ProjectSchema( DOCUMENT, { properties: { id: {}, missing: {} } } ), { id: 1 } );
+			assert.deepStrictEqual( jsongin.ProjectSchema( DOCUMENT, { type: 'object' } ), {} );
+			assert.deepStrictEqual( jsongin.ProjectSchema( DOCUMENT, true ), {} );
+		} );
+
+		it( 'should read the schema through $ref and allOf, and never modify the document', () =>
+		{
+			let schema = { $defs: { Keyed: { properties: { id: {} } } }, allOf: [ { $ref: '#/$defs/Keyed' }, { properties: { extra: {} } } ] };
+			let before = JSON.stringify( DOCUMENT );
+			assert.deepStrictEqual( jsongin.ProjectSchema( DOCUMENT, schema ), { id: 1, extra: true } );
+			assert.strictEqual( JSON.stringify( DOCUMENT ), before );
+		} );
+
+		it( 'should refuse a document which is not an object', () =>
+		{
+			assert.throws( () => jsongin.ProjectSchema( [ 1 ], { properties: { a: {} } } ) );
+			assert.throws( () => jsongin.ProjectSchema( null, { properties: { a: {} } } ) );
 		} );
 
 	} );

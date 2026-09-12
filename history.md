@@ -8,6 +8,30 @@
 v0.1.2 (current)
 ---------------------------------------------------------------------
 
+***`jsongin` reads JSON Schema***, in every draft from 4 to 2020-12 and in MongoDB's reading of
+  it, measured against the specification's official test suite the way the operators are
+  measured against MongoDB. See the [JSON Schema](/docs/guides/JSON-Schema.md) guide.
+
+- ***`ValidateDocument( Document, Schema, Options )`*** returns the findings for a document
+  against a schema, in the specification's basic output form, and an empty array when the
+  document satisfies it. Every keyword of every draft is read, including `$ref`, `$dynamicRef`
+  and the `unevaluated` pair; a `format` is an annotation until `FormatAssertion` asks it to
+  refuse, and every format the specification names is then checked; a `$ref` to another
+  document is answered from a `Registry` option and never fetched.
+- ***`InferSchema( Documents, Options )`*** writes a schema describing a set of documents.
+  ***`InitSchema( Document, Schema, Options )`*** fills a document's absent fields from the
+  schema's defaults, and with `ForceRequired` gives a required field with no default its
+  type's empty value. ***`ProjectSchema( Document, Schema )`*** keeps the fields a schema names.
+- ***The `$jsonSchema` query operator*** is implemented, reading a schema exactly as MongoDB
+  does - draft 4 with `bsonType`, a dotted name as a path, a date never a string, and a refusal
+  for every keyword MongoDB refuses - each behavior measured on MongoDB 6.0.28, 7.0.40 and
+  8.3.8 and asserted in the parity suites. It stands inside `$elemMatch`, where an element
+  matches only when it is an object.
+- A `Date` is a string in the JSON drafts and a `date` in MongoDB's dialect, a `RegExp` is a
+  string, and an `undefined` is absent, the way `Merge` and `Diff` read it.
+- `npm run json-schema-report` measures the evaluator against the vendored suite, every draft
+  and every set; `npm test` asserts the sets the report shows passing.
+
 ***The engine answers as MongoDB does in eight more places***, each one measured against
   MongoDB 6.0.28, 7.0.40 and 8.3.8 before it was changed, and each one asserted in the parity
   suites, which grew from 988 to 1016 compared behaviors. The measurement and the map of what

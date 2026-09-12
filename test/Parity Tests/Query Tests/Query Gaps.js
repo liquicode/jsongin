@@ -28,8 +28,8 @@
 	2026-08-20 and graduated the same day to
 	`test-suite/Bitwise and Miscellaneous Query Tests.js`.
 
-	What remains unimplemented in the Query section is `$jsonSchema`, `$text`, `$where`, the
-	four geospatial operators, and the two names in the Miscellaneous group which are not query
+	What remains unimplemented in the Query section is `$text`, `$where`, the four
+	geospatial operators, and the two names in the Miscellaneous group which are not query
 	operators at all: `$rand`, which is an expression reached through `$expr`, and `$natural`,
 	which is a hint about how a collection is scanned and has no meaning for a matcher over one
 	document. Neither can ever be registered here. See `.reviews/2026-08-19/review.md`.

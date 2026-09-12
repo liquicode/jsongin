@@ -41,7 +41,7 @@ document written around one consumer's field names teaches those names instead:
 
 That single error is the most common failure a model makes here, and jsongin refuses it by
 name: *Operator [$gt] cannot appear at the top level of a query.* Only `$and`, `$or`, `$nor`,
-`$expr`, `$exprx`, `$noop`, `$comment` and `$sampleRate` may open a query.
+`$expr`, `$exprx`, `$noop`, `$comment`, `$sampleRate` and `$jsonSchema` may open a query.
 
 **Equality needs no operator.** `{ "Retired": false }` is the whole query.
 
@@ -141,6 +141,7 @@ A missing field satisfies `$not`, because a field that is not there cannot meet 
 | `$regex` | `{ f: { $regex: "^A", $options: "i" } }` | a **string** field matches the pattern |
 | `$mod` | `{ f: { $mod: [ divisor, remainder ] } }` | the field divided by `divisor` leaves `remainder` |
 | `$expr` | `{ $expr: expression }` | compare one field to another; see below |
+| `$jsonSchema` | `{ $jsonSchema: schema }` | the document satisfies a JSON Schema, read as MongoDB reads one |
 
 **`$exists` is about presence, not emptiness.** Vehicles with no recorded sighting:
 

@@ -270,6 +270,43 @@ Read the number for what it is. It is the share of ***shared-suite assertions***
   test for the same behavior.
 
 
+## Measuring the JSON Schema Evaluator
+
+```bash
+npm run json-schema-report
+npm run json-schema-report -- --verbose
+npm run json-schema-report -- --draft 2020-12 --set required
+```
+
+The JSON Schema functions have an authority of their own: the specification's official test
+  suite, vendored under `test/json-schema-test-suite/` at the commit its `README.md` names, so
+  that no run ever fetches anything. The report runs every case of every draft - the required
+  cases, the optional ones, and the format cases with assertion turned on - and prints the
+  pass count per set:
+
+```
+   draft     set                passed  excepted   total  claimed
+   --------------------------------------------------------------
+   2020-12   required             1301         0    1301      yes
+   2020-12   optional              162         0     162      yes
+   ...
+```
+
+A set is ***claimed*** by listing it in `CLAIMED` in `build/json-schema-suite.js`, and by
+  nothing else. `test/Unit Tests/170) JSON Schema Suite Tests.js` asserts every case of every
+  claimed set, so a claimed case going red fails `npm test`; an unclaimed set is measured here
+  and cannot. Claim a set when the report shows it fully passing.
+
+A claim may carry exceptions: cases the engine ***cannot*** satisfy, each named with its
+  reason. An excepted case is asserted to still fail, so the day it starts passing the
+  exception is noticed and removed rather than hiding a case which now works. The one exception
+  today is draft 4's `zeroTerminatedFloats`, which asks that `1.0` not be an integer, and
+  Javascript has one number type.
+
+The `$jsonSchema` query operator is measured against MongoDB like every other operator, in
+  `test/Parity Tests/Query Tests/test-suite/JSON Schema Query Tests.js`.
+
+
 ## Coverage
 
 ```bash

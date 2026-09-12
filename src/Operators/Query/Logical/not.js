@@ -13,6 +13,8 @@ Matches a field which does ***not*** satisfy the expression.
 A field which is ***not there*** satisfies `$not`, because a missing field cannot meet the
   condition being negated.
 
+An empty expression, `$not: {}`, is refused: there is nothing to negate.
+
 */
 
 module.exports = function ( jsongin )
@@ -43,6 +45,12 @@ module.exports = function ( jsongin )
 				let result = false;
 				if ( match_type === 'o' )
 				{
+					// An empty operator object negates nothing, and MongoDB refuses it rather
+					// than answering. Verified against MongoDB 6.0.28, 2026-09-12.
+					if ( Object.keys( match_value ).length === 0 )
+					{
+						throw new Error( `$not: cannot be empty at [${Path}].` );
+					}
 					result = jsongin.Query( Document, match_value, Path );
 				}
 				else if ( match_type === 'r' )

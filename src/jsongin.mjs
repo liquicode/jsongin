@@ -43,6 +43,7 @@ export const NewJsongin = ENGINE.NewJsongin;
 // Document query, evaluation, and transformation.
 
 export const Query = ENGINE.Query;
+export const ValidateQuery = ENGINE.ValidateQuery;
 export const Evaluate = ENGINE.Evaluate;
 export const Aggregate = ENGINE.Aggregate;
 export const Project = ENGINE.Project;
@@ -80,8 +81,18 @@ export const Expand = ENGINE.Expand;
 export const Hybridize = ENGINE.Hybridize;
 export const Unhybridize = ENGINE.Unhybridize;
 export const Merge = ENGINE.Merge;
+
 export const Clone = ENGINE.Clone;
 export const SafeClone = ENGINE.SafeClone;
+
+
+//---------------------------------------------------------------------
+// JSON Schema.
+
+export const ValidateDocument = ENGINE.ValidateDocument;
+export const InferSchema = ENGINE.InferSchema;
+export const InitSchema = ENGINE.InitSchema;
+export const ProjectSchema = ENGINE.ProjectSchema;
 
 
 //---------------------------------------------------------------------

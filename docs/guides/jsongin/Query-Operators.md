@@ -619,6 +619,53 @@ jsongin.Query( { a: 10, b: 3 }, { $expr: { $gt: [ { $subtract: [ '$a', '$b' ] },
 ```
 
 
+<a id="$jsonSchema"></a>$jsonSchema
+---------------------------------------------------------------------
+
+**Usage** : `{ $jsonSchema: schema }`
+
+The `$jsonSchema` operator matches a document which satisfies a JSON Schema, read the way
+  MongoDB reads one: ***draft 4*** of the specification with `bsonType` beside `type`, no
+  references, and a refusal for every keyword it does not know.
+
+`$jsonSchema` is a ***top-level*** operator.
+It may also stand inside `$and`, `$or`, `$nor` and `$elemMatch`, where an element matches only
+  when it is an object.
+Below a field, and inside `$not`, it is refused.
+
+Three things differ from the specification, and each is MongoDB's rule, measured:
+
+- A ***date*** is a `date` and a regular expression is a `regex`, and neither is ever a `string`.
+  Ask for them with `bsonType`.
+- `type` has no `integer`. `bsonType: 'int'` and `bsonType: 'double'` tell the numbers apart,
+  and `'number'` takes both.
+- A ***dotted name*** in `required` or `properties` is a path through the document, through
+  arrays, the way a dotted name is everywhere else in a query.
+
+A schema MongoDB would refuse is refused rather than answered: an unknown keyword, a keyword from
+  a later draft such as `const` or `if`, a `$ref`, an empty `required` or `enum`, a bound which is
+  not a number.
+
+To validate a document against any draft of the specification, and to learn ***why*** it
+  failed, use [`ValidateDocument()`](./ValidateDocument.md), which this operator calls.
+
+### Example
+```js
+let document = { name: 'Alice', age: 30, tags: [ 'a', 'b' ], joined: new Date( 1700000000000 ) };
+
+jsongin.Query( document, { $jsonSchema: { required: [ 'name', 'age' ], properties: { age: { bsonType: 'int', minimum: 18 } } } } ) === true
+jsongin.Query( document, { $jsonSchema: { properties: { tags: { items: { bsonType: 'string' }, maxItems: 1 } } } } ) === false
+
+// A date is a date, never a string.
+jsongin.Query( document, { $jsonSchema: { properties: { joined: { bsonType: 'date' } } } } ) === true
+jsongin.Query( document, { $jsonSchema: { properties: { joined: { type: 'string' } } } } ) === false
+
+// A keyword MongoDB does not read is refused.
+jsongin.Query( document, { $jsonSchema: { properties: { age: { type: 'integer' } } } } );   // throws
+jsongin.Query( document, { $jsonSchema: { properties: { age: { const: 30 } } } } );         // throws
+```
+
+
 <a id="$mod"></a>$mod
 ---------------------------------------------------------------------
 

@@ -28,6 +28,61 @@ declare module '@liquicode/jsongin'
 	/** A MongoDB style query criteria. */
 	export type QueryCriteria = { [ Key: string ]: any };
 
+	/** A JSON Schema: an object of keywords, or a boolean which accepts or refuses everything. */
+	export type JsonSchema = boolean | { [ Keyword: string ]: any };
+
+	/** The dialects ValidateDocument reads a schema in when the schema does not name one itself. */
+	export type SchemaDialect = '2020-12' | '2019-09' | 'draft-07' | 'draft-04';
+
+	/** Options for ValidateDocument. */
+	export interface ValidateDocumentOptions
+	{
+		/** The dialect to read the schema in when its $schema does not say. 2020-12 when absent. */
+		Dialect?: SchemaDialect;
+		/** Schemas a reference may reach, keyed by the URI they are reached at. */
+		Registry?: { [ Uri: string ]: JsonSchema };
+		/** Whether the format keyword refuses a string rather than annotating it. False when absent. */
+		FormatAssertion?: boolean;
+	}
+
+	/** Options for InitSchema and ProjectSchema: which dialect to read the schema in, and what a reference may reach. */
+	export interface SchemaOptions
+	{
+		Dialect?: SchemaDialect;
+		Registry?: { [ Uri: string ]: JsonSchema };
+	}
+
+	/** Options for InferSchema. */
+	export interface InferSchemaOptions
+	{
+		/** The share of objects a field must appear in to be required. 1 when absent; 0 makes no field required. */
+		RequiredThreshold?: number;
+		/** When given, a scalar field with no more distinct values than this gets an enum of them. */
+		MaxDistinct?: number;
+		/** The dialect the result declares in $schema. 2020-12 when absent. */
+		Dialect?: SchemaDialect;
+	}
+
+	/** Options for InitSchema. */
+	export interface InitSchemaOptions extends SchemaOptions
+	{
+		/** Whether a required field with no default is given its type's empty value. False when absent, which leaves it absent. */
+		ForceRequired?: boolean;
+	}
+
+	/**
+	 * One failed assertion, in the JSON Schema specification's basic output form. The member
+	 * names are the specification's own.
+	 */
+	export interface SchemaFinding
+	{
+		valid: false;
+		keywordLocation: string;
+		absoluteKeywordLocation: string;
+		instanceLocation: string;
+		error: string;
+	}
+
 	/**
 	 * jsongin's single character type code.
 	 *
@@ -115,6 +170,7 @@ declare module '@liquicode/jsongin'
 
 		//--- Query, evaluation, and transformation.
 		Query( Document: JsonDocument, Criteria: QueryCriteria, Path?: string ): boolean;
+		ValidateQuery( Criteria: QueryCriteria ): void;
 		Evaluate( Document: JsonDocument, Expression: any, Scope?: JsonDocument ): any;
 		Aggregate( Documents: JsonDocument[], Pipeline: JsonDocument[], Scope?: JsonDocument ): JsonDocument[];
 		Project( Document: JsonDocument, Projection: JsonDocument, IsStage?: boolean, Scope?: JsonDocument ): JsonDocument;
@@ -146,6 +202,12 @@ declare module '@liquicode/jsongin'
 		Clone<Type>( Document: Type ): Type;
 		SafeClone<Type>( Document: Type, Exceptions?: any ): Type;
 
+		//--- JSON Schema.
+		ValidateDocument( Document: any, Schema: JsonSchema, Options?: ValidateDocumentOptions ): SchemaFinding[];
+		InferSchema( Documents: any, Options?: InferSchemaOptions ): JsonSchema;
+		InitSchema( Document: JsonDocument | null | undefined, Schema: JsonSchema, Options?: InitSchemaOptions ): JsonDocument;
+		ProjectSchema( Document: JsonDocument, Schema: JsonSchema, Options?: SchemaOptions ): JsonDocument;
+
 		//--- Value comparison and typing.
 		CompareValues( ValueA: any, ValueB: any ): number;
 		LooseEquals( ValueA: any, ValueB: any ): boolean;
@@ -176,6 +238,7 @@ declare module '@liquicode/jsongin'
 	export const NewJsongin: JsonginEngine[ 'NewJsongin' ];
 
 	export const Query: JsonginEngine[ 'Query' ];
+	export const ValidateQuery: JsonginEngine[ 'ValidateQuery' ];
 	export const Evaluate: JsonginEngine[ 'Evaluate' ];
 	export const Aggregate: JsonginEngine[ 'Aggregate' ];
 	export const Project: JsonginEngine[ 'Project' ];
@@ -203,6 +266,11 @@ declare module '@liquicode/jsongin'
 	export const Merge: JsonginEngine[ 'Merge' ];
 	export const Clone: JsonginEngine[ 'Clone' ];
 	export const SafeClone: JsonginEngine[ 'SafeClone' ];
+
+	export const ValidateDocument: JsonginEngine[ 'ValidateDocument' ];
+	export const InferSchema: JsonginEngine[ 'InferSchema' ];
+	export const InitSchema: JsonginEngine[ 'InitSchema' ];
+	export const ProjectSchema: JsonginEngine[ 'ProjectSchema' ];
 
 	export const CompareValues: JsonginEngine[ 'CompareValues' ];
 	export const LooseEquals: JsonginEngine[ 'LooseEquals' ];

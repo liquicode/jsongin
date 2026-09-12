@@ -29,6 +29,7 @@ module.exports = function ( Driver )
 		require( './test-suite/Comparison Operator Tests.js' )( Driver );
 		require( './test-suite/Path Semantics Tests.js' )( Driver );
 		require( './test-suite/Bitwise and Miscellaneous Query Tests.js' )( Driver );
+		require( './test-suite/JSON Schema Query Tests.js' )( Driver );
 		require( './test-suite/Query Rejection Tests.js' )( Driver );
 	} );
 

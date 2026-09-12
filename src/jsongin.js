@@ -66,6 +66,7 @@ function NewJsongin( EngineSettings = {} )
 		$regex: require( './Operators/Query/Evaluation/regex' )( Engine ),
 		$expr: require( './Operators/Query/Evaluation/expr' )( Engine ),
 		$mod: require( './Operators/Query/Evaluation/mod' )( Engine ),
+		$jsonSchema: require( './Operators/Query/Evaluation/jsonSchema' )( Engine ),
 
 		// Bitwise Query Operators
 		$bitsAllSet: require( './Operators/Query/Bitwise/bitsAllSet' )( Engine ),
@@ -358,7 +359,10 @@ function NewJsongin( EngineSettings = {} )
 	// state the engine holds - see the note at the top of jsongin/Scope.js.
 	Engine.Scope = require( './jsongin/Scope' )( Engine );
 
-	Engine.Query = require( './jsongin/Query' )( Engine );
+	// Query and ValidateQuery share one dispatcher, so what one refuses the other refuses.
+	let query_module = require( './jsongin/Query' )( Engine );
+	Engine.Query = query_module.Query;
+	Engine.ValidateQuery = query_module.ValidateQuery;
 	Engine.Evaluate = require( './jsongin/Evaluate' )( Engine );
 	Engine.Aggregate = require( './jsongin/Aggregate' )( Engine );
 	Engine.Project = require( './jsongin/Project' )( Engine );
@@ -387,6 +391,16 @@ function NewJsongin( EngineSettings = {} )
 	Engine.Hybridize = require( './jsongin/Hybridize' )( Engine );
 	Engine.Unhybridize = require( './jsongin/Unhybridize' )( Engine );
 	Engine.Merge = require( './jsongin/Merge' )( Engine );
+
+	//---------------------------------------------------------------------
+	// JSON Schema
+	// A schema is a JSON Schema as the specification defines it, measured against the
+	// specification's own test suite; see src/jsongin/Schema/index.js.
+	let schema_module = require( './jsongin/Schema' )( Engine );
+	Engine.ValidateDocument = schema_module.ValidateDocument;
+	Engine.InferSchema = schema_module.InferSchema;
+	Engine.InitSchema = schema_module.InitSchema;
+	Engine.ProjectSchema = schema_module.ProjectSchema;
 
 	//---------------------------------------------------------------------
 	// Object Matching and Cloning

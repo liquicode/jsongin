@@ -118,12 +118,12 @@ The expression language is the same wherever it turns up: inside an `$expr` in a
 Paths work the same way everywhere too - `'user.name'` means one thing to every function here,
   because it is MongoDB's path syntax rather than an extension of it.
 
-Every one of these families is MongoDB's, and `jsongin` implements 86.2% of them:
-  219 of the 254 operators MongoDB documents.
+Every one of these families is MongoDB's, and `jsongin` implements 86.6% of them:
+  220 of the 254 operators MongoDB documents.
 
 ***What is implemented is measured rather than asserted.***
 Each implemented behavior is compared against a running MongoDB server, and the suite reports
-  100% agreement across 1016 compared behaviors.
+  100% agreement across 1050 compared behaviors.
 Run `npm run parity-report` for that number and `npm run api-coverage` for the surface numbers
   above.
 
@@ -334,6 +334,33 @@ See [Invert](/docs/guides/jsongin/Invert.md).
 
 
 
+### JSON Schema
+
+Validate a document against a JSON Schema, in any draft from 4 to 2020-12, and learn why it failed.
+Write a schema from the documents you have, fill a document from a schema's defaults, or keep
+the fields a schema names. The query operator `$jsonSchema` reads a schema as MongoDB does.
+
+```js
+let schema = { required: [ 'name' ], properties: { name: { type: 'string' }, age: { type: 'integer', minimum: 0 } } };
+
+jsongin.ValidateDocument( { name: 'Alice', age: 30 }, schema );   // returns []
+jsongin.ValidateDocument( { age: -1 }, schema ).length === 2
+
+jsongin.InferSchema( [ { id: 1, tags: [ 'a' ] }, { id: 2, tags: [] } ] ).properties.tags;
+// returns { type: 'array', items: { type: 'string' } }
+
+jsongin.InitSchema( {}, { properties: { theme: { default: 'light' } } } );   // returns { theme: 'light' }
+jsongin.Query( { name: 'Alice' }, { $jsonSchema: { required: [ 'name' ] } } ) === true
+```
+
+See the [JSON Schema](/docs/guides/JSON-Schema.md) guide,
+[ValidateDocument](/docs/guides/jsongin/ValidateDocument.md),
+[InferSchema](/docs/guides/jsongin/InferSchema.md),
+[InitSchema](/docs/guides/jsongin/InitSchema.md), and
+[ProjectSchema](/docs/guides/jsongin/ProjectSchema.md).
+
+
+
 ### Document Mechanics
 
 Read, write, and reshape a document by path.
@@ -384,6 +411,13 @@ More Functions
 - [Parse( JsonString, Options )](/docs/guides/jsongin/Parse.md)
 - [Format( Value, Options )](/docs/guides/jsongin/Format.md)
 
+**JSON Schema**
+
+- [ValidateDocument( Document, Schema, Options )](/docs/guides/jsongin/ValidateDocument.md)
+- [InferSchema( Documents, Options )](/docs/guides/jsongin/InferSchema.md)
+- [InitSchema( Document, Schema, Options )](/docs/guides/jsongin/InitSchema.md)
+- [ProjectSchema( Document, Schema )](/docs/guides/jsongin/ProjectSchema.md)
+
 **Object Matching and Cloning**
 
 - [LooseEquals( DocumentA, DocumentB )](/docs/guides/jsongin/LooseEquals.md)
@@ -416,8 +450,8 @@ Features
 ---------------------------------------------------------------------
 
 - MongoDB Compatibility:
-	- 100% parity across 1016 compared behaviors, each one measured against a running MongoDB server.
-	- 86.2% of the documented operator surface: 219 of 254 operators.
+	- 100% parity across 1050 compared behaviors, each one measured against a running MongoDB server.
+	- 86.6% of the documented operator surface: 220 of 254 operators.
 	- MongoDB's own path syntax, value ordering, and type rules, rather than an approximation of them.
 	- Measure both numbers yourself with `npm run parity-report` and `npm run api-coverage`.
 

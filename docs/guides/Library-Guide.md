@@ -46,6 +46,9 @@ MongoDB Mechanics
 - [IsQuery( Query )](./jsongin/IsQuery.md)
   : Returns `true` when a value looks like a query document.
 
+- [ValidateQuery( Criteria )](./jsongin/ValidateQuery.md)
+  : Throws what `Query` would throw for a malformed criteria, without a document and without stopping early.
+
 > See the [Operator Reference](./Operator-Reference.md) document for more information on which
   operators `jsongin` supports and how to use them.
 >
@@ -66,6 +69,26 @@ replay.
 - [Invert( Before, Patch )](./jsongin/Invert.md)
   : Returns the update document which undoes `Patch`.
   Any update operator inverts, not only the ones `Diff` writes.
+
+
+JSON Schema
+---------------------------------------------------------------------
+
+These functions read JSON Schema, in every draft from 4 to 2020-12 and in MongoDB's reading of
+it, and take the document first the way the query functions do. See the
+[JSON Schema](./JSON-Schema.md) guide.
+
+- [ValidateDocument( Document, Schema, Options )](./jsongin/ValidateDocument.md)
+  : Returns the findings for a document against a schema: one per failed assertion, none when it satisfies the schema.
+
+- [InferSchema( Documents, Options )](./jsongin/InferSchema.md)
+  : Returns a schema which describes the documents given.
+
+- [InitSchema( Document, Schema, Options )](./jsongin/InitSchema.md)
+  : Returns a copy of `Document` with its absent fields filled from the schema's defaults.
+
+- [ProjectSchema( Document, Schema )](./jsongin/ProjectSchema.md)
+  : Returns the subset of `Document` the schema's properties name.
 
 
 Document Mechanics

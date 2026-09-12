@@ -44,6 +44,7 @@
         "parity-test-jsongin": "mocha -u bdd \"test/Parity Tests/jsongin-Tests.js\" --timeout 0 --slow 10 --colors",
         "parity-test-mongodb": "mocha -u bdd \"test/Parity Tests/MongoDB-Tests.js\" --timeout 0 --slow 10 --colors",
         "parity-report": "node build/parity.js",
+        "json-schema-report": "node build/json-schema-report.js",
         "api-coverage": "node build/api-coverage.js",
         "coverage": "node build/coverage.js",
         "scope-check": "node build/scope-check.js",

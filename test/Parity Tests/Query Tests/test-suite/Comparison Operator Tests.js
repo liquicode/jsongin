@@ -432,6 +432,17 @@ module.exports = function ( Driver )
 				assert.ok( await matches( { a: [ { x: [ 1, 2 ] } ] }, { 'a.x': { $size: 2 } } ) );
 			} );
 
+			it( 'should count an element which is itself an array as one element', async () =>
+			{
+				// The field's own elements and nothing below them. jsongin used to offer each
+				// element as a candidate too, so this document matched both sizes. Found by the
+				// translator parity probe on 2026-09-12.
+				assert.ok( await matches( { v: [ [ 1, 2 ] ] }, { v: { $size: 1 } } ) );
+				assert.ok( !await matches( { v: [ [ 1, 2 ] ] }, { v: { $size: 2 } } ) );
+				assert.ok( !await matches( { v: [ [ 1, 2 ], [ 3 ] ] }, { v: { $size: 1 } } ) );
+				assert.ok( await matches( { v: [ [ 1, 2 ] ] }, { v: { $elemMatch: { $size: 2 } } } ) );
+			} );
+
 		} );
 
 
