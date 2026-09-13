@@ -5,8 +5,50 @@
 
 
 
-v0.1.2 (current)
+v0.2.0 (current)
 ---------------------------------------------------------------------
+
+This version changes which queries are refused and what some of them answer, which is why it is
+  `0.2.0` rather than a patch. Every change moves the engine closer to MongoDB. Version `0.1.2`
+  was never published; everything written under it is in this release.
+
+Parity with MongoDB is ***100%*** across 1054 compared behaviors. Run `npm run parity-report` to
+  measure it.
+
+***The first key of an object decides whether it holds operators or is a value***, as it does in
+  MongoDB. Measured against MongoDB 6.0.28 and 8.3.8.
+
+- ***An object whose first key is an operator holds only operators.***
+  `{ a: { $exists: true, b: 1 } }` is refused as an unknown operator `b`.
+  *Was: read `b` as the field `a.b`.*
+- ***An object whose first key is a field name is a value to compare.***
+  `{ a: { b: 1, $exists: true } }` matches only a field equal to that whole object, so it matches
+  no stored document. The same object inside `$in`, `$nin` or `$all` is a value too.
+  *Was: evaluated as a query, and refused inside `$in`, `$nin` and `$all`.*
+- ***`$not` takes only operators.*** `{ a: { $not: { b: 1 } } }` is refused, whichever key comes
+  first. *Was: negated the field `a.b`.*
+- ***`$elemMatch` refuses a mixture of its two forms.*** An operator first, such as
+  `{ $gt: 1, $lt: 5 }`, applies to the element itself and takes no field name, `$and`, `$or`,
+  `$nor` or `$comment`. A field name or a logical operator first, such as `{ b: 1, $or: [ ... ] }`,
+  applies to the element's fields and takes no operator meant for a field value, such as
+  `$exists`.
+- `ValidateQuery` refuses every one of these shapes as `Query` does.
+
+***Smaller corrections***
+
+- ***The `$project` stage refuses a path segment which begins with `$`***, such as `'a.$'`,
+  `'$a'` or `'a.$b'`. *Was: projected an empty document.*
+- ***`Parse` with `Strict` refuses text after the value***, such as `'{ a: 1 } xyz'`, and a
+  number which is not written in decimal, such as `'0x10'`. Without `Strict` nothing changed.
+- ***`Hybridize` and `Unhybridize` keep a symbol's description.*** *Was: `Symbol( 'k' )` came back
+  as `Symbol( 'Symbol(k)' )`.* A value hybridized by an earlier version still reads back correctly.
+- ***`Distinct` leaves out a field which a document does not have.*** *Was: wrote the field
+  holding `undefined`.*
+- ***`Format` with `Whitespace` writes an empty array or object as `[]` or `{}`***, as
+  `JSON.stringify` does. *Was: opened and closed it on two lines.*
+- The user documentation is rewritten in plain language, and each claim was checked against the
+  engine.
+- The package declares Node.js `>=10.4.0` in `engines`.
 
 ***`jsongin` reads JSON Schema***, in every draft from 4 to 2020-12 and in MongoDB's reading of
   it, measured against the specification's official test suite the way the operators are
