@@ -51,7 +51,13 @@ module.exports = function ( jsongin )
 		{
 			let tokens = Tokenize( JsonString );
 			if ( tokens.length === 0 ) { throw new Error( `The string holds no value.` ); }
-			let value = BuildObject( tokens );
+			let value = BuildObject( tokens, settings.Strict );
+			// One value is read, and under Strict anything after it means the text is not what
+			// the engine wrote. It used to be ignored: '{ a: 1 } xyz' read as { a: 1 }.
+			if ( settings.Strict && ( tokens.length > 0 ) )
+			{
+				throw new Error( `At position [${tokens[ 0 ].at}]: Unexpected '${tokens[ 0 ].token}' after the value.` );
+			}
 			if ( settings.TypedValues ) { value = revive_recurse( value ); }
 			return value;
 		}
@@ -288,7 +294,14 @@ module.exports = function ( jsongin )
 	//---------------------------------------------------------------------
 	// Builds one value from the front of the token array, consuming the tokens it uses.
 	// Every path returns, so this reads the front of the array rather than looping over it.
-	function BuildObject( Tokens )
+	//
+	// ***Strict reads a number only in decimal.*** A literal is otherwise read with parseFloat,
+	// so '0x10' reads as 0; under Strict a literal which starts like a number and is not a
+	// decimal one is an error.
+	const DECIMAL_NUMBER = /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/;
+	const NUMBER_START = /^(-?\d|[+.])/;
+
+	function BuildObject( Tokens, Strict = false )
 	{
 		if ( Tokens.length === 0 ) { throw new Error( `The value is missing.` ); }
 
@@ -304,7 +317,7 @@ module.exports = function ( jsongin )
 					throw new Error( `At position [${opened.at}]: The array is not closed with a ']'.` );
 				}
 				if ( Tokens[ 0 ].token === ']' ) { break; }
-				value.push( BuildObject( Tokens ) );
+				value.push( BuildObject( Tokens, Strict ) );
 			}
 			Tokens.shift();
 			consume_comma( Tokens );
@@ -339,7 +352,7 @@ module.exports = function ( jsongin )
 					throw new Error( `At position [${colon.at}]: Expected ':', found '${colon.token}' instead.` );
 				}
 
-				value[ key.token ] = BuildObject( Tokens );
+				value[ key.token ] = BuildObject( Tokens, Strict );
 			}
 			Tokens.shift();
 			consume_comma( Tokens );
@@ -362,6 +375,13 @@ module.exports = function ( jsongin )
 			else if ( value.toLowerCase() === 'false' )
 			{
 				value = false;
+			}
+			else if ( Strict && NUMBER_START.test( value ) )
+			{
+				if ( DECIMAL_NUMBER.test( value ) === false )
+				{
+					throw new Error( `At position [${token.at}]: '${value}' is not a decimal number.` );
+				}
 			}
 			if ( !isNaN( parseFloat( value ) ) && isFinite( value ) )
 			{

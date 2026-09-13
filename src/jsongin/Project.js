@@ -384,6 +384,22 @@ module.exports = function ( jsongin )
 				refuse( `The projection operator [$] is not supported.` );
 			}
 
+			// A stage takes field paths only, and no segment of a field path begins with a $ -
+			// which refuses the positional 'a.$' along with '$a' and 'a.$b'. Each used to be read
+			// as a field no document has, and projected an empty document.
+			// Verified against MongoDB 6.0.28 and 8.3.8, 2026-09-13.
+			if ( IsStage === true )
+			{
+				let segments = key.split( '.' );
+				for ( let index = 0; index < segments.length; index++ )
+				{
+					if ( segments[ index ].startsWith( '$' ) === true )
+					{
+						refuse( `A $project field path [${key}] cannot hold a segment which begins with a '$'.` );
+					}
+				}
+			}
+
 			let value = flat_projection[ key ];
 			let value_type = jsongin.ShortType( value );
 			let is_exclusion = ( ( ( value_type === 'n' ) && ( value === 0 ) ) || ( ( value_type === 'b' ) && ( value === false ) ) );

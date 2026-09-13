@@ -313,6 +313,12 @@ module.exports = function ( jsongin )
 					text += StringifyOptions.eol_char;
 					text += StringifyOptions.tab_char.repeat( Depth );
 				}
+				// An empty array closes on the line it opens on, as JSON.stringify() writes it.
+				// It used to break a line between the brackets.
+				if ( Node.length === 0 )
+				{
+					return text + '[]';
+				}
 				if ( StringifyOptions.eol_char )
 				{
 					text += '[' + StringifyOptions.eol_char;
@@ -372,16 +378,6 @@ module.exports = function ( jsongin )
 					text += StringifyOptions.eol_char;
 					text += StringifyOptions.tab_char.repeat( Depth );
 				}
-				if ( StringifyOptions.eol_char )
-				{
-					text += '{' + StringifyOptions.eol_char;
-				}
-				else
-				{
-					text += '{' + StringifyOptions.space_char;
-				}
-				// text += '{' + StringifyOptions.space_char;
-				// text += StringifyOptions.eol_char;
 
 				// A field with nothing to write is left out entirely, which is what
 				// JSON.stringify() does. The list is filtered before the commas are counted,
@@ -394,6 +390,22 @@ module.exports = function ( jsongin )
 					{
 						keys.push( all_keys[ index ] );
 					}
+				}
+
+				// A document with no field to write closes on the line it opens on, as
+				// JSON.stringify() writes it. It used to break a line between the braces.
+				if ( keys.length === 0 )
+				{
+					return text + '{}';
+				}
+
+				if ( StringifyOptions.eol_char )
+				{
+					text += '{' + StringifyOptions.eol_char;
+				}
+				else
+				{
+					text += '{' + StringifyOptions.space_char;
 				}
 
 				let max_key_length = 0;

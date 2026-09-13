@@ -34,7 +34,9 @@ module.exports = function ( jsongin )
 					simple[ key ] = JSON.stringify( { type: 'f', source: Document[ key ].toString() } );
 					break;
 				case 'y':
-					simple[ key ] = JSON.stringify( { type: 'y', source: Document[ key ].toString() } );
+					// The description, which is all a symbol carries. This used to store
+					// toString(), 'Symbol(x)', and Unhybridize made Symbol(Symbol(x)) of it.
+					simple[ key ] = JSON.stringify( { type: 'y', description: Document[ key ].description } );
 					break;
 				case 'u':
 					simple[ key ] = JSON.stringify( { type: 'u' } );

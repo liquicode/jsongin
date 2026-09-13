@@ -47,6 +47,7 @@ module.exports = function ( jsongin )
 			if ( jsongin.OpLog ) { jsongin.OpLog( `Query: An empty query object {} matches everything.` ); }
 			return true;
 		}
+		check_operator_object( Criteria, Path );
 
 		// Evaluate the object elements.
 		for ( let key in Criteria )
@@ -110,6 +111,29 @@ module.exports = function ( jsongin )
 			}
 		}
 		return true; // Implicit $and
+	};
+
+
+	//---------------------------------------------------------------------
+	// Refuses a field name inside an operator object below a field.
+	//
+	// ***The first key decides*** (see IsQuery), so an object whose first key is an operator
+	// holds operators and nothing else. { a: { $exists: true, b: 1 } } used to read b as a.b;
+	// MongoDB refuses it as an unknown operator, and the same after $gt, $size or any other.
+	// At the top of a query a field beside a logical operator is ordinary, so the check is for
+	// a criteria below a field only. Verified against MongoDB 6.0.28 and 8.3.8, 2026-09-13.
+	function check_operator_object( Criteria, Path )
+	{
+		if ( Path === '' ) { return; }
+		if ( jsongin.IsQuery( Criteria ) === false ) { return; }
+		for ( let key in Criteria )
+		{
+			if ( key.startsWith( '$' ) === false )
+			{
+				refuse( `Unknown operator [${key}] at [${Path}]. An object whose first key is an operator cannot also hold a field name.` );
+			}
+		}
+		return;
 	};
 
 
@@ -197,6 +221,7 @@ module.exports = function ( jsongin )
 			refuse( `The Criteria parameter must be an object.` );
 		}
 		Path = jsongin.SplitPath( Path ).join( '.' );
+		check_operator_object( Criteria, Path );
 
 		for ( let key in Criteria )
 		{

@@ -157,6 +157,22 @@ describe( '130) Engine Function Tests', () =>
 			assert.throws( () => jsongin.ValidateQuery( { a: { $regex: 'x', $options: 'q' } } ) );
 			assert.throws( () => jsongin.ValidateQuery( { a: { $options: 'i' } } ) );
 			assert.throws( () => jsongin.ValidateQuery( { a: undefined } ) );
+			assert.throws( () => jsongin.ValidateQuery( { a: { $exists: true, b: 1 } } ) );
+			assert.throws( () => jsongin.ValidateQuery( { $or: [ { a: { $gt: 1, b: 1 } } ] } ) );
+			assert.throws( () => jsongin.ValidateQuery( { a: { $not: { b: 1 } } } ) );
+			assert.throws( () => jsongin.ValidateQuery( { a: { $not: { b: 1, $gt: 1 } } } ) );
+			assert.throws( () => jsongin.ValidateQuery( { a: { $elemMatch: { $exists: true, b: 1 } } } ) );
+			assert.throws( () => jsongin.ValidateQuery( { a: { $elemMatch: { b: 1, $exists: true } } } ) );
+			assert.throws( () => jsongin.ValidateQuery( { a: { $elemMatch: { $gt: 1, $comment: 'x' } } } ) );
+		} );
+
+		it( 'should read an object whose first key is a field name as a value', () =>
+		{
+			// The first key decides whether an object is an operator object or a value.
+			jsongin.ValidateQuery( { a: { b: 1, $exists: true } } );
+			jsongin.ValidateQuery( { a: { $in: [ { b: 1, $gt: 5 } ] }, c: { $all: [ { d: 1, $gt: 5 } ] } } );
+			assert.strictEqual( jsongin.Query( { a: { b: 1 } }, { a: { b: 1, $exists: true } } ), false );
+			assert.strictEqual( jsongin.Query( { a: { b: 1 } }, { a: { $nin: [ { b: 1, $gt: 5 } ] } } ), true );
 		} );
 
 		it( 'should refuse a mistake behind a condition Query would never reach', () =>
@@ -330,6 +346,16 @@ describe( '130) Engine Function Tests', () =>
 		{
 			let result = jsongin.Distinct( [ { a: 1, b: 'ignored' } ], { a: 1 } );
 			assert.ok( jsongin.StrictEquals( Object.keys( result[ 0 ] ), [ 'a' ] ) );
+		} );
+
+		it( 'should leave out a field which a document does not have', () =>
+		{
+			// An absent field is deleted rather than set to undefined, everywhere in the family.
+			// The key used to be written holding undefined.
+			let result = jsongin.Distinct( [ { a: 1, b: 2 }, { a: 1 } ], { a: 1, b: 1 } );
+			assert.strictEqual( result.length, 2 );
+			assert.ok( jsongin.StrictEquals( Object.keys( result[ 1 ] ), [ 'a' ] ) );
+			assert.strictEqual( Object.prototype.hasOwnProperty.call( result[ 1 ], 'b' ), false );
 		} );
 
 		it( 'should return an empty array for no documents', () =>
@@ -1070,8 +1096,20 @@ describe( '130) Engine Function Tests', () =>
 
 			let restored = jsongin.Unhybridize( hybridized );
 			assert.strictEqual( typeof restored.s, 'symbol' );
+			assert.strictEqual( restored.s.description, 'x' );
 			assert.strictEqual( restored.b, true );
 			assert.strictEqual( restored.n, 1 );
+		} );
+
+		it( 'should restore a symbol hybridized before its description was stored', () =>
+		{
+			// The envelope used to hold Symbol.toString(), which is 'Symbol(x)', and the symbol
+			// came back as Symbol(Symbol(x)). A value stored that way still reads back as x.
+			let restored = jsongin.Unhybridize( { s: JSON.stringify( { type: 'y', source: 'Symbol(x)' } ) } );
+			assert.strictEqual( restored.s.description, 'x' );
+			let unnamed = jsongin.Unhybridize( jsongin.Hybridize( { s: Symbol() } ) );
+			assert.strictEqual( typeof unnamed.s, 'symbol' );
+			assert.strictEqual( unnamed.s.description, undefined );
 		} );
 
 	} );

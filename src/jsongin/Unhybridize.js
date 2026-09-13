@@ -35,11 +35,31 @@ module.exports = function ( jsongin )
 			case 'r': return new RegExp( envelope.source, envelope.flags );
 			case 'e': return new Error( envelope.message );
 			case 'f': return revive_function( envelope.source );
-			case 'y': return Symbol( envelope.source );
+			case 'y': return revive_symbol( envelope );
 			case 'u': return undefined;
 		}
 
 		return Text; // An object carrying an unrecognized type name is not an envelope.
+	};
+
+
+	//---------------------------------------------------------------------
+	// Rebuilds a symbol from the envelope Hybridize() wrote.
+	//
+	// The envelope holds the description, and a symbol with none leaves it out. An envelope
+	// written before 2026-09-13 holds Symbol.toString() as its source instead, 'Symbol(x)',
+	// which is unwrapped here so that a value stored then still reads back as x.
+	function revive_symbol( Envelope )
+	{
+		if ( jsongin.ShortType( Envelope.description ) === 's' ) { return Symbol( Envelope.description ); }
+		if ( jsongin.ShortType( Envelope.source ) !== 's' ) { return Symbol(); }
+
+		let source = Envelope.source;
+		if ( source.startsWith( 'Symbol(' ) && source.endsWith( ')' ) )
+		{
+			source = source.slice( 'Symbol('.length, -1 );
+		}
+		return Symbol( source );
 	};
 
 

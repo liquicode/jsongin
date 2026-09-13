@@ -198,6 +198,16 @@ module.exports = function ( Driver )
 				assert.ok( await refused( [ { $project: {} } ] ) );
 			} );
 
+			it( 'should refuse a $project path with a segment which begins with a $', async () =>
+			{
+				// A stage has no positional projection, and a field path segment cannot begin
+				// with a $. jsongin used to project each of these as empty documents.
+				// Found 2026-09-13, measured on 6.0.28 and 8.3.8.
+				assert.ok( await refused( [ { $project: { 'a.$': 1 } } ] ), 'positional' );
+				assert.ok( await refused( [ { $project: { '$a': 1 } } ] ), 'first segment' );
+				assert.ok( await refused( [ { $project: { 'a.$b': 1 } } ] ), 'later segment' );
+			} );
+
 			it( 'should refuse an $unwind with no path after the $', async () =>
 			{
 				assert.ok( await refused( [ { $unwind: '$' } ] ) );

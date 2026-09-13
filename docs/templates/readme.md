@@ -123,7 +123,7 @@ Every one of these families is MongoDB's, and `jsongin` implements <%- Context.C
 
 ***What is implemented is measured rather than asserted.***
 Each implemented behavior is compared against a running MongoDB server, and the suite reports
-  100% agreement across 1050 compared behaviors.
+  100% agreement across 1054 compared behaviors.
 Run `npm run parity-report` for that number and `npm run api-coverage` for the surface numbers
   above.
 
@@ -450,7 +450,7 @@ Features
 ---------------------------------------------------------------------
 
 - MongoDB Compatibility:
-	- 100% parity across 1050 compared behaviors, each one measured against a running MongoDB server.
+	- 100% parity across 1054 compared behaviors, each one measured against a running MongoDB server.
 	- <%- Context.Coverage.Percent %>% of the documented operator surface: <%- Context.Coverage.Implemented %> of <%- Context.Coverage.Total %> operators.
 	- MongoDB's own path syntax, value ordering, and type rules, rather than an approximation of them.
 	- Measure both numbers yourself with `npm run parity-report` and `npm run api-coverage`.

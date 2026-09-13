@@ -574,6 +574,17 @@ describe( '100) Core Tests', () =>
 		//---------------------------------------------------------------------
 		describe( `Equivalence with Javascript's JSON.stringify()`, function ()
 		{
+			it( `should write an empty container on one line with Whitespace`, function ()
+			{
+				// An empty array or document used to open and close on two lines.
+				let value = { a: [], b: {}, c: [ {} ], d: { e: [] }, f: { g: undefined } };
+				assert.strictEqual(
+					jsongin.Format( value, { Whitespace: true } ),
+					JSON.stringify( value, null, '    ' )
+				);
+				assert.strictEqual( jsongin.Format( [], { Whitespace: true } ), '[]' );
+				assert.strictEqual( jsongin.Format( {}, { Whitespace: true } ), '{}' );
+			} );
 			it( `should stringify null the same way`, function ()
 			{
 				assert.strictEqual(
@@ -2682,6 +2693,24 @@ describe( '100) Core Tests', () =>
 				// restoring engine state, where a truncated value must be an error.
 				assert.strictEqual( jsongin.Parse( '{ "Status": "ready", ' ), '{ "Status": "ready", ' );
 				assert.throws( function () { jsongin.Parse( '{ "Status": "ready", ', { Strict: true } ); } );
+			} );
+
+			it( `should throw on text after the value`, function ()
+			{
+				// One value is read and anything after it is a sign the text is not what the
+				// engine wrote. This used to return the first value and ignore the rest.
+				assert.throws( function () { jsongin.Parse( '{ a: 1 } xyz', { Strict: true } ); } );
+				assert.throws( function () { jsongin.Parse( '[ 1 ] [ 2 ]', { Strict: true } ); } );
+				assert.deepStrictEqual( jsongin.Parse( '{ a: 1 }', { Strict: true } ), { a: 1 } );
+			} );
+
+			it( `should throw on a number which is not written in decimal`, function ()
+			{
+				// A literal was read with parseFloat, so '0x10' parsed as 0 and '12abc' came back
+				// as a string.
+				assert.throws( function () { jsongin.Parse( '0x10', { Strict: true } ); } );
+				assert.throws( function () { jsongin.Parse( '{ a: 12abc }', { Strict: true } ); } );
+				assert.strictEqual( jsongin.Parse( '-1.5e+21', { Strict: true } ), -1.5e+21 );
 			} );
 
 			it( `should throw on a value which cannot be represented`, function ()

@@ -104,6 +104,8 @@ module.exports = function ( jsongin )
 	// Verified against MongoDB 6.0.1.
 	function validate_criteria( Criteria )
 	{
+		check_form( Criteria );
+
 		for ( let key in Criteria )
 		{
 			// A top level operator other than a logical one has no element to apply to.
@@ -130,6 +132,13 @@ module.exports = function ( jsongin )
 				if ( value_type !== 'o' )
 				{
 					throw new Error( `$elemMatch: $not requires an object or regexp but found type [${value_type}].` );
+				}
+				for ( let not_key in value )
+				{
+					if ( not_key.startsWith( '$' ) === false )
+					{
+						throw new Error( `$elemMatch: Unknown operator [${not_key}]. $not takes an object of operators.` );
+					}
 				}
 				validate_criteria( value );
 				continue;
@@ -167,6 +176,49 @@ module.exports = function ( jsongin )
 				validate_criteria( branch );
 			}
 		}
+	};
+
+
+	//---------------------------------------------------------------------
+	// Refuses a criteria which mixes the two forms $elemMatch takes.
+	//
+	// ***The first key decides.*** An operator first, other than $and, $or and $nor, is the
+	// operator form, { $gt: 1, $lt: 5 }, applied to the element itself: a field name has no
+	// place in it, and neither has a logical operator or $comment. A field or a logical
+	// operator first is the field form, { b: 1, $or: [ ... ] }, a criteria over the element's
+	// fields: an operator which applies to a field value, such as $exists, has no field there.
+	// jsongin used to take either mixture and answer. Verified against MongoDB 6.0.28 and
+	// 8.3.8, 2026-09-13.
+	const FIELD_FORM_OPERATORS = [ '$and', '$or', '$nor' ];
+
+	function check_form( Criteria )
+	{
+		let keys = Object.keys( Criteria );
+		if ( keys.length === 0 ) { return; }
+		let operator_form = ( keys[ 0 ].startsWith( '$' ) && ( FIELD_FORM_OPERATORS.includes( keys[ 0 ] ) === false ) );
+
+		for ( let index = 0; index < keys.length; index++ )
+		{
+			let key = keys[ index ];
+			if ( operator_form === true )
+			{
+				if ( key.startsWith( '$' ) === false )
+				{
+					throw new Error( `$elemMatch: Unknown operator [${key}]. A criteria whose first key is an operator cannot also hold a field name.` );
+				}
+				if ( FIELD_FORM_OPERATORS.includes( key ) || ( key === '$comment' ) )
+				{
+					throw new Error( `$elemMatch: Unknown operator [${key}]. It cannot appear in a criteria whose first key is an operator.` );
+				}
+				continue;
+			}
+
+			let operator = jsongin.QueryOperators[ key ];
+			if ( typeof operator === 'undefined' ) { continue; }
+			if ( ( operator.TopLevel === true ) || ( operator.ElementLevel === true ) ) { continue; }
+			throw new Error( `$elemMatch: Operator [${key}] cannot appear beside a field name. It applies to a field's value.` );
+		}
+		return;
 	};
 
 

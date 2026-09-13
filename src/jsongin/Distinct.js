@@ -19,7 +19,12 @@ module.exports = function ( jsongin )
 					let value = jsongin.GetValue( document, key );
 
 					// Cloned on the way in, so that the result never aliases the given documents.
-					jsongin.SetValue( distinct, key, jsongin.SafeClone( value ) );
+					// A field the document does not have is left out rather than written holding
+					// undefined, which is the family's rule for an absent field.
+					if ( typeof value !== 'undefined' )
+					{
+						jsongin.SetValue( distinct, key, jsongin.SafeClone( value ) );
+					}
 
 					// The short type is part of each field's key, so that values which serialize
 					// alike but are of different types, such as a date and its ISO string, are

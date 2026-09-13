@@ -51,6 +51,17 @@ module.exports = function ( jsongin )
 					{
 						throw new Error( `$not: cannot be empty at [${Path}].` );
 					}
+					// $not negates an operator object, whichever key comes first. A field name
+					// in it used to be read as a field below this one, so { a: { $not: { b: 1 } } }
+					// negated a.b. MongoDB refuses it as an unknown operator.
+					// Verified against MongoDB 6.0.28 and 8.3.8, 2026-09-13.
+					for ( let key in match_value )
+					{
+						if ( key.startsWith( '$' ) === false )
+						{
+							throw new Error( `$not: Unknown operator [${key}] at [${Path}]. $not takes an object of operators.` );
+						}
+					}
 					result = jsongin.Query( Document, match_value, Path );
 				}
 				else if ( match_type === 'r' )

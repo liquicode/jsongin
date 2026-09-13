@@ -268,6 +268,57 @@ module.exports = function ( Driver )
 			assert.strictEqual( ( await Driver.Find( { a: { $all: [ { b: 1 } ] } } ) ).length, 1 );
 		} );
 
+		it( 'should refuse a field name inside an operator object', async () =>
+		{
+			// ***The first key decides.*** An object whose first key is an operator holds
+			// operators and nothing else, so a field name after it is an unknown operator.
+			// jsongin used to read { a: { $exists: true, b: 1 } } as a.b. $not takes an operator
+			// object whichever key comes first. Found 2026-09-13, measured on 6.0.28 and 8.3.8.
+			let documents = [ { a: { b: 1 } } ];
+			assert.ok( await refused( documents, { a: { $exists: true, b: 1 } } ) );
+			assert.ok( await refused( documents, { a: { $gt: {}, b: 1 } } ) );
+			assert.ok( await refused( [ { a: [ { b: 1 } ] } ], { a: { $size: 1, b: 1 } } ) );
+			assert.ok( await refused( documents, { $or: [ { a: { $exists: true, b: 1 } } ] } ) );
+			assert.ok( await refused( [ { a: 5 } ], { a: { $not: { $gt: 1, b: 1 } } } ) );
+			assert.ok( await refused( [ { a: 5 } ], { a: { $not: { b: 1, $gt: 1 } } } ) );
+			assert.ok( await refused( documents, { a: { $not: { b: 1 } } } ) );
+		} );
+
+		it( 'should refuse an $elemMatch which mixes its two forms', async () =>
+		{
+			// The first key decides here too. An operator first is the operator form, which takes
+			// no field and no logical operator; a field or a logical operator first is the field
+			// form, which takes no operator meant for a field. Measured on 6.0.28 and 8.3.8.
+			let documents = [ { a: [ { b: 1 } ] } ];
+			assert.ok( await refused( documents, { a: { $elemMatch: { $exists: true, b: 1 } } } ) );
+			assert.ok( await refused( documents, { a: { $elemMatch: { $not: { $gt: 1 }, b: 1 } } } ) );
+			assert.ok( await refused( documents, { a: { $elemMatch: { b: 1, $exists: true } } } ) );
+			assert.ok( await refused( [ { a: [ 5 ] } ], { a: { $elemMatch: { $gt: 1, $comment: 'x' } } } ) );
+			// The counterparts: a logical operator and $comment beside a field are the field form.
+			await Driver.SetData( documents );
+			assert.strictEqual( ( await Driver.Find( { a: { $elemMatch: { $or: [ { b: 1 } ], b: 1 } } } ) ).length, 1 );
+			assert.strictEqual( ( await Driver.Find( { a: { $elemMatch: { b: 1, $or: [ { b: 1 } ] } } } ) ).length, 1 );
+			assert.strictEqual( ( await Driver.Find( { a: { $elemMatch: { b: 1, $comment: 'x' } } } ) ).length, 1 );
+			assert.strictEqual( ( await Driver.Find( { a: { $elemMatch: { $gt: 0, $lt: 9 } } } ) ).length, 0 );
+		} );
+
+		it( 'should compare an object whose first key is a field name as a value', async () =>
+		{
+			// The other half of the first key rule. { b: 1, $exists: true } is a value to compare
+			// the field against, which no stored document equals, so it is an answer rather than
+			// a refusal - and so is the same object inside $in, $nin and $all. jsongin used to
+			// evaluate the first and refuse the other three. Measured on 6.0.28 and 8.3.8.
+			await Driver.SetData( [ { a: { b: 1 } } ] );
+			assert.strictEqual( ( await Driver.Find( { a: { b: 1, $exists: true } } ) ).length, 0 );
+			assert.strictEqual( ( await Driver.Find( { a: { $in: [ { b: 1, $gt: 5 } ] } } ) ).length, 0 );
+			assert.strictEqual( ( await Driver.Find( { a: { $nin: [ { b: 1, $gt: 5 } ] } } ) ).length, 1 );
+			await Driver.SetData( [ { a: [ { b: 1 } ] } ] );
+			assert.strictEqual( ( await Driver.Find( { a: { $all: [ { b: 1, $gt: 5 } ] } } ) ).length, 0 );
+			// An operator first is still refused inside $in and $all.
+			assert.ok( await refused( [ { a: { b: 1 } } ], { a: { $in: [ { $gt: 5, b: 1 } ] } } ) );
+			assert.ok( await refused( [ { a: [ { b: 1 } ] } ], { a: { $all: [ { $gt: 5, b: 1 } ] } } ) );
+		} );
+
 		it( 'should still answer a query which is merely unsatisfied', async () =>
 		{
 			// The counterpart to every rejection above. A query which is well formed and

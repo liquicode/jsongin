@@ -10,7 +10,7 @@
 
 > Filter, Sort, Project, Update, and Aggregate JSON documents anywhere.
 
-> Covers 86.6% (220/254) of the MongoDB API (v6).
+> Covers 86.6% (220/254) of MongoDB's documented operators.
 
 <hr>
 
@@ -23,9 +23,9 @@
 		<li>Document updating and aggregation.</li>
 		<li>100% pure javascript. No dependencies.</li>
 		<li>Faithfully reproduces MongoDB behavior.</li>
-		<li>100% parity with MongoDB across 988 behaviors, 219 operators.</li>
+		<li>100% parity with MongoDB across 1054 behaviors, 220 operators.</li>
 		<li>Supports CommonJS, ESM, and TypeScript.</li>
-		<li>Single minified file (~42k compressed) for web deployment.</li>
+		<li>Single minified file (~58k compressed) for web deployment.</li>
 		<li>All operations are in-memory. This is not a storage library.</li>
 	</ul>
 </div>

@@ -508,14 +508,17 @@ function NewJsongin( EngineSettings = {} )
 	// knows. A misspelled operator is a malformed query, and Query() refuses it; reading it as
 	// a value instead compared the field against an object nobody meant to write, and reported
 	// that nothing matched. MongoDB refuses the same thing.
+	//
+	// ***The first key decides.*** An object whose first key is a field name is a value, even
+	// with an operator after it: MongoDB compares { a: { b: 1, $exists: true } } for equality
+	// and answers false, and refuses { a: { $exists: true, b: 1 } } as an unknown operator b.
+	// This used to look at every key. Verified against MongoDB 6.0.28 and 8.3.8, 2026-09-13.
 	Engine.IsQuery = function ( Query )
 	{
 		if ( Engine.ShortType( Query ) !== 'o' ) { return false; }
-		for ( let key in Query )
-		{
-			if ( key.startsWith( '$' ) ) { return true; }
-		}
-		return false;
+		let keys = Object.keys( Query );
+		if ( keys.length === 0 ) { return false; }
+		return keys[ 0 ].startsWith( '$' );
 	};
 
 
