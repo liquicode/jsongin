@@ -8,18 +8,14 @@
 
 | **Parameter** | **Allowed Types** | **Description**                              |
 |---------------|:-----------------:|------------------------------------------------|
-| Before        |      object       | The document as it was.                      |
-| After         |      object       | The document as it should be.                |
+| Before        |         o         | The document as it was.                      |
+| After         |         o         | The document as it should be.                |
 
 
 ## Description
 
-Describes the changes between two documents and returns them as a `jsongin` ***update
-document***.
-
-That is the whole design of this function: a change is expressed in the same shape that
-  [`Update( Document, Updates )`](./Update.md) already applies, so nothing new is needed to use
-  the result.
+Returns an ***update document*** which turns `Before` into `After`.
+You can pass it straight to [`Update( Document, Updates )`](./Update.md).
 
 ```js
 let before = { hp: 10, n: 1 };
@@ -29,30 +25,31 @@ let patch = jsongin.Diff( before, after );
 // returns { $set: { hp: 7 }, $unset: { n: '' } }
 
 jsongin.Update( before, patch );
-// returns { hp: 7 }                          the content of after
+// returns { hp: 7 }                          the same content as after
 ```
 
-Neither document is modified, and nothing in the patch aliases either of them.
-Two identical documents produce an empty patch `{}`, and `Update( document, {} )` returns a
-  clone, so the round trip still holds.
-An operator with nothing in it is omitted, so a patch is never `{ $set: {}, $unset: {} }`.
+Neither document is changed, and the patch shares nothing with either of them.
 
-Use [`Invert( Before, Patch )`](./Invert.md) to obtain the patch which undoes this one.
+Two documents with the same content give an empty patch, `{}`.
+`Update( document, {} )` returns an unchanged copy, so an empty patch still applies.
+A patch never holds an empty operator such as `$set: {}`.
+
+To get a patch which undoes this one, use [`Invert( Before, Patch )`](./Invert.md).
 
 
-## How a Difference Is Described
+## How Changes Are Described
 
-`Diff` walks both documents together. At each key:
+`Diff` goes through both documents field by field:
 
-| **Case**                                  | **Emitted**                              |
+| **Case**                                  | **Adds to the patch**                    |
 |-------------------------------------------|---------------------------------------------|
 | The field is missing from `After`         | `$unset[ path ] = ''`                    |
-| The field is missing from `Before`        | `$set[ path ] = <the value>`             |
-| Both values are objects                   | Descend into them                        |
-| The values differ                         | `$set[ path ] = <the value>`             |
+| The field is missing from `Before`        | `$set[ path ] = <the new value>`         |
+| Both values are objects                   | Compares the fields inside them          |
+| The values are different                  | `$set[ path ] = <the new value>`         |
 | The values are equal                      | Nothing                                  |
 
-Paths are in dot notation, so a change is described at the deepest path which actually changed:
+Paths use dot notation, so each change is recorded at the deepest field which changed:
 
 ```js
 jsongin.Diff( { user: { name: 'Alice', role: 'admin' } },
@@ -60,40 +57,30 @@ jsongin.Diff( { user: { name: 'Alice', role: 'admin' } },
 // returns { $set: { 'user.role': 'user' } }
 ```
 
-Values are compared with [`StrictEquals`](../Library-Guide.md), so a value which changed type is
-  a change: `1` and `'1'` differ, and so do `0` and `false`.
-`null` is a value rather than an absence, so a field which changed to `null` is `$set` and not
-  `$unset`.
-A field which is present but holds `undefined` counts as missing, on either side.
-
-`''` is MongoDB's conventional `$unset` value. `jsongin` ignores the value entirely.
+Values are compared with [`StrictEquals()`](./StrictEquals.md), so a change of type is a change:
+  `1` and `'1'` are different, and so are `0` and `false`.
+A field changed to `null` is `$set`, not `$unset`.
+A field holding `undefined` counts as missing, in either document.
 
 
-## Arrays Are Atomic
+## Arrays Are Replaced Whole
 
-***A change anywhere inside an array replaces the whole array.***
+***Any change inside an array replaces the whole array.***
 
 ```js
 jsongin.Diff( { tags: [ 'a', 'b', 'c' ] }, { tags: [ 'a', 'z' ] } )
 // returns { $set: { tags: [ 'a', 'z' ] } }
 ```
 
-`Diff` does not descend into arrays, and element order is part of an array's value, so
-  reordering one is a change.
+Changing the order of an array's elements is also a change.
 
-The alternative, describing an array element by element, cannot be made to work with the update
-  operators `jsongin` has: shortening an array would need an `$unset` of its trailing indexes,
-  and unsetting an array element leaves a hole rather than removing it.
-Replacing the array is always correct, and it round trips.
-
-Dates are atomic for the same reason, and are compared by their time value rather than by
-  identity.
+Dates are compared by the moment they hold, and are also replaced whole.
 
 
-## Objects, Empty Objects, and Type Changes
+## Objects and Type Changes
 
-Removal is per key, so an object which was ***emptied*** keeps its place, while an object which
-  was ***removed*** does not:
+A field is removed with `$unset`, so an object which was ***emptied*** stays, while an object
+  which was ***removed*** goes:
 
 ```js
 jsongin.Diff( { a: { x: 1 } }, { a: {} } )   // returns { $unset: { 'a.x': '' } }
@@ -101,12 +88,7 @@ jsongin.Diff( { a: { x: 1 } }, {} )          // returns { $unset: { a: '' } }
 jsongin.Diff( {}, { a: {} } )                // returns { $set: { a: {} } }
 ```
 
-Note that this is why `Diff` does not build on [`Flatten()`](./Flatten.md), which would
-  otherwise be the obvious tool: `Flatten` drops empty objects and arrays entirely, and it
-  descends into arrays element-wise.
-
-Only the both-are-objects case descends, so a value whose ***type*** changed is set whole,
-  in either direction:
+When a value changes to or from an object, the new value is set whole:
 
 ```js
 jsongin.Diff( { a: { x: 1 } }, { a: 5 } )        // returns { $set: { a: 5 } }
@@ -114,24 +96,23 @@ jsongin.Diff( { a: 5 }, { a: { x: 1 } } )        // returns { $set: { a: { x: 1 
 ```
 
 
-## Content, Not Key Order
+## Field Order Does Not Matter
 
-`Diff` compares content. Two documents whose fields appear in a different order are the same
-  document, and produce an empty patch:
+`Diff` compares content.
+Two documents with the same fields in a different order give an empty patch:
 
 ```js
 jsongin.Diff( { a: 1, b: 2 }, { b: 2, a: 1 } )   // returns {}
 ```
 
-The consequence is worth knowing when asserting on a round trip: applying a patch restores
-  content, ***not*** key order. A patch cannot reposition a key, so a field which is removed and
-  later restored lands at the end of its object.
-`StrictEquals` is sensitive to key order and will report such a document as unequal.
-An empty `Diff` is the right test for "these hold the same content":
+Keep this in mind when checking that a patch round trips.
+A patch restores content but ***not*** field order: a field which is removed and then added back
+  ends up last in its object.
+`StrictEquals` does care about field order, so use an empty `Diff` to test for the same content:
 
 ```js
 let restored = jsongin.Update( after, jsongin.Invert( before, patch ) );
-jsongin.StrictEquals( restored, before )              // may be false, on key order alone
+jsongin.StrictEquals( restored, before )                       // can be false, on field order alone
 jsongin.StrictEquals( jsongin.Diff( restored, before ), {} )   // true
 ```
 
@@ -140,16 +121,16 @@ jsongin.StrictEquals( jsongin.Diff( restored, before ), {} )   // true
 
 `Diff` throws when either parameter is not an object.
 
-A field name which itself contains a `.` cannot be addressed unambiguously in dot notation.
-This is a limitation of document paths throughout `jsongin` rather than one of this function,
-  and it is the one shape whose patch will not apply back correctly.
+A field whose name contains a `.` cannot be named correctly in dot notation, so a patch which
+  touches it will not apply back correctly.
+This is true of paths everywhere in `jsongin`.
 
 
 ## See Also
 
-- [`Invert( Before, Patch )`](./Invert.md), which reverses a patch.
+- [`Invert( Before, Patch )`](./Invert.md), which undoes a patch.
 - [`Update( Document, Updates )`](./Update.md), which applies one.
-- [`SafeClone( Document )`](./SafeClone.md), which the patch's values are cloned with.
+- [`SafeClone( Document )`](./SafeClone.md), which copies the values in a patch.
 - [Operator Reference](../Operator-Reference.md) for the update operators.
 
 
@@ -167,20 +148,20 @@ jsongin.Diff( before, after );
 //     }
 ```
 
-### It applies with Update
+### Update applies it
 ```js
 let patch = jsongin.Diff( before, after );
 let result = jsongin.Update( before, patch );
 jsongin.StrictEquals( jsongin.Diff( result, after ), {} ) === true
 ```
 
-### It reports nothing when nothing changed
+### It returns an empty patch when nothing changed
 ```js
 jsongin.Diff( { a: 1 }, { a: 1 } )   // returns {}
 ```
 
-### It can be used as a strict, order-insensitive comparison
+### It can compare content while ignoring field order
 ```js
-// Empty means the two documents hold the same content, whatever order their fields are in.
+// An empty patch means the documents hold the same content.
 function same_content( A, B ) { return ( Object.keys( jsongin.Diff( A, B ) ).length === 0 ); }
 ```

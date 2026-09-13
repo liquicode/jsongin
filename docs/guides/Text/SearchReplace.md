@@ -8,58 +8,51 @@
 
 | **Parameter**   | **Allowed Types** | **Description**                          |
 |-----------------|:-----------------:|------------------------------------------|
-| `Text`          |        s          | The text to search in. 	                 |
-| `Search`        |        s          | The text to search for.                  |
-| `Replace`       |        s          | The text to replace with.                |
-| `CaseSensitive` |        b          | Flag to force case sensitive operations. |
+| `Text`          |        s          | The text to search.                      |
+| `Search`        |        s          | The text to find.                        |
+| `Replace`       |        s          | The text to put in its place.            |
+| `CaseSensitive` |        b          | Optional. `false` ignores upper and lower case when searching. Defaults to `true`. |
 
 
 ## Description
 
-Search in `Text` for all occurances of the `Search` value and replace it with the `Replace` value.
-This function returns the resulting string after all replacements have been made.
+Returns `Text` with every `Search` replaced by `Replace`.
+
+`Search` is plain text, not a pattern, so characters such as `.` and `(` match themselves.
+
+Throws if `Text` or `Search` is not a string.
+
+To replace several different strings at once, use [`SearchReplacements()`](./SearchReplacements.md).
 
 
 ## Examples
 
 
-### It replaces entire string (case sensitive)
+### The whole string
 ```js
 jsongin.Text.SearchReplace( 'The red fox', 'The red fox', 'A blue dog', true ) === 'A blue dog'
-```
-
-### It replaces entire string (case insensitive)
-```js
 jsongin.Text.SearchReplace( 'THE RED FOX', 'The red fox', 'A blue dog', false ) === 'A blue dog'
 ```
 
-### It replaces text at start of string (case sensitive)
+### At the start
 ```js
 jsongin.Text.SearchReplace( 'The red fox', 'The', 'A', true ) === 'A red fox'
-```
-
-### It replaces text at start of string (case insensitive)
-```js
 jsongin.Text.SearchReplace( 'THE RED FOX', 'The', 'A', false ) === 'A RED FOX'
 ```
 
-### It replaces text in middle of string (case sensitive)
+### In the middle
 ```js
 jsongin.Text.SearchReplace( 'The red fox', 'red', 'blue', true ) === 'The blue fox'
-```
-
-### It replaces text in middle of string (case insensitive)
-```js
 jsongin.Text.SearchReplace( 'THE RED FOX', 'red', 'blue', false ) === 'THE blue FOX'
 ```
 
-### It replaces text at end of string (case sensitive)
+### At the end
 ```js
 jsongin.Text.SearchReplace( 'The red fox', 'fox', 'dog', true ) === 'The red dog'
-```
-
-### It replaces text at end of string (case insensitive)
-```js
 jsongin.Text.SearchReplace( 'THE RED FOX', 'fox', 'dog', false ) === 'THE RED dog'
 ```
 
+### Special characters are plain text
+```js
+jsongin.Text.SearchReplace( 'a.b axb', 'a.b', 'X', true ) === 'X axb'
+```

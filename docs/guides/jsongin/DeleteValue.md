@@ -14,26 +14,24 @@
 
 ## Description
 
-Removes the field at `Path` from `Document` and returns `true`.
-Returns `false` when nothing was removed, which covers a path whose parent does not resolve
-  and a field which was never there.
+Removes the field at `Path` from `Document`, and returns `true`.
+Returns `false` if there was nothing to remove: the path is empty, part of it does not exist, or
+  the field itself does not exist.
 
-The `Document` is modified in place.
+`Document` is changed in place.
 
-The key is ***removed***, not set to `undefined`.
-This distinction matters: a key holding `undefined` is invisible in JSON but still reported by
-  `Object.keys()` and by the `in` operator, so the two views of the document disagree with each
-  other. `DeleteValue` leaves them in agreement.
+The key is ***deleted***, not set to `undefined`, so `Object.keys()` and the `in` operator no
+  longer see it.
 
-`DeleteValue` throws when `Document` is not an object or an array, or when `Path` is not a
-  string or a number.
-Every other failure is reported to the `OpLog` and returns `false`.
+`DeleteValue` throws when `Document` is not an object or array, or `Path` is not a string or
+  number.
+Other problems send a message to the [`OpLog`](../OpLog.md) and return `false`.
 
 
 ## Array Elements
 
-A path which addresses an array element leaves a ***hole*** in the array rather than shortening
-  it, which is what the Javascript `delete` operator does.
+Deleting an array element leaves a ***hole***.
+The array keeps its length, the same as with Javascript's `delete`.
 
 ```js
 let document = { a: [ 1, 2, 3 ] };
@@ -42,10 +40,12 @@ document.a.length === 3   // still three
 // document.a is now [ 1, <hole>, 3 ]
 ```
 
-To shorten an array, use the `$pop` or `$pullAll` update operators instead.
+To remove elements and shorten an array, use the `$pop`, `$pull` or `$pullAll` update operators.
 See [`Update()`](./Update.md).
 
-A ***negative index*** addresses nothing and returns `false`:
+A ***negative index*** does nothing and returns `false`.
+There is no counting from the end: `-1` is just a field name, and an array has no field called
+  `-1`.
 
 ```js
 let document = { a: [ 1, 2, 3 ] };
@@ -54,15 +54,11 @@ jsongin.DeleteValue( document, 'a.-1' ) === false
 // document is unchanged
 ```
 
-There is no reverse indexing. A negative number is read as a field name like any other, and an
-  array has no field called `-1`.
-This matches MongoDB, where `$unset: { 'a.-1': '' }` reports a successful update which modified
-  nothing.
 
+## Field Names Against an Array
 
-## Reaching Into An Array
-
-A ***non numeric key against an array*** does nothing, and returns `false`:
+A field name used against an array does nothing and returns `false`.
+It is not applied to each element:
 
 ```js
 let document = { a: [ { x: 1 }, { x: 2 } ] };
@@ -71,12 +67,10 @@ jsongin.DeleteValue( document, 'a.x' ) === false
 // document is unchanged
 ```
 
-This matches MongoDB, where `$unset: { 'a.x': '' }` reports a successful update which modified
-  nothing.
-Reaching through an array there requires the all positional operator,
-  `$unset: { 'a.$[].x': '' }`.
+To remove a field from every element, use `$unset` with the `$[]` path element:
+  `jsongin.Update( document, { $unset: { 'a.$[].x': '' } } )`.
 
-`jsongin`'s path syntax is MongoDB's path syntax, with no extensions and no settings to turn on.
+MongoDB's `$unset` behaves the same way in both cases above.
 
 
 ## See Also
@@ -84,8 +78,7 @@ Reaching through an array there requires the all positional operator,
 - [`GetValue( Document, Path )`](./GetValue.md)
 - [`SetValue( Document, Path, Value )`](./SetValue.md)
 - [`SplitPath( Path )`](./SplitPath.md)
-- [`Update()`](./Update.md) and its `$unset` operator, which uses this function.
-- [`Project()`](./Project.md), which uses this function to exclude fields.
+- [`Update()`](./Update.md) and its `$unset` and `$rename` operators, which use this function.
 
 
 ## Examples
@@ -101,7 +94,7 @@ jsongin.DeleteValue( document, 'a.b' ) === true
 ```
 
 
-### It returns false when the path does not exist
+### It returns false when part of the path does not exist
 ```js
 let document = { a: 1 };
 
@@ -110,7 +103,7 @@ jsongin.DeleteValue( document, 'x.y' ) === false
 ```
 
 
-### It returns false when the field was never there
+### It returns false when the field does not exist
 ```js
 let document = { a: 1 };
 
@@ -118,7 +111,7 @@ jsongin.DeleteValue( document, 'nope' ) === false
 // document is { a: 1 } (unchanged)
 ```
 
-A field holding `undefined` still counts as present, because its key is there to remove.
+A field holding `undefined` does exist, so deleting it returns `true`.
 
 
 ### It returns false for an empty path
@@ -130,7 +123,7 @@ jsongin.DeleteValue( document, '' ) === false
 ```
 
 
-### It throws when the document is not a document
+### It throws when the document is not an object or array
 ```js
 jsongin.DeleteValue( 'a string', 'a' )
 // throws: Document must be an object or array.

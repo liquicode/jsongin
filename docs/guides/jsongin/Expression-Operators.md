@@ -3,17 +3,17 @@
 
 # Expression Operators
 
-The operators of the aggregation expression language.
-They are read by [`Evaluate()`](./Evaluate.md), by the `$expr` and `$exprx` query operators, by
-  computed fields in [`Project()`](./Project.md), and by every aggregation stage which computes
-  a value.
+The operators used in aggregation expressions.
+[`Evaluate()`](./Evaluate.md), the `$expr` and `$exprx` query operators, computed fields in
+  [`Project()`](./Project.md), and the pipeline stages all use them.
 
-An expression is a document, an array, or a scalar:
+An expression is one of these:
 
-- A string beginning with `$` is a ***field reference***, resolved by dot notation path.
-- Any other value is a ***literal***.
-- A document whose single key is an operator name is an ***operator call***.
-- A document of other keys is an ***expression object***, evaluated field by field.
+- A string starting with `$`, such as `'$user.name'`, is a ***field reference***.
+- A string starting with `$$`, such as `'$$ROOT'`, is a ***variable***. See [Variables](#variables).
+- An object with one key naming an operator, such as `{ $add: [ 1, 2 ] }`, is an ***operator***.
+- Any other object is evaluated field by field.
+- Anything else is a ***literal*** value.
 
 | **Category**    | **Operators**                                                                                               |
 |-----------------|-------------------------------------------------------------------------------------------------------------|
@@ -35,16 +35,15 @@ An expression is a document, an array, or a scalar:
 | Conditional     | [$cond](#$cond), [$ifNull](#$ifNull), [$switch](#$switch)                                                   |
 | Literal         | [$literal](#$literal)                                                                                       |
 
-See [`Evaluate()`](./Evaluate.md) for how an expression is resolved and what happens to missing
-  values, and the [Operator Reference](../Operator-Reference.md) for which MongoDB expression
-  operators are implemented.
+See [`Evaluate()`](./Evaluate.md) for how expressions are evaluated and how missing values are
+  handled, and the [Operator Reference](../Operator-Reference.md) for which MongoDB operators are
+  supported.
 
-***An expression operator throws on an operand of the wrong type.***
-This is deliberate and unlike the accumulators: an expression is authored against a single
-  document, so a type error there is an authoring mistake worth surfacing. See
-  [Accumulator Operators](./Accumulator-Operators.md) for the other side of that choice.
+***An expression operator throws when an operand has the wrong type***, such as `$add` with a
+  string.
+[Accumulators](./Accumulator-Operators.md) are different: they skip values they cannot use.
 
-This document is used by the examples below:
+Most examples below use this document:
 
 ```js
 let document =
@@ -61,26 +60,31 @@ let document =
 
 # Arithmetic Operators
 
+A `null` or missing operand makes the result `null`.
+An operand which is not a number throws.
+Operators which take one operand accept it with or without an array around it: `{ $abs: -7 }` and
+  `{ $abs: [ -7 ] }` are the same.
+
 
 <a id="$add"></a>$add
 ---------------------------------------------------------------------
 
 **Usage** : `{ $add: [ expression, ... ] }`
 
-Adds numbers together.
-A `Date` may be one operand, in which case the numbers are added to it as milliseconds and the
-  result is a `Date`.
+Adds numbers.
+One operand can be a `Date`; the numbers are then added to it as milliseconds, and the result is a
+  `Date`.
 
 ### Example
 ```js
 jsongin.Evaluate( document, { $add: [ '$a', '$b', 1 ] } );
 // returns 8
 
-// Adding milliseconds to a date gives a date.
+// Add milliseconds to a date.
 jsongin.Evaluate( { d: new Date( '2024-01-02T03:04:05Z' ) }, { $add: [ '$d', 1000 ] } );
 // returns new Date( '2024-01-02T03:04:06Z' )
 
-// A non-numeric operand is refused.
+// A string throws.
 jsongin.Evaluate( document, { $add: [ '$a', '$name' ] } );   // throws
 ```
 
@@ -91,15 +95,14 @@ jsongin.Evaluate( document, { $add: [ '$a', '$name' ] } );   // throws
 **Usage** : `{ $subtract: [ expression, expression ] }`
 
 Subtracts the second operand from the first.
-Subtracting one `Date` from another gives the difference in milliseconds, and subtracting a
-  number from a `Date` gives a `Date`.
+Two dates give the difference in milliseconds. A date minus a number gives a date.
 
 ### Example
 ```js
 jsongin.Evaluate( document, { $subtract: [ '$a', '$b' ] } );
 // returns 3
 
-// The difference between two dates is a number of milliseconds.
+// Two dates give milliseconds.
 jsongin.Evaluate( { d: new Date( '2024-01-02T03:04:05Z' ) }, { $subtract: [ '$d', '$d' ] } );
 // returns 0
 ```
@@ -110,7 +113,7 @@ jsongin.Evaluate( { d: new Date( '2024-01-02T03:04:05Z' ) }, { $subtract: [ '$d'
 
 **Usage** : `{ $multiply: [ expression, ... ] }`
 
-Multiplies numbers together.
+Multiplies numbers.
 
 ### Example
 ```js
@@ -124,9 +127,7 @@ jsongin.Evaluate( document, { $multiply: [ '$a', '$b' ] } );
 
 **Usage** : `{ $divide: [ expression, expression ] }`
 
-Divides the first operand by the second.
-Dividing by zero ***throws*** rather than returning `Infinity`, because `Infinity` is not
-  representable in JSON.
+Divides the first operand by the second. Dividing by zero throws.
 
 ### Example
 ```js
@@ -142,10 +143,10 @@ jsongin.Evaluate( document, { $divide: [ '$a', 0 ] } );   // throws
 
 **Usage** : `{ $mod: [ expression, expression ] }`
 
-The remainder of dividing the first operand by the second.
+The remainder after dividing the first operand by the second.
 
-Note that this is the ***expression*** `$mod`, which returns the remainder.
-The ***query*** `$mod` takes `[ divisor, remainder ]` and matches; it is not implemented.
+This is the ***expression*** `$mod`, which returns a remainder.
+The [query `$mod`](./Query-Operators.md#$mod) tests a field for a remainder instead.
 
 ### Example
 ```js
@@ -160,8 +161,6 @@ jsongin.Evaluate( document, { $mod: [ '$a', '$b' ] } );
 **Usage** : `{ $abs: expression }`
 
 The absolute value of a number.
-Like the other single-operand arithmetic operators, it accepts its operand with or without the
-  enclosing array.
 
 ### Example
 ```js
@@ -178,8 +177,7 @@ jsongin.Evaluate( document, { $abs: [ -7 ] } );
 
 **Usage** : `{ $sqrt: expression }`
 
-The square root of a number.
-The operand must be zero or greater.
+The square root of a number. A negative number throws.
 
 ### Example
 ```js
@@ -197,10 +195,9 @@ jsongin.Evaluate( document, { $sqrt: -1 } );
 <a id="$pow"></a>$pow
 ---------------------------------------------------------------------
 
-**Usage** : `{ $pow: [ expression, exponent ] }`
+**Usage** : `{ $pow: [ number, exponent ] }`
 
-Raises a number to a power.
-A base of zero cannot carry a negative exponent, because the result is unbounded.
+Raises a number to a power. Zero to a negative power throws.
 
 ### Example
 ```js
@@ -220,8 +217,8 @@ jsongin.Evaluate( document, { $pow: [ 0, -1 ] } );
 
 **Usage** : `{ $exp: expression }`
 
-Raises Euler's number to the given power.
-Every number is in the domain, so a large operand returns `Infinity` rather than throwing.
+Raises Euler's number, e, to a power.
+Any number is accepted. A very large power gives `Infinity`.
 
 ### Example
 ```js
@@ -239,11 +236,8 @@ jsongin.Evaluate( document, { $exp: 1 } );
 **Usage** : `{ $ln: expression }`
 
 The natural logarithm of a number.
-
-***The operand must be greater than zero, and zero itself throws.***
-This is the one place in the arithmetic family where the operator is not simply the Javascript
-  function underneath: `Math.log( 0 )` answers `-Infinity`, and both MongoDB and `jsongin`
-  refuse it.
+The number must be greater than zero. Zero throws, even though Javascript's `Math.log( 0 )` gives
+  `-Infinity`.
 
 ### Example
 ```js
@@ -258,11 +252,10 @@ jsongin.Evaluate( document, { $ln: 0 } );
 <a id="$log"></a>$log
 ---------------------------------------------------------------------
 
-**Usage** : `{ $log: [ expression, base ] }`
+**Usage** : `{ $log: [ number, base ] }`
 
 The logarithm of a number in the given base.
-The number must be greater than zero, and the base must be greater than zero and not one.
-A base of one has no logarithm, because raising one to any power gives one back.
+The number must be greater than zero. The base must be greater than zero and not `1`.
 
 ### Example
 ```js
@@ -282,15 +275,13 @@ jsongin.Evaluate( document, { $log: [ 100, 1 ] } );
 
 **Usage** : `{ $log10: expression }`
 
-The base 10 logarithm of a number.
-The operand must be greater than zero, as in [$ln](#$ln).
+The base 10 logarithm of a number. The number must be greater than zero.
 
 ### Example
 ```js
 jsongin.Evaluate( document, { $log10: 1000 } );
 // returns 3
 ```
-
 
 
 # Rounding Operators
@@ -301,7 +292,7 @@ jsongin.Evaluate( document, { $log10: 1000 } );
 
 **Usage** : `{ $ceil: expression }`
 
-The smallest integer greater than or equal to the operand.
+Rounds up to a whole number.
 
 ### Example
 ```js
@@ -315,7 +306,7 @@ jsongin.Evaluate( document, { $ceil: 2.1 } );
 
 **Usage** : `{ $floor: expression }`
 
-The largest integer less than or equal to the operand.
+Rounds down to a whole number.
 
 ### Example
 ```js
@@ -327,16 +318,13 @@ jsongin.Evaluate( document, { $floor: 2.9 } );
 <a id="$round"></a>$round
 ---------------------------------------------------------------------
 
-**Usage** : `{ $round: [ expression, place ] }`
+**Usage** : `{ $round: [ number, place ] }`
 
-Rounds a number, optionally to a given decimal `place`.
+Rounds a number to `place` decimal places, or to a whole number when `place` is left out.
+A negative `place` rounds to the left of the decimal point, such as to the nearest ten.
 
-***`$round` rounds half to even***, which is what MongoDB does and is not what
-  `Math.round()` does: `2.5` rounds to `2` while `3.5` rounds to `4`.
-
-The `place` may be negative, which rounds to the left of the decimal point.
-The shift to that place is done through the number's decimal text rather than by multiplying by
-  a power of ten, because multiplying introduces the very error the rounding is meant to remove.
+***A number exactly halfway rounds to the even neighbor***, as MongoDB does.
+So `2.5` rounds to `2` and `3.5` rounds to `4`. Javascript's `Math.round()` would give `3` and `4`.
 
 ### Example
 ```js
@@ -357,10 +345,10 @@ jsongin.Evaluate( document, { $round: [ 1234, -1 ] } );
 <a id="$trunc"></a>$trunc
 ---------------------------------------------------------------------
 
-**Usage** : `{ $trunc: [ expression, place ] }`
+**Usage** : `{ $trunc: [ number, place ] }`
 
-Discards the digits past the given decimal `place`, without rounding.
-It takes the same optional, possibly negative, `place` that [`$round`](#$round) takes.
+Cuts a number off after `place` decimal places, without rounding.
+`place` works as it does for [`$round`](#$round).
 
 ### Example
 ```js
@@ -374,23 +362,17 @@ jsongin.Evaluate( document, { $trunc: [ 3.14159, 2 ] } );
 
 # Comparison Operators
 
-Each of these compares two operands with [`CompareValues()`](./CompareValues.md), which follows
-  MongoDB's BSON type order, so values of different types still compare.
-All seven share one implementation and differ only in what they make of the comparison.
+These compare two operands with [`CompareValues()`](./CompareValues.md), so values of different
+  types can be compared, in MongoDB's type order.
 
-***A missing operand ranks below a null and equals only another missing one.***
-This is the one place these operators depart from `CompareValues()`, which ranks the two
-  together, and it is worth stating because the neighbouring mechanisms disagree with it:
+***Here, a missing value is less than `null`, and only equals another missing value.***
+Other parts of `jsongin` treat missing and `null` differently, following MongoDB:
 
-| **Mechanism** | **A missing value against a null** |
-|---------------|-------------------------------------|
-| an expression comparison, here | ***below*** it — `{ $cmp: [ '$nope', null ] }` is `-1` |
-| a [query](./Query-Operators.md), `{ field: null }` | ***matches*** it |
-| [`$sort`](./Stage-Operators.md#$sort) | sorts ***as*** it |
-
-MongoDB is inconsistent between the three on purpose, and `jsongin` reproduces each rather than
-  picking one. So `{ $eq: [ '$nope', null ] }` is `false` while a query for `{ nope: null }`
-  matches, and both are correct.
+| **Where**                                         | **A missing value compared with `null`**   |
+|---------------------------------------------------|---------------------------------------------|
+| these expression operators                        | is ***less*** — `{ $cmp: [ '$nope', null ] }` is `-1` |
+| a [query](./Query-Operators.md), `{ field: null }` | ***matches***                              |
+| [`$sort`](./Stage-Operators.md#$sort)             | sorts ***the same as*** `null`             |
 
 ```js
 jsongin.Evaluate( {}, { $eq: [ '$nope', null ] } ) === false;
@@ -399,6 +381,9 @@ jsongin.Evaluate( {}, { $cmp: [ '$nope', null ] } ) === -1;
 jsongin.Evaluate( { a: null }, { $eq: [ '$a', null ] } ) === true;
 ```
 
+These are the ***expression*** operators, which take two operands.
+The [query operators](./Query-Operators.md) of the same names test a field against a value.
+
 
 <a id="$eq"></a>$eq
 ---------------------------------------------------------------------
@@ -406,9 +391,6 @@ jsongin.Evaluate( { a: null }, { $eq: [ '$a', null ] } ) === true;
 **Usage** : `{ $eq: [ expression, expression ] }`
 
 `true` when the two operands are equal.
-
-Note that this is the ***expression*** `$eq`, which takes two operands.
-The ***query*** [`$eq`](./Query-Operators.md#$eq) takes a match value and applies it to a field.
 
 ### Example
 ```js
@@ -492,7 +474,7 @@ jsongin.Evaluate( document, { $lte: [ '$b', 2 ] } );
 
 **Usage** : `{ $cmp: [ expression, expression ] }`
 
-Returns the comparison itself rather than a boolean: `-1`, `0`, or `1`.
+Returns `-1` when the first operand is less, `0` when they are equal, and `1` when it is greater.
 
 ### Example
 ```js
@@ -515,19 +497,18 @@ jsongin.Evaluate( document, { $cmp: [ 3, 2 ] } );
 
 **Usage** : `{ $min: [ expression, ... ] }`
 
-The smallest of the operands, ordered by [`CompareValues()`](./CompareValues.md).
-Because the ordering is the BSON type order rather than a numeric one, operands of different
-  types still have a smallest.
+The smallest operand, compared with [`CompareValues()`](./CompareValues.md).
+`null` and missing operands are skipped.
+Values of different types can be compared, so a number is smaller than a string.
 
-This is the ***expression*** `$min`, which compares the operands given to it.
-The ***accumulator*** [`$min`](./Accumulator-Operators.md#$min) reduces a whole group.
+The [`$min` accumulator](./Accumulator-Operators.md#$min) finds the smallest value in a group.
 
 ### Example
 ```js
 jsongin.Evaluate( document, { $min: [ 3, 1, 2 ] } );
 // returns 1
 
-// Numbers order before strings.
+// A number is smaller than a string.
 jsongin.Evaluate( document, { $min: [ 'b', 1 ] } );
 // returns 1
 ```
@@ -538,7 +519,7 @@ jsongin.Evaluate( document, { $min: [ 'b', 1 ] } );
 
 **Usage** : `{ $max: [ expression, ... ] }`
 
-The largest of the operands, and the mirror of [`$min`](#$min).
+The largest operand. It works like [`$min`](#$min) in every other way.
 
 ### Example
 ```js
@@ -555,18 +536,17 @@ jsongin.Evaluate( document, { $max: [ 3, 1, 2 ] } );
 
 **Usage** : `{ $size: expression }`
 
-The number of elements in an array.
-An operand which is not an array ***throws***.
+The number of elements in an array. Anything else throws, including `null`.
 
-Note that this is the ***expression*** `$size`, which returns the length.
-The ***query*** [`$size`](./Query-Operators.md#$size) takes a length and matches.
+This is the ***expression*** `$size`. The [query `$size`](./Query-Operators.md#$size) tests for a
+  length instead.
 
 ### Example
 ```js
 jsongin.Evaluate( document, { $size: '$scores' } );
 // returns 3
 
-jsongin.Evaluate( document, { $size: '$a' } );   // throws, $a is not an array
+jsongin.Evaluate( document, { $size: '$a' } );   // throws: $a is not an array
 ```
 
 
@@ -575,21 +555,18 @@ jsongin.Evaluate( document, { $size: '$a' } );   // throws, $a is not an array
 
 **Usage** : `{ $arrayElemAt: [ array, position ] }`
 
-The element at a position in an array.
+The element at a position in an array. A negative position counts back from the end.
+A position outside the array gives nothing (`undefined`).
 
-***This is the only way to index an array in an expression.***
-A field path such as `'$scores.2'` does not index: it applies the key `2` to each element.
-A negative position counts back from the end here, because it is an operand rather than a path
+Use this to get an element by position.
+A field reference such as `'$scores.2'` does not do that: it looks for a field named `2` in each
   element.
-
-A position outside the array gives a missing value.
 
 ### Example
 ```js
 jsongin.Evaluate( document, { $arrayElemAt: [ '$scores', 1 ] } );
 // returns 20
 
-// A negative position counts back from the end.
 jsongin.Evaluate( document, { $arrayElemAt: [ '$scores', -1 ] } );
 // returns 30
 ```
@@ -600,7 +577,7 @@ jsongin.Evaluate( document, { $arrayElemAt: [ '$scores', -1 ] } );
 
 **Usage** : `{ $concatArrays: [ array, ... ] }`
 
-Joins arrays end to end into one array.
+Joins arrays into one array.
 
 ### Example
 ```js
@@ -614,12 +591,11 @@ jsongin.Evaluate( document, { $concatArrays: [ [ 1, 2 ], [ 3 ] ] } );
 
 **Usage** : `{ $in: [ value, array ] }`
 
-`true` when the array holds the value, compared by content.
+`true` when the array contains the value. Values are compared by content.
 
-***The operand order is the reverse of the query operator of the same name.***
-The expression `$in` takes the value first and the array second; the
-  [query `$in`](./Query-Operators.md#$in) takes the array as its match value and applies it to a
-  field.
+The value comes ***first*** and the array second.
+This is the opposite of the [query `$in`](./Query-Operators.md#$in), where a field is tested
+  against a list.
 
 ### Example
 ```js
@@ -636,11 +612,7 @@ jsongin.Evaluate( document, { $in: [ 99, '$scores' ] } );
 
 **Usage** : `{ $isArray: expression }`
 
-Whether a value is an array.
-
-***It answers rather than propagating***, so a null gives `false` and not `null`. It is the
-  only operator in this family which does, because the question it asks has an answer for a
-  null.
+`true` when the value is an array. For `null`, it returns `false`, not `null`.
 
 ### Example
 ```js
@@ -660,8 +632,7 @@ jsongin.Evaluate( document, { $isArray: '$empty' } );
 
 **Usage** : `{ $reverseArray: expression }`
 
-An array with its elements in reverse order.
-The document's own array is left as it is.
+A new array with the elements in reverse order. The original array is not changed.
 
 ### Example
 ```js
@@ -675,11 +646,9 @@ jsongin.Evaluate( document, { $reverseArray: '$scores' } );
 
 **Usage** : `{ $range: [ start, end ] }` or `{ $range: [ start, end, step ] }`
 
-An array of numbers from `start` up to but not including `end`.
+An array of numbers from `start` up to, but not including, `end`, counting by `step` (default `1`).
 
-***The end is never reached***, and a range which runs the wrong way is empty rather than an
-  error.
-A step of zero would never end and is refused.
+If `step` goes the wrong way to reach `end`, the result is empty. A `step` of `0` throws.
 
 ### Example
 ```js
@@ -692,7 +661,7 @@ jsongin.Evaluate( document, { $range: [ 0, 4, 2 ] } );
 jsongin.Evaluate( document, { $range: [ 4, 0, -2 ] } );
 // returns [ 4, 2 ]
 
-// The default step of 1 never gets there.
+// Counting up by 1 never reaches 0.
 jsongin.Evaluate( document, { $range: [ 4, 0 ] } );
 // returns []
 ```
@@ -705,10 +674,10 @@ jsongin.Evaluate( document, { $range: [ 4, 0 ] } );
   or `{ $indexOfArray: [ array, value, start ] }`
   or `{ $indexOfArray: [ array, value, start, end ] }`
 
-The index of the first element which matches the value, or `-1` when none does.
+The position of the first element equal to `value`, or `-1` if there is none.
+Elements are compared by content, so you can search for an object or an array.
 
-Elements are compared by ***content***, so a document or an array can be searched for.
-The search may be narrowed to a range, where `start` is included and `end` is not.
+`start` and `end` limit the search. `start` is included and `end` is not.
 
 ### Example
 ```js
@@ -728,21 +697,17 @@ jsongin.Evaluate( document, { $indexOfArray: [ '$scores', 10, 1 ] } );
 
 **Usage** : `{ $slice: [ array, n ] }` or `{ $slice: [ array, position, n ] }`
 
-A subset of an array.
+Part of an array.
 
-***The two forms read `n` differently:***
+- With ***two*** operands, it takes `n` elements from the start, or from the end if `n` is
+  negative.
+- With ***three***, it starts at `position` (negative counts back from the end) and takes `n`
+  elements. Here `n` cannot be negative.
 
-- With ***two*** operands, `n` is how many to take from the front, and a ***negative*** `n`
-  takes them from the back instead.
-- With ***three***, `position` is where to start — negative counts back from the end — and `n`
-  is how many to take from there. A negative `n` is refused here, because the direction has
-  already been said.
+Asking for more elements than there are gives all of them.
 
-***There is also a projection operator called `$slice`***, which is a different operator with
-  the same name. Which one applies is decided by where it is written: inside a
-  [`Project()`](./Project.md) projection the name is the projection operator, and inside a
-  `$project` ***stage*** it is this one. See the
-  [Operator Reference](../Operator-Reference.md).
+In a [`Project()`](./Project.md) projection, `$slice` is the
+  [projection operator](./Projection-Operators.md#$slice) instead.
 
 ### Example
 ```js
@@ -755,7 +720,6 @@ jsongin.Evaluate( document, { $slice: [ '$scores', -2 ] } );
 jsongin.Evaluate( document, { $slice: [ '$scores', 1, 2 ] } );
 // returns [ 20, 30 ]
 
-// Asking for more than there is gives what there is.
 jsongin.Evaluate( document, { $slice: [ '$scores', 99 ] } );
 // returns [ 10, 20, 30 ]
 ```
@@ -764,13 +728,13 @@ jsongin.Evaluate( document, { $slice: [ '$scores', 99 ] } );
 <a id="$sortArray"></a>$sortArray
 ---------------------------------------------------------------------
 
-**Usage** : `{ $sortArray: { input: expression, sortBy: 1 } }`
-  or `{ $sortArray: { input: expression, sortBy: { field: 1, ... } } }`
+**Usage** : `{ $sortArray: { input: expression, sortBy: 1 | -1 } }`
+  or `{ $sortArray: { input: expression, sortBy: { field: 1 | -1, ... } } }`
 
-Sorts the elements of an array.
+Sorts an array.
 
-`sortBy` is either `1` or `-1`, which sorts the elements themselves by BSON order, or a
-  document naming fields, which sorts documents the way [`Sort()`](./Sort.md) does.
+- `sortBy: 1` or `-1` sorts the elements themselves, in MongoDB's type order.
+- A `sortBy` object sorts an array of objects by their fields, as [`Sort()`](./Sort.md) does.
 
 ### Example
 ```js
@@ -791,13 +755,13 @@ jsongin.Evaluate( people, { $sortArray: { input: '$p', sortBy: { name: 1 } } } )
 
 **Usage** : `{ $zip: { inputs: [ array, ... ], useLongestLength: boolean, defaults: [ value, ... ] } }`
 
-Merges arrays element by element, so the first elements of each become the first element of the
-  result.
+Combines arrays element by element: the first element of each becomes the first element of the
+  result, and so on.
 
-***The shortest input decides how many elements come out***, unless `useLongestLength` is true,
-  in which case the longest does and the gaps are filled with `null` — or with the matching
-  entry of `defaults` when one is given.
-`defaults` without `useLongestLength` is refused rather than ignored.
+- By default, the result is as long as the ***shortest*** array.
+- With `useLongestLength: true`, it is as long as the longest, and missing values are `null`,
+  or the matching entry of `defaults`.
+- `defaults` without `useLongestLength: true` throws.
 
 ### Example
 ```js
@@ -817,12 +781,12 @@ jsongin.Evaluate( document, { $zip: { inputs: [ [ 1, 2 ], [ 'a' ] ], useLongestL
 
 **Usage** : `{ $arrayToObject: expression }`
 
-Converts an array of key and value pairs into a document.
+Turns an array of key-value pairs into an object.
+Each pair is either a two-element array, `[ 'a', 1 ]`, or an object, `{ k: 'a', v: 1 }`.
+Keys must be strings. If a key appears twice, the last value wins.
 
-A pair is written either as a ***two element array***, `[ 'a', 1 ]`, or as a ***document***,
-  `{ k: 'a', v: 1 }`.
-***A repeated key keeps the last value.***
-A key must be a string.
+Note that an array written directly in the expression needs an extra pair of brackets, so that it
+  is not read as the operator's list of operands.
 
 ### Example
 ```js
@@ -843,10 +807,7 @@ jsongin.Evaluate( document, { $arrayToObject: [ [ [ 'a', 1 ], [ 'a', 2 ] ] ] } )
 **Usage** : `{ $first: expression }`
 
 The first element of an array.
-
-***There is also an accumulator called `$first`***, which is a different operator with the same
-  name: that one takes the first document reaching a `$group`. Which one applies is decided by
-  where it is written. See [Accumulator Operators](./Accumulator-Operators.md).
+The [`$first` accumulator](./Accumulator-Operators.md#$first) is a different operator.
 
 ### Example
 ```js
@@ -861,7 +822,7 @@ jsongin.Evaluate( document, { $first: '$scores' } );
 **Usage** : `{ $last: expression }`
 
 The last element of an array.
-As with [$first](#$first), there is an accumulator of the same name.
+The [`$last` accumulator](./Accumulator-Operators.md#$last) is a different operator.
 
 ### Example
 ```js
@@ -875,10 +836,8 @@ jsongin.Evaluate( document, { $last: '$scores' } );
 
 **Usage** : `{ $firstN: { input: expression, n: number } }`
 
-The first `n` elements of an array, in the order they are in.
-
-***Asking for more than there is is not an error***, and gives what there is.
-`n` must be a whole number of one or more.
+The first `n` elements of an array.
+`n` must be a whole number, `1` or more. Asking for more than there are gives all of them.
 
 ### Example
 ```js
@@ -895,7 +854,7 @@ jsongin.Evaluate( document, { $firstN: { input: '$scores', n: 99 } } );
 
 **Usage** : `{ $lastN: { input: expression, n: number } }`
 
-The last `n` elements of an array, in the order they are in.
+The last `n` elements of an array, in their original order.
 
 ### Example
 ```js
@@ -909,8 +868,7 @@ jsongin.Evaluate( document, { $lastN: { input: '$scores', n: 2 } } );
 
 **Usage** : `{ $minN: { input: expression, n: number } }`
 
-The `n` smallest values of an array, ***smallest first***.
-The result is in BSON order rather than in the order the elements were written.
+The `n` smallest elements of an array, ***smallest first***.
 
 ### Example
 ```js
@@ -924,7 +882,7 @@ jsongin.Evaluate( { v: [ 3, 1, 2 ] }, { $minN: { input: '$v', n: 2 } } );
 
 **Usage** : `{ $maxN: { input: expression, n: number } }`
 
-The `n` largest values of an array, ***largest first***.
+The `n` largest elements of an array, ***largest first***.
 
 ### Example
 ```js
@@ -938,40 +896,31 @@ jsongin.Evaluate( { v: [ 3, 1, 2 ] }, { $maxN: { input: '$v', n: 2 } } );
 
 **Usage** : `{ $map: { input: array, as: name, in: expression } }`
 
-Applies an expression to each element of an array and answers the array of results.
+Evaluates `in` for each element of an array, and returns an array of the results.
 
-The element being worked on is bound to `$$this`, or to the name given by `as`.
-See [Variables](#variables) below for what a bound variable is and how long it lasts.
+- The current element is `$$this`. With `as: 'item'`, it is `$$item` instead, and `$$this` is not
+  available.
+- ***A field reference in `in` still reads the document***, not the element. The element's `a`
+  field is `'$$this.a'`, not `'$a'`.
+- A `null` or missing `input` gives `null`. Any other `input` which is not an array throws.
+- A result of nothing becomes `null`, so the array keeps its length.
 
-***`as` renames the binding rather than adding one.***
-Given `as: 'item'` the element is `$$item` and `$$this` is not bound at all, so an `in` written
-  against `$$this` stops working the moment an `as` is added.
-
-***A field path inside `in` reads the document, not the element.***
-This is the single most common way to get `$map` wrong: `'$a'` is the `a` of the document being
-  aggregated, and the `a` of the element is `'$$this.a'`.
-
-A null `input`, or one which is missing, answers `null`.
-An `input` which is present and is not an array throws.
-An empty array answers an empty array.
-
-A result which is nothing takes its position as a `null`, because an array cannot leave a
-  position out without moving every element after it.
+See [Variables](#variables).
 
 ### Example
 ```js
 jsongin.Evaluate( document, { $map: { input: '$scores', in: { $multiply: [ '$$this', 2 ] } } } );
 // returns [ 20, 40, 60 ]
 
-// `as` renames the element binding.
+// `as` names the element.
 jsongin.Evaluate( document, { $map: { input: '$scores', as: 'score', in: { $add: [ '$$score', 1 ] } } } );
 // returns [ 11, 21, 31 ]
 
-// A field path inside `in` still reads the document.
+// '$a' reads the document, not the element.
 jsongin.Evaluate( document, { $map: { input: '$scores', in: '$a' } } );
 // returns [ 5, 5, 5 ]
 
-// A null or missing input answers null; anything else which is not an array throws.
+// A null input gives null. A number throws.
 jsongin.Evaluate( document, { $map: { input: '$empty', in: '$$this' } } ) === null
 jsongin.Evaluate( document, { $map: { input: '$a', in: '$$this' } } );   // throws
 ```
@@ -982,37 +931,24 @@ jsongin.Evaluate( document, { $map: { input: '$a', in: '$$this' } } );   // thro
 
 **Usage** : `{ $filter: { input: array, as: name, cond: expression, limit: number } }`
 
-Answers the elements of an array which satisfy a condition, in the order they were in.
+Returns the elements of an array for which `cond` is true, in their original order.
 
-The element being tested is bound to `$$this`, or to the name given by `as`.
-As with [$map](#$map), `as` ***renames*** the binding rather than adding one, and a field path
-  inside `cond` reads the document rather than the element.
-
-***`cond` is read for its truthiness rather than for a boolean.***
-Only `false`, `null`, `0`, and a missing value are false; every other value is true, including
-  an empty string and an empty array.
-
-***`limit` is a count of matches, not a count of elements examined.***
-Filtering stops once that many elements have been kept.
-A limit larger than the number of matches simply gives every match, and a `null` limit means no
-  limit at all.
-
-`limit` is an expression, so it may be computed.
-It must evaluate to a whole number of one or more; a zero, a negative, or a fraction throws.
-
-A null `input`, or one which is missing, answers `null`.
-An `input` which is present and is not an array throws.
+- The current element is `$$this`, or the name given by `as`, as in [`$map`](#$map).
+- `cond` is true unless it is `false`, `0`, `null` or missing. So `''` and `[]` are true.
+- `limit` stops after that many elements have been kept. It can be an expression. It must be a
+  whole number, `1` or more, or `null` for no limit.
+- A `null` or missing `input` gives `null`. Any other `input` which is not an array throws.
 
 ### Example
 ```js
 jsongin.Evaluate( document, { $filter: { input: '$scores', cond: { $gt: [ '$$this', 10 ] } } } );
 // returns [ 20, 30 ]
 
-// limit counts the matches which are kept.
+// Keep at most two.
 jsongin.Evaluate( document, { $filter: { input: '$scores', cond: true, limit: 2 } } );
 // returns [ 10, 20 ]
 
-// A null limit is no limit. A zero one is refused.
+// A null limit is no limit. Zero throws.
 jsongin.Evaluate( document, { $filter: { input: '$scores', cond: true, limit: null } } );
 // returns [ 10, 20, 30 ]
 jsongin.Evaluate( document, { $filter: { input: '$scores', cond: true, limit: 0 } } );   // throws
@@ -1024,27 +960,20 @@ jsongin.Evaluate( document, { $filter: { input: '$scores', cond: true, limit: 0 
 
 **Usage** : `{ $reduce: { input: array, initialValue: expression, in: expression } }`
 
-Folds an array into a single value by applying an expression to each element in turn.
+Combines an array into one value, one element at a time.
 
-Two variables are bound within `in`:
+Inside `in`:
 
-| **Variable** | **Description**                                                          |
-|--------------|----------------------------------------------------------------------------|
-| `$$this`     | The element being folded in.                                             |
-| `$$value`    | What the fold has accumulated so far, starting at `initialValue`.        |
+| **Variable** | **Holds**                                                    |
+|--------------|--------------------------------------------------------------|
+| `$$this`     | The current element.                                         |
+| `$$value`    | The result so far. It starts as `initialValue`.              |
 
-The answer is whatever `in` produced for the last element.
-***`$reduce` has no `as`***, so these two names cannot be renamed.
-
-***The accumulated value may be of any shape***, which is what makes this more than a sum: an
-  array built up with [$concatArrays](#$concatArrays) or a document built up with
-  [$mergeObjects](#$mergeObjects) is accumulated the same way a number is.
-
-***`initialValue` is required***, and is evaluated once, in the scope around the operator.
-An empty array answers it untouched, which is the only case where `in` never runs.
-
-A null `input`, or one which is missing, answers `null`.
-An `input` which is present and is not an array throws.
+- The result is what `in` gives for the last element.
+- The value can be anything, such as an array built with `$concatArrays`.
+- `initialValue` is required. An empty array returns it unchanged.
+- There is no `as`, so the variable names cannot be changed.
+- A `null` or missing `input` gives `null`. Any other `input` which is not an array throws.
 
 ### Example
 ```js
@@ -1052,7 +981,7 @@ jsongin.Evaluate( document,
 	{ $reduce: { input: '$scores', initialValue: 0, in: { $add: [ '$$value', '$$this' ] } } } );
 // returns 60
 
-// The accumulated value may be of any shape.
+// Build an array.
 jsongin.Evaluate( document, {
 	$reduce: {
 		input: '$scores',
@@ -1062,27 +991,21 @@ jsongin.Evaluate( document, {
 } );
 // returns [ 1, 2, 3 ]
 
-// An empty array answers the initial value, untouched.
+// An empty array gives the initial value.
 jsongin.Evaluate( { v: [] }, { $reduce: { input: '$v', initialValue: 'none', in: '$$value' } } ) === 'none'
 ```
-
 
 
 # Variables
 
 <a id="variables"></a>
 
-A name beginning with `$$` is a ***variable reference***, where a name beginning with a single
-  `$` is a field reference.
-The two are resolved from different places: a field comes out of the document, and a variable
-  comes out of the ***scope***, which is the set of names in effect where the expression is
-  being evaluated.
+A name starting with `$$` is a ***variable***. A name starting with one `$` is a field.
+Fields come from the document. Variables come from the ***scope***: the variables available where
+  the expression is evaluated. See [Scope](./Scope.md).
 
-***A variable is not a field, and the difference shows when the name is wrong.***
-A field path which resolves to nothing evaluates to nothing, so a misspelled `'$naem'` quietly
-  produces a missing value.
-A variable which nobody bound is an ***error***, so a misspelled `'$$totl'` stops the
-  expression instead.
+***A variable nobody defined throws.*** A missing field just gives nothing.
+So a misspelled variable is caught, while a misspelled field is not.
 
 ```js
 jsongin.Evaluate( document, '$naem' ) === undefined
@@ -1092,17 +1015,16 @@ jsongin.Evaluate( document, '$$totl' );   // throws
 
 ## The System Variables
 
-Four are always in scope:
+These four are always available:
 
-| **Variable**  | **Description**                                                            |
+| **Variable**  | **Holds**                                                                  |
 |---------------|------------------------------------------------------------------------------|
-| `$$ROOT`      | The document the stage was handed.                                         |
-| `$$CURRENT`   | The document a field path is resolved against. `'$a'` is shorthand for `'$$CURRENT.a'`. |
-| `$$NOW`       | The instant the pipeline started, as a `Date`.                             |
-| `$$REMOVE`    | Bound to nothing, which is how an expression says "leave this field out".   |
+| `$$ROOT`      | The whole document the stage is working on.                                |
+| `$$CURRENT`   | The document field references read from. `'$a'` is short for `'$$CURRENT.a'`. |
+| `$$NOW`       | The time the pipeline started, as a `Date`.                                |
+| `$$REMOVE`    | No value. Use it to leave a field out.                                     |
 
-A variable reference may be followed by a path, which is walked exactly as a field path is:
-  `'$$ROOT.user.role'` and `'$user.role'` answer alike.
+A variable can be followed by a path: `'$$ROOT.user.role'` is the same as `'$user.role'`.
 
 ```js
 jsongin.Evaluate( document, '$$ROOT.user.role' ) === 'admin'
@@ -1113,38 +1035,26 @@ let instant = jsongin.Evaluate( document, '$$NOW' );
 instant instanceof Date === true
 ```
 
-***`$$ROOT` is the document the stage was handed***, which is not the document the collection
-  holds once an earlier stage has reshaped it.
-`$$CURRENT` is the same document as `$$ROOT` everywhere in this engine today; the two are
-  separate names because MongoDB rebinds `$$CURRENT` inside
-  [$redact](./Stage-Operators.md#$redact) and leaves `$$ROOT` alone.
+- `$$ROOT` is the document as the stage received it, after any earlier stages changed it.
+- `$$CURRENT` is usually the same as `$$ROOT`. Inside [`$redact`](./Stage-Operators.md#$redact),
+  it is the nested object being decided on.
+- `$$NOW` is the same time for every document and stage in one pipeline run.
 
-***`$$NOW` is one instant for the whole pipeline***, shared by every document and every stage,
-  rather than a reading of the clock per document.
-
-***`$$REMOVE` is bound to nothing***, which is exactly what it means.
-A computed field which evaluates to it is left out of the result rather than set to null, so
-  one projection can keep a field on one document and drop it from another — something no
-  inclusion spec can say.
+***`$$REMOVE` leaves a field out.***
+A field computed as `$$REMOVE` is left out of an object, so one expression can keep a field in one
+  document and drop it from another.
+In an array, it becomes `null`, so the other elements keep their positions.
 
 ```js
 jsongin.Evaluate( document, { keep: '$a', drop: '$$REMOVE' } );
 // returns { keep: 5 }
-```
 
-***It only removes where something can be absent.***
-A document can leave a field out; an array cannot leave a position out without moving every
-  element after it, so the position is filled with a `null` instead.
-
-```js
 jsongin.Evaluate( document, [ '$a', '$$REMOVE', '$b' ] );
 // returns [ 5, null, 2 ]
 ```
 
-***A system variable is written in uppercase, and a name a caller binds is not.***
-That is the whole of what keeps the two namespaces apart, and it is why `'$$now'` is an error
-  rather than another spelling of `'$$NOW'`: a lowercase name is a user variable name, and no
-  user bound it.
+System variables are in capitals. A lowercase name like `'$$now'` is not a system variable, so it
+  throws unless you defined it.
 
 ```js
 jsongin.Evaluate( document, '$$now' );    // throws
@@ -1152,34 +1062,30 @@ jsongin.Evaluate( document, '$$root' );   // throws
 ```
 
 
-## Names a Caller May Bind
+## Defining Variables
 
-A bound variable name ***begins with a lowercase letter***, and the characters after the first
-  are letters, digits, and underscores.
+A variable you define must ***start with a lowercase letter***, and then use only letters, digits
+  and underscores. So `a_b` is allowed and `_ab` is not.
+This means your variables can never hide a system variable.
 
-***The first character and the rest follow different rules***, so the name cannot be described
-  as one character class over the whole word: an underscore is refused as the first character
-  and accepted after it, so `a_b` is a name and `_ab` is not.
+These operators define variables:
 
-Because no name a caller may bind can look like `$$ROOT`, ***a system variable can never be
-  shadowed***.
-
-| **Operator**             | **Binds**                                    |
+| **Operator**             | **Defines**                                  |
 |--------------------------|------------------------------------------------|
-| [$let](#$let)            | any names the caller chooses                 |
+| [$let](#$let)            | the names you choose                         |
 | [$map](#$map)            | `$$this`, or the name given by `as`          |
 | [$filter](#$filter)      | `$$this`, or the name given by `as`          |
 | [$reduce](#$reduce)      | `$$this` and `$$value`                       |
 | [$redact](./Stage-Operators.md#$redact) | `$$DESCEND`, `$$PRUNE`, `$$KEEP` |
 
-***A binding lasts for the length of the expression it was made for and no longer.***
-`$$this` is an unbound name outside the `$map` which bound it, and the `$$DESCEND` of `$redact`
-  means nothing anywhere else.
+A variable only exists inside the operator which defines it.
 
 ```js
 jsongin.Evaluate( document, '$$this' );      // throws
 jsongin.Evaluate( document, '$$DESCEND' );   // throws
 ```
+
+You can also define variables from outside the expression with a [Scope](./Scope.md).
 
 
 <a id="$let"></a>$let
@@ -1187,39 +1093,27 @@ jsongin.Evaluate( document, '$$DESCEND' );   // throws
 
 **Usage** : `{ $let: { vars: { name: expression, ... }, in: expression } }`
 
-Binds one or more variables and evaluates a sub-expression with them in scope.
-The bound variables are read as `$$name` within `in`, and nowhere else.
+Defines variables, and evaluates `in` with them. Inside `in`, each is read as `$$name`.
 
-***Binding a variable does not rebind the document.***
-A field path inside `in` still reads `$$CURRENT`, which this operator leaves exactly as it
-  found it.
-
-***The bindings of one `$let` do not see each other.***
-Every value in `vars` is evaluated in the scope ***around*** the `$let`, and the whole set is
-  bound together, so a variable cannot be written in terms of the one beside it.
-Nesting a second `$let` is how that is said.
-
-An inner `$let` may bind a name an outer one already bound.
-The inner binding wins for the length of its own `in`, and the outer one is unchanged
-  everywhere else.
-
-A variable may be bound to nothing, which is what a missing field path gives it.
-Reading it produces no value, the same as reading an absent field, so a computed field bound to
-  it is left out rather than set to null.
-Guard it with [$ifNull](#$ifNull) when a default is wanted.
+- Field references inside `in` still read the document.
+- The variables in one `vars` cannot use each other. Every value is evaluated first, then they are
+  all defined together. To build one variable from another, nest a second `$let`.
+- An inner `$let` can reuse a name. Inside its `in`, the inner value is used.
+- A variable can hold nothing, such as a missing field. Reading it gives nothing, so a field
+  computed from it is left out. Use [`$ifNull`](#$ifNull) for a default.
 
 ### Example
 ```js
 jsongin.Evaluate( document,
 	{ $let: { vars: { total: { $add: [ '$a', '$b' ] } }, in: { $multiply: [ '$$total', 10 ] } } } ) === 70
 
-// A path may be walked into a bound variable.
+// A path into a variable.
 jsongin.Evaluate( document, { $let: { vars: { u: '$user' }, in: '$$u.role' } } ) === 'admin'
 
-// The bindings of one $let cannot see each other.
+// y cannot use x in the same vars.
 jsongin.Evaluate( document, { $let: { vars: { x: 1, y: '$$x' }, in: '$$y' } } );   // throws
 
-// Nested, each `in` runs with the binding around it already made.
+// Nest $let to build one variable from another.
 jsongin.Evaluate( document, {
 	$let: {
 		vars: { half: { $divide: [ '$a', 2 ] } },
@@ -1227,7 +1121,7 @@ jsongin.Evaluate( document, {
 	}
 } ) === 1.25
 
-// An inner binding shadows an outer one for the length of its own `in`.
+// The inner x is 10 inside its own in, and the outer x is still 1 outside it.
 jsongin.Evaluate( document, {
 	$let: {
 		vars: { x: 1 },
@@ -1235,31 +1129,30 @@ jsongin.Evaluate( document, {
 	}
 } ) === 11
 
-// A variable bound to nothing produces nothing, and the field is left out.
+// A variable holding nothing leaves the field out.
 jsongin.Evaluate( document, { r: { $let: { vars: { m: '$nope' }, in: '$$m' } } } );
 // returns { }
 ```
 
 
-
 # String Operators
 
-Twenty operators, and what separates them is mostly their ***operand rules*** rather than the
-  string function underneath. Three rules recur, and the family is not consistent about which it
-  uses, so each operator below says which one it follows:
+The string operators handle `null` in different ways, following MongoDB.
+Each operator below says which:
 
-| **Rule**            | **A null or missing operand**              | **Operators**                                                   |
-|---------------------|--------------------------------------------|-----------------------------------------------------------------|
-| null propagates     | makes the whole result null                | `$concat`, `$split`, the three trims, the two index-ofs, the two replaces |
-| null is empty       | is read as an empty string                 | `$toLower`, `$toUpper`, `$strcasecmp`, the three substrings      |
-| null is refused     | is an error                                | `$strLenBytes`, `$strLenCP`                                      |
+| **For a `null` or missing operand** | **Operators**                                                   |
+|-------------------------------------|-----------------------------------------------------------------|
+| the result is `null`                | `$concat`, `$split`, `$trim`, `$ltrim`, `$rtrim`, `$indexOfBytes`, `$indexOfCP`, `$replaceOne`, `$replaceAll` |
+| it is treated as `''`               | `$toLower`, `$toUpper`, `$strcasecmp`, `$substr`, `$substrBytes`, `$substrCP` |
+| it throws                           | `$strLenBytes`, `$strLenCP`                                      |
 
-***Six operators come in a byte form and a code point form.***
-The byte forms count UTF-8 bytes and the code point forms count characters as a reader would.
-They differ only where the text is not ASCII: `'héllo'` is five code points and six bytes,
-  because the accented letter takes two.
-Prefer the `CP` forms for text which may not be ASCII — a byte range which starts or ends inside
-  a character is refused, since those bytes do not spell a string.
+***Bytes and code points.***
+Some operators come in two forms. The `Bytes` forms count UTF-8 bytes. The `CP` forms count code
+  points, which are characters as a person would count them.
+They only differ for non-ASCII text: `'héllo'` is 5 code points but 6 bytes, because `é` is 2
+  bytes.
+Use the `CP` forms for text which may not be ASCII. A byte range which would cut a character in
+  half throws.
 
 
 <a id="$concat"></a>$concat
@@ -1267,20 +1160,19 @@ Prefer the `CP` forms for text which may not be ASCII — a byte range which sta
 
 **Usage** : `{ $concat: [ expression, ... ] }`
 
-Joins strings end to end.
-***A null or missing operand makes the whole result null***, rather than contributing an empty
-  string, and every other operand must be a string.
+Joins strings.
+If any operand is `null` or missing, the result is `null`. Every other operand must be a string.
 
 ### Example
 ```js
 jsongin.Evaluate( document, { $concat: [ 'Hello, ', '$name', '!' ] } );
 // returns 'Hello, Alice!'
 
-// One null operand makes the whole result null.
+// A null operand makes the result null.
 jsongin.Evaluate( document, { $concat: [ '$name', '$empty' ] } );
 // returns null
 
-// A number is refused rather than rendered.
+// A number throws.
 jsongin.Evaluate( document, { $concat: [ '$name', '$a' ] } );   // throws
 ```
 
@@ -1288,23 +1180,22 @@ jsongin.Evaluate( document, { $concat: [ '$name', '$a' ] } );   // throws
 <a id="$split"></a>$split
 ---------------------------------------------------------------------
 
-**Usage** : `{ $split: [ expression, delimiter ] }`
+**Usage** : `{ $split: [ string, delimiter ] }`
 
-Cuts a string into an array wherever the delimiter occurs.
-A delimiter which does not occur gives the whole string as a single element, and one at an end
-  leaves an empty element there.
-An empty delimiter is refused rather than cutting between every character.
+Splits a string into an array at each delimiter.
+
+- If the delimiter is not found, the result has one element, the whole string.
+- A delimiter at either end gives an empty string there.
+- An empty delimiter throws.
 
 ### Example
 ```js
 jsongin.Evaluate( document, { $split: [ 'a-b-c', '-' ] } );
 // returns [ 'a', 'b', 'c' ]
 
-// A delimiter which does not occur gives one element.
 jsongin.Evaluate( document, { $split: [ '$name', '-' ] } );
 // returns [ 'Alice' ]
 
-// A delimiter at an end leaves an empty element there.
 jsongin.Evaluate( document, { $split: [ '-a-', '-' ] } );
 // returns [ '', 'a', '' ]
 ```
@@ -1315,16 +1206,14 @@ jsongin.Evaluate( document, { $split: [ '-a-', '-' ] } );
 
 **Usage** : `{ $toLower: expression }`
 
-Lowercases a string.
-***A null or missing operand is an empty string here***, not a null result, and a number is
-  rendered rather than refused.
+Converts a string to lowercase.
+A `null` or missing operand gives `''`. A number is converted to a string.
 
 ### Example
 ```js
 jsongin.Evaluate( document, { $toLower: '$name' } );
 // returns 'alice'
 
-// A missing field is an empty string, not a null.
 jsongin.Evaluate( document, { $toLower: '$nope' } );
 // returns ''
 ```
@@ -1335,7 +1224,7 @@ jsongin.Evaluate( document, { $toLower: '$nope' } );
 
 **Usage** : `{ $toUpper: expression }`
 
-Uppercases a string. Reads a null the same way [$toLower](#$toLower) does.
+Converts a string to uppercase. It handles `null` like [`$toLower`](#$toLower).
 
 ### Example
 ```js
@@ -1347,11 +1236,11 @@ jsongin.Evaluate( document, { $toUpper: '$name' } );
 <a id="$strcasecmp"></a>$strcasecmp
 ---------------------------------------------------------------------
 
-**Usage** : `{ $strcasecmp: [ expression, expression ] }`
+**Usage** : `{ $strcasecmp: [ string, string ] }`
 
-Compares two strings without regard to case.
-Returns `-1` when the first sorts before the second, `1` when it sorts after, and `0` when they
-  are the same.
+Compares two strings, ignoring case.
+Returns `-1` if the first comes before the second, `0` if they are the same, and `1` if it comes
+  after.
 
 ### Example
 ```js
@@ -1370,20 +1259,21 @@ jsongin.Evaluate( document, { $strcasecmp: [ '$name', 'Bob' ] } );
 
 Removes characters from both ends of a string.
 
-***`chars` is a set of characters***, each of which is removed in any order, rather than a
-  sequence to match. Without it, whitespace is removed.
-A null `input`, or a null `chars`, gives null rather than falling back to whitespace.
+- Without `chars`, whitespace is removed.
+- `chars` is a ***set*** of characters: any of them are removed from the ends, in any order.
+- A `null` `input` or `chars` gives `null`.
+- An unknown argument name throws.
 
 ### Example
 ```js
 jsongin.Evaluate( { padded: '  hi  ' }, { $trim: { input: '$padded' } } );
 // returns 'hi'
 
-// chars is a set: every one of its characters is removed, in any order.
+// x and y are removed from both ends.
 jsongin.Evaluate( document, { $trim: { input: 'xyhixy', chars: 'yx' } } );
 // returns 'hi'
 
-// A misspelled argument is refused rather than ignored.
+// char is not an argument name.
 jsongin.Evaluate( document, { $trim: { input: '$name', char: 'A' } } );   // throws
 ```
 
@@ -1393,7 +1283,7 @@ jsongin.Evaluate( document, { $trim: { input: '$name', char: 'A' } } );   // thr
 
 **Usage** : `{ $ltrim: { input: expression, chars: expression } }`
 
-Removes characters from the left end of a string. See [$trim](#$trim).
+Like [`$trim`](#$trim), but only removes characters from the start.
 
 ### Example
 ```js
@@ -1407,7 +1297,7 @@ jsongin.Evaluate( { padded: '  hi  ' }, { $ltrim: { input: '$padded' } } );
 
 **Usage** : `{ $rtrim: { input: expression, chars: expression } }`
 
-Removes characters from the right end of a string. See [$trim](#$trim).
+Like [`$trim`](#$trim), but only removes characters from the end.
 
 ### Example
 ```js
@@ -1419,11 +1309,10 @@ jsongin.Evaluate( { padded: '  hi  ' }, { $rtrim: { input: '$padded' } } );
 <a id="$substr"></a>$substr
 ---------------------------------------------------------------------
 
-**Usage** : `{ $substr: [ expression, start, length ] }`
+**Usage** : `{ $substr: [ string, start, length ] }`
 
-***Deprecated by MongoDB.***
-This is another name for [$substrBytes](#$substrBytes) and behaves identically.
-Use [$substrCP](#$substrCP) for text which is not ASCII.
+***Deprecated in MongoDB.*** The same as [`$substrBytes`](#$substrBytes).
+Use [`$substrCP`](#$substrCP) for text which may not be ASCII.
 
 ### Example
 ```js
@@ -1435,25 +1324,24 @@ jsongin.Evaluate( document, { $substr: [ '$name', 0, 3 ] } );
 <a id="$substrBytes"></a>$substrBytes
 ---------------------------------------------------------------------
 
-**Usage** : `{ $substrBytes: [ expression, start, length ] }`
+**Usage** : `{ $substrBytes: [ string, start, length ] }`
 
-Part of a string, counted in ***UTF-8 bytes***.
+Part of a string, with `start` and `length` counted in ***UTF-8 bytes***.
 
-A length below zero means "to the end", and a fractional position is truncated.
-***A range which starts or ends inside a multi-byte character is refused***, because those bytes
-  do not spell a string. That is the cost of counting bytes, and the reason
-  [$substrCP](#$substrCP) exists.
+- A negative `length` means "to the end".
+- A fractional `start` or `length` is rounded down.
+- A range which starts or ends in the middle of a character throws.
 
 ### Example
 ```js
 jsongin.Evaluate( document, { $substrBytes: [ '$name', 1, 3 ] } );
 // returns 'lic'
 
-// A length below zero means to the end.
+// A negative length means to the end.
 jsongin.Evaluate( document, { $substrBytes: [ '$name', 3, -1 ] } );
 // returns 'ce'
 
-// The accented letter is two bytes, so this range ends inside it.
+// é is two bytes, so this range cuts it in half.
 jsongin.Evaluate( { w: 'héllo' }, { $substrBytes: [ '$w', 1, 1 ] } );   // throws
 ```
 
@@ -1461,26 +1349,23 @@ jsongin.Evaluate( { w: 'héllo' }, { $substrBytes: [ '$w', 1, 1 ] } );   // thro
 <a id="$substrCP"></a>$substrCP
 ---------------------------------------------------------------------
 
-**Usage** : `{ $substrCP: [ expression, start, length ] }`
+**Usage** : `{ $substrCP: [ string, start, length ] }`
 
-Part of a string, counted in ***code points***.
-This is the operator to reach for when the text may not be ASCII: it cannot split a character,
-  because it never counts in bytes.
+Part of a string, with `start` and `length` counted in ***code points***.
+Use this for text which may not be ASCII: it never cuts a character in half.
 
-***It is stricter about its positions than [$substrBytes](#$substrBytes)***, which is MongoDB's
-  behavior rather than a choice made here: a fractional position and a negative length are both
-  refused, where the byte form truncates the one and reads the other as "to the end".
+It is stricter than `$substrBytes`, as in MongoDB: a fractional `start` and a negative `length`
+  both throw.
 
 ### Example
 ```js
 jsongin.Evaluate( { w: 'héllo' }, { $substrCP: [ '$w', 0, 2 ] } );
 // returns 'hé'
 
-// The same two units taken as bytes would split the accent.
 jsongin.Evaluate( { w: 'héllo' }, { $substrCP: [ '$w', 1, 1 ] } );
 // returns 'é'
 
-// A fractional position is refused here and truncated by $substrBytes.
+// A fractional start throws.
 jsongin.Evaluate( document, { $substrCP: [ '$name', 1.5, 2 ] } );   // throws
 ```
 
@@ -1490,16 +1375,13 @@ jsongin.Evaluate( document, { $substrCP: [ '$name', 1.5, 2 ] } );   // throws
 
 **Usage** : `{ $strLenBytes: expression }`
 
-The length of a string in ***UTF-8 bytes***.
-***A null or missing operand is refused***, which is unlike the substring operators, where it is
-  read as an empty string.
+The length of a string in ***UTF-8 bytes***. A `null` or missing operand throws.
 
 ### Example
 ```js
 jsongin.Evaluate( { w: 'héllo' }, { $strLenBytes: '$w' } );
 // returns 6
 
-// A null operand is refused here, unlike $substrBytes.
 jsongin.Evaluate( document, { $strLenBytes: '$empty' } );   // throws
 ```
 
@@ -1509,7 +1391,8 @@ jsongin.Evaluate( document, { $strLenBytes: '$empty' } );   // throws
 
 **Usage** : `{ $strLenCP: expression }`
 
-The length of a string in ***code points*** — the count a reader would give.
+The length of a string in ***code points***: the number of characters. A `null` or missing operand
+  throws.
 
 ### Example
 ```js
@@ -1525,12 +1408,12 @@ jsongin.Evaluate( { w: 'héllo' }, { $strLenBytes: '$w' } );
 <a id="$indexOfBytes"></a>$indexOfBytes
 ---------------------------------------------------------------------
 
-**Usage** : `{ $indexOfBytes: [ expression, search, start, end ] }`
+**Usage** : `{ $indexOfBytes: [ string, search, start, end ] }`
 
-Where a substring first occurs, counted in ***UTF-8 bytes***, or `-1` when it does not.
-
-`start` and `end` are optional and bound the search, and are counted in bytes too.
-The whole of a match has to fall inside that window.
+The position of the first `search` in the string, counted in ***UTF-8 bytes***, or `-1` if it is
+  not found.
+`start` and `end` are optional, also in bytes, and limit the search. The whole match must be inside
+  them.
 
 ### Example
 ```js
@@ -1540,7 +1423,7 @@ jsongin.Evaluate( document, { $indexOfBytes: [ '$name', 'i' ] } );
 jsongin.Evaluate( document, { $indexOfBytes: [ '$name', 'z' ] } );
 // returns -1
 
-// The window bounds the search, and a match must fall entirely inside it.
+// 'i' is at 2, which is outside 0 to 2.
 jsongin.Evaluate( document, { $indexOfBytes: [ '$name', 'i', 0, 2 ] } );
 // returns -1
 ```
@@ -1549,17 +1432,16 @@ jsongin.Evaluate( document, { $indexOfBytes: [ '$name', 'i', 0, 2 ] } );
 <a id="$indexOfCP"></a>$indexOfCP
 ---------------------------------------------------------------------
 
-**Usage** : `{ $indexOfCP: [ expression, search, start, end ] }`
+**Usage** : `{ $indexOfCP: [ string, search, start, end ] }`
 
-Where a substring first occurs, counted in ***code points***, or `-1` when it does not.
-The same search as [$indexOfBytes](#$indexOfBytes), counted the way a reader counts.
+Like [`$indexOfBytes`](#$indexOfBytes), but counted in ***code points***.
 
 ### Example
 ```js
 jsongin.Evaluate( { w: 'héllo' }, { $indexOfCP: [ '$w', 'l' ] } );
 // returns 2
 
-// The same search in bytes is moved along by the accent.
+// In bytes, é counts as two.
 jsongin.Evaluate( { w: 'héllo' }, { $indexOfBytes: [ '$w', 'l' ] } );
 // returns 3
 ```
@@ -1570,16 +1452,12 @@ jsongin.Evaluate( { w: 'héllo' }, { $indexOfBytes: [ '$w', 'l' ] } );
 
 **Usage** : `{ $regexMatch: { input: expression, regex: pattern, options: flags } }`
 
-Whether a pattern matches a string.
+`true` when the regular expression matches the string.
 
-`regex` is a pattern ***string*** rather than a Javascript `RegExp`, so that the same expression
-  means the same thing in process and over the wire. A `RegExp` is accepted too.
-`options` accepts the MongoDB flags `i`, `m`, `s`, and `x`, the last of which is applied to the
-  pattern rather than passed along, exactly as the query
-  [`$regex`](./Query-Operators.md#$regex) does.
-
-***A null or missing input is `false`***, not null: this operator answers a question which has a
-  false answer even when there is nothing to match.
+- `regex` can be a string or a Javascript regular expression.
+- `options` holds flags, such as `'i'`, including MongoDB's `x`, which ignores whitespace in the
+  pattern. It works as the query [`$options`](./Query-Operators.md#$regex) does.
+- A `null` or missing `input` gives `false`.
 
 ### Example
 ```js
@@ -1589,7 +1467,6 @@ jsongin.Evaluate( document, { $regexMatch: { input: '$name', regex: '^A' } } );
 jsongin.Evaluate( document, { $regexMatch: { input: '$name', regex: 'alice', options: 'i' } } );
 // returns true
 
-// A missing input is false rather than null.
 jsongin.Evaluate( document, { $regexMatch: { input: '$nope', regex: 'a' } } );
 // returns false
 ```
@@ -1600,22 +1477,20 @@ jsongin.Evaluate( document, { $regexMatch: { input: '$nope', regex: 'a' } } );
 
 **Usage** : `{ $regexFind: { input: expression, regex: pattern, options: flags } }`
 
-The first match of a pattern, as `{ match, idx, captures }`, or null when there is none.
+The first match, as `{ match, idx, captures }`, or `null` if there is none.
 
-***`idx` is counted in code points***, not in bytes, so a match after an accented letter reports
-  the offset a reader would give.
-A capture group which did not participate is a `null` in `captures` rather than being left out.
+- `match` is the matched text.
+- `idx` is its position, counted in code points.
+- `captures` holds the text of each group in the pattern. A group which did not match is `null`.
 
 ### Example
 ```js
 jsongin.Evaluate( document, { $regexFind: { input: '$name', regex: 'l' } } );
 // returns { match: 'l', idx: 1, captures: [] }
 
-// The groups of the pattern are reported alongside the match.
 jsongin.Evaluate( document, { $regexFind: { input: '$name', regex: '(A)(l)' } } );
 // returns { match: 'Al', idx: 0, captures: [ 'A', 'l' ] }
 
-// No match is a null, where $regexFindAll gives an empty array.
 jsongin.Evaluate( document, { $regexFind: { input: '$name', regex: 'zzz' } } );
 // returns null
 ```
@@ -1626,15 +1501,13 @@ jsongin.Evaluate( document, { $regexFind: { input: '$name', regex: 'zzz' } } );
 
 **Usage** : `{ $regexFindAll: { input: expression, regex: pattern, options: flags } }`
 
-Every match of a pattern, as an array of `{ match, idx, captures }`.
-***No match is an empty array***, where [$regexFind](#$regexFind) gives null for the same input.
+Every match, as an array of `{ match, idx, captures }`. With no match, the array is empty.
 
 ### Example
 ```js
 jsongin.Evaluate( { s: 'abab' }, { $regexFindAll: { input: '$s', regex: 'a' } } );
 // returns [ { match: 'a', idx: 0, captures: [] }, { match: 'a', idx: 2, captures: [] } ]
 
-// No match is an empty array, not a null.
 jsongin.Evaluate( document, { $regexFindAll: { input: '$name', regex: 'zzz' } } );
 // returns []
 ```
@@ -1645,19 +1518,17 @@ jsongin.Evaluate( document, { $regexFindAll: { input: '$name', regex: 'zzz' } } 
 
 **Usage** : `{ $replaceOne: { input: expression, find: expression, replacement: expression } }`
 
-Replaces the first occurrence of a substring.
+Replaces the first `find` in the string with `replacement`.
 
-***`find` is literal text, not a pattern***, so a `.` is a full stop. Use
-  [$regexFind](#$regexFind) to search by pattern.
-A find which does not occur returns the input unchanged, and a null in any of the three
-  arguments gives null.
+- `find` is plain text, not a pattern, so `.` means a full stop.
+- If `find` is not there, the string is returned unchanged.
+- A `null` in any of the three gives `null`.
 
 ### Example
 ```js
 jsongin.Evaluate( { s: 'aa' }, { $replaceOne: { input: '$s', find: 'a', replacement: 'b' } } );
 // returns 'ba'
 
-// A find which does not occur returns the input unchanged.
 jsongin.Evaluate( document, { $replaceOne: { input: '$name', find: 'z', replacement: 'Z' } } );
 // returns 'Alice'
 ```
@@ -1668,39 +1539,36 @@ jsongin.Evaluate( document, { $replaceOne: { input: '$name', find: 'z', replacem
 
 **Usage** : `{ $replaceAll: { input: expression, find: expression, replacement: expression } }`
 
-Replaces every occurrence of a substring. See [$replaceOne](#$replaceOne).
+Like [`$replaceOne`](#$replaceOne), but replaces every `find`.
 
 ### Example
 ```js
 jsongin.Evaluate( { s: 'aa' }, { $replaceAll: { input: '$s', find: 'a', replacement: 'b' } } );
 // returns 'bb'
 
-// The find is literal text, so a '.' is a full stop rather than a pattern.
+// find is plain text, so '.' is a full stop.
 jsongin.Evaluate( { s: 'a.b' }, { $replaceAll: { input: '$s', find: '.', replacement: '-' } } );
 // returns 'a-b'
 ```
 
 
-
 # Trigonometry Operators
 
+***Angles are in radians.***
+Use [`$degreesToRadians`](#$degreesToRadians) and [`$radiansToDegrees`](#$radiansToDegrees) to
+  convert.
 
-***Angles are measured in radians***, never in degrees.
-Use [$degreesToRadians](#$degreesToRadians) to feed an angle written in degrees to any of these,
-  and [$radiansToDegrees](#$radiansToDegrees) to read a result back as degrees.
+A value outside an operator's allowed range throws:
 
-Each operator has a ***domain***, and an operand outside it throws rather than returning a
-  meaningless number:
-
-| **Operator**                                              | **Domain**                                    |
+| **Operator**                                              | **Allowed values**                            |
 |-----------------------------------------------------------|-----------------------------------------------|
-| [$sin](#$sin), [$cos](#$cos), [$tan](#$tan)               | any finite number; an infinite angle throws   |
-| [$asin](#$asin), [$acos](#$acos), [$atanh](#$atanh)       | -1 through 1                                  |
-| [$acosh](#$acosh)                                         | 1 and above                                   |
-| [$atan](#$atan), [$atan2](#$atan2), the hyperbolics       | any number at all                             |
+| [$sin](#$sin), [$cos](#$cos), [$tan](#$tan)               | any finite number                             |
+| [$asin](#$asin), [$acos](#$acos), [$atanh](#$atanh)       | -1 to 1                                       |
+| [$acosh](#$acosh)                                         | 1 or more                                     |
+| [$atan](#$atan), [$atan2](#$atan2), [$sinh](#$sinh), [$cosh](#$cosh), [$tanh](#$tanh), [$asinh](#$asinh) | any number |
 
-A null or missing operand makes the result null, and an operand which is not a number throws.
-Every one of them answers a `NaN` with a `NaN`.
+A `null` or missing operand gives `null`. An operand which is not a number throws.
+`NaN` gives `NaN`.
 
 
 <a id="$sin"></a>$sin
@@ -1708,7 +1576,7 @@ Every one of them answers a `NaN` with a `NaN`.
 
 **Usage** : `{ $sin: expression }`
 
-The sine of an angle given in radians.
+The sine of an angle.
 
 ### Example
 ```js
@@ -1725,7 +1593,7 @@ jsongin.Evaluate( document, { $sin: { $degreesToRadians: 90 } } );
 
 **Usage** : `{ $cos: expression }`
 
-The cosine of an angle given in radians.
+The cosine of an angle.
 
 ### Example
 ```js
@@ -1739,7 +1607,7 @@ jsongin.Evaluate( document, { $cos: 0 } );
 
 **Usage** : `{ $tan: expression }`
 
-The tangent of an angle given in radians.
+The tangent of an angle.
 
 ### Example
 ```js
@@ -1753,8 +1621,7 @@ jsongin.Evaluate( document, { $tan: 0 } );
 
 **Usage** : `{ $asin: expression }`
 
-The inverse sine of a value, in radians.
-The operand must lie between -1 and 1, because no angle has a sine beyond those bounds.
+The inverse sine, in radians. The value must be from -1 to 1.
 
 ### Example
 ```js
@@ -1771,8 +1638,7 @@ jsongin.Evaluate( document, { $asin: 2 } );
 
 **Usage** : `{ $acos: expression }`
 
-The inverse cosine of a value, in radians.
-The operand must lie between -1 and 1.
+The inverse cosine, in radians. The value must be from -1 to 1.
 
 ### Example
 ```js
@@ -1786,9 +1652,7 @@ jsongin.Evaluate( document, { $acos: 1 } );
 
 **Usage** : `{ $atan: expression }`
 
-The inverse tangent of a value, in radians.
-Every number is in the domain, unlike [$asin](#$asin) and [$acos](#$acos), because a tangent is
-  unbounded.
+The inverse tangent, in radians. Any number is allowed.
 
 ### Example
 ```js
@@ -1802,10 +1666,9 @@ jsongin.Evaluate( document, { $atan: 1 } );
 
 **Usage** : `{ $atan2: [ y, x ] }`
 
-The inverse tangent of a coordinate pair, in radians.
-
-***The two operands are not the same as their ratio.***
-Their signs name the quadrant, which a single divided value could not do.
+The angle, in radians, of the point `( x, y )`.
+Unlike `$atan` of `y / x`, it uses the signs of both values, so it can tell which quarter of the
+  circle the point is in.
 
 ### Example
 ```js
@@ -1822,7 +1685,7 @@ jsongin.Evaluate( document, { $atan2: [ 0, -1 ] } );
 
 **Usage** : `{ $sinh: expression }`
 
-The hyperbolic sine of a value.
+The hyperbolic sine.
 
 ### Example
 ```js
@@ -1836,8 +1699,7 @@ jsongin.Evaluate( document, { $sinh: 0 } );
 
 **Usage** : `{ $cosh: expression }`
 
-The hyperbolic cosine of a value.
-It never falls below one, which is what makes [$acosh](#$acosh) refuse anything smaller.
+The hyperbolic cosine. The result is always 1 or more.
 
 ### Example
 ```js
@@ -1851,8 +1713,7 @@ jsongin.Evaluate( document, { $cosh: 0 } );
 
 **Usage** : `{ $tanh: expression }`
 
-The hyperbolic tangent of a value.
-The result always lies between -1 and 1.
+The hyperbolic tangent. The result is always between -1 and 1.
 
 ### Example
 ```js
@@ -1866,9 +1727,7 @@ jsongin.Evaluate( document, { $tanh: 0 } );
 
 **Usage** : `{ $asinh: expression }`
 
-The inverse hyperbolic sine of a value.
-Every number is in the domain; it is the only one of the three inverse hyperbolics for which
-  that is true.
+The inverse hyperbolic sine. Any number is allowed.
 
 ### Example
 ```js
@@ -1882,10 +1741,7 @@ jsongin.Evaluate( document, { $asinh: 0 } );
 
 **Usage** : `{ $acosh: expression }`
 
-The inverse hyperbolic cosine of a value.
-
-***The domain begins at one, not at zero***, because a [$cosh](#$cosh) never returns anything
-  smaller than one.
+The inverse hyperbolic cosine. The value must be 1 or more.
 
 ### Example
 ```js
@@ -1902,11 +1758,8 @@ jsongin.Evaluate( document, { $acosh: 0 } );
 
 **Usage** : `{ $atanh: expression }`
 
-The inverse hyperbolic tangent of a value.
-The operand must lie between -1 and 1, the bounds a [$tanh](#$tanh) result never leaves.
-
-***The bounds themselves are answerable.***
--1 and 1 return `-Infinity` and `Infinity`, and only values beyond them throw.
+The inverse hyperbolic tangent. The value must be from -1 to 1.
+`-1` and `1` give `-Infinity` and `Infinity`.
 
 ### Example
 ```js
@@ -1923,9 +1776,7 @@ jsongin.Evaluate( document, { $atanh: 2 } );
 
 **Usage** : `{ $degreesToRadians: expression }`
 
-Converts an angle from degrees to radians.
-This is what feeds an angle written in degrees to the operators above, all of which expect
-  radians.
+Converts degrees to radians.
 
 ### Example
 ```js
@@ -1939,8 +1790,7 @@ jsongin.Evaluate( document, { $degreesToRadians: 180 } );
 
 **Usage** : `{ $radiansToDegrees: expression }`
 
-Converts an angle from radians to degrees.
-This is what makes the result of an inverse function readable as an angle.
+Converts radians to degrees.
 
 ### Example
 ```js
@@ -1952,33 +1802,29 @@ jsongin.Evaluate( document, { $radiansToDegrees: { $asin: 1 } } );
 ```
 
 
-
 # Type Operators
 
+[`$convert`](#$convert) converts a value to a type. The `$toX` operators are shortcuts for it.
+Each returns `null` for a `null` or missing value, and throws when the value cannot be converted.
+Only `$convert` can return a fallback value instead of throwing.
 
-[$convert](#$convert) is the operator these are built on, and the six `$toX` operators are
-  shorthands for it.
-Each converts a value to one type, returns null for a null or missing operand, and throws when
-  the value has no reading in that type or has one which does not fit.
-Only `$convert` can answer a failure with a value instead of throwing.
+These conversions follow MongoDB, not Javascript:
 
-***Javascript's own conversions are not these conversions.***
-Where the two disagree, `jsongin` follows MongoDB:
-
-| **Expression**              | **Javascript** | **Here**                  |
+| **Value**                   | **Javascript** | **Here**                  |
 |-----------------------------|----------------|---------------------------|
-| `Number( ' 5' )`            | `5`            | throws; no whitespace is consumed |
+| `Number( ' 5' )`            | `5`            | throws: spaces are not allowed |
 | `Number( '' )`              | `0`            | throws                    |
-| `Boolean( '' )`             | `false`        | `true`; every string is true |
+| `Boolean( '' )`             | `false`        | `true`: every string is true |
 | `Date.parse( '2020' )`      | a date         | throws                    |
-| a date and time with no zone | read as local  | read as UTC              |
+| a date and time with no time zone | local time | UTC                   |
 
-***One difference cannot be followed, and it is worth knowing before you rely on `$type`.***
-MongoDB has `int`, `long`, and `double` as separate BSON types and tags a converted number with
-  the one it was converted to, so `{ $type: { $toLong: 42 } }` is `'long'` there and `'int'`
-  here. `jsongin` holds JSON, which has one number kind, and reports a number's type from its
-  value. The converted ***values*** agree in every case; only what `$type` says about a number
-  afterwards differs. `$toDecimal` and `$toObjectId` are absent for the same reason.
+***One difference from MongoDB.***
+MongoDB stores `int`, `long` and `double` as different types, and remembers which one a conversion
+  produced. So in MongoDB, `{ $type: { $toLong: 42 } }` is `'long'`.
+`jsongin` has only one kind of number, and `$type` works out a number's type from its value, so
+  here it is `'int'`.
+The converted value is the same either way.
+`$toDecimal` and `$toObjectId` are not available, because `jsongin` has no such types.
 
 
 <a id="$type"></a>$type
@@ -1986,13 +1832,11 @@ MongoDB has `int`, `long`, and `double` as separate BSON types and tags a conver
 
 **Usage** : `{ $type: expression }`
 
-The BSON type of a value, by name.
+The BSON type name of a value.
+A missing field is `'missing'`, and a field holding `null` is `'null'`.
 
-***A missing field has a type of its own.***
-A field which is not there is `'missing'`, where a field holding a null is `'null'`.
-
-A number is an `int` when it is whole and inside the 32 bit range, and a `double` otherwise -
-  fractional, larger, `NaN`, or infinite.
+A whole number from -2147483648 to 2147483647 is `'int'`. Every other number is `'double'`.
+See [`BsonType()`](./BsonType.md).
 
 ### Example
 ```js
@@ -2018,11 +1862,7 @@ jsongin.Evaluate( document, { $type: '$nowhere' } );
 
 **Usage** : `{ $isNumber: expression }`
 
-Whether a value is a number.
-
-***A null is answered rather than propagated.***
-Most of this family returns null for a null operand; this one returns false, because the
-  question it is asked has an answer.
+`true` when the value is a number. For `null`, it returns `false`, not `null`.
 
 ### Example
 ```js
@@ -2042,8 +1882,7 @@ jsongin.Evaluate( document, { $isNumber: '$empty' } );
 
 **Usage** : `{ $toString: expression }`
 
-Converts a value to a string.
-A date becomes an ISO 8601 string. An array or an object throws.
+Converts a value to a string. A date becomes an ISO 8601 string. An array or object throws.
 
 ### Example
 ```js
@@ -2064,10 +1903,8 @@ jsongin.Evaluate( document, { $toString: '$scores' } );
 **Usage** : `{ $toBool: expression }`
 
 Converts a value to a boolean.
-
-***Every string is true, the empty one included***, and so is every array, object, and date.
-Only the number zero and the boolean false are false, which makes this the one conversion with
-  no failing case.
+Only `0` and `false` become `false`. Every string (including `''`), array, object and date becomes
+  `true`. It never throws.
 
 ### Example
 ```js
@@ -2088,10 +1925,8 @@ jsongin.Evaluate( document, { $toBool: '' } );
 **Usage** : `{ $toDate: expression }`
 
 Converts a value to a date.
-A number is read as milliseconds since the epoch, and a string is parsed.
-
-***A string carrying no time zone is read as UTC***, so the same document means the same
-  instant on every machine.
+A number is milliseconds since 1970. A string is read as a date; if it has no time zone, it is
+  read as UTC.
 
 ### Example
 ```js
@@ -2111,11 +1946,11 @@ jsongin.Evaluate( document, { $toDate: '$name' } );
 
 **Usage** : `{ $toInt: expression }`
 
-Converts a value to a 32 bit integer.
+Converts a value to a 32-bit integer.
 
-***A fractional number is truncated rather than rounded, and a fractional string is refused.***
-A string is read as a whole integer or not at all.
-A value outside the int32 range throws, and so do `NaN`, the infinities, and a date.
+- A number with a fraction is cut down to a whole number, not rounded.
+- A string must hold a whole number. `'3.9'` throws.
+- A value outside -2147483648 to 2147483647 throws, as do `NaN`, `Infinity` and dates.
 
 ### Example
 ```js
@@ -2138,10 +1973,9 @@ jsongin.Evaluate( document, { $toInt: 2147483648 } );
 
 **Usage** : `{ $toLong: expression }`
 
-Converts a value to a 64 bit integer.
-
-It differs from [$toInt](#$toInt) in two ways: the range is far wider, and a date reads as
-  milliseconds since the epoch instead of throwing.
+Converts a value to a 64-bit integer.
+Like [`$toInt`](#$toInt), but it allows much larger numbers, and converts a date to milliseconds
+  since 1970.
 
 ### Example
 ```js
@@ -2158,10 +1992,9 @@ jsongin.Evaluate( document, { $toLong: new Date( '2020-01-02T03:04:05.678Z' ) } 
 
 **Usage** : `{ $toDouble: expression }`
 
-Converts a value to a double.
-
-Unlike [$toInt](#$toInt) it does not truncate, it reads a fractional string, and it accepts
-  `NaN` and the infinities, all of which a double can hold.
+Converts a value to a number.
+Unlike [`$toInt`](#$toInt), it keeps fractions, reads strings like `'3.14'`, and allows `NaN` and
+  `Infinity`.
 
 ### Example
 ```js
@@ -2178,20 +2011,13 @@ jsongin.Evaluate( document, { $toDouble: true } );
 
 **Usage** : `{ $convert: { input: expression, to: type, onError: expression, onNull: expression } }`
 
-Converts a value to a given type.
-`to` is a type name - `double`, `string`, `bool`, `date`, `int`, or `long` - or the BSON type
-  number which stands for one.
+Converts a value to the type named in `to`: `'double'`, `'string'`, `'bool'`, `'date'`, `'int'` or
+  `'long'`, or the BSON type number for one of them.
 
-***`onError` and `onNull` are what this operator has and the shorthands do not.***
-They are not interchangeable, and a null input takes the `onNull` path even when an `onError`
-  is also given:
-
-- `onNull` answers a null or missing input. Without it, a null input gives null.
-- `onError` answers a conversion which failed. Without it, the failure throws.
-
-`onError` covers the conversion and nothing else.
-A `to` which names no type is a malformed expression rather than a failed conversion, and
-  throws whether or not an `onError` is given.
+- `onNull` is returned when `input` is `null` or missing. Without it, the result is `null`.
+- `onError` is returned when the conversion fails. Without it, the failure throws.
+- A `null` input uses `onNull`, even if only `onError` is given.
+- An unknown `to` always throws, even with `onError`.
 
 ### Example
 ```js
@@ -2209,32 +2035,22 @@ jsongin.Evaluate( document, { $convert: { input: '$empty', to: 'int', onError: -
 ```
 
 
-
 # Set Operators
 
+These operators treat arrays as ***sets***: order does not matter and duplicates count once.
+So `[ 1, 1, 2 ]` and `[ 2, 1 ]` are the same set.
 
-***These operators read an array as a set.***
-Order stops mattering and repeats stop counting, so `[ 1, 1, 2 ]` and `[ 2, 1 ]` are the same
-  set.
+- A set result is ***sorted***, in MongoDB's type order: `null`, numbers, strings, objects, arrays,
+  booleans, dates.
+- Only the outer array is a set. Each element is compared whole, with
+  [`CompareValues()`](./CompareValues.md), so `[ [ 1, 2 ] ]` and `[ [ 2, 1 ] ]` are different sets.
 
-***A set is handed back in BSON order***, not in the order its elements were written.
-A set has no order of its own, so sorting is the only choice which gives the same answer for
-  the same set however it was written. Across types that order is: `null`, then numbers, then
-  strings, then objects, then arrays, then booleans, then dates.
+They handle `null` in two ways, following MongoDB:
 
-***Set-ness reaches exactly one level down.***
-Order stops mattering for the array handed to the operator, and nowhere else. Each element
-  inside it is compared whole, by the same [CompareValues](./CompareValues.md) which `Sort()`
-  and the comparison operators use, and is never itself re-read as a set.
-
-***The family disagrees with itself about a null operand***, and `jsongin` reproduces that
-  rather than tidying it up, because an expression has to mean the same thing against both
-  engines:
-
-| **Operator** | **A null operand** |
+| **Operator** | **A `null` operand** |
 |--------------|--------------------|
-| [$setUnion](#$setUnion), [$setIntersection](#$setIntersection), [$setDifference](#$setDifference) | makes the result `null` |
-| [$setEquals](#$setEquals), [$setIsSubset](#$setIsSubset), [$allElementsTrue](#$allElementsTrue), [$anyElementTrue](#$anyElementTrue) | is refused |
+| [$setUnion](#$setUnion), [$setIntersection](#$setIntersection), [$setDifference](#$setDifference) | gives `null` |
+| [$setEquals](#$setEquals), [$setIsSubset](#$setIsSubset), [$allElementsTrue](#$allElementsTrue), [$anyElementTrue](#$anyElementTrue) | throws |
 
 
 <a id="$setEquals"></a>$setEquals
@@ -2242,8 +2058,7 @@ Order stops mattering for the array handed to the operator, and nowhere else. Ea
 
 **Usage** : `{ $setEquals: [ array, array, ... ] }`
 
-Whether every set given holds the same elements.
-Two or more sets are required.
+`true` when all the sets hold the same elements. It needs two or more.
 
 ### Example
 ```js
@@ -2263,9 +2078,8 @@ jsongin.Evaluate( document, { $setEquals: [ [ 1, 2 ], [ 1, 3 ] ] } );
 
 **Usage** : `{ $setIsSubset: [ array, array ] }`
 
-Whether every element of the first set appears in the second.
-Exactly two sets are required.
-The empty set is a subset of every set, including itself.
+`true` when every element of the first set is in the second. It needs exactly two.
+An empty set is a subset of any set.
 
 ### Example
 ```js
@@ -2285,14 +2099,14 @@ jsongin.Evaluate( document, { $setIsSubset: [ [], [ 1 ] ] } );
 
 **Usage** : `{ $setUnion: [ array, array, ... ] }`
 
-The elements which appear in any of the sets given.
+The elements which are in any of the sets.
 
 ### Example
 ```js
 jsongin.Evaluate( document, { $setUnion: [ [ 1, 2 ], [ 2, 3 ] ] } );
 // returns [ 1, 2, 3 ]
 
-// The result is sorted, not left in the order it was written.
+// The result is sorted.
 jsongin.Evaluate( document, { $setUnion: [ [ 3, 1, 2 ], [ 2 ] ] } );
 // returns [ 1, 2, 3 ]
 ```
@@ -2303,7 +2117,7 @@ jsongin.Evaluate( document, { $setUnion: [ [ 3, 1, 2 ], [ 2 ] ] } );
 
 **Usage** : `{ $setIntersection: [ array, array, ... ] }`
 
-The elements which appear in every one of the sets given.
+The elements which are in every set.
 
 ### Example
 ```js
@@ -2320,9 +2134,7 @@ jsongin.Evaluate( document, { $setIntersection: [ [ 1, 2 ], [ 3 ] ] } );
 
 **Usage** : `{ $setDifference: [ array, array ] }`
 
-The elements of the first set which are not in the second.
-***Exactly two sets***, unlike [$setUnion](#$setUnion) and
-  [$setIntersection](#$setIntersection), which take any number.
+The elements of the first set which are not in the second. It needs exactly two sets.
 
 ### Example
 ```js
@@ -2339,12 +2151,9 @@ jsongin.Evaluate( document, { $setDifference: [ [ 1 ], [] ] } );
 
 **Usage** : `{ $allElementsTrue: [ array ] }`
 
-Whether every element of an array is true.
-
-***Only `false`, zero, `null`, and a missing value count as false.***
-An empty string and an empty array are true, which is not Javascript's rule for either.
-
-***All of nothing is true***, so an empty array satisfies it.
+`true` when every element is true.
+Only `false`, `0`, `null` and missing are false, so `''` and `[]` are true.
+An empty array gives `true`.
 
 ### Example
 ```js
@@ -2354,7 +2163,6 @@ jsongin.Evaluate( document, { $allElementsTrue: [ [ true, 1, 'x' ] ] } );
 jsongin.Evaluate( document, { $allElementsTrue: [ [ true, 0 ] ] } );
 // returns false
 
-// An empty string is an element like any other, and it is true.
 jsongin.Evaluate( document, { $allElementsTrue: [ [ '', [] ] ] } );
 // returns true
 
@@ -2368,10 +2176,7 @@ jsongin.Evaluate( document, { $allElementsTrue: [ [] ] } );
 
 **Usage** : `{ $anyElementTrue: [ array ] }`
 
-Whether at least one element of an array is true.
-
-***Any of nothing is false***, where [$allElementsTrue](#$allElementsTrue) answers an empty
-  array with true.
+`true` when at least one element is true. An empty array gives `false`.
 
 ### Example
 ```js
@@ -2388,97 +2193,78 @@ jsongin.Evaluate( document, { $anyElementTrue: [ [] ] } );
 
 # Object Operators
 
+`$getField`, `$setField` and `$unsetField` work on one field of an object, named by `field`.
 
-***These operators work on field names, which is what makes them different from everything
-  else here.*** [$getField](#$getField), [$setField](#$setField), and
-  [$unsetField](#$unsetField) name one field of one document, and ***a dot in that name is
-  part of the name***: `{ field: 'a.b' }` means a field literally called `a.b`, not the `b` of
-  the `a`. That is the reason the three exist, because no dotted-path syntax can reach such a
-  field at all.
+- ***A dot in the name is part of the name.*** `field: 'a.b'` means a field called `a.b`, not `b`
+  inside `a`. These operators are the only way to reach such a field.
+- The name must be written as a plain string, or with [`$literal`](#$literal). A computed name
+  throws.
+- A name starting with `$` must use `$literal`: `{ field: { $literal: '$price' } }`.
+  A plain `'$price'` would be a field reference.
 
-***The name must be a constant***, written either as a plain string or as a
-  [$literal](#$literal). A computed name is refused however simple it is, even one whose
-  operands are all constants. A name which begins with a `$` has to be written
-  `{ field: { $literal: '$price' } }`, since a bare `'$price'` is a field reference.
+They handle a missing or wrong-type `input` differently, following MongoDB:
 
-***The three disagree about an input which is not a document***, and `jsongin` reproduces that
-  rather than tidying it up:
-
-| **Operator** | **A null input** | **A missing input, or one which is not a document** |
+| **Operator** | **`null` input** | **Missing input, or not an object** |
 |--------------|------------------|-----------------------------------------------------|
-| [$getField](#$getField) | `null` | no value at all — the field is left out |
-| [$setField](#$setField), [$unsetField](#$unsetField) | `null` | `null` for a missing input; anything else is refused |
+| [$getField](#$getField) | `null` | nothing (the field is left out) |
+| [$setField](#$setField), [$unsetField](#$unsetField) | `null` | `null` if missing; otherwise it throws |
 
-***The shorthand forms read a system variable.*** `{ $getField: 'name' }` reads
-  the field from `$$CURRENT`, and `{ $setField: { ..., value: '$$REMOVE' } }` removes one —
-  which is the only way to add, replace, or remove a field with a single operator.
-  [$unsetField](#$unsetField) is the other way to remove one, and takes no value at all.
-
-> ***Only the string shorthand of `$getField` defaults.*** `{ $getField: { field: 'a' } }` with
-  no `input` looks as though it should mean the same thing and is refused, so the two are not
-  two spellings of one expression. This is what MongoDB does.
-
-> ***Both were refused before v0.1.0***, when `Evaluate()` had no variable scope to read a
-  `$$` name from at all.
+***Shortcuts.*** `{ $getField: 'name' }` reads the field from `$$CURRENT`.
+`{ $getField: { field: 'name' } }`, without `input`, throws.
+To remove a field, you can use `$unsetField`, or `$setField` with `value: '$$REMOVE'`.
 
 
 <a id="$mergeObjects"></a>$mergeObjects
 ---------------------------------------------------------------------
 
-**Usage** : `{ $mergeObjects: [ document, document, ... ] }`
+**Usage** : `{ $mergeObjects: [ object, object, ... ] }` or `{ $mergeObjects: object }`
 
-Combines several documents into one, where a later document wins a field the two share.
-A single document may be given without a list.
+Combines objects into one. When two have the same field, the later one wins.
 
-***The merge is one level deep.*** A shared field whose value is itself a document is replaced
-  whole rather than merged into.
+- Only the top level is merged. A field holding an object is replaced whole.
+- A replaced field keeps its position. New fields are added at the end.
+- `null` and missing operands are skipped. No operands at all gives `{}`.
 
-***A null or missing operand is ignored*** rather than making the result null, which is what
-  makes this safe to fold over documents which may not all be there.
+The [`$mergeObjects` accumulator](./Accumulator-Operators.md#$mergeObjects) merges objects across
+  a group.
 
 ### Example
 ```js
 jsongin.Evaluate( document, { $mergeObjects: [ { a: 1 }, { b: 2 } ] } );
 // returns { a: 1, b: 2 }
 
-// A replaced field keeps its position and a new one is appended.
 jsongin.Evaluate( document, { $mergeObjects: [ { a: 1, b: 2 }, { a: 9 } ] } );
 // returns { a: 9, b: 2 }
 
-// A null operand is ignored, and nothing at all is an empty document.
+// A null operand is skipped.
 jsongin.Evaluate( document, { $mergeObjects: [ '$user', '$empty' ] } );
 // returns { role: 'admin' }
 
 jsongin.Evaluate( document, { $mergeObjects: [] } );
 // returns {}
 
-// The merge does not reach into a sub-document.
+// Nested objects are replaced, not merged.
 jsongin.Evaluate( document, { $mergeObjects: [ { a: { x: 1 } }, { a: { y: 2 } } ] } );
 // returns { a: { y: 2 } }
 ```
-
-***There is also an accumulator called `$mergeObjects`***, which is a different operator with
-  the same name. See [Accumulator Operators](./Accumulator-Operators.md).
 
 
 <a id="$objectToArray"></a>$objectToArray
 ---------------------------------------------------------------------
 
-**Usage** : `{ $objectToArray: document }`
+**Usage** : `{ $objectToArray: object }`
 
-Turns a document into an array of `{ k: name, v: value }` pairs, one per field.
+Turns an object into an array of `{ k: name, v: value }` pairs, in the object's field order.
+[`$arrayToObject`](#$arrayToObject) does the reverse.
 
-***The pairs come back in the order the document holds its fields***, not sorted, which is
-  what makes this the inverse of [$arrayToObject](#$arrayToObject).
-
-A null or missing operand makes the result `null`. Anything else which is not a document throws.
+A `null` or missing operand gives `null`. Anything else which is not an object throws.
 
 ### Example
 ```js
 jsongin.Evaluate( document, { $objectToArray: '$user' } );
 // returns [ { k: 'role', v: 'admin' } ]
 
-// The fields come back in the order they were written, not in sorted order.
+// Fields stay in their order.
 jsongin.Evaluate( document, { $objectToArray: { z: 1, a: 2 } } );
 // returns [ { k: 'z', v: 1 }, { k: 'a', v: 2 } ]
 
@@ -2492,34 +2278,29 @@ jsongin.Evaluate( document, { $objectToArray: '$scores' } );   // throws
 <a id="$getField"></a>$getField
 ---------------------------------------------------------------------
 
-**Usage** : `{ $getField: { field: name, input: document } }`
+**Usage** : `{ $getField: { field: name, input: object } }` or `{ $getField: name }`
 
-Reads one named field of a document.
+Reads one field of an object.
 
-***A null input and a missing one part company here***, which they do almost nowhere else in
-  the expression language: a null input answers `null`, while a missing one — or an array, or
-  a number, or anything else which is not a document — answers no value at all, the same
-  nothing that reading an absent field gives.
+A `null` input gives `null`. A missing input, or one which is not an object, gives nothing.
 
 ### Example
 ```js
 jsongin.Evaluate( document, { $getField: { field: 'role', input: '$user' } } );
 // returns 'admin'
 
-// The name is a name and not a path. This reads the field called 'a.b',
-// leaving the b of the a alone.
+// This reads the field named 'a.b', not b inside a.
 jsongin.Evaluate( { d: { 'a.b': 1, a: { b: 2 } } }, { $getField: { field: 'a.b', input: '$d' } } );
 // returns 1
 
-// A name beginning with a '$' is written as a $literal.
+// A name starting with $ uses $literal.
 jsongin.Evaluate( document, { $getField: { field: { $literal: '$price' }, input: { $literal: { '$price': 5 } } } } );
 // returns 5
 
-// A null input answers null.
 jsongin.Evaluate( document, { $getField: { field: 'role', input: '$empty' } } );
 // returns null
 
-// A computed field name is refused, however simple it is.
+// A computed name throws.
 jsongin.Evaluate( document, { $getField: { field: { $concat: [ 'role' ] }, input: '$user' } } );   // throws
 ```
 
@@ -2527,28 +2308,23 @@ jsongin.Evaluate( document, { $getField: { field: { $concat: [ 'role' ] }, input
 <a id="$setField"></a>$setField
 ---------------------------------------------------------------------
 
-**Usage** : `{ $setField: { field: name, input: document, value: expression } }`
+**Usage** : `{ $setField: { field: name, input: object, value: expression } }`
 
-Answers a copy of a document with one named field added or replaced.
-***The input document is not modified.***
+Returns a copy of an object with one field added or replaced. The input object is not changed.
 
-***A replaced field keeps its position*** and a new one is appended after the fields already
-  present, which matters because a document is compared field by field in the order it holds
-  them.
-
-A null or missing `input` makes the result `null`; any other non-document throws.
-A null `value` is written as a null rather than being ignored.
+- A replaced field keeps its position. A new field is added at the end.
+- A `null` `value` sets the field to `null`. `'$$REMOVE'` removes the field.
+- A `null` or missing `input` gives `null`. Anything else which is not an object throws.
 
 ### Example
 ```js
 jsongin.Evaluate( document, { $setField: { field: 'active', input: '$user', value: true } } );
 // returns { role: 'admin', active: true }
 
-// A field already there is replaced where it stands.
 jsongin.Evaluate( document, { $setField: { field: 'role', input: '$user', value: 'guest' } } );
 // returns { role: 'guest' }
 
-// A field whose name contains a dot is written as one field, not as a path.
+// A name with a dot is one field.
 jsongin.Evaluate( document, { $setField: { field: 'a.b', input: {}, value: 1 } } );
 // returns { 'a.b': 1 }
 
@@ -2562,11 +2338,10 @@ jsongin.Evaluate( document, { $setField: { field: 'active', input: '$scores', va
 <a id="$unsetField"></a>$unsetField
 ---------------------------------------------------------------------
 
-**Usage** : `{ $unsetField: { field: name, input: document } }`
+**Usage** : `{ $unsetField: { field: name, input: object } }`
 
-Answers a copy of a document with one named field removed.
-The fields which remain keep their order, and a document which does not have the field is
-  answered unchanged rather than refused.
+Returns a copy of an object with one field removed.
+The other fields keep their order. If the field is not there, the copy is unchanged.
 
 ### Example
 ```js
@@ -2576,7 +2351,7 @@ jsongin.Evaluate( document, { $unsetField: { field: 'role', input: '$user' } } )
 jsongin.Evaluate( document, { $unsetField: { field: 'nope', input: '$user' } } );
 // returns { role: 'admin' }
 
-// Removing 'a.b' removes the field of that name and leaves the nested one alone.
+// This removes the field named 'a.b', and leaves b inside a.
 jsongin.Evaluate( { d: { 'a.b': 1, a: { b: 2 } } }, { $unsetField: { field: 'a.b', input: '$d' } } );
 // returns { a: { b: 2 } }
 
@@ -2587,15 +2362,12 @@ jsongin.Evaluate( document, { $unsetField: { field: 'role', input: '$empty' } } 
 
 # Date Operators
 
+***Dates are read in UTC unless you give a time zone.***
+Javascript's `getFullYear()` and similar methods use the computer's own time zone, so the same
+  date could give different answers on different machines. `jsongin` never does that.
 
-***Every operator here reads a date in UTC unless it is given a time zone.***
-This is worth knowing before anything else, because Javascript does the opposite: `getFullYear()`
-  and its relatives read a date in whatever zone the machine happens to be in, so the same
-  document would answer differently on a laptop in New York than on a server in London.
-Nothing in `jsongin` reads a date that way.
-
-A `timezone` is either an IANA zone name such as `'America/New_York'` or an offset such as
-  `'+05:30'`. Each of the part operators takes one in its object form:
+A `timezone` is a zone name, such as `'America/New_York'`, or an offset, such as `'+05:30'`.
+The operators which return one part of a date, such as `$hour`, accept it in their object form:
 
 ```js
 let when = new Date( '2020-01-02T03:04:05.678Z' );
@@ -2611,16 +2383,14 @@ jsongin.Evaluate( doc, { $hour: { date: '$when', timezone: '+05:30' } } );
 // returns 8
 ```
 
-A null or missing date makes the result null, and so does a `timezone` which is null.
-***A null timezone is not the same as no timezone***: leaving it out means UTC, and writing
-  `null` makes the whole result null.
-An operand which is not a date throws — a number is not converted for these, even though
-  [$toDate](#$toDate) would read one.
+- A `null` or missing date gives `null`.
+- A `timezone` of `null` also gives `null`. Leaving `timezone` out means UTC.
+- A value which is not a date throws. A number is not converted; use [`$toDate`](#$toDate) for that.
 
-***Three of them exist because ISO 8601 counts weeks differently***, and the difference is not
-  small. [$week](#$week) begins its weeks on Sunday and calls the days before the year's first
-  Sunday week 0. [$isoWeek](#$isoWeek) begins on Monday and puts a week entirely in the year
-  holding its Thursday, so the first days of January can belong to the ***previous*** year:
+***Two ways of counting weeks.***
+[`$week`](#$week) starts weeks on Sunday, and the days before the year's first Sunday are week 0.
+[`$isoWeek`](#$isoWeek) follows ISO 8601: weeks start on Monday, and a week belongs to the year
+  its Thursday is in. So the first days of January can be in the ***previous*** year's last week:
 
 ```js
 let turn = new Date( '2021-01-01T00:00:00.000Z' );
@@ -2639,9 +2409,9 @@ jsongin.Evaluate( { turn: turn }, { $isoWeek: '$turn' } );
 <a id="$year"></a>$year
 ---------------------------------------------------------------------
 
-**Usage** : `{ $year: expression }` or `{ $year: { date: expression, timezone: string } }`
+**Usage** : `{ $year: date }` or `{ $year: { date: date, timezone: zone } }`
 
-The year of a date.
+The year.
 
 ### Example
 ```js
@@ -2653,10 +2423,9 @@ jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $year: '$w
 <a id="$month"></a>$month
 ---------------------------------------------------------------------
 
-**Usage** : `{ $month: expression }` or `{ $month: { date: expression, timezone: string } }`
+**Usage** : `{ $month: date }` or `{ $month: { date: date, timezone: zone } }`
 
-The month of a date, from 1 to 12.
-***Months count from 1***, unlike Javascript's own `getUTCMonth()`.
+The month, from 1 to 12. (Javascript's `getUTCMonth()` counts from 0.)
 
 ### Example
 ```js
@@ -2668,7 +2437,7 @@ jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $month: '$
 <a id="$dayOfMonth"></a>$dayOfMonth
 ---------------------------------------------------------------------
 
-**Usage** : `{ $dayOfMonth: expression }` or the object form.
+**Usage** : `{ $dayOfMonth: date }` or `{ $dayOfMonth: { date: date, timezone: zone } }`
 
 The day of the month, from 1 to 31.
 
@@ -2682,15 +2451,14 @@ jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $dayOfMont
 <a id="$dayOfWeek"></a>$dayOfWeek
 ---------------------------------------------------------------------
 
-**Usage** : `{ $dayOfWeek: expression }` or the object form.
+**Usage** : `{ $dayOfWeek: date }` or `{ $dayOfWeek: { date: date, timezone: zone } }`
 
-The day of the week, from 1 to 7.
-***Sunday is 1 and Saturday is 7.***
-See [$isoDayOfWeek](#$isoDayOfWeek), which starts its week on Monday instead.
+The day of the week, from 1 to 7. ***Sunday is 1*** and Saturday is 7.
+[`$isoDayOfWeek`](#$isoDayOfWeek) starts with Monday instead.
 
 ### Example
 ```js
-// The 2nd of January 2020 was a Thursday.
+// 2 January 2020 was a Thursday.
 jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $dayOfWeek: '$when' } );
 // returns 5
 ```
@@ -2699,7 +2467,7 @@ jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $dayOfWeek
 <a id="$dayOfYear"></a>$dayOfYear
 ---------------------------------------------------------------------
 
-**Usage** : `{ $dayOfYear: expression }` or the object form.
+**Usage** : `{ $dayOfYear: date }` or `{ $dayOfYear: { date: date, timezone: zone } }`
 
 The day of the year, from 1 to 366.
 
@@ -2713,9 +2481,9 @@ jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $dayOfYear
 <a id="$hour"></a>$hour
 ---------------------------------------------------------------------
 
-**Usage** : `{ $hour: expression }` or the object form.
+**Usage** : `{ $hour: date }` or `{ $hour: { date: date, timezone: zone } }`
 
-The hour of a date, from 0 to 23.
+The hour, from 0 to 23.
 
 ### Example
 ```js
@@ -2727,10 +2495,10 @@ jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $hour: '$w
 <a id="$minute"></a>$minute
 ---------------------------------------------------------------------
 
-**Usage** : `{ $minute: expression }` or the object form.
+**Usage** : `{ $minute: date }` or `{ $minute: { date: date, timezone: zone } }`
 
-The minute of a date, from 0 to 59.
-A zone whose offset is not a whole hour moves this too.
+The minute, from 0 to 59.
+A time zone which is not a whole number of hours from UTC changes the minute too.
 
 ### Example
 ```js
@@ -2746,9 +2514,9 @@ jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) },
 <a id="$second"></a>$second
 ---------------------------------------------------------------------
 
-**Usage** : `{ $second: expression }` or the object form.
+**Usage** : `{ $second: date }` or `{ $second: { date: date, timezone: zone } }`
 
-The seconds of a date, from 0 to 59.
+The second, from 0 to 59.
 
 ### Example
 ```js
@@ -2760,9 +2528,9 @@ jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $second: '
 <a id="$millisecond"></a>$millisecond
 ---------------------------------------------------------------------
 
-**Usage** : `{ $millisecond: expression }` or the object form.
+**Usage** : `{ $millisecond: date }` or `{ $millisecond: { date: date, timezone: zone } }`
 
-The milliseconds of a date, from 0 to 999.
+The millisecond, from 0 to 999.
 
 ### Example
 ```js
@@ -2774,16 +2542,14 @@ jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $milliseco
 <a id="$week"></a>$week
 ---------------------------------------------------------------------
 
-**Usage** : `{ $week: expression }` or the object form.
+**Usage** : `{ $week: date }` or `{ $week: { date: date, timezone: zone } }`
 
 The week of the year, from 0 to 53.
-
-***Weeks begin on Sunday, and the days before the first Sunday of the year are week 0.***
-See [$isoWeek](#$isoWeek) for the ISO 8601 reckoning, which differs.
+Weeks start on Sunday. The days before the first Sunday of the year are week 0.
 
 ### Example
 ```js
-// 2020 opened on a Wednesday, so the 2nd is still week 0.
+// 2020 started on a Wednesday, so 2 January is in week 0.
 jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $week: '$when' } );
 // returns 0
 ```
@@ -2792,17 +2558,18 @@ jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $week: '$w
 <a id="$isoWeek"></a>$isoWeek
 ---------------------------------------------------------------------
 
-**Usage** : `{ $isoWeek: expression }` or the object form.
+**Usage** : `{ $isoWeek: date }` or `{ $isoWeek: { date: date, timezone: zone } }`
 
 The ISO 8601 week of the year, from 1 to 53.
 Week 1 is the week holding the year's first Thursday.
 
 ### Example
 ```js
+// 2 January 2020 is in week 0 by $week, but week 1 here.
 jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $isoWeek: '$when' } );
 // returns 1
 
-// The same date is week 0 by the $week reckoning and week 1 by this one.
+// 1 January 2021 is in the last week of 2020.
 jsongin.Evaluate( { turn: new Date( '2021-01-01T00:00:00.000Z' ) }, { $isoWeek: '$turn' } );
 // returns 53
 ```
@@ -2811,10 +2578,9 @@ jsongin.Evaluate( { turn: new Date( '2021-01-01T00:00:00.000Z' ) }, { $isoWeek: 
 <a id="$isoDayOfWeek"></a>$isoDayOfWeek
 ---------------------------------------------------------------------
 
-**Usage** : `{ $isoDayOfWeek: expression }` or the object form.
+**Usage** : `{ $isoDayOfWeek: date }` or `{ $isoDayOfWeek: { date: date, timezone: zone } }`
 
-The ISO 8601 day of the week, from 1 to 7.
-***Monday is 1 and Sunday is 7***, where [$dayOfWeek](#$dayOfWeek) starts at Sunday.
+The ISO 8601 day of the week, from 1 to 7. ***Monday is 1*** and Sunday is 7.
 
 ### Example
 ```js
@@ -2826,13 +2592,10 @@ jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $isoDayOfW
 <a id="$isoWeekYear"></a>$isoWeekYear
 ---------------------------------------------------------------------
 
-**Usage** : `{ $isoWeekYear: expression }` or the object form.
+**Usage** : `{ $isoWeekYear: date }` or `{ $isoWeekYear: { date: date, timezone: zone } }`
 
-The ISO 8601 year a date's week belongs to.
-
-***This is not always the calendar year.***
-ISO 8601 puts a week entirely in the year holding its Thursday, so the 1st of January 2021
-  belongs to 2020.
+The year a date's ISO 8601 week belongs to.
+This is not always the calendar year: 1 January 2021 is in the last week of 2020.
 
 ### Example
 ```js
@@ -2844,12 +2607,12 @@ jsongin.Evaluate( { turn: new Date( '2021-01-01T00:00:00.000Z' ) }, { $isoWeekYe
 <a id="$dateToParts"></a>$dateToParts
 ---------------------------------------------------------------------
 
-**Usage** : `{ $dateToParts: { date: expression, timezone: string, iso8601: boolean } }`
+**Usage** : `{ $dateToParts: { date: expression, timezone: zone, iso8601: boolean } }`
 
-A document holding the individual parts of a date.
+An object holding each part of a date.
 
-***The ISO form answers with different fields***, not merely different values: an ISO 8601 week
-  date has a week year, a week, and a day of the week, and no month or day of the month at all.
+With `iso8601: true`, the parts are `isoWeekYear`, `isoWeek` and `isoDayOfWeek` instead of
+  `year`, `month` and `day`, followed by the time parts.
 
 ### Example
 ```js
@@ -2864,21 +2627,22 @@ jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) }, { $dateToPar
 **Usage** : `{ $dateFromParts: { year, month, day, hour, minute, second, millisecond, timezone } }`
   or `{ $dateFromParts: { isoWeekYear, isoWeek, isoDayOfWeek, ... } }`
 
-Constructs a date from its individual parts.
-A part left out defaults to the start of its range.
+Builds a date from its parts.
 
-***A part outside its range rolls over*** rather than being refused.
+- A part you leave out is the lowest value it can have, such as month `1`.
+- A part too large for its range carries over, so month `13` is January of the next year.
+- The parts are read in `timezone`, or in UTC.
 
 ### Example
 ```js
 jsongin.Evaluate( {}, { $dateFromParts: { year: 2020, month: 1, day: 2 } } );
 // returns new Date( '2020-01-02T00:00:00.000Z' )
 
-// Month 13 of 2020 is January of 2021.
+// Month 13 of 2020 is January 2021.
 jsongin.Evaluate( {}, { $dateFromParts: { year: 2020, month: 13 } } );
 // returns new Date( '2021-01-01T00:00:00.000Z' )
 
-// The parts are read in the zone given.
+// 7pm in New York is midnight in UTC.
 jsongin.Evaluate( {}, { $dateFromParts: { year: 2020, month: 1, day: 1, hour: 19, timezone: 'America/New_York' } } );
 // returns new Date( '2020-01-02T00:00:00.000Z' )
 ```
@@ -2887,24 +2651,24 @@ jsongin.Evaluate( {}, { $dateFromParts: { year: 2020, month: 1, day: 1, hour: 19
 <a id="$dateToString"></a>$dateToString
 ---------------------------------------------------------------------
 
-**Usage** : `{ $dateToString: { date: expression, format: string, timezone: string, onNull: expression } }`
+**Usage** : `{ $dateToString: { date: expression, format: string, timezone: zone, onNull: expression } }`
 
-Writes a date as a string through a format.
-With no `format`, the whole ISO 8601 string.
+Writes a date as a string, using `format`.
+Without `format`, it writes the full ISO 8601 string.
 
-| **Specifier** | **Means** | **Specifier** | **Means** |
+| **Code** | **Writes** | **Code** | **Writes** |
 |---------------|-----------|---------------|-----------|
 | `%Y`          | year      | `%j`          | day of the year |
-| `%m`          | month, from 01 | `%w`     | day of the week, Sunday is 1 |
+| `%m`          | month, `01` to `12` | `%w` | day of the week, Sunday is 1 |
 | `%d`          | day of the month | `%U`   | week of the year |
-| `%H`          | hour, 00 to 23 | `%G`     | ISO 8601 week year |
+| `%H`          | hour, `00` to `23` | `%G` | ISO 8601 week year |
 | `%M`          | minute    | `%V`          | ISO 8601 week |
 | `%S`          | second    | `%u`          | ISO 8601 day of the week |
-| `%L`          | millisecond | `%z`        | zone offset, as `+HHMM` |
-| `%%`          | a literal `%` | `%Z`      | zone offset, in minutes |
+| `%L`          | millisecond | `%z`        | time zone offset, as `+HHMM` |
+| `%%`          | a `%` sign | `%Z`         | time zone offset, in minutes |
 
-***Every field is padded to its width***, which is why the second of January is written `02`.
-A specifier which is not in the table throws.
+Numbers are padded with zeros to a fixed width, so 2 January is written `02`.
+An unknown code throws.
 
 ### Example
 ```js
@@ -2924,13 +2688,15 @@ jsongin.Evaluate( day, { $dateToString: { date: '$when', format: '%Y-%m-%d', tim
 <a id="$dateFromString"></a>$dateFromString
 ---------------------------------------------------------------------
 
-**Usage** : `{ $dateFromString: { dateString: expression, format: string, timezone: string, onError: expression, onNull: expression } }`
+**Usage** : `{ $dateFromString: { dateString: expression, format: string, timezone: zone, onError: expression, onNull: expression } }`
 
 Reads a date from a string.
-With no `format`, the string is read as ISO 8601; with one, through the numeric specifiers
-  `%Y`, `%m`, `%d`, `%H`, `%M`, `%S`, and `%L`.
 
-***A string carrying no zone is read in the `timezone` given***, and in UTC when none was.
+- Without `format`, the string is read as ISO 8601.
+- With `format`, it can use the codes `%Y`, `%m`, `%d`, `%H`, `%M`, `%S` and `%L`.
+- A string with no time zone is read in `timezone`, or in UTC.
+- `onError` is returned instead of throwing when the string cannot be read. `onNull` is returned
+  when it is `null` or missing.
 
 ### Example
 ```js
@@ -2948,14 +2714,14 @@ jsongin.Evaluate( {}, { $dateFromString: { dateString: 'not a date', onError: 'b
 <a id="$dateAdd"></a>$dateAdd
 ---------------------------------------------------------------------
 
-**Usage** : `{ $dateAdd: { startDate: expression, unit: string, amount: number, timezone: string } }`
+**Usage** : `{ $dateAdd: { startDate: expression, unit: string, amount: number, timezone: zone } }`
 
-Adds a number of time units to a date.
-A `unit` is one of `year`, `quarter`, `month`, `week`, `day`, `hour`, `minute`, `second`, or
-  `millisecond`.
+Adds an amount of time to a date.
+`unit` is `'year'`, `'quarter'`, `'month'`, `'week'`, `'day'`, `'hour'`, `'minute'`, `'second'`
+  or `'millisecond'`.
 
-***The calendar units are added to the calendar, not as a length of time.***
-A day of the month which the target month does not have is pulled back to the last day it does.
+Months and years follow the calendar. If the day does not exist in the new month, the last day
+  of that month is used.
 
 ### Example
 ```js
@@ -2964,7 +2730,7 @@ let day = { when: new Date( '2020-01-02T03:04:05.678Z' ) };
 jsongin.Evaluate( day, { $dateAdd: { startDate: '$when', unit: 'day', amount: 1 } } );
 // returns new Date( '2020-01-03T03:04:05.678Z' )
 
-// The 31st of January plus one month is not the 2nd of March.
+// 31 January plus one month is 29 February, the last day of that month.
 jsongin.Evaluate( {}, { $dateAdd: { startDate: new Date( '2020-01-31T00:00:00Z' ), unit: 'month', amount: 1 } } );
 // returns new Date( '2020-02-29T00:00:00.000Z' )
 ```
@@ -2973,9 +2739,9 @@ jsongin.Evaluate( {}, { $dateAdd: { startDate: new Date( '2020-01-31T00:00:00Z' 
 <a id="$dateSubtract"></a>$dateSubtract
 ---------------------------------------------------------------------
 
-**Usage** : `{ $dateSubtract: { startDate: expression, unit: string, amount: number, timezone: string } }`
+**Usage** : `{ $dateSubtract: { startDate: expression, unit: string, amount: number, timezone: zone } }`
 
-Subtracts a number of time units from a date, by the same rules as [$dateAdd](#$dateAdd).
+Subtracts an amount of time from a date. It works like [`$dateAdd`](#$dateAdd).
 
 ### Example
 ```js
@@ -2988,17 +2754,17 @@ jsongin.Evaluate( { when: new Date( '2020-01-02T03:04:05.678Z' ) },
 <a id="$dateDiff"></a>$dateDiff
 ---------------------------------------------------------------------
 
-**Usage** : `{ $dateDiff: { startDate: expression, endDate: expression, unit: string, timezone: string, startOfWeek: string } }`
+**Usage** : `{ $dateDiff: { startDate: expression, endDate: expression, unit: string, timezone: zone, startOfWeek: string } }`
 
-The difference between two dates, in a given time unit.
+The number of `unit` boundaries between two dates.
 
-***This counts boundaries crossed, not elapsed time.***
-One second before midnight to one second after is one day, and two dates eleven months apart
-  can be one year apart. That is what makes it useful for grouping and surprising for measuring.
+***It counts boundaries crossed, not time passed.***
+From one millisecond before midnight to midnight is 1 day, and 31 December to 1 January is
+  1 year.
 
 ### Example
 ```js
-// One millisecond apart, and one day apart.
+// One millisecond apart, but a day boundary is crossed.
 jsongin.Evaluate( {}, { $dateDiff: {
 	startDate: new Date( '2020-01-01T23:59:59.999Z' ),
 	endDate: new Date( '2020-01-02T00:00:00.000Z' ),
@@ -3010,13 +2776,15 @@ jsongin.Evaluate( {}, { $dateDiff: {
 <a id="$dateTrunc"></a>$dateTrunc
 ---------------------------------------------------------------------
 
-**Usage** : `{ $dateTrunc: { date: expression, unit: string, binSize: number, timezone: string, startOfWeek: string } }`
+**Usage** : `{ $dateTrunc: { date: expression, unit: string, binSize: number, timezone: zone, startOfWeek: string } }`
 
-Truncates a date to the start of the unit it falls in.
+Rounds a date down to the start of its `unit`, such as the start of its day.
 
-`binSize` groups several units into one bin, so `{ unit: 'hour', binSize: 2 }` truncates to even
-  hours. ***The bins are counted from a fixed reference instant***, not from the date itself, so
-  every date in a collection falls into the same bins and can be grouped by them.
+`binSize` groups units together: `{ unit: 'hour', binSize: 2 }` rounds down to a two-hour step.
+The steps are counted from a fixed starting point, not from each date, so every date lands on the
+  same steps and can be grouped by them.
+
+A week starts on Sunday unless `startOfWeek` says otherwise.
 
 ### Example
 ```js
@@ -3028,7 +2796,6 @@ jsongin.Evaluate( day, { $dateTrunc: { date: '$when', unit: 'day' } } );
 jsongin.Evaluate( day, { $dateTrunc: { date: '$when', unit: 'hour', binSize: 2 } } );
 // returns new Date( '2020-01-02T02:00:00.000Z' )
 
-// A week is truncated to its start day, which defaults to Sunday.
 jsongin.Evaluate( day, { $dateTrunc: { date: '$when', unit: 'week' } } );
 // returns new Date( '2019-12-29T00:00:00.000Z' )
 ```
@@ -3042,14 +2809,8 @@ jsongin.Evaluate( day, { $dateTrunc: { date: '$when', unit: 'week' } } );
 
 **Usage** : `{ $binarySize: expression }`
 
-The number of bytes a string occupies.
-
-***A string is measured in bytes, not in characters.***
-The accented letter of `'héllo'` is two bytes, so its binary size is 6 where its length is 5.
-This is the same counting [$strLenBytes](#$strLenBytes) does.
-
-A null or missing operand makes the result null.
-Anything which is not a string has no binary size and throws.
+The size of a string in UTF-8 bytes, the same count as [`$strLenBytes`](#$strLenBytes).
+A `null` or missing operand gives `null`. Anything which is not a string throws.
 
 ### Example
 ```js
@@ -3069,31 +2830,27 @@ jsongin.Evaluate( document, { $binarySize: '$a' } );
 
 **Usage** : `{ $bsonSize: expression }`
 
-The number of bytes a document occupies once encoded as BSON.
+The size in bytes of an object when stored as BSON, MongoDB's storage format.
+A `null` or missing operand gives `null`. Anything which is not an object throws.
 
-The count is the encoding's own arithmetic: 4 bytes for the document's length, then each
-  element as one type byte plus its field name plus a terminating zero plus its value, then 1
-  byte to close the document.
-A value costs 4 bytes as an `int`, 8 as a `double` or a date, 1 as a boolean, nothing as a
-  null, and its length plus 5 as a string.
+The size is:
 
-***An array is encoded as a document whose keys are `'0'`, `'1'`, and so on***, which is why an
-  array of two numbers costs more than the two numbers do.
-
-A null or missing operand makes the result null.
-Anything which is not a document throws.
+- 4 bytes for the length, plus 1 byte at the end.
+- For each field: 1 byte for the type, the field name plus 1 byte, and the value.
+- A value takes 4 bytes as an `int`, 8 as a `double` or date, 1 as a boolean, 0 as `null`, and
+  its length plus 5 as a string.
+- An array is stored as an object with the fields `'0'`, `'1'`, and so on.
 
 ### Example
 ```js
-// 4 for the length + [ 1 type + 2 for 'a\0' + 4 for the int ] + 1.
+// 4 + ( 1 + 2 + 4 ) + 1
 jsongin.Evaluate( document, { $bsonSize: { $literal: { a: 1 } } } );
 // returns 12
 
-// A double costs four bytes more than an int.
+// A double takes 4 bytes more than an int.
 jsongin.Evaluate( document, { $bsonSize: { $literal: { a: 3.14 } } } );
 // returns 16
 
-// An empty document is its own length and its terminator.
 jsongin.Evaluate( document, { $bsonSize: { $literal: {} } } );
 // returns 5
 
@@ -3110,22 +2867,17 @@ jsongin.Evaluate( document, { $bsonSize: '$name' } );
 
 **Usage** : `{ $rand: {} }`
 
-Returns a random float from 0 up to but not including 1.
-It takes no operands, and the empty document is how it says so.
+A random number from 0 up to, but not including, 1. It takes no operands.
 
-***A query reaches it through [$expr](./Query-Operators.md#$expr)***, never on its own.
-`$rand` is not a query operator and cannot stand as one, so
-  `{ $expr: { $lt: [ { $rand: {} }, 0.5 ] } }` is how a criteria selects about half the
-  documents it sees.
+To use it in a query, put it inside `$expr`:
+  `{ $expr: { $lt: [ { $rand: {} }, 0.5 ] } }` matches about half of the documents.
 
 ### Example
 ```js
-// There is no fixed value to show. What holds of every draw is its range.
 let draw = jsongin.Evaluate( document, { $rand: {} } );
 ( draw >= 0 ) === true
 ( draw < 1 ) === true
 
-// Two draws are two values.
 let selected = jsongin.Query( document, { $expr: { $lt: [ { $rand: {} }, 0.5 ] } } );
 ( typeof selected === 'boolean' ) === true
 ```
@@ -3133,20 +2885,23 @@ let selected = jsongin.Query( document, { $expr: { $lt: [ { $rand: {} }, 0.5 ] }
 
 # Logical Operators
 
+These treat a value as true unless it is `false`, `0`, `null` or missing.
+See [`AsBoolean()`](./AsBoolean.md).
+
 
 <a id="$and"></a>$and
 ---------------------------------------------------------------------
 
 **Usage** : `{ $and: [ expression, ... ] }`
 
-`true` when every operand is truthy.
+`true` when every operand is true.
 
 ### Example
 ```js
 jsongin.Evaluate( document, { $and: [ true, true ] } );
 // returns true
 
-// Operands are tested for truthiness, not for being booleans.
+// 1 and 'x' both count as true.
 jsongin.Evaluate( document, { $and: [ 1, 'x' ] } );
 // returns true
 ```
@@ -3157,7 +2912,7 @@ jsongin.Evaluate( document, { $and: [ 1, 'x' ] } );
 
 **Usage** : `{ $or: [ expression, ... ] }`
 
-`true` when any operand is truthy.
+`true` when at least one operand is true.
 
 ### Example
 ```js
@@ -3171,7 +2926,7 @@ jsongin.Evaluate( document, { $or: [ false, true ] } );
 
 **Usage** : `{ $not: expression }`
 
-The negation of the operand's truthiness.
+`true` when the operand is false, and `false` when it is true.
 
 ### Example
 ```js
@@ -3191,8 +2946,7 @@ jsongin.Evaluate( document, { $not: 0 } );
 
 **Usage** : `{ $cond: [ if, then, else ] }` or `{ $cond: { if: ..., then: ..., else: ... } }`
 
-Chooses between two expressions on a condition.
-Both the array form and the named form are accepted, as in MongoDB.
+Returns `then` if `if` is true, and `else` otherwise.
 
 ### Example
 ```js
@@ -3209,8 +2963,8 @@ jsongin.Evaluate( document, { $cond: { if: { $gt: [ '$a', 1 ] }, then: 'big', el
 
 **Usage** : `{ $ifNull: [ expression, replacement ] }`
 
-The first operand, unless it is `null` or missing, in which case the replacement.
-It is the idiom for giving a default to a field which may not be there.
+Returns the first operand, unless it is `null` or missing, in which case it returns `replacement`.
+Use it to give a field a default value.
 
 ### Example
 ```js
@@ -3227,8 +2981,8 @@ jsongin.Evaluate( document, { $ifNull: [ '$a', 'fallback' ] } );
 
 **Usage** : `{ $switch: { branches: [ { case: ..., then: ... }, ... ], default: ... } }`
 
-Evaluates each branch's `case` in order and returns the `then` of the first one which is truthy.
-When none is, the `default` is returned.
+Checks each branch's `case` in order, and returns the `then` of the first one which is true.
+If none is true, it returns `default`. If there is no `default`, it throws.
 
 ### Example
 ```js
@@ -3257,9 +3011,8 @@ jsongin.Evaluate( document, { $switch: {
 
 **Usage** : `{ $literal: value }`
 
-Returns its value without evaluating it.
-This is how a string which begins with `$` is used as text rather than as a field reference, and
-  how a document which looks like an operator call is used as data.
+Returns its value as it is, without evaluating it.
+Use it for a string starting with `$`, or an object which looks like an operator.
 
 ### Example
 ```js
@@ -3273,8 +3026,9 @@ jsongin.Evaluate( document, { $literal: { $add: [ 1, 2 ] } } );
 
 ## See Also
 
-- [`Evaluate( Document, Expression )`](./Evaluate.md), which evaluates these operators.
-- [`Project( Document, Projection )`](./Project.md), whose computed fields are expressions.
-- [`Aggregate( Documents, Pipeline )`](./Aggregate.md), whose computing stages use them.
-- [Accumulator Operators](./Accumulator-Operators.md), which reduce a group rather than a document.
-- [Operator Reference](../Operator-Reference.md), for which MongoDB operators are implemented.
+- [`Evaluate( Document, Expression, Scope )`](./Evaluate.md)
+- [`Project( Document, Projection )`](./Project.md)
+- [`Aggregate( Documents, Pipeline, Scope )`](./Aggregate.md)
+- [Accumulator Operators](./Accumulator-Operators.md)
+- [Scope](./Scope.md)
+- [Operator Reference](../Operator-Reference.md)

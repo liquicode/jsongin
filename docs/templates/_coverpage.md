@@ -10,7 +10,7 @@
 
 > Filter, Sort, Project, Update, and Aggregate JSON documents anywhere.
 
-> Covers <%- Context.Coverage.Percent %>% (<%- Context.Coverage.Implemented %>/<%- Context.Coverage.Total %>) of the MongoDB API (v6).
+> Covers <%- Context.Coverage.Percent %>% (<%- Context.Coverage.Implemented %>/<%- Context.Coverage.Total %>) of MongoDB's documented operators.
 
 <hr>
 
@@ -23,9 +23,9 @@
 		<li>Document updating and aggregation.</li>
 		<li>100% pure javascript. No dependencies.</li>
 		<li>Faithfully reproduces MongoDB behavior.</li>
-		<li>100% parity with MongoDB across 988 behaviors, 219 operators.</li>
+		<li>100% parity with MongoDB across 1050 behaviors, <%- Context.Coverage.Implemented %> operators.</li>
 		<li>Supports CommonJS, ESM, and TypeScript.</li>
-		<li>Single minified file (~42k compressed) for web deployment.</li>
+		<li>Single minified file (~<%- Context.Bundle.CompressedKb %>k compressed) for web deployment.</li>
 		<li>All operations are in-memory. This is not a storage library.</li>
 	</ul>
 </div>

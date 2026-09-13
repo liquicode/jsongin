@@ -8,52 +8,52 @@
 
 | **Parameter** | **Allowed Types** | **Description**                          |
 |---------------|:-----------------:|------------------------------------------|
-| JsonString    |        s          | The json string to parse.                |
-| Options       |        o          | The options document below.              |
+| JsonString    |        s          | The text to read.                        |
+| Options       |        o          | Optional. The options below.             |
 
 ### Options
 
 | **Option**  | **Type** | **Default** | **Description**                          |
 |-------------|:--------:|:-----------:|------------------------------------------|
-| Strict      |    b     |   `false`   | Throws when the string cannot be read, rather than returning it unchanged. |
-| TypedValues |    b     |   `false`   | Reads the tagged forms [`Format()`](./Format.md) writes for values JSON cannot hold. |
+| Strict      |    b     |   `false`   | Throws when the text cannot be read, instead of returning it unchanged. |
+| TypedValues |    b     |   `false`   | Reads the tagged values [`Format()`](./Format.md) writes for dates, regular expressions and `undefined`. |
 
 
 ## Description
 
-`jsongin.Parse()` emulates Javascript's `JSON.parse()` function which constructs a Javascript object from a text string.
+Reads a value from text, like `JSON.parse()`, but accepts Javascript object syntax as well as JSON.
 
-`jsongin.Parse()` differs from `JSON.parse()` in that it provides a more relaxed parsing of JSON strings which is more in
-  line with Javascipt's object syntax (as opposed to JSON's syntax).
+Compared with `JSON.parse()`, `Parse` also accepts:
 
-Consider the following JSON string:
+- field names without quotes: `{ name: "Books" }`
+- strings in single quotes: `'Books'`
+- trailing commas: `[ 1, 2, ]`
+- missing commas: `[ 1 2 3 ]`
+- `null`, `true` and `false` in any letter case
+- a word without quotes as a string value: `{ a: hello }` gives `{ a: 'hello' }`
+
+So these two strings give the same object:
 
 ```
-{ name: 'Books', count: 4, } // This is my object.
+{ name: 'Books', count: 4, }
 ```
-
-Javascript's more strict JSON parsing will have four problems with the above string:
-- You are required to use double quotes around the field names `name` and `count`.
-- The string literal `'Books'` must use double quotes instead of single quotes: `"Books"`.
-- There is a trailing comma after the `count` field, which is not allowed.
-- The inline comment following the object will cause `JSON.parse()` to throw an error.
-
-In order for `JSON.parse()` to read the JSON string, you would have to change it to look like this:
 
 ```json
 { "name": "Books", "count": 4 }
 ```
 
-The `jsongin.Parse()` function will work equally well with either string and will return the same object.
+***Only the first value is read.***
+Anything after it is ignored, so `'{ a: 1 } xyz'` gives `{ a: 1 }`.
+
+`Parse` does ***not*** understand comments.
 
 
 ## Escape Sequences
 
-String values are decoded the way `JSON.parse()` decodes them:
-`\b`, `\f`, `\n`, `\r`, `\t`, `\"`, `\\`, `\/`, and `\uXXXX`.
-
-Because `Parse()` also reads single quoted strings, `\'` works as well.
-Any other escape stands for the character which follows the backslash.
+Strings are decoded the way `JSON.parse()` decodes them:
+`\b`, `\f`, `\n`, `\r`, `\t`, `\"`, `\\`, `\/` and `\uXXXX`.
+`\'` also works, for single quoted strings.
+Any other backslash is dropped and the character after it is kept.
 
 ```js
 jsongin.Parse( '{ "a": "one\\ntwo" }' )
@@ -63,9 +63,8 @@ jsongin.Parse( '{ "a": "one\\ntwo" }' )
 
 ## It Does Not Throw By Default
 
-`Parse()` is a forgiving parser.
-A string it cannot read is ***returned unchanged*** rather than throwing, and so is an argument
-  which is not a string at all.
+When `Parse` cannot read the text, it ***returns the text unchanged*** instead of throwing.
+A value which is not a string is also returned unchanged.
 
 ```js
 jsongin.Parse( '{ bad' )   // returns '{ bad'
@@ -74,8 +73,7 @@ jsongin.Parse( '' )        // returns ''
 jsongin.Parse( 42 )        // returns 42
 ```
 
-The reason is reported to [`OpLog`](../OpLog.md), which is where to look when a value comes back
-  as the string that went in:
+The reason is sent to the [`OpLog`](../OpLog.md):
 
 ```js
 const jsongin = require( '@liquicode/jsongin' ).NewJsongin( { OpLog: console.log } );
@@ -83,30 +81,23 @@ jsongin.Parse( '{ bad' );
 // Parse: At position [2]: Expected a ':' after the field name 'bad'. The string was returned unchanged.
 ```
 
-Note that a value which was returned unchanged cannot be told apart from a successful parse
-  which happened to produce a string.
-`Parse( '"abc"' )` returns `abc` because it parsed, and `Parse( '"abc' )` returns `"abc` because
-  it did not.
-`OpLog` is what distinguishes them.
+This means a failed parse can look like a successful one.
+`Parse( '"abc"' )` returns `abc` because it worked, while `Parse( '"abc' )` returns `"abc` because
+  it failed.
 
-***Set `Strict` when that ambiguity is not acceptable.***
-Forgiveness is right for input a person typed and wrong for reading back something the engine
-  wrote, where a truncated value has to be an error rather than a string which happens to look
-  like one.
+***Use `Strict` when that matters***, such as when reading text a program wrote.
+With `Strict`, a failure throws, and the message goes to [`OpError`](../OpLog.md):
 
 ```js
 // jsongin.Parse( '{ bad', { Strict: true } )
 // throws: At position [2]: Expected a ':' after the field name 'bad'.
 ```
 
-A `Strict` failure is reported to [`OpError`](../OpLog.md) rather than `OpLog`.
-
 
 ## Typed Values
 
-`TypedValues` reads the tagged forms [`Format()`](./Format.md) writes, so that a `Date`, an
-  `undefined`, and a `RegExp` come back as what they were rather than as a string, a missing
-  field, and an empty object.
+With `TypedValues`, the tagged values [`Format()`](./Format.md) writes come back as a `Date`, a
+  `RegExp` or `undefined`.
 
 ```js
 const options = { TypedValues: true };
@@ -115,16 +106,13 @@ jsongin.ShortType( jsongin.Parse( text, options ).created )
 // returns 'd'
 ```
 
-Both ends need the option.
-Reading tagged text without it gives back the tag documents themselves, and writing without it
-  loses the values before `Parse()` ever sees them.
+Use the option with both `Format` and `Parse`.
+Without it, `Parse` returns the tag objects themselves, and `Format` writes no tags to begin with.
 
-***A tag is only a tag when it is the whole document.***
-`{ $date: ... }` alongside any other field is an ordinary document which happens to use the
-  name.
-This is the same reading MongoDB's Extended JSON takes, and it means a document whose only
-  field is genuinely called `$date` cannot be told apart from a tagged value.
-A malformed tag is left exactly as it was found, so nothing is lost to a bad guess.
+A tag is only read when it is the ***only*** field in its object.
+`{ $date: ..., other: 1 }` is an ordinary object.
+This also means an object whose only field really is named `$date` is read as a date.
+A tag which is not in the right form is left as it is.
 
 
 ## See Also
@@ -135,7 +123,7 @@ A malformed tag is left exactly as it was found, so nothing is lost to a bad gue
 
 ## Examples
 
-### It reads JSON from a string
+### It reads JSON
 ```js
 let text = `{"id":1001, "user":{"name":"Alice","location":"East"}, "tags":["Staff", "Dept. A"]}`;
 let result = jsongin.Parse( text );
@@ -149,7 +137,7 @@ let result = jsongin.Parse( text );
 // }
 ```
 
-### It reads JSON that uses a Javascript syntax
+### It reads Javascript object syntax
 ```js
 let text = `{ id: 1001, user: { name : 'Alice', location: 'East' }, tags: [ 'Staff', 'Dept. A' ], }`;
 let result = jsongin.Parse( text );

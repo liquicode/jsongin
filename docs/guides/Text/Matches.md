@@ -8,63 +8,52 @@
 
 | **Parameter**   | **Allowed Types** | **Description**                          |
 |-----------------|:-----------------:|------------------------------------------|
-| `Text`          |        s          | The text to search in.                   |
-| `Pattern`       |        s          | A wildcard pattern (* and ?).            |
-| `CaseSensitive` |        b          | Flag to force case sensitive operations. |
+| `Text`          |        s          | The text to test.                        |
+| `Pattern`       |        s          | A pattern which can use `*` and `?`.     |
+| `CaseSensitive` |        b          | Optional. `false` ignores upper and lower case. Defaults to `true`. |
 
 
 ## Description
 
-Searches in `Text` for `Pattern` and returns `true` if found.
+Returns `true` if the ***whole*** of `Text` matches `Pattern`.
 
-`Pattern` is a text string which can contain the wildcard characters `*` and `?`.
-The `*` character matches any text while a `?` will match a single letter.
-So, for example, the pattern `*3?5` will match `12345` and `anything 3 5`.
+In `Pattern`, `*` matches any number of characters (including none), and `?` matches exactly one
+  character. Every other character must match itself.
+So `*3?5` matches `12345` and `anything 3 5`, but `The` does not match `The red fox`: use `The*`.
 
-`Matches` throws when `Text` or `Pattern` is not a string.
+Throws if `Text` or `Pattern` is not a string.
 
 
 ## Examples
 
 
-### It matches entire string (case sensitive)
+### The whole string
 ```js
 jsongin.Text.Matches( 'The red fox', 'The red fox', true ) === true
 jsongin.Text.Matches( 'The red fox', 'Not the red fox', true ) === false
-```
-
-### It matches entire string (case insensitive)
-```js
 jsongin.Text.Matches( 'THE RED FOX', 'The red fox', false ) === true
 jsongin.Text.Matches( 'THE RED FOX', 'Not the red fox', false ) === false
 ```
 
-### It matches text at start of string (case sensitive)
+### A pattern for the start
 ```js
 jsongin.Text.Matches( 'The red fox', 'The *', true ) === true
-```
-
-### It matches text at start of string (case insensitive)
-```js
 jsongin.Text.Matches( 'THE RED FOX', 'The *', false ) === true
 ```
 
-### It matches text in middle of string (case sensitive)
+### A pattern for the middle
 ```js
 jsongin.Text.Matches( 'The red fox', 'The * fox', true ) === true
-```
-
-### It matches text in middle of string (case insensitive)
-```js
 jsongin.Text.Matches( 'THE RED FOX', 'The * fox', false ) === true
 ```
 
-### It matches text at end of string (case sensitive)
+### A pattern for the end
 ```js
 jsongin.Text.Matches( 'The red fox', '* fox', true ) === true
+jsongin.Text.Matches( 'THE RED FOX', '* fox', false ) === true
 ```
 
-### It matches text at end of string (case insensitive)
+### Without a wildcard, part of the string does not match
 ```js
-jsongin.Text.Matches( 'THE RED FOX', '* fox', false ) === true
+jsongin.Text.Matches( 'The red fox', 'The', true ) === false
 ```

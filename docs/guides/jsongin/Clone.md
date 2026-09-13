@@ -13,29 +13,28 @@
 
 ## Description
 
-Returns a deep copy of `Document`, made with a JSON round trip:
+Returns a deep copy of `Document`, made by converting it to JSON and back:
 
 ```js
 Clone = function ( Document ) { return JSON.parse( JSON.stringify( Document ) ); };
 ```
 
-This is simple and fast, and it is exactly as lossy as JSON is.
-Anything JSON cannot represent does not survive the trip.
+It is simple and fast, but anything JSON cannot hold is lost or changed.
 
-***Use [`SafeClone()`](./SafeClone.md) instead when your document holds dates.***
+***If your document holds dates, use [`SafeClone()`](./SafeClone.md) instead.***
 
 
-## What Does Not Survive
+## What Is Lost
 
 | **Value**    | **Becomes**            | **Why**                                        |
 |--------------|------------------------|------------------------------------------------|
-| `Date`       | an ISO string          | `JSON.stringify` calls `toJSON()`.             |
-| `RegExp`     | `{}`                   | A regular expression has no own properties.    |
-| `undefined`  | the key is dropped     | `JSON.stringify` omits undefined fields.       |
-| `function`   | the key is dropped     | Functions are not JSON.                        |
-| `NaN`, `Infinity` | `null`            | JSON has no representation for these.          |
+| `Date`       | an ISO string          | `JSON.stringify` writes dates as strings.      |
+| `RegExp`     | `{}`                   | JSON has no regular expressions.               |
+| `undefined`  | the key is removed     | `JSON.stringify` skips undefined fields.       |
+| `function`   | the key is removed     | JSON has no functions.                         |
+| `NaN`, `Infinity` | `null`            | JSON has no way to write these.                |
 
-A circular reference throws.
+A document which refers to itself throws.
 
 ```js
 // jsongin.Clone( { d: new Date( 0 ) } ) returns { d: '1970-01-01T00:00:00.000Z' }
@@ -48,18 +47,13 @@ A circular reference throws.
 
 |                        | **`Clone`**                | **`SafeClone`**                    |
 |------------------------|----------------------------|------------------------------------|
-| Method                 | JSON round trip            | member-wise copy                   |
-| Dates                  | become ISO strings         | ***preserved***                    |
-| Regular expressions    | become `{}`                | ***preserved***                    |
-| Copy some fields by reference | no                  | yes, via the `Exceptions` parameter |
+| Method                 | JSON round trip            | field-by-field copy                |
+| Dates                  | become ISO strings         | ***kept as dates***                |
+| Regular expressions    | become `{}`                | ***kept***                         |
+| Share some fields with the original | no            | yes, with the `Exceptions` parameter |
 
-`Clone`'s behavior is unchanged and intentional: converting dates to strings is inherent to the
-  stringify/parse approach it documents.
-The `jsongin` functions which need to preserve values — `Project()`, `Update()`, `Merge()`, and
-  the aggregation stages — all clone with `SafeClone()`.
-
-> ***Note*** : several v0.1.0 fixes came from functions using `Clone` where they needed
-  `SafeClone`. If you are cloning documents that came out of `jsongin`, prefer `SafeClone`.
+`Project()`, `Update()`, `Merge()` and the aggregation stages all use `SafeClone()`.
+If you are copying documents which came out of `jsongin`, use `SafeClone()` too.
 
 
 ## See Also
@@ -72,24 +66,24 @@ The `jsongin` functions which need to preserve values — `Project()`, `Update()
 ## Examples
 
 
-### It deep copies a document
+### It makes a deep copy
 ```js
 let document = { a: { b: 1 } };
 let copy = jsongin.Clone( document );
 
 copy.a.b = 2;
-document.a.b === 1   // the original is untouched
+document.a.b === 1   // the original is unchanged
 ```
 
 
-### It converts dates to strings
+### It turns dates into strings
 ```js
 let copy = jsongin.Clone( { when: new Date( 0 ) } );
 
 typeof copy.when === 'string'
 copy.when === '1970-01-01T00:00:00.000Z'
 
-// Use SafeClone to keep the Date:
+// SafeClone keeps the Date:
 let safe = jsongin.SafeClone( { when: new Date( 0 ) } );
 ( safe.when instanceof Date ) === true
 ```

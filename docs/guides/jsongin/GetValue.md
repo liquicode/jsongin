@@ -8,42 +8,50 @@
 
 | **Parameter** | **Allowed Types** | **Description**                          |
 |---------------|:-----------------:|------------------------------------------|
-| Document      |       (any)       | The document to get a value from.        |
-| Path          |       ulsn        | The path of a field within the document. |
+| Document      |       (any)       | The document to read from.               |
+| Path          |       ulsn        | The path of the value to read.           |
 
 
 ## Description
 
-Searches within `Document` for the field identified by `Path` and returns that field value.
+Returns the value at `Path` in `Document`, or `undefined` if there is none.
 
-If the `Path` is empty (`undefined`, `null`, or empty string `""`), then the `Document` is returned.
-Otherwise `Path` must be a string, in dot-notation, which identifies a value within the `Document`.
-If the field specified by `Path` is not found within the `Document`, then `undefined` is returned.
-`Path` can also be numeric to specify an array index.
+`Path` is a dot notation string, such as `'user.name'`, or a number.
+If `Path` is `undefined`, `null` or `''`, the whole `Document` is returned.
+Any other type of `Path` throws.
 
-If `Path` is not of type `ulsn`, then an error is thrown.
+***Objects*** :
+A path element names a field. Field names are case sensitive.
 
-***Specifying Object Elements*** : 
-To specify a field in an object, use that field name (case sensitive) within `Path`.
-To specify a field in an embedded object, use dot notation (e.g. `"user.name"`) to identify that field.
+***Arrays*** :
+A number in the path selects an element by position, starting at `0`.
 
-***Specifying Array Elements*** : 
-To specify an element of an array, use the numeric (zero-based) index of that element within the `Path`.
-If you have an array of objects, you can omit the array index to retrieve values inside those objects.
+A field name used against an array is applied to ***every element***, and the result is an array
+  with one value per element.
+An element without the field gives `undefined` in its position, so the result lines up with the
+  array.
 
-***There is no reverse indexing*** :
-A negative number is read as a field name like any other, and an array has no field called
-  `-1`, so `GetValue( document, 'a.-1' )` returns `undefined` rather than the last element.
-This matches MongoDB, which reads every path element the same way and has no counterpart to
-  reverse indexing on either side of the engine.
-Against a ***document***, `-1` is an ordinary field name and resolves normally: a field may
-  legitimately be called that.
+```js
+jsongin.GetValue( { users: [ { id: 1 }, { name: 'Bob' } ] }, 'users.id' )
+// returns [ 1, undefined ]
+```
+
+***No counting from the end*** :
+A negative number is not an index.
+`GetValue( document, 'a.-1' )` returns `undefined` when `a` is an array, not the last element, as
+  in MongoDB.
+Against an object, `-1` is an ordinary field name.
+
+Queries and aggregation expressions read paths by slightly different rules.
+See [`ResolveCandidates()`](./ResolveCandidates.md) for queries, and
+  [`Evaluate()`](./Evaluate.md) for a field reference such as `'$users.id'`.
 
 
 ## See Also
 
 - [`SetValue( Document, Path, Value )`](./SetValue.md)
-- [`Update( Document, Updates )`](./Update.md)
+- [`ResolveCandidates( Document, Path )`](./ResolveCandidates.md)
+- [`SplitPath( Path )`](./SplitPath.md)
 
 
 ## Examples
@@ -66,8 +74,7 @@ let document = [ 'one', 'two', 'three' ];
 jsongin.GetValue( document, '0' ) === 'one'
 jsongin.GetValue( document, '1' ) === 'two'
 
-// There is no reverse indexing. A negative key is read as a field name, and an
-// array has no such field.
+// A negative number is not an index.
 jsongin.GetValue( document, '-1' ) === undefined
 ```
 
@@ -82,11 +89,11 @@ let document = {
 };
 // jsongin.GetValue( document, 'users.1' ) returns { id: 102, name: 'Bob' }
 jsongin.GetValue( document, 'users.1.name' ) === 'Bob'
-// Omit the array index to reurn an array of sub-values:
+// Leave out the index to get the field from every element:
 // jsongin.GetValue( document, 'users.name' ) returns [ 'Alice', 'Bob', 'Eve' ]
 ```
 
-### It might return undefined array elements when missing data is encountered
+### An element without the field gives undefined
 ```js
 let document = {
 	users: [
@@ -100,21 +107,21 @@ jsongin.GetValue( document, 'users.1.id' ) === undefined
 // jsongin.GetValue( document, 'users.name' ) returns [ 'Alice', 'Bob', 'Eve' ]
 ```
 
-### If the path is undefined, null, or empty "", then it returns the entire document
+### An empty path returns the whole document
 ```js
 jsongin.GetValue( 'abc' )  === 'abc'
 // jsongin.GetValue( [ 'one', 'two', 'three' ], null ) returns [ 'one', 'two', 'three' ]
 // jsongin.GetValue( { id: 101, name: 'Alice' }, '' ) returns { id: 101, name: 'Alice' }
 ```
 
-### If the path is specified but not found, it returns undefined
+### A path which is not found returns undefined
 ```js
 jsongin.GetValue( 'abc', 'score' ) === undefined
 jsongin.GetValue( { id: 101, name: 'Alice' }, 'score' ) === undefined
 jsongin.GetValue( [ 'one', 'two', 'three' ], '3' ) === undefined
 ```
 
-### It throws an error when an invalid path is given
+### It throws for a path of the wrong type
 ```js
 jsongin.GetValue( 'abc', { a: 1 } ) // throws 'Path is invalid ...'
 ```

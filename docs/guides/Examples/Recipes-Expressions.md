@@ -26,8 +26,9 @@ jsongin.Evaluate( d, '$age' ) === 30
 jsongin.Evaluate( d, '$profile.city' ) === 'East'
 ```
 
-Anything else is a literal. A number, a boolean, `null`, and an array are
-themselves. A string ***without*** a leading `$` is a literal string, not a field:
+Anything else is a literal. A number, a boolean and `null` are returned as they are.
+A string ***without*** a leading `$` is a literal string, not a field.
+(An array is evaluated element by element, so `[ '$age', 1 ]` gives `[ 30, 1 ]`.)
 
 ```js
 jsongin.Evaluate( d, 5 ) === 5
@@ -46,8 +47,8 @@ jsongin.Evaluate( d, '$missing' ) === null
 
 ## Arithmetic
 
-The arithmetic operators take an array of operands. `$add` takes any number; the
-rest take two:
+The arithmetic operators take an array of operands. `$add` and `$multiply` take any
+number of them; `$subtract`, `$divide` and `$mod` take two:
 
 ```js
 jsongin.Evaluate( d, { $add: [ '$age', 1, 10 ] } ) === 41

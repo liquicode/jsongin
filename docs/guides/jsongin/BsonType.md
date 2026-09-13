@@ -9,19 +9,17 @@
 | **Parameter** | **Allowed Types** | **Description**                                                        |
 |---------------|:-----------------:|------------------------------------------------------------------------|
 | Value         |       (any)       | The value to get the BSON type of.                                     |
-| ReturnAlias   |         b         | Return the type's string alias instead of its number. Defaults to `false`. |
+| ReturnAlias   |         b         | `true` returns the type's name instead of its number. Defaults to `false`. |
 
 
 ## Description
 
-Returns the MongoDB BSON type of a value.
+Returns the MongoDB BSON type of a value, as a ***number*** by default, or as its ***name*** when
+  `ReturnAlias` is `true`.
 
-By default the type is returned as its ***number***.
-Pass `true` for `ReturnAlias` to get the ***string alias*** instead.
+A function or an `Error` has no BSON type, and returns `null`.
 
-Returns `null` for a value which has no BSON type.
-
-This is the type used by the `$type` query operator, which accepts either form:
+The `$type` query operator uses these types, and accepts either form:
 
 ```js
 jsongin.Query( { n: 42 }, { n: { $type: 'int' } } ) === true
@@ -50,34 +48,31 @@ jsongin.Query( { n: 42 }, { n: { $type: 16 } } ) === true
 | `NaN`                  |     `1`    | `'double'`    |
 | `Infinity`             |     `1`    | `'double'`    |
 
-***Numbers*** are classified by their value rather than by a declared width, because Javascript
-  has only one number type:
-- A whole number within the `int32` range, `-2147483648` through `2147483647`, is an `int`.
-- Every other number is a `double`. That includes a number written with a decimal point, a
-  whole number too large for `int32`, and `NaN`, `Infinity`, and `-Infinity`.
-  Note that BSON has no separate type for any of those three.
-- A number is never a `long`. A Javascript number is a double, and the BSON serializer stores
-  it as an `int32` only when it fits that range. This matches MongoDB: inserting `3000000000`
-  and reading back `$type` reports `double`, and a `$type: 'long'` query matches no such
-  document.
+Javascript has only one kind of number, so a number's BSON type depends on its value:
 
-A ***function*** has no BSON type and returns `null`.
+- A whole number from `-2147483648` to `2147483647` (the `int32` range) is an `int`.
+- Every other number is a `double`: numbers with a fractional part, whole numbers outside that
+  range, `NaN`, `Infinity` and `-Infinity`.
+- A number is never a `long`.
+
+This is what MongoDB does too.
+If you store `3000000000` in MongoDB, `$type` reports `double`, and `$type: 'long'` does not
+  match it.
 
 
 ## Unsupported Types
 
-These BSON types exist in MongoDB but have no Javascript counterpart here, so no value ever
-  reports them: `binData` (5), `objectId` (7), `dbPointer` (12), `javascript` (13),
+These BSON types have no Javascript value to match, so `BsonType` never returns them:
+  `binData` (5), `objectId` (7), `dbPointer` (12), `javascript` (13),
   `javascriptWithScope` (15), `timestamp` (17), `decimal` (19), `minKey` (-1), and
   `maxKey` (127).
 
-Note that BSON type `17` is `timestamp`, a MongoDB replication internal, and is ***not*** the
-  same thing as a date.
+BSON type `17`, `timestamp`, is used internally by MongoDB and is ***not*** a date.
 
 
 ## See Also
 
-- [`ShortType( Value )`](./ShortType.md), the single-character type used throughout `jsongin`.
+- [`ShortType( Value )`](./ShortType.md), the one-letter type code used throughout `jsongin`.
 - [`Query()`](./Query.md) and its `$type` operator.
 - MongoDB Reference: [BSON Types](https://www.mongodb.com/docs/manual/reference/bson-types)
 
@@ -96,7 +91,7 @@ jsongin.BsonType( null ) === 10
 ```
 
 
-### It returns the alias when asked
+### It returns the name when asked
 ```js
 jsongin.BsonType( true, true ) === 'bool'
 jsongin.BsonType( 42, true ) === 'int'
@@ -106,14 +101,14 @@ jsongin.BsonType( [ 1 ], true ) === 'array'
 ```
 
 
-### Dates are their own type
+### A date is its own type
 ```js
-// A date is a date, and not an object.
+// A date is not an object.
 jsongin.BsonType( new Date() ) === 9
 jsongin.BsonType( { a: 1 } ) === 3
 
-// A number which would be a valid timestamp is still a number.
-// It is a double rather than an int, because it is outside the int32 range.
+// A number is a number, even when it could be a timestamp.
+// This one is a double because it is outside the int32 range.
 jsongin.BsonType( 1700000000000 ) === 1
 jsongin.BsonType( 1700000000000, true ) === 'double'
 ```

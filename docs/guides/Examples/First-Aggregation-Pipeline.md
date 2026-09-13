@@ -55,8 +55,8 @@ jsongin.Aggregate( players, [
 // returns [ { _id: 'red', score: 8 }, { _id: 'blue', score: 1 } ]
 ```
 
-`$sort: { score: -1 }` orders the groups by their computed `score`, descending.
-Always sort before you rely on the order of a `$group`'s output.
+`$sort: { score: -1 }` orders the groups by their computed `score`, highest first.
+`$group` does not promise any order, so add a `$sort` after it whenever the order matters.
 
 
 ## The Finished Pipeline

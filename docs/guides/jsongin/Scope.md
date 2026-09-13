@@ -3,88 +3,55 @@
 
 # Scope
 
-The set of variables in effect where an expression is being evaluated.
+A scope holds the variables an expression can read.
 
-A name beginning with `$$` is resolved from a scope, where a name beginning with a single `$` is
-  resolved from the document.
-See [Variables](./Expression-Operators.md#variables) for what the variables ***mean***; this
-  page is about the object which holds them, which you only need when you are writing an
-  operator or driving [`Evaluate()`](./Evaluate.md) yourself.
+A name starting with `$$`, such as `$$ROOT`, is read from the scope.
+A name starting with one `$`, such as `$price`, is read from the document.
 
-
-## A Scope Is a Value, Not Engine State
-
-***The engine holds no "current scope" and never has one.***
-A scope is created by a caller, passed into [`Evaluate()`](./Evaluate.md), and passed along to
-  every operator underneath it.
-That is what makes two evaluations independent of each other.
-
-***The variables are MongoDB's; the object which holds them is jsongin's.***
-The `$$name` and `$name` split, the four system variables, and the names `$let`, `$map`,
-  `$filter` and `$reduce` bind are all MongoDB's, down to the rule that a name a caller binds
-  must begin with a lowercase letter.
-What MongoDB has no counterpart for is this object: it keeps the variables inside its
-  aggregation engine, where nothing can reach them, because it never exposes an expression
-  evaluator on its own.
-[`Evaluate()`](./Evaluate.md) is a public entry point here, so the variables had to become a
-  value a caller can build, pass, and [store](#storing-a-scope).
+See [Variables](./Expression-Operators.md#variables) for what each variable means.
+This page is about the scope object itself. You only need it when you want to supply variables
+  to [`Evaluate()`](./Evaluate.md) yourself, or when you are writing an operator.
 
 
 ## You Usually Do Not Need One
 
-`Evaluate( Document, Expression )` makes a scope for the occasion when it is not given one, so
-  the system variables work without a caller ever supplying one.
+If you do not pass a scope, `Evaluate` and `Aggregate` make one for you, so the system variables
+  always work:
 
 ```js
 jsongin.Evaluate( { a: 5 }, '$$ROOT.a' ) === 5
 ```
 
-Reach for a scope when you want to ***bind a name of your own*** from outside the expression
-  language, or when you are writing an operator and have to pass along the one you were given.
+Use a scope when you want to ***define a variable of your own*** from outside the expression, or
+  when you are writing an operator and need to pass along the scope you were given.
 
 
-## Which Operators See a Scope
+## A Scope Is a Value
 
-Nearly every operator carries a scope, and nearly none of them do anything with it.
+The engine does not keep a "current scope".
+You make a scope, pass it to [`Evaluate()`](./Evaluate.md), and it is passed down to every
+  operator inside the expression.
+So two evaluations never affect each other, and a scope can be saved and read back later.
 
-| **Registry** | **Operators** | **Carry a `Scope`** | **Do something with it** |
-|--------------|--------------:|--------------------:|--------------------------|
-| Expression   | 134           | 134                 | `$let`, `$map`, `$filter`, `$reduce` |
-| Stage        | 21            | 21                  | `$addFields`, `$redact` |
-| Accumulator  | 20            | 20                  | none |
-| Query        | 31            | ***none***          | `$expr` and `$exprx`, which build their own |
-| Update       | 14            | ***none***          | none |
-
-***175 of the 220 operators receive a scope, eight build a frame, and not one of them looks
-  a name up.***
-Resolution happens in exactly one place, inside [`Evaluate()`](./Evaluate.md), and everything
-  else either passes the scope along untouched or adds a frame to it.
-The eight which add one are doing one of two things: binding names a caller wrote, which is
-  [$let](./Expression-Operators.md#$let), [$map](./Expression-Operators.md#$map),
-  [$filter](./Expression-Operators.md#$filter) and
-  [$reduce](./Expression-Operators.md#$reduce); or rebinding `$$ROOT` and `$$CURRENT` to a
-  different document, which is every other operator in that column.
+The variables themselves, and the rules for their names, are MongoDB's.
+The scope object is `jsongin`'s, because MongoDB has no public expression evaluator to pass one to.
 
 
 ## Building a Scope
 
 | **Function**                            | **Description**                                     |
 |-----------------------------------------|-------------------------------------------------------|
-| `jsongin.Scope.New( Variables, Parent )` | A frame of bindings, with `Parent` around it or `null`. |
-| `jsongin.Scope.NewPipeline( Now )`      | The outermost frame of an aggregation run: `$$NOW` and `$$REMOVE`. |
-| `jsongin.Scope.NewDocument( Document, Parent )` | A frame binding `$$ROOT` and `$$CURRENT` to one document. |
+| `jsongin.Scope.New( Variables, Parent )` | A scope holding `Variables`, inside `Parent` (or `null` for none). |
+| `jsongin.Scope.NewPipeline( Now )`      | The outermost scope of a pipeline run, holding `$$NOW` and `$$REMOVE`. `Now` is optional. |
+| `jsongin.Scope.NewDocument( Document, Parent )` | A scope setting `$$ROOT` and `$$CURRENT` to `Document`. Without a `Parent`, a pipeline scope is made for it. |
 
-`NewPipeline` is where `$$NOW` is read, once, so that every document and every stage of one
-  pipeline sees the same instant.
-Reading the clock per document disagree with MongoDB.
-
-`NewDocument` called without a parent makes a pipeline frame for the occasion, which is what a
-  bare two-argument `Evaluate()` does.
+`$$NOW` is read from the clock once, in `NewPipeline`, so every document and stage in one
+  pipeline run sees the same time, as in MongoDB.
 
 ```js
 let scope = jsongin.Scope.NewDocument( { a: 10 } );
-jsongin.Evaluate( { a: 5 }, { $add: [ '$a', 1 ] }, scope ) === 6         // from the document
-jsongin.Evaluate( { a: 5 }, { $add: [ '$$ROOT.a', 1 ] }, scope ) === 11  // from the scope
+jsongin.Evaluate( { a: 5 }, { $add: [ '$a', 1 ] }, scope ) === 6         // $a comes from the document
+jsongin.Evaluate( { a: 5 }, { $add: [ '$$ROOT.a', 1 ] }, scope ) === 11  // $$ROOT comes from the scope
 ```
 
 
@@ -92,16 +59,17 @@ jsongin.Evaluate( { a: 5 }, { $add: [ '$$ROOT.a', 1 ] }, scope ) === 11  // from
 
 | **Member**              | **Description**                                                |
 |-------------------------|------------------------------------------------------------------|
-| `Scope.Variables`       | The bindings of this frame alone, as a document.               |
-| `Scope.Parent`          | The frame around this one, or `null` for the outermost.        |
-| `Scope.Child( Variables )` | A new frame above this one.                                 |
-| `Scope.ForDocument( Document )` | A new frame above this one which rebinds `$$ROOT` and `$$CURRENT`. |
-| `Scope.Lookup( Name )`  | Resolves a name, innermost frame first.                        |
+| `Scope.Variables`       | The variables defined in this scope only, as an object.        |
+| `Scope.Parent`          | The scope this one is inside, or `null`.                       |
+| `Scope.Child( Variables )` | A new scope inside this one, adding `Variables`.            |
+| `Scope.ForDocument( Document )` | A new scope inside this one, setting `$$ROOT` and `$$CURRENT` to `Document`. |
+| `Scope.Lookup( Name )`  | Finds a variable, looking in this scope first and then outward. |
 
-***`Lookup` reports `Found` apart from `Value`***, and the distinction is the point: a variable
-  bound to nothing is not an unbound variable.
-`$$REMOVE` is bound to nothing on purpose, and a misspelled name is a mistake.
-One of those is a value and the other stops the expression, so they cannot share an answer.
+A scope does not change after it is made. `Child` and `ForDocument` return new scopes.
+
+`Lookup` returns `{ Found: true, Value: ... }` or `{ Found: false }`.
+`Found` is separate from `Value` because a variable can be defined with no value.
+`$$REMOVE` is like that on purpose, while a misspelled name is not defined at all.
 
 ```js
 let scope = jsongin.Scope.NewDocument( { a: 5 } );
@@ -110,14 +78,14 @@ let inner = scope.Child( { doubled: 10 } );
 inner.Lookup( 'doubled' );
 // returns { Found: true, Value: 10 }
 
-inner.Lookup( 'ROOT' ).Found === true      // found through the parent frame
-inner.Lookup( 'REMOVE' ).Found === true    // bound, to nothing
+inner.Lookup( 'ROOT' ).Found === true      // found in the outer scope
+inner.Lookup( 'REMOVE' ).Found === true    // defined, with no value
 inner.Lookup( 'REMOVE' ).Value === undefined
 inner.Lookup( 'nope' );
 // returns { Found: false }
 ```
 
-Binding a name from outside the expression language is what `Child` is for:
+Use `Child` to define your own variables:
 
 ```js
 let scope = jsongin.Scope.NewDocument( { price: 100 } );
@@ -126,55 +94,64 @@ let with_rate = scope.Child( { rate: 0.2 } );
 jsongin.Evaluate( { price: 100 }, { $multiply: [ '$price', '$$rate' ] }, with_rate ) === 20
 ```
 
-***A name you bind must look like a name a caller may bind***, or it will not be reachable:
-  `$$Rate` would be read as a system variable and refused.
-See [Names a Caller May Bind](./Expression-Operators.md#variables).
+***A variable name you define must start with a lowercase letter.***
+Names starting with an uppercase letter belong to the system variables, so `$$Rate` would not
+  find your variable.
+See [Variables](./Expression-Operators.md#variables).
+
+
+## Which Operators Use a Scope
+
+Almost every expression operator, stage and accumulator is passed a scope, but nearly all of them
+  only pass it along.
+
+- `$let`, `$map`, `$filter` and `$reduce` add variables of their own.
+- Stages and accumulators which work on one document at a time, such as `$addFields`, `$group` and
+  `$redact`, set `$$ROOT` and `$$CURRENT` to that document.
+- Only `Evaluate()` looks variables up.
+
+Query and update operators are not passed a scope.
+`$expr` and `$exprx` make their own when they evaluate an expression.
 
 
 ## Writing an Operator
 
-Two functions exist for operator authors, and
-  [Operator Authoring](../Operator-Authoring.md) describes the contract they belong to.
+Two functions are for operator authors.
+See [Operator Authoring](../Operator-Authoring.md) for how an operator receives and passes on its
+  scope.
 
 | **Function**                                  | **Description**                          |
 |-----------------------------------------------|--------------------------------------------|
-| `jsongin.Scope.RequireName( Name, OperatorName )` | Refuses a name a caller may not bind, and answers it when it is allowed. |
-| `jsongin.Scope.Require( Scope, OperatorName )` | Refuses a call which arrived without a scope. |
+| `jsongin.Scope.RequireName( Name, OperatorName )` | Throws if `Name` is not a name a caller may define. Otherwise returns `Name`. |
+| `jsongin.Scope.Require( Scope, OperatorName )` | Throws if `Scope` is missing. Otherwise returns `Scope`. |
 
-`Require` is a guard rather than a convenience.
-A helper which evaluates operands is where a lost scope does its damage: called without one it
-  would build a fresh root scope and quietly drop every variable the caller was holding, and
-  nothing would go wrong until somebody wrote a `$$name` inside that one operator.
+Use `Require` in any helper which evaluates expressions.
+If a helper is called without a scope and makes a new one instead, every variable the caller
+  defined is silently lost, and the problem only shows up when someone uses a `$$` variable inside
+  that operator.
 
 ```js
 jsongin.Scope.RequireName( 'subtotal', '$let' ) === 'subtotal'
-jsongin.Scope.RequireName( 'Subtotal', '$let' );   // throws - reserved for the system variables
+jsongin.Scope.RequireName( 'Subtotal', '$let' );   // throws: starts with an uppercase letter
 jsongin.Scope.Require( undefined, '$myOperator' ); // throws
 ```
 
-`build/scope-check.js` checks statically that every operator and every evaluating helper
-  ***declares*** a trailing `Scope`, and that no `jsongin.Evaluate(` call site passes fewer than
-  three arguments.
-Whether a caller actually ***passes*** the scope its helper declares cannot be read statically,
-  and that is the hole `Require` closes from the other side.
 
+## Saving a Scope
 
-## Storing a Scope
-
-A scope is a value, so it can be written down and read back.
+A scope can be written as JSON and read back.
 
 | **Function**                       | **Description**                          |
 |------------------------------------|------------------------------------------|
-| `jsongin.Scope.ToJSON( Scope )`    | Gives the frame chain its wire shape: bindings and a parent link, nothing else. |
-| `jsongin.Scope.FromJSON( Document )` | Rebuilds the chain, methods and all.   |
+| `jsongin.Scope.ToJSON( Scope )`    | Returns a plain object holding each scope's variables and its parent. |
+| `jsongin.Scope.FromJSON( Document )` | Rebuilds a working scope from that object. |
 
-***The methods are never stored.***
-They belong to the engine rather than to the value, so a scope read back somewhere else finds
-  the engine it lands in instead of carrying a copy of the one it left.
+Only the variables are saved. The functions (`Child`, `Lookup` and so on) are added back by
+  `FromJSON`.
 
-***Use [`TypedValues`](./Format.md#typed-values) on both ends.***
-A scope holds a `Date` in `$$NOW` and nothing at all in `$$REMOVE`, and plain JSON keeps
-  neither: the first comes back a string and the second is dropped along with its key.
+***Use [`TypedValues`](./Format.md#typed-values) with both `Format` and `Parse`.***
+A pipeline scope holds a `Date` in `$$NOW` and no value in `$$REMOVE`.
+Plain JSON turns the date into a string and drops `$$REMOVE` completely.
 
 ```js
 const options = { TypedValues: true };
@@ -187,9 +164,7 @@ jsongin.Evaluate( { price: 10 }, { $multiply: [ '$price', '$$discount' ] }, rest
 // returns 5
 ```
 
-***A variable bound to nothing stays bound to nothing.***
-That is the distinction [`Lookup`](#using-a-scope) reports `Found` apart from `Value` for, and
-  losing it across storage would make a restored scope disagree with the one it came from.
+With `TypedValues`, a variable with no value is still defined after it is read back:
 
 ```js
 const options = { TypedValues: true };
@@ -201,18 +176,16 @@ restored.Lookup( 'nothing' )       // returns { Found: true, Value: undefined }
 restored.Lookup( 'neverBound' )    // returns { Found: false }
 ```
 
-Reading a scope which was written without `TypedValues` is not an error and cannot be detected
-  as one.
-It gives back a `$$NOW` which is a string and no `$$REMOVE` at all, which is exactly what the
-  text it was given says.
+Reading a scope saved without `TypedValues` does not throw.
+It just gives back a `$$NOW` which is a string, and no `$$REMOVE`.
 
 
 ## See Also
 
-- [Variables](./Expression-Operators.md#variables) — what the variables mean
+- [Variables](./Expression-Operators.md#variables), what the variables mean
 - [`Format( Value, Options )`](./Format.md) and [`Parse( JsonString, Options )`](./Parse.md)
 - [`Evaluate( Document, Expression, Scope )`](./Evaluate.md)
-- [`Aggregate( Documents, Pipeline )`](./Aggregate.md)
+- [`Aggregate( Documents, Pipeline, Scope )`](./Aggregate.md)
 - [$let](./Expression-Operators.md#$let), [$map](./Expression-Operators.md#$map),
   [$filter](./Expression-Operators.md#$filter), [$reduce](./Expression-Operators.md#$reduce)
 - [$redact](./Stage-Operators.md#$redact)

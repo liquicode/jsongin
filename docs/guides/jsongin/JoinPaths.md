@@ -8,53 +8,56 @@
 
 | **Parameter** | **Allowed Types** | **Description**                          |
 |---------------|:-----------------:|------------------------------------------|
-| PathSegment   |       ulnsa       | A segment of a document path.            |
+| PathSegment   |       ulnsa       | Part of a document path. Pass as many as you need. |
 
 
 ## Description
 
-Joins a series of path segments into a single path.
-A path segment should be a dot-notation string, indentifying field names within a document.
-A path segment can be numeric when addressing an element of an array.
-A path segment can also be an array of path segments.
-This function will return a combined path string in dot-notation.
+Joins its arguments into one dot notation path.
 
-If a path segment is not one of the types `ulnsa`, then an error is thrown.
+Each argument can be:
+
+- a string, which can already contain dots, such as `'users.1'`
+- a number, for an array position
+- an array of strings and numbers
+- `undefined` or `null`, which is skipped
+
+Any other type throws.
 
 
 ## Examples
 
 
-### It returns a Document path in dot-notation
+### It joins parts with dots
 ```js
 jsongin.JoinPaths( 'user' ) === 'user'
 jsongin.JoinPaths( 'user', 'name' ) === 'user.name'
 ```
 
-### It allows numeric array indexes
+### It accepts numbers
 ```js
 jsongin.JoinPaths( 'users', 1, 'name' ) === 'users.1.name'
 ```
 
-### It allows embedded document paths
+### A part can already be a path
 ```js
 jsongin.JoinPaths( 'users.1', 'name' ) === 'users.1.name'
 ```
 
-### It allows an array of document paths
+### It accepts arrays of parts
 ```js
 jsongin.JoinPaths( [ 'users', 1, 'name' ] ) === 'users.1.name'
 jsongin.JoinPaths( [ 'users.1', 'name' ] ) === 'users.1.name'
 jsongin.JoinPaths( 'users', [ 1, 'name' ] ) === 'users.1.name'
 ```
 
-### Undefined and nulls are ignored
+### It skips undefined and null
 ```js
 jsongin.JoinPaths( 'users', undefined, 'name' ) === 'users.name'
 jsongin.JoinPaths( 'users', null, 'name' ) === 'users.name'
 ```
 
-### It throws an error when an invalid path segment is given
+### It throws for a part of the wrong type
 ```js
 jsongin.JoinPaths( 'users', { a: 1 }, 'name' ) // throws 'Path segment is invalid ...'
 ```
@@ -62,6 +65,6 @@ jsongin.JoinPaths( 'users', { a: 1 }, 'name' ) // throws 'Path segment is invali
 
 ## See Also
 
-- [`SplitPath( Path )`](./SplitPath.md), the counterpart which takes a path apart.
+- [`SplitPath( Path )`](./SplitPath.md), which splits a path into its parts.
 - [`GetValue( Document, Path )`](./GetValue.md) and [`SetValue( Document, Path, Value )`](./SetValue.md), which read and write by path.
 - [Document Manipulation](../Document-Manipulation.md)

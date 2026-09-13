@@ -3,9 +3,8 @@
 
 # Testing Procedure
 
-`jsongin` claims accurate compatibility with MongoDB.
-That claim is only worth as much as the tests behind it, so the suite is organized to make it
-  checkable rather than merely asserted.
+`jsongin` aims to behave exactly like MongoDB.
+This page describes how that is tested, and how to run the tests.
 
 
 ## Running the Tests
@@ -14,224 +13,184 @@ That claim is only worth as much as the tests behind it, so the suite is organiz
 npm test
 ```
 
-This runs the unit tests and the ***jsongin parity inventory***. It needs nothing but Node,
-  because the parity inventory runs the shared suites against `jsongin` itself rather than
-  against a server, and it is expected to be ***green***.
+Runs the unit tests and the ***parity tests*** against `jsongin`. It needs only Node, and should
+  always pass. ***If `npm test` fails, something in `jsongin` is broken.***
 
-`npm test` does not run the ***gap*** inventory, and that is what keeps its meaning. A gap
-  suite states what MongoDB does with an operator `jsongin` has not built yet, so every test in
-  one fails under `jsongin` by design; running them here would make a red `npm test` ambiguous.
-  Kept out, ***a red `npm test` always means a regression in `jsongin` itself***.
-
-> ***There are no gap suites at present.*** That is the finished state of a family rather than
-  a missing file. See [How the Tests are Organized](#how-the-tests-are-organized).
+`npm test` does not run the ***gap*** tests, described below, which are expected to fail.
 
 ```bash
 npm run parity-test-mongodb
 ```
 
-This runs the shared suites against a real MongoDB server, establishing the baseline of what
-  MongoDB actually does. It needs a server, and looks for one at `localhost:27017`.
-
-***Set `JSONGIN_MONGODB_URL` to measure against a server somewhere else***, which is what to do
-  when the MongoDB you compare against is not on the machine you are working on:
+Runs the parity tests, and the gap tests, against a real MongoDB server, to confirm what MongoDB
+  does. It looks for a server at `localhost:27017`.
+To use a server somewhere else, set `JSONGIN_MONGODB_URL`:
 
 ```bash
-export JSONGIN_MONGODB_URL=mongodb://cube4:27017
+export JSONGIN_MONGODB_URL=mongodb://dbhost:27017
 ```
 
-***Unset, it is `localhost:27017`***, so nothing changes for a container running beside your
-  editor. It is the only variable these suites read, and it aims `parity-report` as well.
+`parity-report` uses the same variable.
 
 ```bash
 npm run parity-test-jsongin
 ```
 
-This runs the same suites against `jsongin`, extensions included.
+Runs the parity tests against `jsongin`.
 
 ```bash
 npm run parity-report
 ```
 
-This runs the shared suites against ***both*** engines and reports where they disagree.
+Runs the parity tests against both MongoDB and `jsongin`, and reports where they disagree.
+See [Measuring Parity](#measuring-parity).
 
 ```bash
 npm run coverage
 ```
 
-This reports the parts of `src/` which the test suite never executes.
+Reports the parts of `src/` which no test runs. See [Coverage](#coverage).
 
 ```bash
 npm run scope-check
 ```
 
-This one needs no server and reads the source rather than running it. It asserts that every
-  operator and every helper which evaluates an expression declares a trailing `Scope`, and that
-  no call site drops it. See [Operator Authoring](./Operator-Authoring.md#the-scope-contract)
-  for why a contract which over 180 operators and helpers each have to remember gets a checker
-  instead.
+Reads the source, without running it, to check that every operator passes its `Scope` on.
+See [The Scope Rules](./Operator-Authoring.md#the-scope-contract).
 
 ```bash
 npm run api-coverage
 ```
 
-This reports how much of the operator surface MongoDB documents is implemented at all, by
-  counting the rows of [Operator Reference](./Operator-Reference.md). It answers a different
-  question from parity — see [Measuring Parity](#measuring-parity).
+Reports how many of MongoDB's operators `jsongin` has, by counting the rows of the
+  [Operator Reference](./Operator-Reference.md).
+
+```bash
+npm run types-check
+```
+
+Checks that the type declarations in `types/` and the ES module wrapper match the engine.
 
 
-## How the Tests are Organized
+## How the Tests Are Organized
 
-`test/` has three folders, and they answer three different questions.
+`test/` has three folders:
 
-| **Folder** | **Question it answers** |
+| **Folder** | **Checks** |
 |------------|--------------------------|
-| `Unit Tests/` | Is `jsongin` correct and stable? |
-| `Parity Tests/` | Does `jsongin` agree with MongoDB? |
-| `Browser Tests/` | Do the engine functions work in a browser? |
+| `Unit Tests/` | That `jsongin` works as documented. |
+| `Parity Tests/` | That `jsongin` behaves like MongoDB. |
+| `Browser Tests/` | That the engine works in a browser. |
 
-***Which folder does a test belong in?*** Ask whether MongoDB has an opinion about it.
+***Which folder does a new test go in?*** Ask whether MongoDB has the same behavior.
 
-- Behavior MongoDB also implements is a ***parity*** test. Write it through the `Driver`, so it
-  can be run against a server and against `jsongin`.
-- A `jsongin` extension, an engine function with no MongoDB counterpart, or a statement about
-  the `jsongin` API is a ***unit*** test.
+- If it does, write a ***parity*** test, so it can be run against MongoDB too.
+- If it does not, such as a `jsongin` extension, a function MongoDB has no match for, or a rule
+  about the `jsongin` API, write a ***unit*** test.
 
-`$eq` through an array is parity. `$eqx`, `Flatten`, `Hybridize`, `Text`, `Diff`, and "this
-  function does not alias its argument" are unit tests.
+For example, `$eq` on an array field is a parity test. `$eqx`, `Flatten`, `Diff`, and "this
+  function does not change its argument" are unit tests.
 
-A parity test is worth more than a unit test for the same behavior, because only the parity
-  test can be checked against the thing it claims to match. When a unit test turns out to cover
-  behavior MongoDB shares, move it.
+A parity test is better than a unit test for the same behavior, because it can be checked
+  against MongoDB.
 
 
 ### Unit Tests
 
-The files are numbered, and the number is the point: the suite runs from the foundations
-  upward, so the first failure you see is the most fundamental one.
+The files are numbered so that the most basic tests run first. When several tests fail, the
+  first failure is usually the cause of the rest.
 
-| **Range** | **Covers**                                                                  |
-|-----------|------------------------------------------------------------------------------|
-| `0xx`     | Javascript compatibility. Assumptions the library makes about the language. |
-| `1xx`     | Core engine functions, the `Text` helpers, date handling, error handling.   |
-| `2xx`     | Operators, one file per kind: comparison, logical, expression, accumulator, stage, update. |
-| `3xx`-`6xx` | The public mechanics end to end: query, update, projection, aggregate.     |
+| **Numbers** | **Cover**                                                                  |
+|-------------|------------------------------------------------------------------------------|
+| `0xx`       | Javascript features the library relies on.                                  |
+| `1xx`       | The engine functions, text helpers, dates, errors, scopes, and JSON Schema. |
+| `2xx`       | The operators, one file per kind.                                           |
+| `5xx`       | Projection.                                                                 |
 
-A failure in a `2xx` file usually explains several failures in the `5xx` files, which is why
-  the order matters.
-
-`npm test` also runs `test/Parity Tests/jsongin-Tests.js`, which is the whole parity inventory
-  under the `jsongin` driver. Those suites are the definition of correct behavior, so the
-  default run should not be allowed to drift from them.
+`npm test` also runs `test/Parity Tests/jsongin-Tests.js`, the parity tests against `jsongin`.
 
 
 ### Parity Tests
 
-`test/Parity Tests/` is driver switchable. One shared suite, several engines.
+The same tests can be run against different engines.
 
 ```
 Parity Tests/
 	Drivers/                    one adapter per engine
-	MongoDB-Tests.js            the baseline: which engine, and which areas
-	jsongin-Tests.js            the engine under test
-	NeDB-Tests.js               informational
-	Seald-NeDB-Tests.js         informational
+	MongoDB-Tests.js            runs the tests against MongoDB
+	jsongin-Tests.js            runs the tests against jsongin
+	NeDB-Tests.js               for information only
+	Seald-NeDB-Tests.js         for information only
 	Query Tests/
-		Query Tests.js          which suites this area runs
-		test-suite/             the shared suites themselves
+		Query Tests.js          lists this area's test files
+		Query Gaps.js           this area's gap tests
+		test-suite/             the tests
 	Update Tests/
 	Projection Tests/
 	Aggregate Tests/
 ```
 
-There are three levels, and each has exactly one job:
-
-| **Level** | **Names** |
+| **File** | **Decides** |
 |-----------|-----------|
-| `<Engine>-Tests.js` | the driver, and which areas to run |
-| `<Area>/<Area> Tests.js` | which suites the area runs |
-| `<Area>/test-suite/*.js` | the tests |
+| `<Engine>-Tests.js` | which driver, and which areas to run |
+| `<Area>/<Area> Tests.js` | which test files the area runs |
+| `<Area>/test-suite/*.js` | the tests themselves |
 
-Nothing below the top level names an engine, so ***adding a suite is a one line change in one
-  place*** and every engine picks it up.
+Only the top level names an engine, so a new test file is added in one place and every engine
+  runs it.
 
-Every driver exposes the same interface — `SetData`, `Find`, `Update`, `Aggregate`, and so on —
-  so the ***same test suite*** can be pointed at `jsongin` or at a real database.
+Every driver has the same functions, such as `SetData`, `Find`, `Update` and `Aggregate`, so one
+  test can run against `jsongin` or a real database.
 
-***The MongoDB driver holds one client for the whole run.*** A `MongoClient` is already a
-  connection pool, so one is opened on first use and reused.
+***MongoDB is the authority.*** A parity test states what MongoDB does, and is run against MongoDB
+  before it is trusted. Each result means:
 
-> ***Do not open a connection per call in a driver you write.*** That is two connections per
-  test, and a closed one sits in `TIME_WAIT` for minutes, so a few hundred tests can exhaust
-  the ephemeral ports on the machine. The suite then fails with `EADDRINUSE` on tests which
-  have nothing to do with each other — always a network error, never an assertion. A baseline
-  which is only usually green is not a baseline.
-
-The driver closes it from a mocha `after` hook it registers itself, rather than each runner
-  remembering to. That matters because `build/parity.js` writes its runners fresh on every
-  report. Required outside mocha there is no hook to register, and the caller calls `Close()`.
-
-> ***Note*** : an area file takes its `Driver` as a parameter, and it has to. `describe()` runs
-  its callback while the file is being required, so the suites capture whatever `Driver` holds
-  at that moment. Assigning a driver to the module afterwards cannot reach them — the suites
-  have already run with what they were given.
-
-***MongoDB is the source of truth.*** A shared suite asserts what MongoDB does, and the way to
-  establish that is to run it against a server rather than to reason about it. When a new
-  behavior is added or an existing one is questioned, the test is written against MongoDB
-  first and only then run under `jsongin`.
-
-***The parity run uses an unconfigured engine.*** `jsongin-Tests.js` calls the driver with no
-  settings, so it takes the instance the package exports — the one a caller gets from
-  `require( '@liquicode/jsongin' )`.
-
-That is the claim being tested. Parity is a property of the ***defaults***: MongoDB behavior is
-  what `jsongin` does when it is told nothing. Passing settings to the parity driver, even
-  settings which only restate a default, would let a change to that default pass the one suite
-  whose job is to catch it.
-
-The defaults themselves are pinned by `Default Settings Tests` in
-  `test/Unit Tests/130) Engine Function Tests.js`. Changing a default is allowed; changing one
-  without noticing that it moves the parity claim is what those tests prevent.
-
-To test a non-default configuration, pass settings to the driver deliberately:
-
-```js
-// docs-check: skip - the path is relative to the test suite, not to this page.
-const Driver = require( './Drivers/jsongin-Driver.js' )( { Explain: true } );
-```
-
-That gives each test outcome a meaning:
-
-| **MongoDB** | **jsongin** | **What it means** |
+| **MongoDB** | **jsongin** | **Means** |
 |:-----------:|:-----------:|--------------------|
-| pass | pass | The behavior is verified identical. |
-| pass | fail | A ***parity gap***. `jsongin` is wrong. |
-| fail | — | A ***test bug***. The test asserts something MongoDB does not do. |
+| pass | pass | The behavior matches. |
+| pass | fail | A ***parity gap***: `jsongin` is wrong. |
+| fail | — | A ***test bug***: the test does not describe what MongoDB does. |
 
-***Rejection is behavior too.*** An engine which refuses a malformed query or an update it
-  cannot apply is stating something, and answering anyway is worse than refusing, because the
-  caller gets a result they have no reason to distrust. The drivers therefore ***rethrow***
-  rather than logging, so a suite can see a refusal. `Query Rejection Tests.js` and
-  `Update Rejection Tests.js` cover those cases.
+Some notes for writing parity tests and drivers:
 
-They assert only that an operation was refused, never the wording of the message: two engines
-  can agree that something is invalid while describing it differently. An update counts as
-  refused if it throws ***or*** leaves the document unchanged, since both tell the caller it
-  did not happen. What fails is applying some other update instead.
+- ***Test refusals too.*** A driver throws errors instead of logging them, so a test can check
+  that something was refused. Check only that it was refused, not the error message, which
+  differs between engines.
+- ***The parity tests use the default engine***, with no settings, because the claim is that the
+  defaults behave like MongoDB. `test/Unit Tests/130) Engine Function Tests.js` checks the
+  defaults. To test other settings, pass them to the driver:
 
-***Every suite here has a baseline.*** A `jsongin` extension has no MongoDB counterpart, so
-  there is nothing to measure it against and it does not belong in this folder. `$exprx` is
-  tested in `test/Unit Tests/260) Extension Operator Tests.js`, and `$eqx`, `$nex`, and `$noop`
-  beside the operators they resemble in the `2xx` files.
+  ```js
+  // docs-check: skip - the path is relative to the test suite, not to this page.
+  const Driver = require( './Drivers/jsongin-Driver.js' )( { OpLog: console.log } );
+  ```
 
-This is why the parity report has no category for what it could not compare. Everything a
-  parity run executes is something both engines are expected to agree on, so the percentage is
-  a measurement rather than a measurement with an asterisk.
+- ***An area file receives its driver as a parameter.*** Mocha runs `describe()` while the file
+  is loaded, so a driver assigned afterwards would be too late.
+- ***Open one database connection for the whole run.*** A `MongoClient` is already a connection
+  pool. Opening one per call can use up the machine's network ports, and tests then fail with
+  `EADDRINUSE`.
+- ***Extensions do not belong here.*** `$exprx` is tested in
+  `test/Unit Tests/260) Extension Operator Tests.js`, and `$eqx`, `$nex` and `$noop` in the `2xx`
+  files beside the operators they resemble.
 
-The `NeDB` and `Seald-NeDB` runners are informational. Those engines diverge from MongoDB on
-  their own account, and their failures are facts about them, not about `jsongin`. They list
-  only the query area, because their drivers implement `Find` and not `Update` or `Aggregate`.
+The NeDB runners are only for information. Those engines differ from MongoDB in their own ways,
+  and only run the query tests.
+
+
+### Gap Tests
+
+A ***gap test*** describes something MongoDB does which `jsongin` does not, on purpose or not
+  yet. It passes against MongoDB and fails against `jsongin`.
+
+Gap tests live in each area's `<Area> Gaps.js` file.
+`MongoDB-Tests.js` and `parity-report` run them, and report them apart from the parity results.
+`jsongin-Tests.js` does not run them, so `npm test` stays green.
+
+Some gaps are deliberate, such as `jsongin` accepting an empty update document `{}`. Each one says
+  why beside its test.
+When a missing behavior is built, its gap test passes, `parity-report` marks it `IMPLEMENTED`,
+  and the test moves into `test-suite/`.
 
 
 ## Measuring Parity
@@ -241,36 +200,32 @@ npm run parity-report
 npm run parity-report -- --verbose
 ```
 
-This generates a runner for each engine over the same suite list, runs both, and matches the
-  results test by test:
+Runs the same tests against MongoDB and `jsongin` and compares the results, test by test:
 
 ```
-   The implemented surface
-
    area          compared   agree   gaps   test bugs
    ----------------------------------------------------
-   Query              230     230      0           0
-   Update             127     127      0           0
-   Projection          56      56      0           0
-   Aggregate          575     575      0           0
+   Query              ...     ...      0           0
+   Update             ...     ...      0           0
+   Projection         ...     ...      0           0
+   Aggregate          ...     ...      0           0
    ----------------------------------------------------
-   total              988     988      0           0
+   total              ...     ...      0           0
 
-   parity     100.0%   (988 of 988 compared behaviors agree)
+   parity     100.0%   (... of ... compared behaviors agree)
 
-   coverage   86.2%   (219 of 254 documented operators are implemented)
+   coverage   ...%     (... of ... documented operators are implemented)
 ```
 
-It exits non-zero when there is a gap, so it can gate a build.
+It exits with an error when there is a gap, so it can stop a build.
 
-Read the number for what it is. It is the share of ***shared-suite assertions*** the two
-  engines agree on, so it cannot speak for behavior no shared suite exercises yet. A high score
-  means "nothing known is broken", not "nothing is broken". Growing the shared suites is what
-  makes the number mean more, which is why a new parity test is worth more than a new unit
-  test for the same behavior.
+- ***Parity*** is the share of parity tests on which the two engines agree. It should be 100%.
+  It only covers what the tests cover, so add tests to make it mean more.
+- ***Coverage*** is the share of MongoDB's operators `jsongin` has at all. It is expected to be
+  below 100%.
 
 
-## Measuring the JSON Schema Evaluator
+## Measuring the JSON Schema Functions
 
 ```bash
 npm run json-schema-report
@@ -278,33 +233,28 @@ npm run json-schema-report -- --verbose
 npm run json-schema-report -- --draft 2020-12 --set required
 ```
 
-The JSON Schema functions have an authority of their own: the specification's official test
-  suite, vendored under `test/json-schema-test-suite/` at the commit its `README.md` names, so
-  that no run ever fetches anything. The report runs every case of every draft - the required
-  cases, the optional ones, and the format cases with assertion turned on - and prints the
-  pass count per set:
+The JSON Schema functions are tested against the specification's official test suite, which is
+  kept in `test/json-schema-test-suite/`, so nothing is downloaded.
+The report runs every case of every draft and prints how many pass in each set:
 
 ```
    draft     set                passed  excepted   total  claimed
    --------------------------------------------------------------
-   2020-12   required             1301         0    1301      yes
-   2020-12   optional              162         0     162      yes
+   2020-12   required              ...         0     ...      yes
+   2020-12   optional              ...         0     ...      yes
    ...
 ```
 
-A set is ***claimed*** by listing it in `CLAIMED` in `build/json-schema-suite.js`, and by
-  nothing else. `test/Unit Tests/170) JSON Schema Suite Tests.js` asserts every case of every
-  claimed set, so a claimed case going red fails `npm test`; an unclaimed set is measured here
-  and cannot. Claim a set when the report shows it fully passing.
+A set is ***claimed*** by listing it in `CLAIMED` in `build/json-schema-suite.js`.
+`test/Unit Tests/170) JSON Schema Suite Tests.js` checks every claimed set, so a claimed case
+  which fails makes `npm test` fail. Claim a set once the report shows it fully passing.
 
-A claim may carry exceptions: cases the engine ***cannot*** satisfy, each named with its
-  reason. An excepted case is asserted to still fail, so the day it starts passing the
-  exception is noticed and removed rather than hiding a case which now works. The one exception
-  today is draft 4's `zeroTerminatedFloats`, which asks that `1.0` not be an integer, and
-  Javascript has one number type.
+A claim can list ***exceptions***: cases `jsongin` cannot pass, each with a reason. An exception
+  is checked to still fail, so it is noticed if it starts passing.
+The only exception is draft 4's `zeroTerminatedFloats`, which says `1.0` is not an integer.
+  Javascript cannot tell `1.0` from `1`.
 
-The `$jsonSchema` query operator is measured against MongoDB like every other operator, in
-  `test/Parity Tests/Query Tests/test-suite/JSON Schema Query Tests.js`.
+The `$jsonSchema` query operator is tested against MongoDB like the other operators.
 
 
 ## Coverage
@@ -312,29 +262,24 @@ The `$jsonSchema` query operator is measured against MongoDB like every other op
 ```bash
 npm run coverage
 
-# Detail for the files which match a name:
+# Details for files whose names match:
 npm run coverage -- --file CompareValues
 ```
 
-Coverage uses Node's own V8 collector, so it adds no dependency.
-`NODE_V8_COVERAGE` tells Node to dump raw coverage, mocha runs the suite, and
-  `build/coverage.js` merges the dumps and maps the uncovered ranges back to lines.
+Coverage uses Node's built-in coverage, so it needs nothing extra.
 
-Uncovered blocks are grouped into three kinds, because they deserve different amounts of
-  attention:
+Parts of the code no test runs are sorted into three kinds:
 
 | **Kind**     | **What it is**                                                             |
 |--------------|-----------------------------------------------------------------------------|
-| `plumbing`   | A catch block, or a call to `OpError` or `OpLog`.                          |
-| `validation` | A throw which rejects a malformed argument. Covering it pins the message.  |
-| `logic`      | Everything else. Read these one at a time.                                 |
+| `plumbing`   | A `catch` block, or a call to `OpError` or `OpLog`.                        |
+| `validation` | A `throw` for a bad argument.                                              |
+| `logic`      | Everything else. Look at each one.                                         |
 
-***`plumbing` is where the defects hide.***
-A message which is only built when something has gone wrong is never built by a test which
-  asserts success, so a broken failure path can sit there indefinitely — it needs an operation
-  to fail ***and*** an `OpLog` to be configured at the same time, which a suite rarely does.
+***Check `plumbing` carefully.*** Error messages are only built when something goes wrong, so a
+  broken one can go unnoticed for a long time.
 
-Some `logic` blocks are genuinely unreachable defensive code and are not worth chasing.
+Some `logic` blocks are safety checks which can never run, and are not worth chasing.
 
 
 ## Checking the Documentation
@@ -342,74 +287,53 @@ Some `logic` blocks are genuinely unreachable defensive code and are not worth c
 ```bash
 npm run check-docs
 
-# List every finding rather than the first few:
+# List every problem, not just the first few:
 npm run check-docs -- --verbose
 ```
 
-Eight things are checked, all of them cheap to detect and expensive to find by reading:
+It checks:
 
-| **Check**   | **Asserts**                                                                |
+| **Check**   | **Checks that**                                                            |
 |-------------|-----------------------------------------------------------------------------|
-| `fences`    | Every ` ```js ` block parses as Javascript.                                |
-| `links`     | Every local markdown link resolves to a file which exists.                 |
-| `anchors`   | Every link naming a `#fragment` finds it in the page it points at.         |
-| `orphans`   | Every page under `docs/` is reachable from another page.                   |
-| `operators` | Every registered operator carries an `/*md` documentation block.           |
-| `inventory` | Every `Yes` row of the [Operator Reference](./Operator-Reference.md) names a registered operator, and every registered operator has a row. |
-| `shared`    | The reference's shared-name tables agree with the registries: a `*(not supported)*` marker is true of its column, and a name registered in more than one place is described there. |
-| `examples`  | Every ` ```js ` block is executed and the claims its comments make are checked. |
+| `fences`    | Every ` ```js ` block is valid Javascript.                                 |
+| `links`     | Every local link points to a file which exists.                            |
+| `anchors`   | Every link to a `#section` finds that section.                             |
+| `orphans`   | Every page under `docs/` is linked from another page.                      |
+| `operators` | Every operator file has an `/*md` comment.                                 |
+| `inventory` | Every `Yes` row of the [Operator Reference](./Operator-Reference.md) is a real operator, and every operator has a row. |
+| `llm`       | The [LLM Context](./Llm-Context.md) page and the operators agree.         |
+| `shared`    | The Operator Reference's tables of shared names agree with the operators.  |
+| `examples`  | Every ` ```js ` block runs, and every `===` claim in it is true.           |
 
-***`anchors` exists because `links` reads only half of a target.***
-A link is a file and a fragment, and resolving the file says nothing about whether the heading
-  is there — a row can point at an operator entry nobody has written yet and the `links` check
-  will still pass. A page's anchors are its explicit `<a id="...">` tags plus the slug docsify
-  derives from each heading — both the `##` form and the underlined form the operator pages
-  use — numbered on a repeat the way docsify numbers them.
+An anchor can be an `<a id="...">` tag or a heading, in the form docsify gives it.
 
-***The last two exist because documentation drifts where nothing reads it.***
-`inventory` guards the table [`api-coverage`](#coverage) counts, since a coverage number is only
-  worth having if the table behind it is checked.
-`shared` guards the shared-name tables, which go stale easily: adding an operator name that
-  already exists elsewhere invalidates a claim there, and `inventory` reads only the main
-  tables.
-A prose claim in those tables is deliberately not parsed — write `*(not supported)*` when the
-  claim is meant to be checked.
-
-***What goes inside a ` ```js ` fence must be code.***
-A result belongs in a comment rather than in a bare expression:
+***Write results as comments*** in a ` ```js ` block, not as bare values:
 
 ```js
 let doc = { a: 1 };
 let merged = jsongin.Merge( doc, null );
-// merged matches doc (effectively, a clone)
+// merged matches doc
 ```
 
-Use `returns` after a call, `is` for a variable's value, and `matches` for same-content-as.
-`===` is kept only where it is literally true, as in
-  `jsongin.Query( document, { id: 1001 } ) === true`; it is not used for objects or arrays,
-  where reference equality does not hold.
+Use `returns` after a call, `is` for a variable, and `matches` for "same content as".
+Use `===` only where it is really true, such as `jsongin.Query( document, { id: 1001 } ) === true`.
+It cannot be used to compare objects or arrays.
 
-A block which is ***not*** Javascript — program output, the shape of a value, a method
-  signature — carries no language tag and is not checked.
+A block which is not Javascript, such as output or a function signature, has no language tag and
+  is not checked.
 
-This check is worth more than it looks.
-A documented example which does not parse is usually one which was never run, and an example
-  which was never run is as likely to be wrong as right.
-
-The check runs as the last step of `npm run "build docs"`, so a broken fence, a dead link, or an
-  unlinked page halts the docs build.
-Because `publish version` runs `build docs`, it also blocks a release.
+`npm run "build docs"` runs this check last, so a broken example, link or page stops the build,
+  and so stops a release.
 
 
 ## Test Output
 
-`npm run "run tests"` runs the suite and captures its output into `tests.md`, which is
-  published as [Testing Output](../external/tests.md).
-This is a build task, not a test run — see `build/build.tasks.js`.
+`npm run "run tests"` runs the tests and saves the output to `tests.md`, which is published as
+  [Testing Output](../external/tests.md).
 
 
 ## See Also
 
 - [Operator Authoring](./Operator-Authoring.md)
-- [OpLog](./OpLog.md), which is what the `plumbing` coverage category is about.
+- [OpLog](./OpLog.md)
 - [Testing Output](../external/tests.md)

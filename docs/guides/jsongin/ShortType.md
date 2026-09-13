@@ -13,55 +13,55 @@
 
 ## Description
 
-`jsongin` categorizes all values into the one of the following types,
-  where each type is represented by a single character.
-This shorthand makes it easier to describe requirements and work with Javascript data types.
-You will see many references to these ShortTypes throughout the code and documentation.
+Returns a one-letter code for the type of a value.
 
-For example, to say that a value must be of type `'bns'` means that it must be of type `boolean`, `number`, or `string`.
+| **Code** | **Type**    | **Example**            |
+|:--------:|-------------|------------------------|
+|   `b`    | boolean     | `true`                 |
+|   `n`    | number      | `3.14`, `NaN`          |
+|   `s`    | string      | `'abc'`                |
+|   `d`    | date        | `new Date()`           |
+|   `l`    | null        | `null`                 |
+|   `o`    | object      | `{ a: 1 }`             |
+|   `a`    | array       | `[ 1, 2 ]`             |
+|   `r`    | regexp      | `/^abc/`               |
+|   `e`    | error       | `new Error( 'x' )`     |
+|   `f`    | function    | `function () {}`       |
+|   `y`    | symbol      | `Symbol()`             |
+|   `u`    | undefined   | `undefined`            |
 
-Rather than using statements like this one:
+`ShortType` throws for a type it does not know, such as a `bigint`.
+
+These codes appear throughout the `jsongin` documentation.
+In a parameter table, ***Allowed Types*** lists the codes a parameter accepts: `bns` means a
+  boolean, number or string.
+
+The codes also make type checks shorter. Instead of:
 ```js
 // docs-check: skip - Value stands for the reader's own value.
 if( (typeof Value === 'boolean') || (typeof Value === 'number') || (typeof Value === 'string') ) { /* ... */ }
 ```
-we can express the same constraint in a more concise way:
+you can write:
 ```js
 // docs-check: skip - Value stands for the reader's own value.
 if( 'bns'.includes( jsongin.ShortType( Value ) ) ) { /* ... */ }
 ```
 
-To get a value's short type, call the `jsongin.ShortType( Value )` function.
-
-Note: This notation was inspired by a similar notation found in the JSONata project.
-
-List of ShortTypes:
-- [`b`]oolean
-- [`n`]umber
-- [`s`]tring
-- [`d`]ate
-- nul[`l`]
-- [`o`]bject
-- [`a`]rray
-- [`f`]unction (not used)
-- [`r`]egexp
-- s[`y`]mbol (not used)
-- [`u`]ndefined
+The idea comes from a similar notation in the JSONata project.
 
 
 ## Dates
 
-A `Date` has its own short type, `d`, rather than being reported as an `o`bject.
+A `Date` has its own code, `d`. It is not an `o`.
 
-This matters because a `Date` keeps its value internally and has no fields to walk.
-Code which treats a date as an ordinary object finds nothing inside it and produces an empty
-  object, losing the value silently.
-Giving dates their own short type is what allows `Query`, `Sort`, `Flatten`, `SafeClone`, and
-  the expression operators to handle them correctly.
+A date has no fields to look inside, so code which treated it as an object would find nothing
+  and lose its value.
+The separate code is what lets `Query`, `Sort`, `Flatten`, `SafeClone` and the expression
+  operators handle dates properly.
 
-A value is recognized as a date by its ***type only***, never by parsing.
-A number which would be a valid timestamp is still an `n`, and a string which would parse as a
-  date is still an `s`:
+A value is a date only if it is a `Date` object.
+A number which could be a timestamp is still `n`, and a string which could be read as a date is
+  still `s`:
 
 ```js
 jsongin.ShortType( new Date() ) === 'd'
@@ -69,30 +69,28 @@ jsongin.ShortType( 1700000000000 ) === 'n'
 jsongin.ShortType( '2023-11-14T22:13:20.000Z' ) === 's'
 ```
 
-This is deliberate. Every number is a valid timestamp, so classifying by parsing would make
-  every number a date.
-
 
 ## Examples
 
 
-### It gets the ShortType for primitive values
+### Simple values
 ```js
 jsongin.ShortType( true ) === 'b'
 jsongin.ShortType( 3.14 ) === 'n'
 jsongin.ShortType( 'abc' ) === 's'
 ```
 
-### It tests object values for a more specific ShortType
+### Objects are split into more specific types
 ```js
 jsongin.ShortType( null ) === 'l'
 jsongin.ShortType( { a: 1 } ) === 'o'
 jsongin.ShortType( [ 1, 2, 3 ] ) === 'a'
 jsongin.ShortType( new Date() ) === 'd'
 jsongin.ShortType( /^abc/ ) === 'r'
+jsongin.ShortType( new Error( 'x' ) ) === 'e'
 ```
 
-### It tests for undefined values
+### undefined
 ```js
 jsongin.ShortType() === 'u'
 ```
@@ -102,4 +100,4 @@ jsongin.ShortType() === 'u'
 
 - [`BsonType( Value, ReturnAlias )`](./BsonType.md), the BSON type of a value.
 - [`CompareValues( ValueA, ValueB )`](./CompareValues.md), which orders values by type.
-- [`AsBoolean( Value )`](./AsBoolean.md), [`AsNumber( Value )`](./AsNumber.md), and [`AsDate( Value )`](./AsDate.md), which convert between them.
+- [`AsBoolean( Value )`](./AsBoolean.md), [`AsNumber( Value )`](./AsNumber.md), and [`AsDate( Value )`](./AsDate.md), which convert values.

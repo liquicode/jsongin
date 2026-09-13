@@ -3,17 +3,20 @@
 
 # Update Operators
 
-The operators used to build an update document.
-They are read by [`Update()`](./Update.md), and by [`Diff()`](./Diff.md) and
-  [`Invert()`](./Invert.md), which describe a change in the same shape.
+The operators used in an update document.
+[`Update()`](./Update.md) applies them, and [`Diff()`](./Diff.md) and [`Invert()`](./Invert.md)
+  produce them.
 
-Each operator below gives its usage, what it does to a document, and examples.
-See [`Update()`](./Update.md) for the summary table and the rules an update document as a whole
-  follows, and the [Operator Reference](../Operator-Reference.md) for which MongoDB operators
-  are implemented.
+Each operator below has its usage, what it does, and examples.
+See [`Update()`](./Update.md) for the rules that apply to a whole update document, and the
+  [Operator Reference](../Operator-Reference.md) for which MongoDB operators are supported.
 
-Every update operator takes a document of `field: value` pairs, and the whole update document is
-  checked before any part of it is applied.
+Every update operator takes an object of `field: value` pairs.
+Fields can be dot notation paths.
+
+When an operator cannot be applied, such as `$inc` on a string, `Update()` throws and the
+  document is not changed.
+
 
 # Field Update Operators
 
@@ -21,9 +24,10 @@ Every update operator takes a document of `field: value` pairs, and the whole up
 <a id="$set"></a>$set
 ---------------------------------------------------------------------
 
-**Usage** : `$set: { field: value, field: value, ... }`
+**Usage** : `{ $set: { field: value, ... } }`
 
-Sets the value of a field in a document.
+Sets each field to its value.
+Missing fields along the path are created as objects.
 
 **Examples**
 ```js
@@ -32,32 +36,45 @@ let updated = jsongin.Update(
 				{ $set: { 'user.name': 'Bob' } }
 			);
 // updated is { user: { name: 'Bob' } }
+
+updated = jsongin.Update( {}, { $set: { 'a.b.c': 1 } } );
+// updated is { a: { b: { c: 1 } } }
 ```
 
 
 <a id="$unset"></a>$unset
 ---------------------------------------------------------------------
 
-**Usage** : `$unset: { field: <any>, field: <any>, ... }`
+**Usage** : `{ $unset: { field: '', ... } }`
 
-Removes the specified field from a document.
+Removes each field. The value you give is ignored; `''` is the usual choice.
+
+A field which does not exist is left alone.
+Unsetting an array element, such as `'a.1'`, sets it to `null` rather than shortening the array.
 
 **Examples**
 ```js
 let updated = jsongin.Update(
 				{ user: { name: 'Alice' } },
-				{ $unset: { 'user.name': 1 } }
+				{ $unset: { 'user.name': '' } }
 			);
 // updated is { user: {} }
+
+updated = jsongin.Update( { a: [ 1, 2, 3 ] }, { $unset: { 'a.1': '' } } );
+// updated is { a: [ 1, null, 3 ] }
 ```
 
 
 <a id="$rename"></a>$rename
 ---------------------------------------------------------------------
 
-**Usage** : `$rename: { field: new-name, field: new-name, ... }`
+**Usage** : `{ $rename: { field: 'new.name', ... } }`
 
-Renames a field.
+Moves each field to a new name, which can be a dot notation path.
+If a field already exists at the new name, it is replaced.
+
+A field which does not exist is left alone.
+The new name must be a string, and cannot lead into an array.
 
 **Examples**
 ```js
@@ -72,9 +89,13 @@ let updated = jsongin.Update(
 <a id="$min"></a>$min
 ---------------------------------------------------------------------
 
-**Usage** : `$min: { field: value, field: value, ... }`
+**Usage** : `{ $min: { field: value, ... } }`
 
-Only updates the field if the specified value is less than the existing field value.
+Sets the field to `value` only if `value` is ***smaller*** than the current value.
+If the field does not exist, it is set to `value`.
+
+Values of any type can be compared, using [`CompareValues()`](./CompareValues.md).
+So `null` is smaller than any number, and a number is smaller than any string.
 
 **Examples**
 ```js
@@ -89,9 +110,11 @@ let updated = jsongin.Update(
 <a id="$max"></a>$max
 ---------------------------------------------------------------------
 
-**Usage** : `$max: { field: value, field: value, ... }`
+**Usage** : `{ $max: { field: value, ... } }`
 
-Only updates the field if the specified value is greater than the existing field value.
+Sets the field to `value` only if `value` is ***larger*** than the current value.
+If the field does not exist, it is set to `value`.
+Values are compared the same way as for [`$min`](#$min).
 
 **Examples**
 ```js
@@ -106,10 +129,13 @@ let updated = jsongin.Update(
 <a id="$inc"></a>$inc
 ---------------------------------------------------------------------
 
-**Usage** : `$inc: { field: value, field: value, ... }`
+**Usage** : `{ $inc: { field: amount, ... } }`
 
-Increments the value of the field by the specified amount.
-The increment value can be negative to decrement the document field.
+Adds `amount` to the field. Use a negative amount to subtract.
+If the field does not exist, it is created and set to `amount`.
+
+The field and `amount` must both be numbers.
+A field holding anything else, including `null`, throws.
 
 **Examples**
 ```js
@@ -124,9 +150,13 @@ let updated = jsongin.Update(
 <a id="$mul"></a>$mul
 ---------------------------------------------------------------------
 
-**Usage** : `$mul: { field: value, field: value, ... }`
+**Usage** : `{ $mul: { field: amount, ... } }`
 
-Multiplies the value of the field by the specified amount.
+Multiplies the field by `amount`.
+If the field does not exist, it is created and set to `0`.
+
+The field and `amount` must both be numbers.
+A field holding anything else, including `null`, throws.
 
 **Examples**
 ```js
@@ -141,34 +171,21 @@ let updated = jsongin.Update(
 <a id="$currentDate"></a>$currentDate
 ---------------------------------------------------------------------
 
-**Usage** : `$currentDate: { field: date-spec, field: date-spec, ... }`
+**Usage** : `{ $currentDate: { field: true | { $type: 'date' } | { $type: 'timestamp' }, ... } }`
 
-Sets the value of a field to the current date.
+Sets each field to the current date and time.
 
-A `date-spec` is either the boolean `true` or an object of the form `{ $type: string }`,
-  which is the same shape MongoDB uses.
-A bare string is ***not*** a valid `date-spec`.
-
-| **date-spec**            | **Sets the field to**                                        |
+| **Value**                | **Sets the field to**                                        |
 |--------------------------|--------------------------------------------------------------|
-| `true`                   | A `Date` object.                                             |
-| `{ $type: 'date' }`      | A `Date` object.                                             |
-| `{ $type: 'timestamp' }` | A `Date.getTime()` numeric value.                            |
+| `true` or `false`        | A `Date`.                                                    |
+| `{ $type: 'date' }`      | A `Date`.                                                    |
+| `{ $type: 'timestamp' }` | A number: milliseconds since 1970.                           |
 
-All of the fields named in one `$currentDate` operation receive the ***same*** moment in time,
-  which is read once before the fields are visited.
-Each field gets its own `Date`, so two fields never share one object.
+Every field in one `$currentDate` gets the same moment, but each gets its own `Date` object.
 
-A stored `Date` is a real `Date`, so it answers a date query and survives
-  [`SafeClone()`](./SafeClone.md):
+`{ $type: 'timestamp' }` stores a number because `jsongin` has no BSON timestamp type.
 
-```js
-let updated = jsongin.Update( {}, { $currentDate: { when: true } } );
-jsongin.Query( updated, { when: { $type: 'date' } } ) === true
-```
-
-`{ $type: 'timestamp' }` stores a number rather than a `Date` because `jsongin` has no BSON
-  Timestamp type to store.
+A string, an object without `$type`, or an unknown `$type` throws.
 
 **Examples**
 ```js
@@ -180,48 +197,42 @@ let updated = jsongin.Update(
 
 updated = jsongin.Update(
 				{ user: { name: 'Alice', last_login: null } },
-				{ $currentDate: { 'user.last_login': { $type: 'date' } } }
-			);
-// updated is { user: { name: 'Alice', last_login: <Date 2023-11-24T07:51:47.064Z> } }
-
-updated = jsongin.Update(
-				{ user: { name: 'Alice', last_login: null } },
 				{ $currentDate: { 'user.last_login': { $type: 'timestamp' } } }
 			);
 // updated is { user: { name: 'Alice', last_login: 1700812593086 } }
 ```
 
-An invalid `date-spec` is ***refused***.
-The operator reports the reason to the `OpLog` and [`Update()`](./Update.md) raises it as an
-  error, so the document is never half written:
-
 ```js
-// A bare string is not a date-spec.
-jsongin.Update( { user: { last_login: null } },
-	{ $currentDate: { 'user.last_login': 'timestamp' } } );   // throws
+// The stored value is a real Date.
+let updated = jsongin.Update( {}, { $currentDate: { when: true } } );
+jsongin.Query( updated, { when: { $type: 'date' } } ) === true
 
-// So are false, an object with no $type, and an unrecognized $type.
+// A string is not accepted.
+jsongin.Update( { a: null }, { $currentDate: { a: 'timestamp' } } );   // throws
 jsongin.Update( { a: null }, { $currentDate: { a: { $type: 'bogus' } } } );   // throws
 ```
 
 
 # Array Update Operators
 
+If the array field does not exist, `$addToSet` and `$push` create it, while `$pop`, `$pull` and
+  `$pullAll` leave the document alone.
+If the field exists but is not an array, all five throw.
+
 
 <a id="$addToSet"></a>$addToSet
 ---------------------------------------------------------------------
 
-**Usage** : `$addToSet: { array-field: value, ... }`
-  or `$addToSet: { array-field: { $each: [ value, ... ] }, ... }`
+**Usage** : `{ $addToSet: { array-field: value, ... } }`
+  or `{ $addToSet: { array-field: { $each: [ value, ... ] }, ... } }`
 
-Adds elements to an array only if they do not already exist in the set.
+Adds `value` to the array, unless an equal value is already there.
 
-A document carrying `$each` adds every element of that array, each one subject to the same
-  test.
-Any other value, ***including a document with no `$each`***, is added as a single value.
+With `$each`, each value in the list is added unless it is already there, including values added
+  earlier from the same list.
+An object ***without*** `$each` is added as a single value.
 
-Values are compared by their content, so an object, an array, or a date is recognized as
-  already present rather than being added again because it is a different instance.
+Values are compared by content, so an equal object, array or date counts as already there.
 
 **Examples**
 ```js
@@ -231,14 +242,13 @@ let updated = jsongin.Update(
 			);
 // updated is { a: [ 1, 2, 3, 4 ] }
 
-// $each adds each element which is not already present.
 updated = jsongin.Update(
 				{ a: [ 1, 2 ] },
 				{ $addToSet: { a: { $each: [ 2, 3, 4 ] } } }
 			);
 // updated is { a: [ 1, 2, 3, 4 ] }
 
-// An element is also tested against the ones added before it.
+// Duplicates within the list are skipped too.
 updated = jsongin.Update(
 				{ a: [] },
 				{ $addToSet: { a: { $each: [ 1, 1, 2 ] } } }
@@ -250,9 +260,10 @@ updated = jsongin.Update(
 <a id="$pop"></a>$pop
 ---------------------------------------------------------------------
 
-**Usage** : `$pop: { array-field: <-1 | 1>, array-field: <-1 | 1>, ... }`
+**Usage** : `{ $pop: { array-field: 1 | -1, ... } }`
 
-Removes the first or last item of an array.
+`1` removes the last element, and `-1` removes the first.
+Any other value throws. An empty array is left as it is.
 
 **Examples**
 ```js
@@ -273,31 +284,25 @@ updated = jsongin.Update(
 <a id="$push"></a>$push
 ---------------------------------------------------------------------
 
-**Usage** : `$push: { array-field: value, ... }`
-  or `$push: { array-field: { $each: [ value, ... ], $position: n, $sort: spec, $slice: n }, ... }`
+**Usage** : `{ $push: { array-field: value, ... } }`
+  or `{ $push: { array-field: { $each: [ value, ... ], $position: n, $sort: spec, $slice: n }, ... } }`
 
-Appends to an array.
+Adds `value` to the end of the array.
 
-A plain value is appended as a single element.
-A document carrying `$each` is a ***modifier document***, and appends every element of the
-  `$each` array instead.
+To add several values, or to control where they go, give an object with `$each`:
 
-| **Modifier**  | **Effect**                                                                  |
+| **Option**    | **Effect**                                                                  |
 |---------------|------------------------------------------------------------------------------|
-| `$each`       | The values to append. Required by the other three modifiers.                 |
-| `$position`   | Inserts at this index rather than appending. A negative index counts back from the end, and an index outside the array is clamped to it. |
-| `$sort`       | Sorts the array after the insert. Use `1` or `-1` for an array of values, or a sort document such as `{ score: -1 }` for an array of documents. |
-| `$slice`      | Trims the array after the sort. A positive count keeps the first, a negative count keeps the last, and zero empties it. |
+| `$each`       | The values to add. Required to use any of the other options.                 |
+| `$position`   | Insert at this position instead of at the end. A negative position counts back from the end. A position past either end is treated as that end. |
+| `$sort`       | Sort the array afterwards: `1` or `-1` for simple values, or a sort object such as `{ score: -1 }` for objects. |
+| `$slice`      | Then keep only part of the array: a positive number keeps that many from the start, a negative number keeps that many from the end, and `0` empties it. |
 
-The modifiers are applied in the order MongoDB applies them: `$each`, then `$position`, then
-  `$sort`, then `$slice`.
+They are applied in this order: `$each`, `$position`, `$sort`, `$slice`.
 
-`$each` is what makes a document a modifier document.
-An object written ***without*** one is a plain value to append, even when it carries `$slice`,
-  `$position`, or `$sort`, which are stored as data rather than read as modifiers.
-An unrecognized `$` field ***within*** a modifier document is rejected rather than being stored.
-***A rejected modifier leaves the array untouched***, because the whole modifier document is
-  checked before the first element is inserted.
+An object ***without*** `$each` is added as a single value, even if it has `$position`, `$sort`
+  or `$slice` keys.
+An object ***with*** `$each` and any other `$` key throws, and the array is not changed.
 
 **Examples**
 ```js
@@ -307,21 +312,21 @@ let updated = jsongin.Update(
 			);
 // updated is { a: [ 1, 2, 3, 4 ] }
 
-// $each appends several values.
+// Add several values.
 updated = jsongin.Update(
 				{ a: [ 1, 2 ] },
 				{ $push: { a: { $each: [ 3, 4 ] } } }
 			);
 // updated is { a: [ 1, 2, 3, 4 ] }
 
-// $position inserts rather than appends.
+// Insert at the start.
 updated = jsongin.Update(
 				{ a: [ 1, 2 ] },
 				{ $push: { a: { $each: [ 9 ], $position: 0 } } }
 			);
 // updated is { a: [ 9, 1, 2 ] }
 
-// $sort and $slice keep a top-N list, in that order.
+// Keep the two largest values.
 updated = jsongin.Update(
 				{ a: [ 5, 1 ] },
 				{ $push: { a: { $each: [ 3 ], $sort: -1, $slice: 2 } } }
@@ -329,15 +334,12 @@ updated = jsongin.Update(
 // updated is { a: [ 5, 3 ] }
 ```
 
-Note that a document with no `$each` is a value rather than a modifier, so
-  `{ $push: { a: { n: 1 } } }` appends the document `{ n: 1 }`.
-
 ```js
-// A document with no $each is a value to append, even one carrying a modifier field.
+// An object without $each is added as one value.
 jsongin.Update( { a: [] }, { $push: { a: { n: 1 } } } ).a.length === 1
 jsongin.Update( { a: [ 1 ] }, { $push: { a: { $position: 0 } } } ).a.length === 2
 
-// An unrecognized $ field within a modifier document is rejected, and the array is untouched.
+// An unknown $ key beside $each throws.
 jsongin.Update( { a: [ 1 ] }, { $push: { a: { $each: [ 3 ], $bogus: 1 } } } );   // throws
 ```
 
@@ -345,16 +347,11 @@ jsongin.Update( { a: [ 1 ] }, { $push: { a: { $each: [ 3 ], $bogus: 1 } } } );  
 <a id="$pullAll"></a>$pullAll
 ---------------------------------------------------------------------
 
-**Usage** : `$pullAll: { array-field: array-values, array-field: array-values, ... }`
+**Usage** : `{ $pullAll: { array-field: [ value, ... ], ... } }`
 
-Removes every instance of the given values from an array.
-
-Values are matched by ***content***, using the same comparison as the query and expression
-  operators, which is what [`$addToSet`](#$addToSet) does.
-An object, an array, or a date is therefore removed by writing an equal value, rather than only
-  by writing the very instance which is in the array.
-
-A value which is not in the array is not an error; nothing is removed for it.
+Removes every element equal to any value in the list.
+Values are compared by content, so an equal object, array or date is removed.
+The list must be an array.
 
 **Examples**
 ```js
@@ -364,7 +361,6 @@ let updated = jsongin.Update(
 			);
 // updated is { a: [ 2 ] }
 
-// Values are matched by content, so an equal object is removed.
 updated = jsongin.Update(
 				{ a: [ { n: 1 }, { n: 2 } ] },
 				{ $pullAll: { a: [ { n: 1 } ] } }
@@ -376,30 +372,23 @@ updated = jsongin.Update(
 <a id="$pull"></a>$pull
 ---------------------------------------------------------------------
 
-**Usage** : `$pull: { array-field: condition, array-field: condition, ... }`
+**Usage** : `{ $pull: { array-field: condition, ... } }`
 
-Removes every element of an array which the condition selects.
+Removes every element which matches `condition`.
 
-***The condition is a query, not a value***, which is the whole of what makes this different
-  from [`$pullAll`](#$pullAll) above. `$pullAll` removes elements equal to the ones listed;
-  `$pull` removes every element a query selects, so it reaches operators and ranges.
+Unlike [`$pullAll`](#$pullAll), the condition is a ***query***, so it can use operators:
 
 | **Written** | **Removes** |
 |-------------|--------------|
 | `{ $pull: { a: 3 } }` | every element equal to `3` |
 | `{ $pull: { a: { $gt: 3 } } }` | every element greater than `3` |
-| `{ $pull: { a: { b: 1 } } }` | every element whose `b` is `1` |
+| `{ $pull: { a: { b: 1 } } }` | every object element whose `b` is `1` |
 
-***A bare document is a condition on the fields of each element***, not a value to match whole,
-  so `{ b: 1 }` removes `{ b: 1, c: 2 }` as well as `{ b: 1 }`. Use
-  [`$pullAll`](#$pullAll) to remove documents by equality instead. An ***empty*** document is a
-  condition too: it asks nothing, and so selects every element which has fields at all.
-
-***The condition applies to an element, not through it.*** A query for `{ a: 1 }` matches a
-  document whose `a` is `[ 1, 2 ]`, but `{ $pull: { a: 1 } }` does not remove a `[ 1, 2 ]`
-  element. Only an element which is itself `1` goes.
-
-A field which is not there is left alone. A field which is there and is not an array is refused.
+- An object condition tests ***fields of each element***, so `{ b: 1 }` removes `{ b: 1, c: 2 }`
+  as well as `{ b: 1 }`. To remove only exact matches, use `$pullAll`.
+- An empty condition, `{}`, removes every element which is an object.
+- The condition is tested against each element itself. `{ $pull: { a: 1 } }` removes an element
+  `1`, but not an element `[ 1, 2 ]`.
 
 **Examples**
 ```js
@@ -409,61 +398,54 @@ jsongin.Update( { a: [ 1, 3, 5, 3 ] }, { $pull: { a: 3 } } );
 jsongin.Update( { a: [ 1, 3, 5, 7 ] }, { $pull: { a: { $gt: 3 } } } );
 // returns { a: [ 1, 3 ] }
 
-// A bare document asks about the fields of each element, so the element with a c goes too.
+// An object condition tests fields, so the element with c is removed too.
 jsongin.Update( { a: [ { b: 1, c: 2 }, { b: 2 } ] }, { $pull: { a: { b: 1 } } } );
 // returns { a: [ { b: 2 } ] }
 
-// The condition applies to the element rather than through it.
+// The array element [ 1, 2 ] is not equal to 1.
 jsongin.Update( { a: [ [ 1, 2 ], 1 ] }, { $pull: { a: 1 } } );
 // returns { a: [ [ 1, 2 ] ] }
 ```
 
 
-<a id="$[]"></a>$[] — the all positional operator
+<a id="$[]"></a>$[] — every array element
 ---------------------------------------------------------------------
 
 **Usage** : `{ operator: { 'array-field.$[].field': value } }`
 
-***`$[]` is a path element, not an update operator.*** It is written inside a field path, and
-  `'a.$[].n'` means the `n` of ***every*** element of `a`, so one update reaches the whole
-  array.
+`$[]` is written ***inside a path*** and means "every element of this array".
+`'a.$[].n'` is the `n` field of every element of `a`.
 
-***It is the only way to write through an array without naming an index.*** An ordinary path
-  which reaches into an array by field name is not a write target at all:
-  `{ $set: { 'a.n': 9 } }` against an array `a` is refused, because a field cannot be created
-  on an array. See [`SetValue()`](./SetValue.md).
+It is the only way to change a field in every element.
+A plain path such as `'a.n'` against an array throws, because it does not say which element.
 
-***Every update operator can use it except [`$rename`](#$rename)***, which names one source and
-  one target and has no sensible target for a source that expands to many.
+- Every update operator accepts it except [`$rename`](#$rename).
+- Each element is read and changed separately, so `$inc` adds to each element's own value.
+- Paths can use it more than once, one for each array.
 
-The path is expanded before any operator runs, into the concrete paths it names — `'a.0.n'`,
-  `'a.1.n'`, and so on. That is what lets `$inc` and its relatives read and write the ***same***
-  element rather than giving every element the value computed from the first.
-
-| **Written against** | **Result** |
+| **Used on** | **Result** |
 |---------------------|-------------|
-| a field which is not an array | refused |
-| a field which is not there | refused |
-| an ***empty*** array | nothing to do, and no refusal |
-| an element which cannot hold the field | refused |
+| a field which is not an array, or does not exist | throws |
+| an ***empty*** array | nothing changes |
+| elements which cannot hold the field, such as numbers | throws |
 
 **Examples**
 ```js
 jsongin.Update( { a: [ 1, 2, 3 ] }, { $set: { 'a.$[]': 5 } } );
 // returns { a: [ 5, 5, 5 ] }
 
-// Each element is read and written on its own, so this is not one value repeated.
+// Each element gets its own result.
 jsongin.Update( { a: [ { n: 1 }, { n: 2 } ] }, { $inc: { 'a.$[].n': 1 } } );
 // returns { a: [ { n: 2 }, { n: 3 } ] }
 
 jsongin.Update( { a: [ { n: 1, k: 'x' } ] }, { $unset: { 'a.$[].n': '' } } );
 // returns { a: [ { k: 'x' } ] }
 
-// It nests, one level per array crossed.
+// Nested arrays.
 jsongin.Update( { a: [ { b: [ { n: 1 }, { n: 2 } ] } ] }, { $set: { 'a.$[].b.$[].n': 9 } } );
 // returns { a: [ { b: [ { n: 9 }, { n: 9 } ] } ] }
 
-// An empty array names no paths, so there is nothing to do.
+// An empty array.
 jsongin.Update( { a: [] }, { $set: { 'a.$[]': 5 } } );
 // returns { a: [] }
 ```
@@ -475,22 +457,14 @@ jsongin.Update( { a: [] }, { $set: { 'a.$[]': 5 } } );
 <a id="$bit"></a>$bit
 ---------------------------------------------------------------------
 
-**Usage** : `$bit: { field: { and: integer } }`
-  or `$bit: { field: { or: integer } }`
-  or `$bit: { field: { xor: integer } }`
+**Usage** : `{ $bit: { field: { and: number } } }`, `{ $bit: { field: { or: number } } }`
+  or `{ $bit: { field: { xor: number } } }`
 
-Applies a bitwise operation to an integer field.
+Applies a bitwise `and`, `or` or `xor` to a whole-number field.
 
-A field which is ***not there*** is treated as a zero, so `and` stores 0 while `or` and `xor`
-  store the operand. The path to it is created, as [$inc](#$inc) creates one.
-
-The stored value and the operand must both be ***integers***.
-A field holding a string, a fractional number, a boolean, or a null is refused rather than
-  coerced, and so is a fractional or non numeric operand.
-A refused update leaves the whole document untouched.
-
-***The arithmetic is done in `BigInt`***, so a bit above the 32nd is not lost and a negative
-  value is read as two's complement.
+- If the field does not exist, it is treated as `0` and created.
+- The field and the number must both be whole numbers. Anything else, including `null`, throws.
+- Large numbers keep all of their bits, and negative numbers are read as two's complement.
 
 **Examples**
 ```js
@@ -504,7 +478,7 @@ updated.flags === 28
 updated = jsongin.Update( { flags: 20 }, { $bit: { flags: { xor: 12 } } } );
 updated.flags === 24
 
-// A field which is not there counts as a zero.
+// A missing field counts as 0.
 updated = jsongin.Update( {}, { $bit: { flags: { or: 12 } } } );
 updated.flags === 12
 ```
@@ -512,7 +486,7 @@ updated.flags === 12
 
 ## See Also
 
-- [`Update( Document, Updates )`](./Update.md), which applies these operators.
-- [`Diff( Before, After )`](./Diff.md) and [`Invert( Before, Patch )`](./Invert.md), which write update documents.
-- [`SetValue( Document, Path, Value )`](./SetValue.md), which the field operators write through.
-- [Operator Reference](../Operator-Reference.md), for which MongoDB operators are implemented.
+- [`Update( Document, Updates )`](./Update.md)
+- [`Diff( Before, After )`](./Diff.md) and [`Invert( Before, Patch )`](./Invert.md)
+- [`SetValue( Document, Path, Value )`](./SetValue.md)
+- [Operator Reference](../Operator-Reference.md)

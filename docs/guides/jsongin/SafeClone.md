@@ -8,27 +8,34 @@
 
 | **Parameter** | **Allowed Types** | **Description**                          |
 |---------------|:-----------------:|------------------------------------------|
-| Document      |       (any)       | The document to clone.                   |
-| Exceptions    |       ulsa        | A document path or array of paths to copy by reference rather than by value. |
+| Document      |       (any)       | The value to copy.                       |
+| Exceptions    |       ulsa        | Optional. A path, or an array of paths, to share with the original instead of copying. |
 
 
 ## Description
 
-Creates and returns a member-wise clone of `Document`.
-Nested documents and arrays are (deep) copied by value unless they are listed in `Exceptions`.
-Avoids pitfalls of the stringify/parse approach to cloning which silently fails when attempting to
-  clone documents that contain functions or regular expressions.
+Returns a deep copy of `Document`, made field by field.
 
-`Document` can be anything.
-If it is an object or array, then a member-wise clone is performed
-If `Document` is anything else, it is simply returned as-is.
+Unlike [`Clone()`](./Clone.md), nothing is lost:
 
-The `Exceptions` parameter can be `undefined`, `null`, a document path, or an array of document paths in dot-notation.
-Any fields listed in `Exceptions` are copied by reference rather than by value.
+- Objects and arrays are copied all the way down.
+- ***Dates*** are copied as new `Date` objects with the same moment.
+- Numbers, strings, booleans, `null` and `undefined` are copied as they are.
+- Regular expressions, errors, functions and symbols are kept, but ***not copied***: the copy
+  holds the same object as the original.
+
+`Document` can be any value. A value which is not an object, array or date is returned as it is.
+
+`Exceptions` lists dot notation paths, such as `'ref'` or `'a.0'`, whose values are shared with
+  the original instead of copied.
+Changing a shared value changes it in both.
+
+`SafeClone` throws when `Exceptions` is not a string, an array, `null` or `undefined`.
 
 
 ## See Also
 
+- [`Clone( Document )`](./Clone.md)
 - [`GetValue( Document, Path )`](./GetValue.md)
 - [`SetValue( Document, Path, Value )`](./SetValue.md)
 
@@ -36,7 +43,7 @@ Any fields listed in `Exceptions` are copied by reference rather than by value.
 ## Examples
 
 
-### It can clone a simple object
+### It copies a simple object
 ```js
 let doc = { b: true, n: 3.14, s: 'abc' };
 
@@ -46,7 +53,7 @@ clone.n === 3.14
 clone.s === 'abc'
 ```
 
-### It can clone nested objects
+### It copies nested objects
 ```js
 let doc = { o: { b: true, n: 3.14, s: 'abc' } };
 
@@ -54,43 +61,32 @@ let clone = jsongin.SafeClone( doc );
 clone.o.b === true
 clone.o.n === 3.14
 clone.o.s === 'abc'
+( clone.o !== doc.o ) === true
 ```
 
-### It can clone an array
-```js
-let doc = { a: [ 1, 2, 3 ] };
-
-let clone = jsongin.SafeClone( doc );
-clone.a.length === 3
-clone.a[ 0 ] === 1
-clone.a[ 1 ] === 2
-clone.a[ 2 ] === 3
-```
-
-### It can clone an array of objects
+### It copies arrays
 ```js
 let doc = { a: [ { one: 1 }, { two: 2 } ] };
 
 let clone = jsongin.SafeClone( doc );
-clone.a.length = 2
+clone.a.length === 2
 clone.a[ 0 ].one === 1
 clone.a[ 1 ].two === 2
 ```
 
-### It can clone non-value fields
+### It keeps values which JSON would lose
 ```js
 let doc = { l: null, r: /test/, e: new Error( 'hello' ), f: function () { }, u: undefined };
 
 let clone = jsongin.SafeClone( doc );
 clone.l === null
-// The following fail with json stringify/parse
 ( clone.r instanceof RegExp ) === true
 ( clone.e instanceof Error ) === true
-( typeof clone.f === 'function' )
-( typeof clone.u === 'undefined' )
+( typeof clone.f === 'function' ) === true
+( typeof clone.u === 'undefined' ) === true
 ```
 
-### It can clone dates
+### It copies dates
 ```js
 let doc = { d: new Date( 1700000000000 ) };
 
@@ -98,27 +94,20 @@ let clone = jsongin.SafeClone( doc );
 ( clone.d instanceof Date ) === true
 clone.d.getTime() === 1700000000000
 
-// Dates are cloned by value, so the clone can be modified independently.
+// The date is a new object, so changing one does not change the other.
 ( clone.d !== doc.d ) === true
 ```
 
-Dates are worth calling out.
-A `Date` has the short type `o`, but it keeps its value internally and has no fields to walk,
-  so a member-wise clone of one would produce an empty object.
-`SafeClone` handles this and returns a new `Date` carrying the same time value.
-Note that [`Clone( Document )`](../Library-Guide.md) does not: it uses stringify/parse, so a
-  date becomes an ISO string.
-
-### It can selectively clone with the Exceptions parameter
+### Exceptions are shared, not copied
 ```js
 let doc = { id: 42, ref: { name: 'Alice' } };
 
 let clone = jsongin.SafeClone( doc, [ 'ref' ] );
-clone.ref.name = 'Bob' // Changed in both doc and clone
+clone.ref.name = 'Bob'; // changes both doc and clone
 doc.ref.name === 'Bob'
 ```
 
-### It should throw an error if an invalid Exceptions paramter is provided
+### It throws for Exceptions of the wrong type
 ```js
 jsongin.SafeClone( { a: 1 }, 42 ) // throws 'The Exceptions parameter must be a document path ...'
 ```

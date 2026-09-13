@@ -8,51 +8,57 @@
 
 | **Parameter**  | **Allowed Types** | **Description**                          |
 |----------------|:-----------------:|------------------------------------------|
-| Value          |       (any)       | The value to format.                     |
-| Options        |       o, b        | The options document below. A boolean is read as the older `WithWhitespace` parameter. |
+| Value          |       (any)       | The value to write as JSON.              |
+| Options        |       o, b        | Optional. The options below, or `true` for `Whitespace`. |
 
 ### Options
 
 | **Option**     | **Type** | **Default** | **Description**                     |
 |----------------|:--------:|:-----------:|-------------------------------------|
-| Whitespace     |    b     |   `false`   | Adds whitespace formatting to the output. |
-| LikeJavascript |    b     |   `false`   | Doesn't quote identifiers and aligns values. Requires `Whitespace`. |
-| TypedValues    |    b     |   `false`   | Writes the values JSON cannot hold, rather than dropping them. See [Typed Values](#typed-values). |
-| Strict         |    b     |   `false`   | Throws on a value which has no representation, rather than leaving it out. |
+| Whitespace     |    b     |   `false`   | Writes one value per line, indented four spaces. |
+| LikeJavascript |    b     |   `false`   | Writes field names without quotes, lines values up, and adds trailing commas. Only works with `Whitespace`. |
+| TypedValues    |    b     |   `false`   | Writes dates, regular expressions and `undefined` in a form `Parse()` can read back. See [Typed Values](#typed-values). |
+| Strict         |    b     |   `false`   | Throws for a value JSON cannot hold, instead of leaving it out. |
 
-The older positional form, `Format( Value, WithWhitespace, LikeJavascript )`, still works.
-A boolean in the second position is read as `WithWhitespace`, and a document is read as the
-  options above.
+You can also call `Format( Value, Whitespace, LikeJavascript )` with two booleans.
 
 
 ## Description
 
-`jsongin.Format()` emulates Javascript's `JSON.stringify()` function which generates a text string representation
-  (JSON) of a Javascript object.
+Writes a value as JSON text, like `JSON.stringify()`.
 
-When calling `jsongin.Format()` with default parameters, it will return a string identical to the output
-  obtained from `JSON.stringify()`.
-When using the option `Whitespace`, it will also provide output identical to
-  `JSON.stringify( Value, null, '    ' )`.
-The `LikeJavascript` option provides additional formatting of the output such that identifiers (field names) are not
-  enclosed in quotes (`"`) and field values are left-aligned with each other.
+With no options, the output is the same as `JSON.stringify( Value )`.
+With `Whitespace`, it is the same as `JSON.stringify( Value, null, '    ' )`, except that an
+  empty object or array is written across two lines.
+
+`LikeJavascript` writes something closer to Javascript source:
+
+```js
+console.log( jsongin.Format( { id: 1001, user: { name: 'Alice' } }, { Whitespace: true, LikeJavascript: true } ) );
+```
+outputs:
+```
+{
+    id:   1001,
+    user: 
+    {
+        name: "Alice",
+    },
+}
+```
+
+Unlike `JSON.stringify()`, `Format` writes a `bigint` as a number rather than throwing.
 
 
-## See Also
+## Values JSON Cannot Hold
 
-- [`Parse( JsonString, Options )`](./Parse.md)
+The output is always valid JSON.
 
+`undefined`, functions and symbols have no JSON form.
+By default `Format` treats them the way `JSON.stringify()` does:
 
-## Values Which JSON Cannot Hold
-
-***The output is always parseable JSON.***
-Four types have nothing to write: `undefined`, a symbol, a function, and a `BigInt`, which is
-  the one of the four that does have a representation.
-
-By default the other three follow the `JSON.stringify()` rule, which is not the same rule in
-  both places.
-A field is ***left out*** of a document, and an array element ***becomes `null`***, because
-  dropping an element would renumber every element after it.
+- In an object, the field is ***left out***.
+- In an array, the element becomes ***`null`***, so the other elements keep their positions.
 
 ```js
 jsongin.Format( { a: 1, gone: undefined, b: 2 } )
@@ -64,20 +70,38 @@ jsongin.Format( [ 1, undefined, 3 ] )
 // returns '[1,null,3]'
 ```
 
-Set `Strict` when a value with no representation should be an error rather than an omission.
+With `Strict`, these values throw instead:
 
 ```js
 // jsongin.Format( { fn: function () { return; } }, { Strict: true } )
 // throws: Format: A value of type [function] has no JSON representation.
 ```
 
+A regular expression is written as `{}`, as `JSON.stringify()` does, unless you use
+  `TypedValues`.
+
+
+## Dates
+
+By default a `Date` is written as an ISO string, as `JSON.stringify()` does:
+
+```js
+jsongin.Format( { created: new Date( 1700000000000 ) } )
+// returns '{"created":"2023-11-14T22:13:20.000Z"}'
+```
+
+[`Parse()`](./Parse.md) reads that back as a ***string***, not a `Date`.
+
+To get a `Date` back, use `TypedValues` on both `Format` and `Parse`, or use
+  [`Hybridize()`](./Hybridize.md) and [`Unhybridize()`](./Unhybridize.md).
+
 
 ## Typed Values
 
-`TypedValues` writes the values JSON has no form for, so that [`Parse()`](./Parse.md) can read
-  them back as what they were.
-The forms are MongoDB's [Extended JSON](https://www.mongodb.com/docs/manual/reference/mongodb-extended-json/),
-  with the two differences noted below.
+With `TypedValues`, dates, regular expressions and `undefined` are written as small tagged objects.
+[`Parse()`](./Parse.md) with `TypedValues` turns them back into the original values.
+The tags are MongoDB's [Extended JSON](https://www.mongodb.com/docs/manual/reference/mongodb-extended-json/),
+  with two differences described below.
 
 | Type | Written as |
 |------|------------|
@@ -90,19 +114,15 @@ jsongin.Format( { created: new Date( 1700000000000 ) }, { TypedValues: true } )
 // returns '{"created":{"$date":"2023-11-14T22:13:20Z"}}'
 ```
 
-***The milliseconds are dropped when there are none***, and kept when there are.
-This is the driver's formatting rule rather than `toISOString()`'s.
+The milliseconds are left out when they are zero, as MongoDB's driver does:
 
 ```js
 jsongin.Format( { created: new Date( 1700000000010 ) }, { TypedValues: true } )
 // returns '{"created":{"$date":"2023-11-14T22:13:20.010Z"}}'
 ```
 
-***A time before the epoch is written the other way.***
-The readable form is an ISO-8601 string, which the driver does not use for a negative
-  timestamp, so those fall back to the canonical form.
-[`Parse()`](./Parse.md) reads both, because an Extended JSON document written anywhere else
-  may hold either.
+A date before 1970 is written as a number of milliseconds, as the driver does.
+`Parse()` reads both forms.
 
 ```js
 jsongin.Format( { created: new Date( -1 ) }, { TypedValues: true } )
@@ -114,42 +134,27 @@ jsongin.Format( { r: /ab+c/i }, { TypedValues: true } )
 // returns '{"r":{"$regularExpression":{"pattern":"ab+c","options":"i"}}}'
 ```
 
-***An undefined value is kept apart from a null one.***
-Extended JSON maps `undefined` onto `null`, because BSON has no such value.
-`jsongin` does have one, so it writes the tag instead.
+The two differences from Extended JSON:
+
+- ***`undefined` is kept apart from `null`.*** Extended JSON turns `undefined` into `null`.
+  `jsongin` writes a `$undefined` tag, so the difference survives.
+- ***A regular expression keeps all of its flags, including `g`.*** MongoDB only accepts the
+  flags `imxlsu`. Dropping `g` would change what the pattern matches.
 
 ```js
 jsongin.Format( { a: undefined, b: null }, { TypedValues: true } )
 // returns '{"a":{"$undefined":true},"b":null}'
 ```
 
-***A regular expression keeps every Javascript flag, including `g`.***
-MongoDB's regex options are `imxlsu` and its driver refuses `g` outright.
-Dropping the flag would change what the expression matches, so the wire form is MongoDB's and
-  the flag set is `jsongin`'s.
 
+## See Also
 
-## Dates
-
-A `Date` is written as an ISO string by default, which is what `JSON.stringify()` does.
-
-```js
-jsongin.Format( { created: new Date( 1700000000000 ) } )
-// returns '{"created":"2023-11-14T22:13:20.000Z"}'
-```
-
-Note that [`Parse()`](./Parse.md) reads that value back as a string, not as a `Date`, exactly
-  as `JSON.parse()` would.
-The default `Format` and `Parse` round trip preserves the date's value but not its type.
-
-Use `TypedValues` on both ends when the round trip must restore an actual `Date`, or
-  [`Hybridize()`](./Hybridize.md) and [`Unhybridize()`](./Hybridize.md) when the value has to
-  stay readable as plain JSON.
+- [`Parse( JsonString, Options )`](./Parse.md)
+- [`Hybridize( Document )`](./Hybridize.md)
 
 
 ## Examples
 
-### It provides output identical to JSON.stringify()
 ```js
 let document = {
 	id: 1001,
@@ -165,45 +170,45 @@ let document = {
 }
 ```
 
-**Compact format with no whitespace:**
+**Compact, with no whitespace:**
 ```js
 console.log( jsongin.Format( document ) );
 ```
 outputs:
-```bat
+```
 {"id":1001,"user":{"name":"Alice","location":"East"},"profile":{"login":"alice","role":"admin"},"tags":["Staff","Dept. A"]}
 ```
 
-**Human readable format with whitespace:**
+**With whitespace:**
 ```js
-console.log( jsongin.Format( document, true ) );
+console.log( jsongin.Format( document, { Whitespace: true } ) );
 ```
 outputs:
 ```
-{ 
-    "id": 1001, 
-    "user": { 
-        "name": "Alice", 
+{
+    "id": 1001,
+    "user": {
+        "name": "Alice",
         "location": "East"
-    }, 
-    "profile": { 
-        "login": "alice", 
+    },
+    "profile": {
+        "login": "alice",
         "role": "admin"
-    }, 
-    "tags": [ 
-        "Staff", 
+    },
+    "tags": [
+        "Staff",
         "Dept. A"
     ]
 }
 ```
 
-**Improved human readable format:**
+**Like Javascript:**
 ```js
-console.log( jsongin.Format( document, true, true ) );
+console.log( jsongin.Format( document, { Whitespace: true, LikeJavascript: true } ) );
 ```
 outputs:
 ```
-{ 
+{
     id:      1001,
     user:    
     {
@@ -223,7 +228,7 @@ outputs:
 }
 ```
 
-**The same, written as options:**
+**The same, with the older boolean arguments:**
 ```js
-console.log( jsongin.Format( document, { Whitespace: true, LikeJavascript: true } ) );
+console.log( jsongin.Format( document, true, true ) );
 ```

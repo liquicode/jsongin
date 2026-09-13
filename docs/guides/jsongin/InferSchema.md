@@ -8,19 +8,23 @@
 
 | **Parameter** | **Allowed Types** | **Description**                          |
 |---------------|:-----------------:|------------------------------------------|
-| Documents     |        oa         | One document, or an array of documents to describe together. |
+| Documents     |        oa         | One document, or an array of documents.  |
 | Options       |         o         | Optional. `RequiredThreshold`, `MaxDistinct` and `Dialect`, described below. |
 
 
 ## Description
 
-Writes a JSON Schema which describes the documents given.
+Returns a JSON Schema describing the given documents.
 
-One document hides every field it happens not to have, so give every document you have: the
-  schema describes their ***union***. A field is `required` when every document which reached
-  its object carried it, a field seen with two types gets a `type` array, an array's `items` is
-  the union of every element of every array at that path, and a whole number is an `integer`
-  until a fraction is seen.
+A single document only shows the fields it happens to have, so pass all the documents you have.
+The schema describes all of them together:
+
+- A field is `required` when every object at that place has it.
+- A field seen with more than one type gets a list of types.
+- An array's `items` describes every element of every array at that place.
+- A number is an `integer` unless some value at that place has a fraction.
+- A `Date` is a string with `format: 'date-time'`, which is how
+  [`ValidateDocument()`](./ValidateDocument.md) reads a date.
 
 ```js
 let documents = [
@@ -39,15 +43,12 @@ schema.properties.note.type;     // returns [ 'null', 'string' ]
 schema.properties.tags;          // returns { type: 'array', items: { type: 'string' } }
 ```
 
-The documents satisfy the schema written from them:
+The documents are valid against the schema made from them:
 
 ```js
 jsongin.ValidateDocument( documents[ 0 ], schema );   // returns []
 jsongin.ValidateDocument( documents[ 2 ], schema );   // returns []
 ```
-
-A `Date` is described as a string with the `date-time` format, which is how
-  [`ValidateDocument()`](./ValidateDocument.md) reads one:
 
 ```js
 jsongin.InferSchema( { when: new Date( 1700000000000 ) } ).properties.when;   // returns { type: 'string', format: 'date-time' }
@@ -58,35 +59,33 @@ jsongin.InferSchema( { when: new Date( 1700000000000 ) } ).properties.when;   //
 
 | **Option**          | **Type** | **Description**                                                  |
 |---------------------|:--------:|------------------------------------------------------------------|
-| `RequiredThreshold` |    n     | The share of objects a field must appear in to be `required`, from 0 to 1. `1` when absent, so only a field present everywhere is required; `0` makes no field required. |
-| `MaxDistinct`       |    n     | When given, a scalar field with no more distinct values than this gets an `enum` of them, in the order they were first seen. No `enum` is written when absent. |
-| `Dialect`           |    s     | The draft the result declares in `$schema`. `'2020-12'` when absent. |
+| `RequiredThreshold` |    n     | The fraction of objects, from 0 to 1, a field must appear in to be `required`. Defaults to `1`, meaning every object. `0` makes no field required. |
+| `MaxDistinct`       |    n     | When given, a field whose values are simple (not objects or arrays) and have at most this many different values gets an `enum` listing them, in the order first seen. |
+| `Dialect`           |    s     | The draft to name in `$schema`. Defaults to `'2020-12'`. |
 
 ```js
 jsongin.InferSchema( documents, { RequiredThreshold: 0.5 } ).required;   // returns [ 'id', 'name', 'tags', 'role', 'note' ]
 jsongin.InferSchema( documents, { MaxDistinct: 3 } ).properties.role.enum;   // returns [ 'admin', 'user' ]
 ```
 
-An `enum` cap is a concern of whoever reads the schema - a prompt has to be short, a picker has
-  to be complete - which is why it is an option rather than a number chosen here.
 
+## A Description, Not a Rule
 
-## The Schema Describes, It Never Decides
-
-The result is a description of documents already seen: for a prompt, a field picker, or the
-  first draft of a schema you then write by hand. It is not a contract, and nothing should read
-  it to build a table or type a column. The first document holding a field would decide that
-  field's type forever, and the schema would be an accident of insertion order.
+The schema only describes the documents you passed.
+It is useful as a summary for a prompt or a field picker, or as a first draft of a schema you
+  then write yourself.
+Do not treat it as the rule for future documents: a field's type in it only reflects what was in
+  the documents it saw.
 
 
 ## Errors
 
-`InferSchema` throws when `Documents` is neither an object nor an array, and when the dialect
-  named is not one which declares a `$schema`.
+`InferSchema` throws when `Documents` is not an object or array, or when `Dialect` is unknown or
+  is `'mongodb'`, which has no `$schema` to name.
 
 ```js
 jsongin.InferSchema( 42 );                           // throws
-jsongin.InferSchema( {}, { Dialect: 'mongodb' } );   // throws, MongoDB's dialect has no meta-schema
+jsongin.InferSchema( {}, { Dialect: 'mongodb' } );   // throws
 ```
 
 
@@ -94,5 +93,5 @@ jsongin.InferSchema( {}, { Dialect: 'mongodb' } );   // throws, MongoDB's dialec
 
 - [`ValidateDocument( Document, Schema, Options )`](./ValidateDocument.md)
 - [`InitSchema( Document, Schema, Options )`](./InitSchema.md)
-- [`ProjectSchema( Document, Schema )`](./ProjectSchema.md)
-- [`ShortType( Value )`](./ShortType.md), which every type here is read from.
+- [`ProjectSchema( Document, Schema, Options )`](./ProjectSchema.md)
+- [JSON Schema guide](../JSON-Schema.md)

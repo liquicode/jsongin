@@ -3,37 +3,27 @@
 
 ### Operator Reference
 
-***This page answers "is it supported?".***
-It lists the operators MongoDB defines and marks which of them `jsongin` implements, so that the
-  gap between the two is visible in one place.
+This page lists the operators MongoDB has, and marks which ones `jsongin` supports.
 
-***For "how do I use it?", follow the operator's link*** into the page which describes it in
-  detail and gives examples:
+To learn how to use an operator, follow its link to the page which describes it:
 
 | **Page**                                                          | **Covers**                                           |
 |-------------------------------------------------------------------|------------------------------------------------------|
-| [Query Operators](./jsongin/Query-Operators.md)                   | the operators of a query criteria                    |
-| [Expression Operators](./jsongin/Expression-Operators.md)         | the aggregation expression language                  |
+| [Query Operators](./jsongin/Query-Operators.md)                   | operators in a query criteria                        |
+| [Expression Operators](./jsongin/Expression-Operators.md)         | operators in an aggregation expression               |
 | [Stage Operators](./jsongin/Stage-Operators.md)                   | the stages of an aggregation pipeline                |
-| [Accumulator Operators](./jsongin/Accumulator-Operators.md)       | what may appear inside a `$group`                    |
-| [Update Operators](./jsongin/Update-Operators.md)                 | the operators of an update document                  |
-| [Projection Operators](./jsongin/Projection-Operators.md)         | the operators of a projection                        |
+| [Accumulator Operators](./jsongin/Accumulator-Operators.md)       | what can go inside `$group`                          |
+| [Update Operators](./jsongin/Update-Operators.md)                 | operators in an update document                      |
+| [Projection Operators](./jsongin/Projection-Operators.md)         | operators in a projection                            |
 
-There are three types of operators:
-- `Query` operators are used to construct queries that filter documents.
-- `Projection` operators control the inclusion or exclusion of fields from documents returned by a query.
-- `Update` operators modify the contents of one or more documents.
+In the tables below, `Yes` means supported and `-` means not supported.
 
 
 ## Query Operators
 
-Query operators define conditions used to distinguish one or more documents from other documents.
-Use the `jsongin.Query( Document, Criteria )` function to test if a certain document satifies the
-  selection criteria or not.
-If it does match all of the criteria, then `jsongin.Query` will return `true`.
-If not all of the criteria are satisfied, then a `false` will be returned instead.
-
-Read the [`Query()`](./jsongin/Query.md) document to understand how these operators are used.
+Query operators test whether a document matches.
+They are used by [`Query()`](./jsongin/Query.md), [`Filter()`](./jsongin/Filter.md) and the
+  `$match` stage.
 
 | **Category**  | **Supported** | **Operator**   | **Description**                                                                                                                               |
 |---------------|:-------------:|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
@@ -74,142 +64,90 @@ Read the [`Query()`](./jsongin/Query.md) document to understand how these operat
 | Miscellaneous |       -       | $natural       | A hint forcing a forward or reverse collection scan. Not a query operator.                                                |
 | Miscellaneous |      Yes      | [$sampleRate](./jsongin/Query-Operators.md#$sampleRate)    | Randomly selects documents at a given rate.                                                                                                   |
 
-***Note on dates*** :
-A `Date` has its own short type `d`, so the comparison operators handle dates directly.
-`$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$in`, and `$nin` all compare dates by their time
-  value, and `$type` selects them with either `'date'` or `9`.
-A date is never equal to the string or number which represents it: `$eq` against an ISO string
-  or a timestamp is `false`.
-This holds ***inside*** a sub-document too, so `{ d: <date> }` does not equal
-  `{ d: '1970-01-01T00:00:00.000Z' }`.
-See [`ShortType()`](./jsongin/ShortType.md) for why dates are treated as their own type.
+`$rand` and `$natural` are listed among MongoDB's query operators, but neither can be used as a
+  query condition. Use `$rand` inside `$expr`.
 
+***Dates*** :
+The comparison operators compare dates by the moment they hold.
+A date never equals the string or number which represents it, even inside a nested object.
+See [`ShortType()`](./jsongin/ShortType.md).
 
-***Note on the range operators*** :
-`$gt`, `$gte`, `$lt`, and `$lte` are ***bracketed by type***.
-A value only matches when it is the same type as the operand, however the BSON ordering ranks
-  the two types against each other:
+***`$gt`, `$gte`, `$lt` and `$lte` only compare values of the same type***:
 
 ```js
 jsongin.Query( { v: 5 }, { v: { $gt: 'abc' } } );      // false, a number is not a string
 jsongin.Query( { v: 'abc' }, { v: { $gt: 1 } } );      // false
 jsongin.Query( { v: null }, { v: { $gt: 1 } } );       // false
-```
-
-Objects and arrays are inside the bracket too, ordered against their own type by
-  [`CompareValues`](./jsongin/CompareValues.md):
-
-```js
 jsongin.Query( { v: { a: 2 } }, { v: { $gt: { a: 1 } } } );  // true
 jsongin.Query( { v: [ 2 ] }, { v: { $gt: [ 1 ] } } );        // true
-jsongin.Query( { v: { a: 1 } }, { v: { $gt: [ 1 ] } } );     // false, still bracketed
+jsongin.Query( { v: { a: 1 } }, { v: { $gt: [ 1 ] } } );     // false, an object and an array
 ```
 
-Both behaviors match MongoDB.
-
-
-***Note on `$regex` and `$options`*** :
-`$options` is not an operator of its own.
-It carries the flags for a `$regex` written beside it, and it is only accepted there:
+***`$options`*** is not an operator. It holds the flags for a `$regex` beside it:
 
 ```js
 jsongin.Query( { a: 'FOO' }, { a: { $regex: 'foo', $options: 'i' } } );  // true
 jsongin.Query( { a: 'FOO' }, { a: { $regex: 'foo' } } );                 // false
 ```
 
-`$options` given ***without*** a `$regex`, given as anything but a string, carrying a flag which
-  is not valid, or given beside a regexp which already carries its own flags, is refused with an
-  error, which is what MongoDB does for each of those.
+`$options` throws when there is no `$regex` beside it, when it is not a string, when it holds an
+  unknown flag, or when the `$regex` is a regular expression which already has flags.
+A regular expression with the `g` flag works the same for every document.
 
-A pattern is rebuilt for every document, so a regexp carrying the ***global flag*** is not
-  stateful across a `Filter()`.
-The caller's own `RegExp` object is never written to.
-
-
-***Note on `$elemMatch`*** :
-Every condition must be satisfied by the ***same*** element:
+***`$elemMatch`*** needs ***one*** element to meet every condition:
 
 ```js
 jsongin.Query( { v: [ 1, 4, 9 ] }, { v: { $elemMatch: { $gt: 2, $lt: 5 } } } );  // true
 jsongin.Query( { v: [ 1, 9 ] }, { v: { $elemMatch: { $gt: 2, $lt: 5 } } } );     // false
 ```
 
-An element which is itself an ***array*** is a value to test, not a second array to search.
-A field condition does not look inside it, while a nested `$elemMatch` does, because that is the
-  query which asks for it:
+- A field condition does not look inside an element which is itself an array. A nested
+  `$elemMatch` does.
+- An empty condition, `{}`, matches an element which is an object or an array.
+- `$and`, `$or` and `$nor` inside it apply to one element at a time.
+- A malformed condition throws, even when the array is empty.
 
 ```js
 jsongin.Query( { v: [ [ { x: 1 } ] ] }, { v: { $elemMatch: { x: 1 } } } );                   // false
 jsongin.Query( { v: [ [ { x: 1 } ] ] }, { v: { $elemMatch: { $elemMatch: { x: 1 } } } } );   // true
-```
 
-An ***empty*** condition matches an element which can hold fields, meaning a document or an
-  array, and matches nothing else:
-
-```js
 jsongin.Query( { v: [ { x: 1 } ] }, { v: { $elemMatch: {} } } );  // true
 jsongin.Query( { v: [ 1 ] }, { v: { $elemMatch: {} } } );         // false
-```
 
-A logical operator inside `$elemMatch` applies to ***one element at a time***, which is the whole
-  reason to reach for it. `$and` asks for a single element satisfying every branch, where the
-  dotted spelling of the same conditions would accept them spread across different elements:
-
-```js
 let document = { v: [ { x: 1, y: 2 }, { x: 5, y: 6 } ] };
+jsongin.Query( document, { v: { $elemMatch: { $and: [ { x: 1 }, { y: 6 } ] } } } );  // false, no one element has both
+jsongin.Query( document, { 'v.x': 1, 'v.y': 6 } );                                  // true, different elements
 
-jsongin.Query( document, { v: { $elemMatch: { $and: [ { x: 1 }, { y: 6 } ] } } } );  // false
-jsongin.Query( document, { 'v.x': 1, 'v.y': 6 } );                                  // true
-```
-
-The criteria inside `$elemMatch` is a criteria in its own right, so a ***malformed*** one is
-  refused with an error rather than reported as no match — and it is refused whether or not there
-  is an element to apply it to, because being malformed has nothing to do with the data:
-
-```js
-// throws: $or requires an array of criteria
-jsongin.Query( { v: [] }, { v: { $elemMatch: { $or: 5 } } } );
-
-// throws: Operator [$gt] cannot appear at the top level of a $or branch
-jsongin.Query( { v: [ 1, 2 ] }, { v: { $elemMatch: { $or: [ { $gt: 1 } ] } } } );
+jsongin.Query( { v: [] }, { v: { $elemMatch: { $or: 5 } } } );                        // throws
+jsongin.Query( { v: [ 1, 2 ] }, { v: { $elemMatch: { $or: [ { $gt: 1 } ] } } } );     // throws
 ```
 
 
-## jsongin Extended Query Operators
+## jsongin Extension Query Operators
 
-`jsongin` offers additional query operators which support loose comparisons (==):
+`jsongin` adds these query operators, which MongoDB does not have:
 
-- `$eqx` : Matches values that are equal to a specified value. Loose comparison (==).
-- `$nex` : Matches all values that are not equal to a specified value. Loose comparison (==).
-- `$noop` : Can be anything. No operation is performed on this data. Can be used to "comment out" portions of a query.
-  It matches everything, so renaming a clause's key to `$noop` disables that clause while
-  leaving the rest of the query intact. It can appear at the top level of a query or within a
-  field. The one value it does not accept is `undefined`, which `Query` rejects for every
-  operator so that a missing variable is never silently ignored.
+- [`$eqx`](./jsongin/Query-Operators.md#$eqx) : like `$eq`, but compares loosely (`==`), and
+  ignores field and element order.
+- [`$nex`](./jsongin/Query-Operators.md#$nex) : matches when `$eqx` would not.
+- [`$exprx`](./jsongin/Query-Operators.md#$exprx) : like `$expr`, but can also be used under a
+  field, where it evaluates against that field's value.
+- [`$noop`](./jsongin/Query-Operators.md#$noop) : matches everything. Rename a clause's key to
+  `$noop` to switch it off.
 
 ```js
-// The b clause is disabled. The a clause still applies.
+// The b clause is switched off. The a clause still applies.
 jsongin.Query( { a: 1, b: 2 }, { a: 1, $noop: { b: 999 } } ) === true
 jsongin.Query( { a: 1, b: 2 }, { a: 9, $noop: { b: 999 } } ) === false
 ```
-- `$exprx` : Like `$expr`, but it can also appear within a field of a query, where it evaluates its expression against the sub-document found at that field.
 
 
 ## Expression Operators
 
-Expression operators compute a value from the contents of a document.
-Use the `jsongin.Evaluate( Document, Expression )` function to evaluate an expression,
-  or use the `$expr` query operator to match documents with one.
+Expression operators compute a value.
+They are used by [`Evaluate()`](./jsongin/Evaluate.md), `$expr`, and the pipeline stages.
 
-Read the [`Evaluate()`](./jsongin/Evaluate.md) document to understand how these operators are used.
-
-A string beginning with `$` is a reference to a document field (e.g. `"$user.name"`).
-Anything else is a literal value.
-
-This table lists the expression operators which MongoDB documents.
-Operators marked `-` are not implemented by `jsongin`.
-MongoDB adds operators from one server version to the next, so treat this as a close list
-  rather than an exact one.
+MongoDB adds expression operators in new server versions, so this list may not be complete.
 
 | **Category**  | **Supported** | **Operator**       | **Description**                                                                              |
 |---------------|:-------------:|--------------------|-----------------------------------------------------------------------------------------------|
@@ -284,7 +222,7 @@ MongoDB adds operators from one server version to the next, so treat this as a c
 | Date          |      Yes      | [$millisecond](./jsongin/Expression-Operators.md#$millisecond)       | Returns the milliseconds of a date, from 0 to 999.                                           |
 | Date          |      Yes      | [$minute](./jsongin/Expression-Operators.md#$minute)            | Returns the minute of a date, from 0 to 59.                                                  |
 | Date          |      Yes      | [$month](./jsongin/Expression-Operators.md#$month)             | Returns the month of a date, from 1 to 12.                                                   |
-| Date          |      Yes      | [$second](./jsongin/Expression-Operators.md#$second)            | Returns the seconds of a date, from 0 to 60.                                                 |
+| Date          |      Yes      | [$second](./jsongin/Expression-Operators.md#$second)            | Returns the seconds of a date, from 0 to 59.                                                 |
 | Date          |      Yes      | [$week](./jsongin/Expression-Operators.md#$week)              | Returns the week number of a date.                                                           |
 | Date          |      Yes      | [$year](./jsongin/Expression-Operators.md#$year)              | Returns the year of a date.                                                                  |
 | Literal       |      Yes      | [$literal](./jsongin/Expression-Operators.md#$literal)           | Returns a value without evaluating it. Use this for literal strings which begin with a `$`.  |
@@ -355,24 +293,17 @@ MongoDB adds operators from one server version to the next, so treat this as a c
 | Type          |      Yes      | [$type](./jsongin/Expression-Operators.md#$type)              | Returns the type of a value.                                                                 |
 | Variable      |      Yes      | [$let](./jsongin/Expression-Operators.md#$let) | Binds variables for use within a sub-expression.                                             |
 
-***Note on missing values*** :
-Arithmetic performed on a missing or `null` value returns `null` rather than throwing an error.
-Only `false`, `0`, `null`, and missing values are treated as false by the logical and
-  conditional operators. Note that the empty string `""` and the empty array `[]` are true.
-
-***Note on system variables*** :
-The expression system variables (`$$ROOT`, `$$CURRENT`, `$$NOW`, `$$REMOVE`) resolve wherever
-  an expression is evaluated, which includes the pipeline stages below and `$expr` within a
-  query. See [Variables](./jsongin/Expression-Operators.md#variables).
-A plain query clause and an update operator evaluate no expressions, so `'$$NOW'` there is the
-  literal string rather than a date.
+- Arithmetic on a `null` or missing value gives `null`.
+- The logical and conditional operators treat only `false`, `0`, `null` and missing as false, so
+  `''` and `[]` are true.
+- `$$ROOT`, `$$CURRENT`, `$$NOW` and `$$REMOVE` work anywhere an expression is evaluated. In a
+  plain query condition or an update, `'$$NOW'` is just a string. See
+  [Variables](./jsongin/Expression-Operators.md#variables).
 
 
 ## Aggregation Pipeline Stages
 
-Pipeline stages transform an array of documents into another array of documents.
-Use the `jsongin.Aggregate( Documents, Pipeline )` function to run documents through a pipeline.
-See the [`Aggregate()`](jsongin/Aggregate.md) guide for the details of each stage.
+Stages are the steps of a pipeline, run by [`Aggregate()`](./jsongin/Aggregate.md).
 
 | **Category**  | **Supported** | **Operator**     | **Description**                                                          |
 |---------------|:-------------:|------------------|----------------------------------------------------------------------------|
@@ -409,28 +340,17 @@ See the [`Aggregate()`](jsongin/Aggregate.md) guide for the details of each stag
 | Stage         |      Yes      | [$unwind](./jsongin/Stage-Operators.md#$unwind)          | Emits one document per element of an array field.                        |
 | Stage         |       -       | $vectorSearch    | Performs a vector similarity search.                                     |
 
-***Note on the stages which need a second collection*** :
-`$lookup`, `$graphLookup`, and `$unionWith` join documents from another collection.
-`jsongin` operates on one array of documents at a time and has no notion of a second one, so
-  these are out of scope here rather than merely unimplemented.
+The stages which are not supported read or write a database collection or index.
+`jsongin` works on an array of documents, so it has nothing for them to use.
 
-***Note on names which are also something else*** :
-`$count` and `$unset` are each both a stage and something else.
-The `$count` ***accumulator*** and the `$count` ***stage*** are both supported, and they take
-  different arguments: the accumulator takes `{}` and counts within a `$group`, while the stage
-  takes a field name and replaces the whole stream with one document.
-The `$unset` ***update operator*** is supported and the `$unset` ***stage*** is not.
-`$set` is both a stage and an update operator, and both are supported.
+`$count`, `$set` and `$unset` are both stages and other kinds of operator. All of those forms are
+  supported. See [Operators Which Share a Name](#operators-which-share-a-name).
 
 
 ## Accumulators
 
-Accumulators combine the values of many documents into a single value.
-They are not expression operators and cannot be used with `Evaluate` or `$expr`.
-They belong to the `$group` stage of an aggregation pipeline.
-
-Several of them share a name with an operator of another kind.
-See the *Operators Which Share a Name* section below.
+Accumulators combine a group of documents into one value.
+They are used in `$group`, `$bucket` and `$bucketAuto`, and not in `Evaluate()` or `$expr`.
 
 | **Category**  | **Supported** | **Operator**   | **Description**                                                            |
 |---------------|:-------------:|----------------|------------------------------------------------------------------------------|
@@ -458,120 +378,89 @@ See the *Operators Which Share a Name* section below.
 | Accumulator   |      Yes      | [$top](./jsongin/Accumulator-Operators.md#$top)           | Returns the first value in a given ordering.                               |
 | Accumulator   |      Yes      | [$topN](./jsongin/Accumulator-Operators.md#$topN)          | Returns the first N values in a given ordering.                            |
 
-***Note on `$median` and `$percentile`*** :
-These two were introduced in ***MongoDB 7.0*** and the parity baseline is a 6.0.1 server, which
-  refuses them. They are the only unimplemented accumulators, and they are unimplemented for
-  that reason rather than because they are hard: there is nothing to measure an implementation
-  against. Building them means bringing up a 7.0 baseline first and re-running the whole parity
-  suite there. See `test/Parity Tests/Aggregate Tests/test-suite/Accumulator Operator Tests.js`,
-  which records the refusal.
-
-***Note on non-numeric values*** :
-`$sum` and `$avg` ignore the values which are not numbers, while the expression operators throw
-  on them. This difference is deliberate and both behaviors are what MongoDB does.
-An expression is authored against a single document, where a type error is an authoring mistake
-  worth surfacing. An accumulator runs across a whole group, where one malformed document should
-  not abort the report.
+- `$median` and `$percentile` were added in MongoDB 7.0 and are not supported.
+- `$min` and `$max` compare values of any type, in MongoDB's type order.
+- `$sum` and `$avg` skip values which are not numbers. The expression operators, such as `$add`,
+  throw instead. MongoDB behaves the same way.
 
 
 ## Operators Which Share a Name
 
-A number of operator names appear in more than one place, where they mean different things.
-This is true of MongoDB itself and is not something `jsongin` invented.
+Some names are used by more than one kind of operator, with different meanings, as in MongoDB.
+***Where you write the operator decides which one it is***:
 
-***The position of an operator determines which one it is.***
-An operator written inside a query document is a query operator.
-The same name written inside `Evaluate`, or inside a `$expr`, is an expression operator.
-Written inside an update document, it is an update operator.
+- In a query criteria, it is a query operator.
+- In `Evaluate()`, `$expr`, or a computed field, it is an expression operator.
+- In an update document, it is an update operator.
+- As the value of an output field in `$group`, it is an accumulator.
+- As a pipeline step, it is a stage.
 
-There is also a difference in shape which makes them easy to tell apart at a glance:
-- A ***query*** operator names a document field and gives a value to compare it against.
-- An ***expression*** operator takes an array of operands, each of which is itself an expression.
+The shapes also differ. A query operator tests a field against a value. An expression operator
+  takes a list of operands.
 
 | **Operator**                          | **As a Query Operator**                                                | **As an Expression Operator**                                              |
 |---------------------------------------|------------------------------------------------------------------------|-----------------------------------------------------------------------------|
-| `$eq` `$ne` `$gt` `$gte` `$lt` `$lte` | `{ hp: { $gt: 5 } }` compares one field to a constant.                 | `{ $gt: [ '$dmg', '$armor' ] }` compares two computed values.              |
-| `$and` `$or`                          | `{ $and: [ { a: 1 }, { b: 2 } ] }` joins query clauses together.       | `{ $and: [ { $gt: [ '$hp', 0 ] }, '$alive' ] }` combines boolean values.   |
-| `$not`                                | `{ hp: { $not: { $gt: 5 } } }` inverts a query expression on a field.  | `{ $not: '$alive' }` inverts a boolean value.                              |
-| `$mod`                                | `{ n: { $mod: [ 4, 0 ] } }` matches when `n % 4` equals `0`.                      | `{ $mod: [ '$n', 4 ] }` returns the remainder itself.               |
+| `$eq` `$ne` `$gt` `$gte` `$lt` `$lte` | `{ hp: { $gt: 5 } }` compares a field with a value.                    | `{ $gt: [ '$dmg', '$armor' ] }` compares two computed values.              |
+| `$and` `$or`                          | `{ $and: [ { a: 1 }, { b: 2 } ] }` combines query conditions.          | `{ $and: [ { $gt: [ '$hp', 0 ] }, '$alive' ] }` combines true and false values. |
+| `$not`                                | `{ hp: { $not: { $gt: 5 } } }` negates a condition on a field.         | `{ $not: '$alive' }` negates a value.                                      |
+| `$mod`                                | `{ n: { $mod: [ 4, 0 ] } }` matches when `n % 4` equals `0`.           | `{ $mod: [ '$n', 4 ] }` returns the remainder.                             |
 | `$size`                               | `{ tags: { $size: 3 } }` matches arrays of that length.               | `{ $size: '$tags' }` returns the length.                                   |
 | `$type`                               | `{ n: { $type: 'number' } }` matches fields of that type.             | `{ $type: '$n' }` returns the type name.                                  |
-| `$in`                                 | `{ role: { $in: [ 'admin', 'super' ] } }` matches any listed value.   | `{ $in: [ '$role', '$allowed' ] }` returns a boolean. Note that the array is the ***second*** operand here and the value is the first, which is the reverse of the query form. |
-| `$rand`                               | Not a query operator; reach it through `$expr`.                       | `{ $rand: {} }` returns a random float from 0 up to 1.                     |
+| `$in`                                 | `{ role: { $in: [ 'admin', 'super' ] } }` matches any listed value.   | `{ $in: [ '$role', '$allowed' ] }` returns `true` or `false`. The value comes first and the array second. |
+| `$rand`                               | Not usable as a query condition; use it inside `$expr`.               | `{ $rand: {} }` returns a random number from 0 up to 1.                    |
 
 | **Operator**       | **As a Projection Operator**                                          | **As an Expression Operator**                                            |
 |--------------------|------------------------------------------------------------------------|---------------------------------------------------------------------------|
-| `$slice`           | `{ tags: { $slice: 2 } }` keeps the first two elements of a field, in a [`Project()`](./jsongin/Project.md) projection. | `{ $slice: [ '$tags', 2 ] }` returns those two elements as a value. |
+| `$slice`           | `{ tags: { $slice: 2 } }` keeps the first two elements, in a [`Project()`](./jsongin/Project.md) projection. | `{ $slice: [ '$tags', 2 ] }` returns the first two elements. |
 
-***Inside a `$project` stage there are no projection operators at all***, which is what decides
-  `$slice` there: the name is always the expression operator, and `{ $project: { t: { $slice: 2 } } }`
-  is refused for having only one operand. The projection form belongs to a projection handed to
-  `Project()` or to a find.
+Inside a `$project` ***stage***, `$slice` is always the expression operator.
+`{ $project: { t: { $slice: 2 } } }` throws, because the expression form needs two operands.
 
 | **Operator**       | **As an Accumulator**                                                 | **As an Expression Operator**                                            |
 |--------------------|------------------------------------------------------------------------|---------------------------------------------------------------------------|
-| `$first` `$last`   | `{ $group: { _id: '$k', f: { $first: '$v' } } }` takes the value from the first document of a group. | `{ $first: '$tags' }` takes the first element of an array. |
-| `$min` `$max`      | `{ $group: { _id: '$k', m: { $min: '$v' } } }` takes the smallest value in a group. | `{ $min: [ '$a', '$b' ] }` selects the smaller of two values. |
-| `$mergeObjects`    | `{ $group: { _id: '$k', d: { $mergeObjects: '$v' } } }` merges every document reaching the group. | `{ $mergeObjects: [ '$a', '$b' ] }` merges the documents given to it, within one document. |
-| `$firstN` `$lastN` | `{ $group: { _id: '$k', f: { $firstN: { input: '$v', n: 2 } } } }` takes values from one end of a group, and takes an argument document. | `{ $firstN: { input: '$tags', n: 2 } }` takes elements from one end of an array. |
+| `$first` `$last`   | `{ $group: { _id: '$k', f: { $first: '$v' } } }` takes the value from the first document in a group. | `{ $first: '$tags' }` takes the first element of an array. |
+| `$min` `$max`      | `{ $group: { _id: '$k', m: { $min: '$v' } } }` takes the smallest value in a group. | `{ $min: [ '$a', '$b' ] }` takes the smaller of two values. |
+| `$mergeObjects`    | `{ $group: { _id: '$k', d: { $mergeObjects: '$v' } } }` merges the objects from every document in a group. | `{ $mergeObjects: [ '$a', '$b' ] }` merges the objects given to it. |
+| `$firstN` `$lastN` | `{ $group: { _id: '$k', f: { $firstN: { input: '$v', n: 2 } } } }` takes values from one end of a group. | `{ $firstN: { input: '$tags', n: 2 } }` takes elements from one end of an array. |
 | `$minN` `$maxN`    | `{ $group: { _id: '$k', m: { $minN: { input: '$v', n: 2 } } } }` takes the smallest values in a group. | `{ $minN: { input: '$tags', n: 2 } }` takes the smallest elements of an array. |
 
 | **Operator**   | **As an Update Operator**                                              | **As an Expression Operator**                                          |
 |----------------|------------------------------------------------------------------------|-------------------------------------------------------------------------|
-| `$min` `$max`  | `{ $min: { hp: 0 } }` lowers `hp` to `0`, but only if it is currently greater. | `{ $min: [ '$hp', 0 ] }` selects the smaller of the two values.  |
-| `$set`         | `{ $set: { hp: 5 } }` sets a document field, by dotted path.          | `{ $setField: { field: 'hp', input: '$s', value: 5 } }` answers a copy with the field set, and names the field rather than a path. |
-| `$unset`       | `{ $unset: { hp: 0 } }` removes a document field, by dotted path.     | `{ $unsetField: { field: 'hp', input: '$s' } }` answers a copy without it, and names the field rather than a path. |
-
-***`$unset` carries three meanings***: an update operator, a
-  ***pipeline stage*** which removes fields from every document in a stream, and — under the
-  name `$unsetField` — an expression operator. The update operator and the stage both take a
-  dotted ***path***; only `$unsetField` takes a field ***name***.
+| `$min` `$max`  | `{ $min: { hp: 0 } }` sets `hp` to `0`, but only if it is currently larger. | `{ $min: [ '$hp', 0 ] }` returns the smaller of the two values.  |
+| `$set`         | `{ $set: { hp: 5 } }` sets a field, named by a dot notation path.     | `{ $setField: { field: 'hp', input: '$s', value: 5 } }` returns a copy with the field set. The name is a field name, not a path. |
+| `$unset`       | `{ $unset: { hp: 0 } }` removes a field, named by a dot notation path. | `{ $unsetField: { field: 'hp', input: '$s' } }` returns a copy without the field. The name is a field name, not a path. |
 
 | **Operator**   | **As a Pipeline Stage**                                                | **Elsewhere**                                                          |
 |----------------|------------------------------------------------------------------------|-------------------------------------------------------------------------|
-| `$set`         | `{ $set: { total: { $add: [ '$a', '$b' ] } } }` adds computed fields to every document, and is an alias of `$addFields`. | Also an update operator, which sets a field of one document being updated. |
-| `$unset`       | `{ $unset: [ 'a', 'b' ] }` removes fields from every document.        | Also an update operator. The expression counterpart is `$unsetField`, which names a field rather than a path. |
-| `$count`       | `{ $count: 'total' }` replaces the stream with one document holding the count. | Also an accumulator, `{ n: { $count: {} } }`, which counts one group. |
-| `$push`        | `{ $push: { tags: 'new' } }` appends to an array field.               | `$push` is an accumulator, not an expression operator.                 |
-| `$addToSet`    | `{ $addToSet: { tags: 'new' } }` appends only if not already present. | `$addToSet` is an accumulator, not an expression operator. Both compare by content rather than by reference. |
-
-An ***accumulator*** is written inside a `$group` stage, as the single field of the object which
-  defines an output field. That position is what makes it an accumulator.
+| `$set`         | `{ $set: { total: { $add: [ '$a', '$b' ] } } }` adds computed fields to every document. The same as `$addFields`. | Also an update operator, which sets a field in one document. |
+| `$unset`       | `{ $unset: [ 'a', 'b' ] }` removes fields from every document.        | Also an update operator. The expression `$unsetField` names a field rather than a path. |
+| `$count`       | `{ $count: 'total' }` replaces the documents with one document holding the count. | Also an accumulator, `{ n: { $count: {} } }`, which counts a group. |
+| `$push`        | `{ $push: { tags: 'new' } }` adds to an array field.                  | `$push` is an accumulator, not an expression operator.                 |
+| `$addToSet`    | `{ $addToSet: { tags: 'new' } }` adds to an array field if the value is not already there. | `$addToSet` is an accumulator, not an expression operator. |
 
 | **Operator**     | **As an Accumulator**                                                       | **Elsewhere**                                                            |
 |------------------|-------------------------------------------------------------------------------|-----------------------------------------------------------------------------|
-| `$sum`           | `{ total: { $sum: '$points' } }` totals a field across a group.             | The expression counterpart is `$add`, which throws on a non-numeric operand rather than ignoring it. |
-| `$min` `$max`    | `{ top: { $max: '$points' } }` selects across a group.                      | Also an expression operator and an update operator.                      |
-| `$push`          | `{ names: { $push: '$name' } }` collects a value from every document in a group. | Also an update operator, which appends to an array field within one document. |
+| `$sum`           | `{ total: { $sum: '$points' } }` totals a field across a group.             | There is no `$sum` expression. `$add` adds values, and throws on a non-number. |
+| `$min` `$max`    | `{ top: { $max: '$points' } }` finds the largest across a group.            | Also an expression operator and an update operator.                      |
+| `$push`          | `{ names: { $push: '$name' } }` collects a value from every document in a group. | Also an update operator, which adds to an array field in one document. |
 | `$first` `$last` | `{ opener: { $first: '$name' } }` takes the value from one end of a group.  | Also expression operators, which take an element from one end of an array. |
-| `$firstN` `$lastN` | `{ openers: { $firstN: { input: '$name', n: 2 } } }` takes values from one end of a group. | Also expression operators, over an array. Both forms take an argument document. |
-| `$minN` `$maxN`  | `{ low: { $minN: { input: '$points', n: 2 } } }` takes the extremes of a group. | Also expression operators, over an array.                                |
-| `$mergeObjects`  | `{ all: { $mergeObjects: '$doc' } }` merges every document in a group.      | Also an expression operator, which merges the documents given to it within one document. |
-| `$count`         | `{ n: { $count: {} } }` counts the documents in a group.                    | Also a pipeline stage, `{ $count: 'total' }`, which replaces the stream with one document. |
-| `$top` `$bottom` | `{ best: { $top: { sortBy: { points: -1 }, output: '$name' } } }` takes a document by a sort of its own. | No counterpart of either name elsewhere. These are the only accumulators which sort. |
+| `$firstN` `$lastN` | `{ openers: { $firstN: { input: '$name', n: 2 } } }` takes values from one end of a group. | Also expression operators, on an array. |
+| `$minN` `$maxN`  | `{ low: { $minN: { input: '$points', n: 2 } } }` takes the smallest values in a group. | Also expression operators, on an array.                                |
+| `$mergeObjects`  | `{ all: { $mergeObjects: '$doc' } }` merges the objects from every document in a group. | Also an expression operator, which merges the objects given to it. |
+| `$count`         | `{ n: { $count: {} } }` counts the documents in a group.                    | Also a pipeline stage, `{ $count: 'total' }`.                            |
+| `$top` `$bottom` | `{ best: { $top: { sortBy: { points: -1 }, output: '$name' } } }` picks a document by sorting. | No other kind of operator has these names.                     |
 
-`$min` and `$max` are the most easily confused, because the same two names carry three
-  different meanings: an update operator, an expression operator, and an accumulator.
-`jsongin` supports all three.
+Related operators with different names:
 
-`$set` carries two meanings, an update operator and a pipeline stage, and both are supported.
-The stage is an alias of `$addFields` and adds computed fields to every document in a pipeline.
-The update operator sets a field within a single document.
-
-Some operators have no name collision, but do have a counterpart which is easy to look for
-  under the wrong name:
-- `$regex` is a query operator. Its expression counterparts are `$regexMatch`, `$regexFind`,
-  and `$regexFindAll`, none of which are supported.
+- `$regex` is a query operator. The expression operators `$regexMatch`, `$regexFind` and
+  `$regexFindAll` do similar things in an expression.
 - `$elemMatch` is both a query operator and a projection operator.
-- `$expr` and `$exprx` are query operators. They are the bridge between the two worlds: they
-  are what allow an expression to be used inside a query in the first place.
+- `$expr` and `$exprx` are query operators which let you use an expression in a query.
 
 
 ## Projection Operators
 
-Projection operators allow you to "project" the content of one document into another.
-You can use `jsongin.Project( Document, Projection )` to perform this function.
-
+Projection operators are used in a [`Project()`](./jsongin/Project.md) projection.
 
 | Category | Supported | Operator   | Description                                                                             |
 |----------|:---------:|------------|-----------------------------------------------------------------------------------------|
@@ -580,65 +469,33 @@ You can use `jsongin.Project( Document, Projection )` to perform this function.
 | Field    | -         | $meta      | Projects the available per-document metadata.                                           |
 | Field    |    Yes    | [$slice](./jsongin/Projection-Operators.md#$slice)     | Limits the number of elements projected from an array. Supports skip and limit slices.  |
 
-***A projection operator is not an expression operator***, even where the two share a name.
-`$slice` and `$elemMatch` both exist in other languages meaning something else: there is an
-  expression `$slice`, which is not supported, and a query `$elemMatch`, which is.
-A projection operator is recognized by its position — a projection value which is a document
-  holding exactly one `$` key — so the two never have to be told apart by name alone.
-
-***Note on `$slice`*** :
-`$slice` does ***not*** make a projection an inclusion, which is what lets it sit beside
-  exclusions:
+- `$slice` does not make a projection an inclusion, so it can be used beside exclusions.
+- `$elemMatch` keeps only the first matching element. On its own it is an inclusion, but it can
+  also be used beside exclusions. If nothing matches, the field is left out.
+- `$` and `$meta` throw.
 
 ```js
 jsongin.Project( { n: 5, t: [ 1, 2, 3, 4 ] }, { t: { $slice: 2 } } );
 // { n: 5, t: [ 1, 2 ] }        the whole document, with t sliced
 
 jsongin.Project( { n: 5, t: [ 1, 2, 3, 4 ] }, { n: 1, t: { $slice: 2 } } );
-// { n: 5, t: [ 1, 2 ] }        an inclusion, and t is one of the fields included
+// { n: 5, t: [ 1, 2 ] }        only n and t
 
-jsongin.Project( { t: [ 1, 2, 3, 4 ] }, { t: { $slice: -1 } } );      // { t: [ 4 ] }
-jsongin.Project( { t: [ 1, 2, 3, 4 ] }, { t: { $slice: [ 1, 2 ] } } ); // { t: [ 2, 3 ] }
-```
-
-A field which is not an array is left exactly as it is.
-
-***Note on the projection `$elemMatch`*** :
-It takes the ***first*** matching element only and keeps the array around it.
-Like `$slice`, it only decides the type of projection when nothing else has: on its own it is an
-  inclusion, but beside an exclusion the exclusion wins and the `$elemMatch` is applied within
-  it.
-
-```js
 let document = { n: 5, s: 'x', a: [ { x: 1 }, { x: 2 } ] };
 
 jsongin.Project( document, { a: { $elemMatch: { x: 2 } } } );
-// { a: [ { x: 2 } ] }              on its own, an inclusion
-
-jsongin.Project( document, { n: 1, a: { $elemMatch: { x: 2 } } } );
-// { n: 5, a: [ { x: 2 } ] }        an inclusion, and a is one of the fields included
+// { a: [ { x: 2 } ] }              only a
 
 jsongin.Project( document, { n: 0, a: { $elemMatch: { x: 2 } } } );
-// { s: 'x', a: [ { x: 2 } ] }      an exclusion, with a matched
+// { s: 'x', a: [ { x: 2 } ] }      everything but n, with a matched
 ```
 
-The difference from `$slice` is only what each does on its own: `$elemMatch` alone is an
-  inclusion, while `$slice` alone returns the whole document with the slice applied.
-`$elemMatch` may sit beside an exclusion, which is what MongoDB accepts.
-
-When nothing matches, or the field is not an array, the field is omitted rather than coming back
-  as an empty array — and dropped from an exclusion projection for the same reason.
-
-***The two unsupported projection operators are refused by name.***
-`$` and `$meta` raise an error which says they are projection operators, so the message points
-  at the table above rather than at the expression operators.
+See [Projection Operators](./jsongin/Projection-Operators.md).
 
 
 ## Update Operators
 
-Update operators modify the contents of a document.
-Use the `jsongin.Update( Document, Updates )` function to apply updates to a document.
-
+Update operators change a document. They are used by [`Update()`](./jsongin/Update.md).
 
 | Category | Supported | Operator         | Description                                                                                                                                   |
 |----------|:---------:|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
@@ -661,55 +518,32 @@ Use the `jsongin.Update( Document, Updates )` function to apply updates to a doc
 | Array    |     -     | $[<identifier> ] | Acts as a placeholder to update all elements that match the arrayFilters condition for the documents that match the query condition.          |
 | Bitwise  |    Yes    | [$bit](./jsongin/Update-Operators.md#$bit)             | Performs bitwise AND, OR, and XOR updates of integer values. The field must already hold an integer, or not be there at all.                  |
 
+`$setOnInsert`, `$` and `$[<identifier>]` need a database query or insert, which `Update()` does
+  not have: it is given a document, not a collection and a query.
 
-***Note on `$min` and `$max`*** :
-Neither is a numeric operator.
-Values are compared by the ***BSON ordering***, the same order
-  [`CompareValues`](./jsongin/CompareValues.md) and [`Sort`](./jsongin/Sort.md) use, so strings,
-  dates, booleans, and comparisons between different types are all meaningful.
+***`$min` and `$max`*** compare values of any type, in MongoDB's type order.
+A missing field is set to the value. A field holding `null` is compared like any other value.
 
 ```js
 jsongin.Update( { s: 'xyz' }, { $min: { s: 'abc' } } );  // { s: 'abc' }
-jsongin.Update( { n: 5 }, { $max: { n: 'abc' } } );      // { n: 'abc' }  a string outranks a number
-jsongin.Update( { n: 5 }, { $min: { n: null } } );       // { n: null }   null outranks nothing
+jsongin.Update( { n: 5 }, { $max: { n: 'abc' } } );      // { n: 'abc' }  a string is larger than a number
+jsongin.Update( { n: 5 }, { $min: { n: null } } );       // { n: null }   null is smaller than a number
+jsongin.Update( {}, { $min: { n: 5 } } );                // { n: 5 }
 ```
 
-A field which is ***not present*** is set to the given value, since there is nothing to compare
-  against:
-
-```js
-jsongin.Update( {}, { $min: { n: 5 } } );  // { n: 5 }
-```
-
-A field holding `null` is compared rather than treated as missing.
-Both behaviors match MongoDB.
-
-
-***Note on `$inc` and `$mul`*** :
-A field which is ***not present*** counts as a zero, and the path to it is created.
-One rule covers both operators: `$inc` stores the operand and `$mul` stores `0`.
+***`$inc` and `$mul`*** only work with numbers.
+A missing field is created: `$inc` sets it to the amount, and `$mul` sets it to `0`.
+A field or amount which is not a number throws, even a numeric string like `'5'`.
 
 ```js
 jsongin.Update( {}, { $inc: { n: 5 } } );        // { n: 5 }
 jsongin.Update( {}, { $mul: { n: 5 } } );        // { n: 0 }
 jsongin.Update( {}, { $inc: { 'x.y': 5 } } );    // { x: { y: 5 } }
-```
 
-Both operators are ***strictly numeric***, on the stored value as well as on the operand.
-A field holding a string, a boolean, a date, or a `null` is refused rather than coerced,
-  and so is a non numeric operand — including a numeric string, which
-  [`AsNumber`](./jsongin/AsNumber.md) would convert but MongoDB rejects:
-
-```js
-jsongin.Update( { n: 'abc' }, { $inc: { n: 1 } } );   // throws, the stored value is not numeric
+jsongin.Update( { n: 'abc' }, { $inc: { n: 1 } } );   // throws
 jsongin.Update( { n: true }, { $inc: { n: 1 } } );    // throws
-jsongin.Update( { n: 1 }, { $inc: { n: '5' } } );     // throws, a numeric string is not a number
+jsongin.Update( { n: 1 }, { $inc: { n: '5' } } );     // throws
 ```
 
-A refused update leaves the ***whole document*** untouched.
-Every field is checked before any field is written, so an update naming several fields never
-  applies some of them and refuses the rest.
-
-The refusal is raised as an error, as MongoDB raises one.
-The operator writes the reason to the [OpLog](./OpLog.md) and `Update()` raises it.
-
+When `Update()` throws, the document is not changed at all. The reason is also sent to the
+  [OpLog](./OpLog.md).

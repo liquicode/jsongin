@@ -8,23 +8,25 @@
 
 | **Parameter** | **Allowed Types** | **Description**                          |
 |---------------|:-----------------:|------------------------------------------|
-| Documents     |        a          | The array of documents to filter.        |
-| QueryCriteria |        o          | The query criteria used to perform the filter. |
+| Documents     |        a          | The documents to filter.                 |
+| QueryCriteria |        o          | The query each document must match.      |
 
 
 ## Description
 
-Applies a filter to an array of documents and returns an array of the filtered results.
+Returns a new array holding the documents which match `QueryCriteria`.
 
-Each document is tested with [`Query()`](./Query.md), so anything you can write as a query you
-  can write as a filter.
+Each document is tested with [`Query()`](./Query.md), so any query works as a filter.
+An element of `Documents` which is not an object never matches.
 
-`Filter` returns a ***new array*** holding the ***original documents***, not copies of them.
-Neither the given array nor the documents within it are modified, but modifying a document in
-  the result also modifies the one in the source array.
+The result holds the ***original documents***, not copies.
+`Filter` does not change `Documents` or anything in it, but if you change a document in the
+  result, you are changing the one in `Documents` too.
 
-An empty criteria `{}` matches every document.
-`Filter` throws when `Documents` is not an array.
+An empty criteria, `{}`, matches every document.
+
+`Filter` throws when `Documents` is not an array, when `QueryCriteria` is not an object, or when
+  the query is malformed.
 
 
 ## See Also
@@ -32,8 +34,8 @@ An empty criteria `{}` matches every document.
 - [`Query( Document, Criteria )`](./Query.md)
 - [`Sort( Documents, SortCriteria )`](./Sort.md)
 - [`Distinct( Documents, DistinctCriteria )`](./Distinct.md)
-- [`Aggregate( Documents, Pipeline )`](./Aggregate.md) and its `$match` stage, which does the
-  same thing as part of a pipeline.
+- [`Aggregate( Documents, Pipeline )`](./Aggregate.md) and its `$match` stage, which filters inside
+  a pipeline.
 
 
 ## Examples
@@ -64,7 +66,7 @@ let result = jsongin.Filter( documents, { qty: { $gt: 10 } } );
 ```
 
 
-### It matches array fields by their elements
+### It matches an array field by its elements
 ```js
 let result = jsongin.Filter( documents, { tags: 'x' } );
 // => documents 1 and 2
@@ -73,7 +75,7 @@ let result = jsongin.Filter( documents, { tags: 'x' } );
 
 ### It filters with an expression
 ```js
-// Compare one field to another, or to a computed value.
+// Compare a field to another field, or to a computed value.
 let result = jsongin.Filter( documents, { $expr: { $gt: [ '$qty', 10 ] } } );
 // => documents 2 and 3
 ```
@@ -85,7 +87,7 @@ jsongin.Filter( documents, {} ).length === 3
 ```
 
 
-### No matches returns an empty array
+### No matches gives an empty array
 ```js
 // jsongin.Filter( documents, { type: 'Z' } ) returns []
 ```

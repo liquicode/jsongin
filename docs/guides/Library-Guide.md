@@ -5,216 +5,216 @@
 
 `jsongin` is a library of functions for working with Javascript objects.
 
-The module's default export is a ready-to-use engine instance.
-To create an instance with custom settings, use the `NewJsongin( Settings )` factory method.
+The module exports a ready-to-use engine.
+To make an engine with your own settings, call `NewJsongin( Settings )`.
 See [NodeJS Usage](./Usage-NodeJS.md) for both forms.
 
 
 MongoDB Mechanics
 ---------------------------------------------------------------------
 
-`jsongin` implements functions that mirror MongoDB query and update functionality.
+These functions work the way MongoDB's queries, updates, projections and aggregations work.
 
 - [Query( Document, Criteria )](./jsongin/Query.md)
-  : Returns `true` if the `Document` satisfies `Criteria`.
-
-- [Evaluate( Document, Expression )](./jsongin/Evaluate.md)
-  : Evaluates an aggregation `Expression` against a `Document` and returns the resulting value.
-  Use the `$expr` query operator to match documents with an expression.
-
-- [Aggregate( Documents, Pipeline )](./jsongin/Aggregate.md)
-  : Runs an array of documents through an aggregation `Pipeline` and returns the resulting
-  array of documents.
-  Neither the given array nor the documents within it are modified.
-
-- [Filter( Documents, Criteria )](./jsongin/Filter.md)
-  : Returns an array of filtered documents.
-
-- [Distinct( Documents, Criteria )](./jsongin/Distinct.md)
-  : Returns an array of unique document values.
-
-- [Sort( Documents, Criteria )](./jsongin/Sort.md)
-  : Sorts (in place) an array of documents.
-
-- [Project( Document, Projection )](./jsongin/Project.md)
-  : Returns a document containing fields found in the given `Document`.
-  The `Projection` parameter identifies which fields to include/exclude in the output.
-
-- [Update( Document, Updates )](./jsongin/Update.md)
-  : Returns a copy of `Document` containing the changes specified in `Updates`.
-
-- [IsQuery( Query )](./jsongin/IsQuery.md)
-  : Returns `true` when a value looks like a query document.
+  : Returns `true` if `Document` matches `Criteria`.
 
 - [ValidateQuery( Criteria )](./jsongin/ValidateQuery.md)
-  : Throws what `Query` would throw for a malformed criteria, without a document and without stopping early.
+  : Throws if `Criteria` is malformed, the same way `Query` would, without needing a document.
 
-> See the [Operator Reference](./Operator-Reference.md) document for more information on which
-  operators `jsongin` supports and how to use them.
+- [IsQuery( Value )](./jsongin/IsQuery.md)
+  : Returns `true` if `Value` is an object with at least one key starting with `$`.
+
+- [Evaluate( Document, Expression, Scope )](./jsongin/Evaluate.md)
+  : Evaluates an aggregation `Expression` against `Document` and returns the result.
+  `Scope` is optional.
+  To match documents with an expression, use the `$expr` query operator.
+
+- [Aggregate( Documents, Pipeline, Scope )](./jsongin/Aggregate.md)
+  : Runs an array of documents through an aggregation `Pipeline` and returns a new array.
+  `Scope` is optional.
+  Neither the array nor the documents in it are modified.
+
+- [Filter( Documents, QueryCriteria )](./jsongin/Filter.md)
+  : Returns a new array holding the documents which match `QueryCriteria`.
+  The documents are not copied.
+
+- [Distinct( Documents, DistinctCriteria )](./jsongin/Distinct.md)
+  : Returns one document for each distinct combination of the fields named in `DistinctCriteria`.
+
+- [Sort( Documents, SortCriteria )](./jsongin/Sort.md)
+  : Sorts an array of documents in place, by fields given as `{ field: 1 }` or `{ field: -1 }`.
+
+- [Project( Document, Projection )](./jsongin/Project.md)
+  : Returns a new document holding the fields `Projection` selects or computes.
+
+- [Update( Document, Updates )](./jsongin/Update.md)
+  : Returns a copy of `Document` with `Updates` applied.
+
+- [Scope](./jsongin/Scope.md)
+  : The object holding the `$$` variables an expression can read.
+  You only need one when writing an operator, or when you want to supply variables yourself.
+
+> See the [Operator Reference](./Operator-Reference.md) for the operators `jsongin` supports.
 >
-> See the [Operator Authoring](./Operator-Authoring.md) document to add operators of your own.
+> See [Operator Authoring](./Operator-Authoring.md) to add operators of your own.
 
 
 Snapshots
 ---------------------------------------------------------------------
 
-These functions describe the difference between two documents as an update document, which is
-the same shape `Update()` applies. They are the primitives behind undo/redo, save states, and
-replay.
+These functions describe the difference between two documents as an update document, which
+  `Update()` can apply.
+Use them for undo and redo, save states, and replay.
 
 - [Diff( Before, After )](./jsongin/Diff.md)
   : Returns an update document which turns `Before` into `After`.
-  Arrays are compared whole, and neither document is modified.
+  Arrays are compared as whole values. Neither document is modified.
 
 - [Invert( Before, Patch )](./jsongin/Invert.md)
-  : Returns the update document which undoes `Patch`.
-  Any update operator inverts, not only the ones `Diff` writes.
+  : Returns an update document which undoes `Patch`.
+  `Patch` can use any update operator, not only the ones `Diff` writes.
 
 
 JSON Schema
 ---------------------------------------------------------------------
 
-These functions read JSON Schema, in every draft from 4 to 2020-12 and in MongoDB's reading of
-it, and take the document first the way the query functions do. See the
-[JSON Schema](./JSON-Schema.md) guide.
+These functions read JSON Schema drafts 4 through 2020-12, and MongoDB's version of it.
+The document always comes first.
+See the [JSON Schema](./JSON-Schema.md) guide.
 
 - [ValidateDocument( Document, Schema, Options )](./jsongin/ValidateDocument.md)
-  : Returns the findings for a document against a schema: one per failed assertion, none when it satisfies the schema.
+  : Returns a list of findings, one for each rule the document breaks.
+  The list is empty when the document is valid.
 
 - [InferSchema( Documents, Options )](./jsongin/InferSchema.md)
-  : Returns a schema which describes the documents given.
+  : Returns a schema which describes the given documents.
 
 - [InitSchema( Document, Schema, Options )](./jsongin/InitSchema.md)
-  : Returns a copy of `Document` with its absent fields filled from the schema's defaults.
+  : Returns a copy of `Document` with missing fields filled in from the schema's defaults.
 
-- [ProjectSchema( Document, Schema )](./jsongin/ProjectSchema.md)
-  : Returns the subset of `Document` the schema's properties name.
+- [ProjectSchema( Document, Schema, Options )](./jsongin/ProjectSchema.md)
+  : Returns only the parts of `Document` which the schema's properties name.
 
 
 Document Mechanics
 ---------------------------------------------------------------------
 
-These functions allow you to manipulate Javascript objects and arrays.
-They all share the concept of a document path that is expressed in dot-notation.
+These functions read and change Javascript objects and arrays.
+They name a field with a path in dot notation, such as `'user.address.city'`.
 
-**Working with Document Paths**
+**Working with Paths**
 
 - [SplitPath( Path )](./jsongin/SplitPath.md)
-  : Returns an array of the path elements found in `Path`.
-  The `Path` parameter is a string path to a document field expressed in dot notation.
+  : Splits a dot notation path into an array of its parts.
 
-- [JoinPaths( PathSegment1, PathSegment2, ... )](./jsongin/JoinPaths.md)
-  : Returns a string from a series a paths joined together in dot notation.
+- [JoinPaths( Path1, Path2, ... )](./jsongin/JoinPaths.md)
+  : Joins paths together into one dot notation path.
 
-**Get and Set Document Values**
+**Reading and Writing Values**
 
 - [GetValue( Document, Path )](./jsongin/GetValue.md)
-  : Gets a value from a document at the specified `Path`.
+  : Returns the value at `Path`.
 
 - [ResolveCandidates( Document, Path )](./jsongin/ResolveCandidates.md)
-  : Gets the list of values which `Path` can mean, which is what the query operators match
-  against. Unlike `GetValue`, it tells a value gathered from the elements of an array apart from
-  a field which genuinely holds an array.
+  : Returns every value `Path` could refer to, which is what the query operators match against.
+  Unlike `GetValue`, it can tell a field holding an array apart from values collected from the
+  elements of an array.
 
 - [SetValue( Document, Path, Value )](./jsongin/SetValue.md)
-  : Sets a value in a document at the specified `Path`.
-  This function will create fields specified in `Path` if they don't already exist.
+  : Sets the value at `Path`, creating any missing fields along the way.
 
 - [DeleteValue( Document, Path )](./jsongin/DeleteValue.md)
-  : Removes the field at the specified `Path`.
-  The key is removed rather than being set to `undefined`, so that `Object.keys()` and the
-  document's contents agree with each other.
+  : Removes the field at `Path`.
+  The key is deleted, not set to `undefined`.
 
-**Document Conversions**
+**Converting Documents**
 
-- [Parse( JsonString, Options )](./jsongin/Parse.md)
-  : Similar to `JSON.parse()` but able to read Javascript as well as JSON.
+- [Parse( Text, Options )](./jsongin/Parse.md)
+  : Like `JSON.parse()`, but also reads Javascript object syntax.
 
 - [Format( Value, Options )](./jsongin/Format.md)
-  : Similar to `JSON.stringify()` but with additional format options.
+  : Like `JSON.stringify()`, with more formatting options.
 
 - [Flatten( Document )](./jsongin/Flatten.md)
-  : Flattens a hierarchical document into a document with top-level entries in dot notation.
+  : Turns a nested document into a flat one whose keys are dot notation paths.
 
 - [Expand( Document )](./jsongin/Expand.md)
-  : Expands fields found in dot notation into hierarchical elements within the document.
+  : The reverse of `Flatten`: turns dot notation keys back into nested fields.
 
 - [Hybridize( Document )](./jsongin/Hybridize.md)
-  : Hybridizes a hierarchical document into a document with top-level entries only and json-encoded sub-structures.
+  : Keeps the top-level fields which are numbers, strings, booleans or `null`, and turns every
+  other value (objects, arrays, dates and so on) into a JSON string.
 
 - [Unhybridize( Document )](./jsongin/Unhybridize.md)
-  : Unhybridize a document back into a hierarchical document.
+  : The reverse of `Hybridize`.
 
 **Combining Documents**
 
 - [Merge( DocumentA, DocumentB )](./jsongin/Merge.md)
-  : Merges `DocumentB` into `DocumentA` and returns the merged document.
-  Both parameters must be objects, and neither of them is modified.
-  The merge is member-wise and recursive: two sub-documents are merged into each other, while
-  any other value in `DocumentB` — including an array — replaces the one in `DocumentA`.
-  Use this to apply a partial override to a document of defaults.
+  : Returns a new document with `DocumentB`'s fields merged into `DocumentA`.
+  When both hold an object in the same field, the two objects are merged.
+  Any other value in `DocumentB`, including an array or `null`, replaces the value in `DocumentA`.
+  Neither document is modified, and a missing document counts as `{}`.
+  Use this to apply a partial set of options over a set of defaults.
 
-> See the [Document Manipulation](./Document-Manipulation.md) document for more information on how to use these functions.
+> See [Document Manipulation](./Document-Manipulation.md) for more on these functions.
 
 
-Object Equality and Cloning
+Equality and Cloning
 ---------------------------------------------------------------------
 
-- [StrictEquals( DocumentA, DocumentB )](./jsongin/StrictEquals.md)
-  : Performs a strict equality comparison between two values.
-  No type coercion is applied, and values must appear in the same order within objects and arrays.
-  This is [`CompareValues()`](./jsongin/CompareValues.md) asked whether its result is zero, so it
-  is not quite Javascript's `===`: two `Date` objects holding the same instant are equal, as are
-  two equal regular expressions, and `null` equals a missing value.
+- [StrictEquals( ValueA, ValueB )](./jsongin/StrictEquals.md)
+  : Returns `true` if [`CompareValues()`](./jsongin/CompareValues.md) returns `0`.
+  There is no type conversion, and keys and elements must be in the same order.
+  This differs from `===`: two dates for the same moment are equal, two identical regular
+  expressions are equal, and `null` equals `undefined`.
 
-- [LooseEquals( DocumentA, DocumentB )](./jsongin/LooseEquals.md)
-  : Performs a loose equality comparison between two values.
-  Primitives are compared with `==`, and values may appear in a different order within objects
-  and arrays.
+- [LooseEquals( ValueA, ValueB )](./jsongin/LooseEquals.md)
+  : Returns `true` if the values are loosely equal.
+  Numbers, strings and booleans are compared with `==`, and keys and elements may be in any order.
 
 - [CompareValues( ValueA, ValueB )](./jsongin/CompareValues.md)
-  : Compares two values and returns `-1`, `0`, or `1`.
-  Values of different types are ordered by MongoDB's comparison order:
+  : Returns `-1`, `0`, or `1`.
+  Values of different types are ordered the way MongoDB orders them:
   `null` < numbers < strings < objects < arrays < booleans < dates < regular expressions.
-  Null and missing values are equivalent.
-  This is the comparison used by the expression comparison operators and by `Sort()`.
+  `null` and `undefined` are equal.
+  `Sort()` and the expression comparison operators use this.
 
 - [Clone( Document )](./jsongin/Clone.md)
-  : Clones a document using `JSON.parse( JSON.stringify( Document ) )`.
-  Note that this converts dates to strings.
+  : Copies a document with `JSON.parse( JSON.stringify( Document ) )`.
+  Dates become strings.
 
 - [SafeClone( Document, Exceptions )](./jsongin/SafeClone.md)
-  : Performs a member-wise clone of `Document`, preserving dates.
-  Fields listed in `Exceptions` are copied by reference rather than by value.
+  : Copies a document field by field, keeping dates as dates.
+  Paths listed in `Exceptions` are shared with the original rather than copied.
 
 
 Data Types and Conversions
 ---------------------------------------------------------------------
 
 - [ShortType( Value )](./jsongin/ShortType.md)
-  : Returns the single-character `ShortType` of a value.
-  This is a shorter, yet more precise, type name string than Javascript's `typeof` operator.
+  : Returns a one-letter type code for a value.
+  It is shorter than `typeof`, and tells apart types which `typeof` does not, such as arrays, dates
+  and `null`.
 
 - [BsonType( Value, ReturnAlias )](./jsongin/BsonType.md)
-  : Returns the MongoDB BSON type of a value, as a number or as its string alias.
+  : Returns the MongoDB BSON type of a value, as a number or as its name.
 
 - [AsNumber( Value )](./jsongin/AsNumber.md)
-  : Converts a value to a number, or returns `null` when it is not numeric.
-  Only numbers and numeric strings convert.
+  : Returns the value as a number, or `null` if it is not a number or a numeric string.
 
 - [AsDate( Value )](./jsongin/AsDate.md)
-  : Converts a value to a `Date`, or returns `null` when it is not a date.
+  : Returns the value as a `Date`, or `null` if it cannot be read as one.
 
 - [AsBoolean( Value )](./jsongin/AsBoolean.md)
-  : Converts a value to a boolean, using MongoDB's expression evaluation rules.
-  Only `false`, `0`, `null`, and missing values are false.
-  Note that the empty string `""` and the empty array `[]` are both true.
+  : Returns the value as a boolean, using MongoDB's rules.
+  Only `false`, `0`, `null` and `undefined` are false, so `""` and `[]` are true.
 
 
 Text Functions
 ---------------------------------------------------------------------
 
-The `Text` module is reachable at `jsongin.Text`.
+These are found at `jsongin.Text`.
 
 - [Compare( TextA, TextB, CaseSensitive )](./Text/Compare.md)
 - [FindBetween( Text, StartText, EndText, ... )](./Text/FindBetween.md)
@@ -226,13 +226,13 @@ The `Text` module is reachable at `jsongin.Text`.
 Settings
 ---------------------------------------------------------------------
 
-Settings are given to the `NewJsongin( Settings )` factory method.
-The module's default export is an engine which was built with all of the defaults.
+Pass settings to `NewJsongin( Settings )`.
+The module's default export is an engine made with every setting at its default.
 
 | **Setting** | **Description**                                                                |
 |-------------|--------------------------------------------------------------------------------|
-| `OpLog`     | An optional function (such as `console.log`) which receives ***explanations***: an operation completed, but did not do what you may have expected. Defaults to `null`, which emits nothing. See the [OpLog](./OpLog.md) document. |
-| `OpError`   | An optional function (such as `console.error`) which receives ***errors***: an operation could not be performed and threw. The message is emitted in addition to the thrown error. Defaults to `null`, which emits nothing. See the [OpLog](./OpLog.md) document. |
+| `OpLog`     | A function, such as `console.log`, which receives ***explanations***: messages about an operation which finished but may not have done what you expected. Defaults to `null`, which sends nothing. See [OpLog](./OpLog.md). |
+| `OpError`   | A function, such as `console.error`, which receives ***errors***: the message of each error `jsongin` throws. The error is still thrown. Defaults to `null`, which sends nothing. See [OpLog](./OpLog.md). |
 
 
 MongoDB References

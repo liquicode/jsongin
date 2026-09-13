@@ -1,10 +1,9 @@
 # Playground
 
-Try `jsongin` in the browser, against any released version of the library.
+Try `jsongin` in your browser, with any released version of the library.
 
-Pick a version, pick a command, edit the boxes, and press **Run**. Every parameter the
-command takes gets its own labelled box, filled with a working example, so choosing a command
-reshapes the form to match its signature.
+Choose a version and a function, edit the boxes, and press **Run**.
+Each of the function's parameters gets its own box, filled in with a working example.
 
 <iframe
 	id="playground-frame"
@@ -18,44 +17,33 @@ reshapes the form to match its signature.
 	<a href="playground/index.html" target="_blank" rel="noopener noreferrer">Open the Playground in its own tab</a>
 </p>
 
-## What the boxes accept
+## The Boxes
 
-Each box says whether it is read as **JSON** or as **text**.
+Each box is marked as ***JSON*** or ***text***.
 
-A JSON box is read with `JSON.parse`, so a value JSON cannot express - a date, a regular
-expression - cannot be typed into one. A text box is handed to the library verbatim, which is
-what a path such as `user.name` wants, and what `Parse()` wants for its JSON source.
+- A JSON box is read with `JSON.parse`, so it cannot hold a date or a regular expression.
+- A text box is passed to the function exactly as typed. This is what a path such as
+  `user.name` needs, and what `Parse()` needs for its input.
 
-A box marked optional may be left empty, and is then not passed to the command at all - which
-is not the same as passing it an empty value.
+A box marked optional can be left empty. It is then not passed at all, which is different from
+  passing an empty value.
 
-A command which returns a flag and does its work by changing the document in place, such as
-`SetValue()` and `DeleteValue()`, also shows the document as it stands after the call.
+For functions which change the document in place, such as `SetValue()` and `DeleteValue()`, the
+  document is also shown after the call.
 
-A returned `false` or `null` is an answer rather than a failure, and is shown as a result.
-Only a thrown error is shown as an error.
+A result of `false` or `null` is shown as a result. Only a thrown error is shown as an error.
 
-## Why the command list changes
+## The Function List
 
-The list is built from what the selected version actually exports, so a version is never
-offered a command it does not have.
+The list shows only the functions the chosen version has, so older versions offer fewer.
 
-`Query()` is there for every version back to 0.0.1, which offers four commands in all.
-`Aggregate()`, `Evaluate()`, `Diff()`, `Invert()`, `DeleteValue()` and `CompareValues()`
-arrived with the current release, and picking an older version drops them from the list.
+Before version 0.0.19, the library exported a function which had to be called to get an engine.
+From 0.0.19 on, it exports the engine itself. The Playground handles both.
 
-The shape of the library's own export changed at 0.0.19: before it, the bundle exports a
-factory which has to be called to get an engine, and from it the export is the engine itself.
-The page handles both, which is what lets it reach all the way back.
+## The Versions
 
-## Where the versions come from
+The versions are loaded from [UNPKG](https://unpkg.com), as described in
+  [Browser Usage](/guides/Usage-Browser.md), so the Playground needs an internet connection.
 
-Every version in the list is fetched from [UNPKG](https://unpkg.com), the same way the
-[Browser Usage](/guides/Usage-Browser.md) guide describes, so the page needs a network
-connection. Only released versions are ever offered here.
-
-A working copy of the repository gets one more entry. Building the documentation packs the
-current source and leaves the bundle beside this page, and the page offers a **current build**
-entry when it finds that file. The bundle is not kept in source control and is not published,
-so the entry exists only where somebody built it - which is what lets an unreleased change be
-tried here without that build reaching anybody else.
+If you build the documentation from a copy of the source, the Playground also offers a
+  **current build** entry, which runs your own unreleased copy. It only appears on your machine.

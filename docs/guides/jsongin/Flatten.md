@@ -13,26 +13,64 @@
 
 ## Description
 
-Takes a document and returns a flattened copy of that document.
-The flattened document will not contain any nested objects or arrays.
-Instead, the flattened document will have only top-level fields whose field names are paths
-  to that field within the original document.
+Returns a flat copy of a document.
+Every value ends up in a top-level field whose name is the value's dot notation path, such as
+  `'user.name'` or `'tags.0'`.
 
-The `Document` parameter can be an object or an array.
+`Document` can be an object or an array.
+`Flatten` throws for anything else.
 
-Use the `jsongin.Expand( Document )` function to return a flattened document back to its
-  original state with nested objects and arrays.
+Use [`Expand()`](./Expand.md) to turn a flat document back into a nested one.
+
+A few values are kept whole rather than taken apart:
+
+- An ***empty object*** or ***empty array*** is kept at its own path, so that `Expand` can put it
+  back. It is a new empty object or array, not the original.
+- A ***date*** is kept as a value.
+
+
+## Round Trip Limitations
+
+A dot notation path does not record whether a container was an object or an array.
+Two kinds of document come back from `Expand( Flatten( ... ) )` in a different shape.
+
+***A document which is an array*** comes back as an object:
+
+```js
+let flattened = jsongin.Flatten( [ 1, 2, 'three' ] );
+// flattened is { '0': 1, '1': 2, '2': 'three' }
+
+let expanded = jsongin.Expand( flattened );
+// expanded is { '0': 1, '1': 2, '2': 'three' }, an object rather than an array
+```
+
+Arrays inside the document are not affected. They come back as arrays.
+
+***An object whose keys are whole numbers*** comes back as an array:
+
+```js
+let flattened = jsongin.Flatten( { a: { '0': 'x' } } );
+// flattened is { 'a.0': 'x' }
+
+let expanded = jsongin.Expand( flattened );
+// expanded is { a: [ 'x' ] }, an array rather than an object
+```
+
+`{ a: { '0': 'x' } }` and `{ a: [ 'x' ] }` flatten to the same thing, and `Expand` builds an array.
+
+To copy a document exactly, use [`SafeClone()`](./SafeClone.md) instead.
 
 
 ## See Also
 
 - [`Expand( Document )`](./Expand.md)
+- [`Hybridize( Document )`](./Hybridize.md)
 
 
 ## Examples
 
 
-### It flattens a hierarchical document
+### It flattens a nested document
 ```js
 let document = {
 	id: 1001,
@@ -49,14 +87,12 @@ let flattened = jsongin.Flatten( document );
 // 	id: 1001,
 // 	'user.name': 'Alice',
 // 	'user.location': 'East',
-// 	'profile.login': 'alice',
-// 	'profile.role': 'admin',
 // 	'tags.0': 'Staff',
 // 	'tags.1': 'Dept. A',
 // };
 ```
 
-### Use Expand() to turn a flattened document back into a hierarchical document
+### Expand() reverses it
 ```js
 let document = {
 	id: 1001,
@@ -73,13 +109,13 @@ let expanded = jsongin.Expand( flattened );
 // expanded matches document
 ```
 
-### It should flatten an empty document
+### It flattens an empty document
 ```js
 let flattened = jsongin.Flatten( {} );
 // flattened is {}
 ```
 
-### It should flatten an array
+### It flattens an array
 ```js
 let flattened = jsongin.Flatten( [ 1, 2, 'three' ] );
 // flattened is {
@@ -89,13 +125,13 @@ let flattened = jsongin.Flatten( [ 1, 2, 'three' ] );
 // }
 ```
 
-### It should flatten an empty array
+### It flattens an empty array
 ```js
 let flattened = jsongin.Flatten( [] );
 // flattened is {}
 ```
 
-### It preserves empty objects and arrays
+### It keeps empty objects and arrays
 ```js
 let flattened = jsongin.Flatten( { a: {}, b: [], c: { d: {} } } );
 // flattened is {
@@ -108,67 +144,15 @@ let expanded = jsongin.Expand( flattened );
 // expanded matches the original document, and expanded.b is a real array
 ```
 
-An empty container holds no leaf value to descend to.
-It is emitted as a value at its own path so that `Expand` can put it back, because otherwise
-  it would contribute nothing to the result and vanish from the round trip.
-The container emitted is a new one, so the flattened result never aliases the source document.
-
-
-## Round Trip Limitations
-
-`Flatten` always returns a flat ***object*** whose keys are dot notation paths.
-Two things cannot survive that representation, because the path strings do not record them.
-
-***A document which is itself an array*** comes back as an object:
-
-```js
-let flattened = jsongin.Flatten( [ 1, 2, 'three' ] );
-// flattened is { '0': 1, '1': 2, '2': 'three' }
-
-let expanded = jsongin.Expand( flattened );
-// expanded is { '0': 1, '1': 2, '2': 'three' }, an object rather than an array
-```
-
-This applies to `Flatten( [] )` as well, which is `{}`.
-`Expand` always builds an object at the top, and it requires one as its argument, so there is
-  no path element available to tell it otherwise.
-Nested arrays are unaffected: they round trip as arrays, because `SetValue` builds an array
-  when it meets a numeric path element.
-
-***An object whose keys are canonical integers*** comes back as an array:
-
-```js
-let flattened = jsongin.Flatten( { a: { '0': 'x' } } );
-// flattened is { 'a.0': 'x' }
-
-let expanded = jsongin.Expand( flattened );
-// expanded is { a: [ 'x' ] }, an array rather than an object
-```
-
-`Flatten( { a: { '0': 'x' } } )` and `Flatten( { a: [ 'x' ] } )` produce the identical result,
-  so no expansion can restore both.
-`Expand` resolves the ambiguity in favor of an array.
-
-Use `Clone` or `SafeClone` when you need a copy which preserves container types exactly.
-
-### It should not flatten a non-document
-```js
-let flattened = jsongin.Flatten( 3.14 ); // throws error: Document must be an object or array.
-```
-
-### It treats a date as a value rather than a document
+### It keeps a date as a value
 ```js
 let document = { user: { created: new Date( 1700000000000 ) } };
 
 let flattened = jsongin.Flatten( document );
-// flattened[ 'user.created' ] is the Date itself, not 'user.created.<something>'
 ( flattened[ 'user.created' ] instanceof Date ) === true
 ```
 
-A `Date` has the short type `d`, so `Flatten` emits it as a leaf value and does not descend
-  into it.
-This matters because a `Date` has no enumerable fields: descending into one would produce
-  nothing and the field would disappear from the flattened output.
-
-Dates survive the round trip back through [`Expand()`](./Expand.md).
-
+### It throws for anything but an object or array
+```js
+let flattened = jsongin.Flatten( 3.14 ); // throws: Document must be an object or array.
+```

@@ -8,38 +8,37 @@
 
 | **Parameter**   | **Allowed Types** | **Description**                          |
 |-----------------|:-----------------:|------------------------------------------|
-| `TextA`         |        s          | The first text to compare.               |
-| `TextB`         |        s          | The second text to compare.              |
-| `CaseSensitive` |        b          | Flag to force case sensitive operations. |
+| `TextA`         |        s          | The first string.                        |
+| `TextB`         |        s          | The second string.                       |
+| `CaseSensitive` |        b          | Optional. `false` ignores upper and lower case. Defaults to `true`. |
 
 
 ## Description
 
-Compares the two strings `TextA` and `TextB` using Javascript's `localeCompare()` function.
+Compares two strings with Javascript's `localeCompare()`, and returns a number:
 
-If `CaseSensitive` is set to `true`, then both strings are lower-cased prior to comparing.
+| **Value** | **Means**               |
+|:---------:|-------------------------|
+| -1        | `TextA` comes first     |
+| 0         | they are the same       |
+| 1         | `TextB` comes first     |
 
+When `CaseSensitive` is `false`, both strings are lowercased before comparing.
 
-## Returns
-
-| **Value** | **Description**   |
-|:---------:|-------------------|
-| -1        | `TextA` < `TextB` |
-| 0         | `TextA` = `TextB` |
-| 1         | `TextA` > `TextB` |
+Throws if `TextA` or `TextB` is not a string.
 
 
 ## Examples
 
 
-### It compares text (case sensitive)
+### Case sensitive
 ```js
 jsongin.Text.Compare( 'a', 'a', true ) === 0
 jsongin.Text.Compare( 'a', 'A', true ) === -1
 jsongin.Text.Compare( 'A', 'a', true ) === 1
 ```
 
-### It compares text (case insensitive)
+### Ignoring case
 ```js
 jsongin.Text.Compare( 'a', 'a', false ) === 0
 jsongin.Text.Compare( 'a', 'A', false ) === 0

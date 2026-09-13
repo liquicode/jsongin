@@ -3,11 +3,11 @@
 
 # Browser Usage
 
-`jsongin` has no dependencies, so browser use is a single script tag.
-The `dist/jsongin.min.js` file is a UMD bundle of the entire library.
+`jsongin` has no dependencies, so one script tag is enough.
+`dist/jsongin.min.js` holds the whole library.
 
 
-## Include jsongin using UNPKG
+## Load It from UNPKG
 
 ```html
 <script
@@ -16,7 +16,7 @@ The `dist/jsongin.min.js` file is a UMD bundle of the entire library.
 ></script>
 ```
 
-To pin a version rather than tracking the latest, name it in the URL:
+To use a fixed version instead of the latest, put the version in the URL:
 
 ```html
 <script
@@ -26,30 +26,27 @@ To pin a version rather than tracking the latest, name it in the URL:
 ```
 
 
-## Use jsongin in your Page
+## Use It in a Page
 
-Loading the script defines two globals.
-Both refer to the same library and you can use whichever you prefer.
+The script creates two globals which refer to the same engine. Use either one.
 
 ```html
 <script>
-  // The library's own namespace:
   var jsongin = window.liquicode.jsongin;
 
-  // Or the bundle's global, which is the same instance:
+  // The same engine:
   var jsongin = window.jsongin;
 
   console.log( 'Loaded: ' + jsongin.Library.name + ', v' + jsongin.Library.version );
 </script>
 ```
 
-Both of these are ready-to-use instances with logging turned off.
+This engine has logging turned off.
 
 
-## Create an Instance with Custom Settings
+## Create an Engine with Settings
 
-To configure the engine, use the `NewJsongin( Settings )` factory method.
-In the browser it is found at `window.liquicode.NewJsongin`.
+To choose settings, call `NewJsongin( Settings )`, which is at `window.liquicode.NewJsongin`.
 
 ```html
 <script>
@@ -60,7 +57,7 @@ In the browser it is found at `window.liquicode.NewJsongin`.
 </script>
 ```
 
-> See the [OpLog](./OpLog.md) document for more information about how OpLog works.
+See [OpLog](./OpLog.md).
 
 
 ## See Also

@@ -3,9 +3,9 @@
 
 # Recipes: Types & Dates
 
-`jsongin` is type-aware all the way down: a date is never equal to the string that
-represents it, and `null` is never equal to `undefined`. This page shows the
-functions for inspecting types, the `$type` query operator, and how dates compare.
+`jsongin` pays attention to types: a date is never equal to the string which
+represents it, and `1` is never equal to `'1'`. This page shows the functions for
+checking types, the `$type` query operator, and how dates compare.
 
 The recipes use this document:
 
@@ -108,12 +108,14 @@ jsongin.ShortType( jsongin.AsDate( '2026-01-01' ) ) === 'd'
 jsongin.AsDate( '2026-01-01' ).getTime() === new Date( '2026-01-01' ).getTime()
 ```
 
-[`AsBoolean( Value )`](../jsongin/AsBoolean.md) coerces to a boolean:
+[`AsBoolean( Value )`](../jsongin/AsBoolean.md) converts to a boolean, using MongoDB's rules.
+Every string is true, even `'false'` and `''`:
 
 ```js
 jsongin.AsBoolean( 1 ) === true
 jsongin.AsBoolean( 0 ) === false
 jsongin.AsBoolean( 'true' ) === true
+jsongin.AsBoolean( 'false' ) === true
 ```
 
 

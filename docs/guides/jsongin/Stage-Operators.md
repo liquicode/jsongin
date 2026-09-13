@@ -3,13 +3,12 @@
 
 # Stage Operators
 
-The stages of an aggregation pipeline, read by [`Aggregate()`](./Aggregate.md).
-A pipeline is an array of stages, and each stage takes the stream of documents the previous one
-  produced.
+The stages of an aggregation pipeline, run by [`Aggregate()`](./Aggregate.md).
+A pipeline is an array of stages. Each stage works on the documents the previous stage returned.
 
-Each stage below gives its usage, what it does to the stream, and examples.
-See [`Aggregate()`](./Aggregate.md) for the pipeline rules and
-  [Accumulator Operators](./Accumulator-Operators.md) for what may appear inside a `$group`.
+Each stage below has its usage, what it does, and examples.
+See [`Aggregate()`](./Aggregate.md) for the rules of a whole pipeline, and
+  [Accumulator Operators](./Accumulator-Operators.md) for what can go inside `$group`.
 
 | **Stage**                          | **Usage**                                                            |
 |------------------------------------|----------------------------------------------------------------------|
@@ -36,8 +35,7 @@ See [`Aggregate()`](./Aggregate.md) for the pipeline rules and
 | [`$redact`](#$redact)              | `{ $redact: expression }`                                            |
 
 
-
-These documents are used by the examples below:
+Most examples below use these documents:
 
 ```js
 let players =
@@ -52,8 +50,10 @@ let players =
 <a id="$match"></a>$match
 ---------------------------------------------------------------------
 
-Selects the documents which match the given query and discards the rest.
-Every query operator works here, including `$expr` and `$exprx`.
+**Usage** : `{ $match: query }`
+
+Keeps the documents which match the query, and drops the rest.
+Any query works, including `$expr`. See [Query Operators](./Query-Operators.md).
 
 ```js
 jsongin.Aggregate( players, [ { $match: { alive: true, points: { $gte: 3 } } } ] );
@@ -64,122 +64,122 @@ jsongin.Aggregate( players, [ { $match: { $expr: { $gt: [ '$dmg', '$armor' ] } }
 <a id="$project"></a>$project
 ---------------------------------------------------------------------
 
-Reshapes each document, including or excluding fields and defining new ones from expressions.
-This is [`Project( Document, Projection )`](./Project.md) applied to every document.
+**Usage** : `{ $project: { field: 1 | 0, field: expression, ... } }`
 
-A value of `1` or `true` includes a field, a value of `0` or `false` excludes it, and any other
-  value is an expression which computes the field.
-Inclusions and exclusions cannot be combined, with the exception of `_id`, which may be
-  suppressed alongside an inclusion.
-A computed field implies an inclusion projection.
+Reshapes each document: keeps fields, removes fields, or computes new ones.
+It follows the rules of [`Project()`](./Project.md), with two differences:
+
+- The projection operators (`$slice`, `$elemMatch`) are not available. Inside a stage, a value
+  such as `{ $slice: [ '$a', 2 ] }` is an [expression](./Expression-Operators.md#$slice).
+- An empty `$project: {}` throws.
+
+`1` or `true` keeps a field, `0` or `false` removes it, and any other value is an expression
+  which computes it.
+You cannot keep some fields and remove others in the same stage, except that `_id` can always be
+  removed with `_id: 0`.
 
 ```js
 jsongin.Aggregate( players, [ { $project: { _id: 0, name: 1, net: { $subtract: [ '$dmg', '$armor' ] } } } ] );
+// returns [ { name: 'Alice', net: 7 }, { name: 'Bob', net: -2 }, { name: 'Carol', net: 7 } ]
 ```
 
 
 <a id="$addFields"></a><a id="$set"></a>$addFields and $set
 ---------------------------------------------------------------------
 
-Adds new fields to each document, leaving the existing fields in place.
-A field which already exists is overwritten.
-***An expression which produces nothing removes the field*** rather than merely declining to
-  add it. Writing `'$$REMOVE'`, or any expression which evaluates to it, takes the field off the
-  document; a field which was not there to begin with is simply not added.
+**Usage** : `{ $addFields: { field: expression, ... } }` or `{ $set: { field: expression, ... } }`
 
-`$set` is an alias of `$addFields`, exactly as it is in MongoDB.
+Adds or replaces fields in each document, keeping all the other fields.
+`$set` is another name for `$addFields`, as in MongoDB.
 
-Each expression is evaluated against the ***original*** document, so a field added by the stage
-  is not visible to the other expressions within the same stage.
+- Field names can be dot notation paths.
+- If an expression gives nothing, such as `'$$REMOVE'` or a missing field, the field is
+  ***removed*** from the document.
+- Every expression reads the ***original*** document, so a field added by the stage cannot be
+  used by another expression in the same stage.
 
 ```js
 jsongin.Aggregate( [ { a: 1 } ], [ { $addFields: { b: '$a', c: '$b' } } ] );
-// returns [ { a: 1, b: 1 } ]     the new b is not visible to c
+// returns [ { a: 1, b: 1 } ]     c read the original document, which had no b
+
+jsongin.Aggregate( [ { a: 1, b: 2 } ], [ { $addFields: { b: '$$REMOVE' } } ] );
+// returns [ { a: 1 } ]
 ```
 
 
 <a id="$unwind"></a>$unwind
 ---------------------------------------------------------------------
 
-Deconstructs an array field, emitting one document per element of the array.
-The path must begin with a `$`.
+**Usage** : `{ $unwind: '$path' }`
+  or `{ $unwind: { path: '$path', includeArrayIndex: 'name', preserveNullAndEmptyArrays: true } }`
 
+Outputs one document for each element of an array field, with the field set to that element.
+The path must start with `$`.
+
+| **The field holds**              | **Output**                                                      |
+|----------------------------------|-----------------------------------------------------------------|
+| An array                         | One document per element.                                       |
+| An empty array, `null`, or nothing | No document, unless `preserveNullAndEmptyArrays` is `true`.   |
+| Any other value                  | The document once, unchanged.                                   |
+
+With `preserveNullAndEmptyArrays: true`, those documents are output too: an empty array is
+  removed from the document, and a `null` is kept.
+
+With `includeArrayIndex`, that field is set to the element's position, or to `null` when the
+  document did not come from an array.
+
+```js
+jsongin.Aggregate( [ { t: [ 1, 2 ] }, { t: [] }, { t: 5 } ], [ { $unwind: '$t' } ] );
+// returns [ { t: 1 }, { t: 2 }, { t: 5 } ]
 ```
-{ $unwind: '$tags' }
-{ $unwind: { path: '$tags', includeArrayIndex: 'position', preserveNullAndEmptyArrays: true } }
-```
-
-| **The field holds**            | **What is emitted**                                                     |
-|--------------------------------|---------------------------------------------------------------------------|
-| An array                       | One document per element, with the field set to that element.           |
-| An empty array, `null`, missing | Nothing, unless `preserveNullAndEmptyArrays` is true.                  |
-| Any other value                | The document once, unchanged. A non-array is a single element array.    |
-
-When `preserveNullAndEmptyArrays` is true, a document whose field held an empty array is
-  emitted with the field ***removed***, and a document whose field held `null` is emitted with
-  the `null` left in place.
-
-When `includeArrayIndex` is given, that field is set to the element's index, or to `null` for a
-  document which was not unwound from an array.
 
 
 <a id="$group"></a>$group
 ---------------------------------------------------------------------
 
-Partitions the documents into groups and emits one document per group.
+**Usage** : `{ $group: { _id: expression, field: { accumulator: expression }, ... } }`
 
-The `_id` expression computes the group key and is required.
-A group key which evaluates to a missing value is treated as `null`, so the documents which lack
-  the field are grouped together.
-Use `_id: null` to gather every document into a single group.
+Sorts the documents into groups, and outputs one document per group.
 
-Every other field names an accumulator which reduces the group's documents to a single value.
-***An accumulator whose value is missing writes a null***, rather than omitting its field. A
-  `$group` output field is always written, which is unlike [`$project`](#$project), where an
-  expression producing no value leaves its field out.
-
-Two values group together only when they are of the same type, so the number `5` and the string
-  `'5'` produce two groups, as they do in MongoDB.
-
-***Group order.***
-Groups are emitted in the order in which they were first seen.
-MongoDB does not guarantee an order here, so a pipeline which needs a specific one should end
-  with a `$sort`. `jsongin`'s order is deterministic on purpose: it makes a pipeline result
-  testable, and it makes replay deterministic.
+- `_id` is required. Its expression gives each document's group.
+  Documents where it is missing go in the `null` group.
+  Use `_id: null` to put every document in one group.
+- Every other field uses an [accumulator](./Accumulator-Operators.md), such as `$sum`, to combine
+  the group's documents into one value.
+  If the accumulator has no value, the field is set to `null`, not left out.
+- Values of different types are different groups: `5` and `'5'` are two groups.
+- Groups are output in the order they were first seen. MongoDB does not promise any order, so
+  add a `$sort` if you need one.
 
 ```js
 jsongin.Aggregate( players, [
 	{ $group: { _id: '$team', score: { $sum: '$points' }, members: { $push: '$name' } } },
 ] );
+// returns [ { _id: 'red', score: 10, members: [ 'Alice', 'Bob' ] }, { _id: 'blue', score: 9, members: [ 'Carol' ] } ]
 ```
 
 
 <a id="$sort"></a>$sort
 ---------------------------------------------------------------------
 
-Sorts the documents by one or more fields.
-This is [`Sort( Documents, SortCriteria )`](./Sort.md) applied to a copy of the array, so the
-  input array's ordering is left untouched.
+**Usage** : `{ $sort: { field: 1 | -1, ... } }`
 
-Sorting follows MongoDB's rules: a document which is missing the sort field sorts as though the
-  field held `null`, and values of different types are ordered by the BSON type order.
+Sorts the documents. The input array is not changed.
+It follows the rules of [`Sort()`](./Sort.md):
 
-A sort field which holds an array is reduced to a single sort key first, taking the smallest of
-  its elements when ascending and the largest when descending.
-A sort path which crosses an array gathers a candidate from every element it crosses, so such a
-  path can reduce through more than one array level.
-[`Sort( Documents, SortCriteria )`](./Sort.md) carries the full rule, including empty arrays.
-
-`jsongin` is ***more*** deterministic than MongoDB on ties, because Javascript's array sort is
-  required to be stable while MongoDB's sort is not.
+- A missing field sorts like `null`.
+- Values of different types are ordered by type.
+- An array field sorts by its smallest element ascending, and its largest descending.
+- Documents which tie keep their order.
 
 
 <a id="$limit"></a><a id="$skip"></a>$limit and $skip
 ---------------------------------------------------------------------
 
-`$limit` passes the first `count` documents along, and `$skip` discards them.
-Both require a non-negative integer.
+**Usage** : `{ $limit: count }` and `{ $skip: count }`
 
+`$limit` keeps the first `count` documents. `$skip` drops the first `count` documents.
+`count` must be a whole number, `0` or more.
 
 
 <a id="$count"></a>$count
@@ -187,30 +187,28 @@ Both require a non-negative integer.
 
 **Usage** : `{ $count: 'field_name' }`
 
-Replaces the whole stream with a single document holding the number of documents which reached
-  this stage. The field name is given as a string and cannot be empty.
+Replaces all the documents with one document holding how many there were.
+The field name must be a non-empty string which does not start with `$`.
 
-An ***empty*** stream produces no document at all, rather than one holding a zero.
+If there are no documents, the output is empty, not a count of `0`.
 
-This is the `$count` ***stage***. There is also a `$count`
-  [accumulator](./Accumulator-Operators.md#$count), which takes `{}` and counts within a
-  `$group`. Both are supported and they are not the same operator.
+This is the `$count` ***stage***.
+The [`$count` accumulator](./Accumulator-Operators.md#$count) counts inside a `$group`.
 
 ### Example
 ```js
 jsongin.Aggregate( players, [ { $count: 'total' } ] );
 // returns [ { total: 3 } ]
 
-// Counting what survived an earlier stage is the common use.
 jsongin.Aggregate( players, [ { $match: { alive: true } }, { $count: 'living' } ] );
 // returns [ { living: 2 } ]
 
-// An empty stream produces no document.
+// No documents, no output.
 jsongin.Aggregate( players, [ { $match: { alive: 'nope' } }, { $count: 'n' } ] );
 // returns []
 
-jsongin.Aggregate( players, [ { $count: '' } ] );   // throws, the field name cannot be empty
-jsongin.Aggregate( players, [ { $count: 5 } ] );    // throws, $count takes a string
+jsongin.Aggregate( players, [ { $count: '' } ] );   // throws: the field name is empty
+jsongin.Aggregate( players, [ { $count: 5 } ] );    // throws: not a string
 ```
 
 
@@ -219,27 +217,23 @@ jsongin.Aggregate( players, [ { $count: 5 } ] );    // throws, $count takes a st
 
 **Usage** : `{ $unset: 'path' }` or `{ $unset: [ 'path', 'path', ... ] }`
 
-Removes fields from every document. A shorthand for a [`$project`](#$project) of exclusions,
-  and built as one, so the two cannot disagree.
+Removes fields from every document. It is the same as a `$project` which removes those fields.
 
-***A path here, not a name.*** A dot steps into a sub-document, which is the opposite of the
-  expression operator
-  [`$unsetField`](./Expression-Operators.md#$unsetField), where a dot is part of the field's
-  name.
-
-A document which does not have the field passes through unchanged, and `_id` may be removed
-  like any other field. An empty specification is refused.
+- A dot in a path goes into a nested object. (In the
+  [`$unsetField`](./Expression-Operators.md#$unsetField) expression, a dot is part of the name.)
+- A document without the field is unchanged.
+- `_id` can be removed like any other field.
+- An empty list throws.
 
 ### Example
 ```js
 jsongin.Aggregate( players, [ { $unset: [ 'dmg', 'armor', 'alive' ] } ] );
 // returns [ { team: 'red', name: 'Alice', points: 7 }, { team: 'red', name: 'Bob', points: 3 }, { team: 'blue', name: 'Carol', points: 9 } ]
 
-// A dot steps into a sub-document.
 jsongin.Aggregate( [ { a: { b: 1, c: 2 } } ], [ { $unset: 'a.b' } ] );
 // returns [ { a: { c: 2 } } ]
 
-jsongin.Aggregate( players, [ { $unset: [] } ] );   // throws, at least one path is required
+jsongin.Aggregate( players, [ { $unset: [] } ] );   // throws
 ```
 
 
@@ -248,15 +242,12 @@ jsongin.Aggregate( players, [ { $unset: [] } ] );   // throws, at least one path
 
 **Usage** : `{ $replaceRoot: { newRoot: expression } }` or `{ $replaceWith: expression }`
 
-Replaces each document with the document the expression produces.
-The two are the same stage; `$replaceWith` simply omits the `newRoot` wrapper.
+Replaces each document with the object the expression gives.
+The two are the same stage; `$replaceWith` just leaves out `newRoot`.
 
-***The document is replaced rather than merged into***, so `_id` does not survive unless the
-  new root carries one of its own.
-
-***A new root which is missing or is not a document fails the pipeline***, rather than dropping
-  that one document, which is why [`$ifNull`](./Expression-Operators.md#$ifNull) is the usual
-  guard on a field which may not be there.
+- The old document is thrown away, including its `_id`.
+- If the expression gives something which is not an object, or nothing, the pipeline ***throws***.
+  Use [`$ifNull`](./Expression-Operators.md#$ifNull) when the value may be missing.
 
 ### Example
 ```js
@@ -269,10 +260,10 @@ jsongin.Aggregate( players, [
 jsongin.Aggregate( players, [ { $match: { name: 'Alice' } }, { $replaceWith: { who: '$name' } } ] );
 // returns [ { who: 'Alice' } ]
 
-// A new root which is not a document fails the pipeline.
+// A string is not an object.
 jsongin.Aggregate( players, [ { $replaceWith: '$name' } ] );   // throws
 
-// Which is why a field that may be missing is guarded.
+// Give a fallback for a field which may be missing.
 jsongin.Aggregate( players, [ { $replaceWith: { $ifNull: [ '$gear', { none: true } ] } } ] );
 // returns [ { none: true }, { none: true }, { none: true } ]
 ```
@@ -283,14 +274,12 @@ jsongin.Aggregate( players, [ { $replaceWith: { $ifNull: [ '$gear', { none: true
 
 **Usage** : `{ $sortByCount: expression }`
 
-Groups the documents by the expression and emits one document per group, holding the group's
-  value as `_id` and how many documents it held as `count`, ***most frequent first***.
+Groups the documents by the expression's value, and outputs one document per value with its
+  `_id` and a `count`, ***most common first***.
+It is a shortcut for a `$group` followed by a `$sort`.
 
-A shorthand for the [`$group`](#$group) and [`$sort`](#$sort) it stands for, and built as them.
-
-***The argument is narrower than an expression.*** It must be a `$`-prefixed path or a document
-  naming an operator. `$group` would take `{ team: 1 }` as an expression object and gather every
-  document under it, which answers a question nobody asked, so this stage refuses it.
+The expression must be a path starting with `$`, or an operator such as `{ $toUpper: '$team' }`.
+Anything else throws.
 
 ### Example
 ```js
@@ -300,7 +289,7 @@ jsongin.Aggregate( players, [ { $sortByCount: '$team' } ] );
 jsongin.Aggregate( players, [ { $sortByCount: { $toUpper: '$team' } } ] );
 // returns [ { _id: 'RED', count: 2 }, { _id: 'BLUE', count: 1 } ]
 
-jsongin.Aggregate( players, [ { $sortByCount: 'team' } ] );   // throws, a path must begin with a '$'
+jsongin.Aggregate( players, [ { $sortByCount: 'team' } ] );   // throws: must start with $
 ```
 
 
@@ -309,21 +298,17 @@ jsongin.Aggregate( players, [ { $sortByCount: 'team' } ] );   // throws, a path 
 
 **Usage** : `{ $sample: { size: count } }`
 
-Selects `size` documents at random, ***without replacement***, so no document is selected twice.
+Picks `size` documents at random. No document is picked twice.
 
-A `size` larger than the stream takes the whole stream, and a `size` of `0` takes nothing.
-***A fractional size is truncated rather than refused***, which is worth knowing because the
-  N accumulators do require a whole number. A negative size throws.
-
-***The order of the result is not specified.*** Pair this with a [`$sort`](#$sort) when the
-  order matters.
+- If `size` is larger than the number of documents, all of them are returned.
+- A `size` of `0` returns none. A fraction is rounded down. A negative `size` throws.
+- The order of the result is random. Add a `$sort` if order matters.
 
 ### Example
 ```js
 let sampled = jsongin.Aggregate( players, [ { $sample: { size: 2 } } ] );
 let took_two = ( sampled.length === 2 );
 
-// A size larger than the stream takes all of it.
 let all = jsongin.Aggregate( players, [ { $sample: { size: 99 } } ] );
 let took_all = ( all.length === 3 );
 
@@ -336,14 +321,12 @@ jsongin.Aggregate( players, [ { $sample: { size: -1 } } ] );   // throws
 
 **Usage** : `{ $facet: { name: [ stage, ... ], ... } }`
 
-Runs several pipelines over the same input and gathers their results into one document, one
-  field per branch.
+Runs several pipelines on the same documents, and outputs ***one document*** with each pipeline's
+  results in a field.
 
-***Every branch sees the whole input***, not what another branch left behind, which is the
-  point of the stage: it answers several questions about one set of documents in a single pass.
-
-***One document comes out*** however many went in. A branch which selects nothing answers an
-  empty array, and an empty branch pipeline answers everything.
+- Every pipeline gets ***all*** of the input documents.
+- A pipeline which matches nothing gives an empty array.
+- An empty pipeline, `[]`, gives all the input documents.
 
 ### Example
 ```js
@@ -355,7 +338,7 @@ jsongin.Aggregate( players, [ {
 } ] );
 // returns [ { total: [ { n: 3 } ], best: [ { name: 'Carol' } ] } ]
 
-// Each branch is given the whole input. If they shared a stream, the count would be 1.
+// Each pipeline sees all three documents, even after another one ran $limit.
 jsongin.Aggregate( players, [ {
 	$facet: {
 		first: [ { $limit: 1 }, { $project: { _id: 0, name: 1 } } ],
@@ -371,20 +354,16 @@ jsongin.Aggregate( players, [ {
 
 **Usage** : `{ $bucket: { groupBy: expression, boundaries: [ ... ], default: value, output: { ... } } }`
 
-Groups the documents into buckets whose edges are given, reducing each bucket the way
-  [`$group`](#$group) reduces a group.
+Groups documents into ranges which you choose, and outputs one document per range.
 
-***The ranges are half open.*** A value equal to a boundary belongs to the bucket ***above***
-  it, so `[ 0, 10, 20 ]` makes the buckets `0 <= n < 10` and `10 <= n < 20`. A bucket's `_id`
-  is its lower boundary.
-
-***A bucket nothing fell into is left out entirely***, rather than reported with a count of
-  zero, and the same is true of the `default` bucket.
-
-***A value outside every bucket needs a `default`***, and throws without one.
-
-`output` replaces the default of `{ count: { $sum: 1 } }` entirely rather than adding to it.
-`boundaries` must hold at least two values, in ascending order.
+- `boundaries` lists the edges, at least two, in ascending order. `[ 0, 10, 20 ]` makes the
+  ranges `0` up to (but not including) `10`, and `10` up to `20`.
+- Each output document's `_id` is the lower edge of its range.
+- A value outside every range goes in a bucket whose `_id` is `default`. Without a `default`,
+  it throws.
+- Ranges with no documents are not output.
+- `output` holds accumulators, as in `$group`. It defaults to `{ count: { $sum: 1 } }`. If you
+  give `output`, there is no `count` unless you ask for one.
 
 ### Example
 ```js
@@ -393,13 +372,13 @@ jsongin.Aggregate( players, [
 ] );
 // returns [ { _id: 0, count: 1 }, { _id: 5, count: 2 } ]
 
-// output replaces the count rather than adding to it.
+// With output, there is no count.
 jsongin.Aggregate( players, [
 	{ $bucket: { groupBy: '$points', boundaries: [ 0, 10 ], output: { names: { $push: '$name' } } } },
 ] );
 // returns [ { _id: 0, names: [ 'Alice', 'Bob', 'Carol' ] } ]
 
-// A value outside every bucket needs a default.
+// 7 and 9 are outside [ 0, 5 ), and there is no default.
 jsongin.Aggregate( players, [ { $bucket: { groupBy: '$points', boundaries: [ 0, 5 ] } } ] );   // throws
 
 jsongin.Aggregate( players, [
@@ -414,26 +393,19 @@ jsongin.Aggregate( players, [
 
 **Usage** : `{ $bucketAuto: { groupBy: expression, buckets: count, output: { ... } } }`
 
-Groups the documents into a given number of buckets, choosing the boundaries so that each holds
-  about the same number of documents.
+Groups documents into `buckets` ranges, choosing the edges so each range holds about the same
+  number of documents.
 
-***A bucket's `_id` is a range***, `{ min, max }`, which is the visible difference from
-  [`$bucket`](#$bucket). The `max` of one bucket is the `min` of the next, except the last,
-  whose `max` is the largest value rather than one past it.
-
-***An odd document goes to the earlier bucket***, so five values across two buckets is three
-  and then two.
-
-***Fewer buckets than asked for may come back***, because documents sharing a value are never
-  split across a boundary.
-
-***An empty `output` counts, where `$bucket`'s empty `output` does not.*** The two stages
-  disagree about this and `jsongin` reproduces it rather than tidying it up.
+- Each output document's `_id` is `{ min, max }`. A range's `max` is the next range's `min`,
+  except for the last, whose `max` is the largest value.
+- When the documents do not divide evenly, earlier ranges get the extra ones: five documents in
+  two buckets gives three, then two.
+- Documents with the same value always go in the same range, so you can get fewer ranges than
+  you asked for.
+- `output` works as in `$bucket`, except that an empty `output: {}` still gives a `count`.
 
 ### Example
 ```js
-// Three values across two buckets is two and then one, and the max of the first
-// bucket is the min of the second.
 jsongin.Aggregate( players, [ { $bucketAuto: { groupBy: '$points', buckets: 2 } } ] );
 // returns [ { _id: { min: 3, max: 9 }, count: 2 }, { _id: { min: 9, max: 9 }, count: 1 } ]
 
@@ -449,26 +421,21 @@ jsongin.Aggregate( players, [
 
 **Usage** : `{ $fill: { partitionBy: expression, partitionByFields: [ 'field', ... ], sortBy: { field: 1 | -1 }, output: { field: { value: expression } | { method: 'locf' | 'linear' } } } }`
 
-Supplies a value for a field which has none.
+Fills in fields which are missing ***or `null`***.
 
-***A null counts as having none***, which is unusual: almost everywhere else in this engine a
-  null is a value and only a missing field is absent. `$fill` replaces both.
-
-| **Written** | **Fills with** |
-|-------------|-----------------|
+| **Output**              | **Fills with** |
+|-------------------------|-----------------|
 | `{ value: expression }` | the expression, evaluated against the document being filled |
-| `{ method: 'locf' }` | the ***l***ast ***o***bserved ***c***arried ***f***orward |
-| `{ method: 'linear' }` | a value interpolated between the ones on either side |
+| `{ method: 'locf' }`    | the last value before it ("last observation carried forward") |
+| `{ method: 'linear' }`  | a value in a straight line between the values before and after it |
 
-***A method writes its field for every document***, even where it has nothing to write: a gap
-  before the first observed value, or at either end of a `linear` series, becomes a `null`
-  rather than staying missing.
-
-***An output field naming neither fills nothing***, and is accepted; naming ***both*** is
-  refused. `linear` requires the `sortBy` field to hold no repeated values, and numbers on
-  both sides of a gap.
-
-`partitionBy` takes a document rather than a path, so `{ k: '$k' }` and not `'$k'`.
+- The methods need `sortBy`, to know which document comes before which.
+- With a method, a gap which has no value to use, such as before the first value, is set to
+  `null`.
+- `linear` needs numbers on both sides of the gap, and no repeated `sortBy` values.
+- Giving both `value` and `method` throws. Giving neither fills nothing.
+- `partitionBy` and `partitionByFields` fill each group of documents separately.
+  `partitionBy` takes an object, such as `{ k: '$k' }`, not a path.
 
 ### Example
 ```js
@@ -487,7 +454,6 @@ jsongin.Aggregate( readings, [ { $fill: { sortBy: { t: 1 }, output: { v: { metho
 jsongin.Aggregate( readings, [ { $fill: { sortBy: { t: 1 }, output: { v: { method: 'linear' } } } } ] );
 // returns [ { t: 1, v: 10 }, { t: 2, v: 20 }, { t: 3, v: 30 } ]
 
-// Naming both a value and a method is refused.
 jsongin.Aggregate( readings, [ { $fill: { output: { v: { value: 0, method: 'locf' } } } } ] );   // throws
 ```
 
@@ -497,87 +463,71 @@ jsongin.Aggregate( readings, [ { $fill: { output: { v: { value: 0, method: 'locf
 
 **Usage** : `{ $densify: { field: 'name', partitionByFields: [ 'field', ... ], range: { step: number, unit: string, bounds: 'full' | 'partition' | [ lower, upper ] } } }`
 
-Adds documents to close the gaps in a sequence, so that the values of `field` step evenly.
+Adds documents to fill the gaps in a sequence of numbers or dates, one `step` apart.
 
-***An added document holds the field and its partition, and nothing else.*** It stands for a
-  point in the sequence which had no data.
+- An added document holds only `field` and the `partitionByFields`.
+- Existing documents are never changed or removed, even if they fall between steps.
+- `field` must hold numbers or dates. A date field needs a `unit`, such as `'day'`; a number field
+  must not have one.
 
-***Densifying only ever adds.*** A document whose value does not sit on the series is kept
-  where it is rather than moved or removed.
-
-| **`bounds`** | **Runs from** |
-|--------------|----------------|
-| `'full'` | the smallest value in the whole stream to the largest |
-| `'partition'` | the smallest to the largest within each partition |
-| `[ lower, upper ]` | the values given, with `upper` excluded |
-
-***A date field needs a `unit`*** and a numeric field must not have one. A field which is
-  neither a number nor a date is refused, since there is no step from one value to the next.
+| **`bounds`**       | **The sequence runs from** |
+|--------------------|-----------------------------|
+| `'full'`           | the smallest value of all documents to the largest |
+| `'partition'`      | the smallest to the largest value in each partition |
+| `[ lower, upper ]` | `lower` up to, but not including, `upper` |
 
 ### Example
 ```js
-let readings = [ { t: 1 }, { t: 2 }, { t: 4 } ];
+let sparse = [ { t: 1 }, { t: 2 }, { t: 4 } ];
 
-jsongin.Aggregate( readings, [
+jsongin.Aggregate( sparse, [
 	{ $densify: { field: 't', range: { step: 1, bounds: 'full' } } },
 	{ $sort: { t: 1 } },
 ] );
 // returns [ { t: 1 }, { t: 2 }, { t: 3 }, { t: 4 } ]
 
-// The upper bound is excluded.
-jsongin.Aggregate( readings, [
+// The upper bound is not included.
+jsongin.Aggregate( sparse, [
 	{ $densify: { field: 't', range: { step: 1, bounds: [ 0, 2 ] } } },
 	{ $sort: { t: 1 } },
 ] );
 // returns [ { t: 0 }, { t: 1 }, { t: 2 }, { t: 4 } ]
 
-// A step which skips over an existing value leaves it where it is.
-jsongin.Aggregate( readings, [
+// With a step of 2 from 1, only 3 is added. 2 and 4 are kept as they are.
+jsongin.Aggregate( sparse, [
 	{ $densify: { field: 't', range: { step: 2, bounds: 'full' } } },
 	{ $sort: { t: 1 } },
 ] );
 // returns [ { t: 1 }, { t: 2 }, { t: 3 }, { t: 4 } ]
 ```
 
+
 <a id="$redact"></a>$redact
 ---------------------------------------------------------------------
 
 **Usage** : `{ $redact: expression }`
 
-Restricts the contents of each document by asking an expression, level by level, what to do
-  with each one.
+Removes parts of each document, deciding level by level.
 
-***This is not a filter.***
-[`$match`](#$match) decides about whole documents; `$redact` walks into a document and asks
-  again about every sub-document it finds, so one document can come through with a part of it
-  removed.
-That is the reason it exists, and it is what makes a single pipeline able to serve callers who
-  may see different parts of the same record.
+`$match` keeps or drops whole documents. `$redact` goes into each document and decides again for
+  every nested object, so part of a document can be removed while the rest is kept.
+Use it to show different callers different parts of the same data.
 
-The expression must answer with one of three variables, which are bound within this stage and
-  [nowhere else](./Expression-Operators.md#variables):
+The expression must give one of three values, which only exist inside this stage:
 
-| **Variable**  | **Description**                                                            |
-|---------------|------------------------------------------------------------------------------|
-| `$$DESCEND`   | Keep the fields at this level, and ask again about the documents below it. |
-| `$$PRUNE`     | Remove this level entirely, without asking about anything below it.        |
-| `$$KEEP`      | Keep this level entirely, without asking about anything below it.          |
+| **Value**     | **Meaning**                                                            |
+|---------------|--------------------------------------------------------------------------|
+| `$$DESCEND`   | Keep this level's fields, and decide again for each object inside it.  |
+| `$$PRUNE`     | Remove this level and everything inside it.                            |
+| `$$KEEP`      | Keep this level and everything inside it, without deciding again.      |
 
-***`$$CURRENT` is the level being asked about, and `$$ROOT` stays the whole document.***
-A bare field path such as `'$level'` reads the level, which is what lets one expression ask
-  each sub-document about its own `level` rather than about the root's.
-
-***`$$DESCEND` descends into the documents inside an array***, element by element.
-An element which is pruned is removed from the array rather than left as a null.
-Values which are not documents are kept exactly as they are.
-
-A document whose ***top*** level is pruned does not appear in the output at all.
-
-***The answer is checked, not the expression.***
-Only the branch which actually runs has to produce one of the three, so a
-  [$cond](./Expression-Operators.md#$cond) whose other branch produces something else is fine
-  until that branch is taken.
-An answer which is anything else throws.
+- While deciding, `$$CURRENT` is the object being decided on, and a path such as `'$level'` reads
+  from it. `$$ROOT` is still the whole document.
+- `$$DESCEND` also goes into the objects inside arrays. A pruned array element is removed from
+  the array. Array elements which are not objects are kept.
+- If the top level is pruned, the document is not output.
+- Any other value throws, but only when it is actually given: a `$cond` branch which is never
+  taken is not checked.
 
 ### Example
 ```js
@@ -587,47 +537,45 @@ let records =
 	{ _id: 2, level: 5, name: 'closed', inner: { level: 5, secret: 'hidden' } },
 ];
 
-// A pruned top level takes the whole document with it.
+// Record 2 is pruned at the top, so it is not output.
 jsongin.Aggregate( records, [
 	{ $redact: { $cond: [ { $lte: [ '$level', 3 ] }, '$$DESCEND', '$$PRUNE' ] } },
 ] );
 // returns [ { _id: 1, level: 1, name: 'open', inner: { level: 1, secret: 'visible' } } ]
 
-// Descending asks again at each level, so an inner document can go on its own.
+// The inner object is decided on separately, and pruned.
 jsongin.Aggregate( [ { _id: 1, level: 1, inner: { level: 9, secret: 'hidden' } } ], [
 	{ $redact: { $cond: [ { $lte: [ '$level', 3 ] }, '$$DESCEND', '$$PRUNE' ] } },
 ] );
 // returns [ { _id: 1, level: 1 } ]
 
-// $$KEEP takes a whole sub-tree without examining it.
+// $$KEEP keeps everything inside without deciding again.
 jsongin.Aggregate( [ { _id: 1, level: 1, inner: { level: 9, secret: 'kept' } } ], [
 	{ $redact: { $cond: [ { $lte: [ '$level', 3 ] }, '$$KEEP', '$$PRUNE' ] } },
 ] );
 // returns [ { _id: 1, level: 1, inner: { level: 9, secret: 'kept' } } ]
 
-// An element of an array which is pruned is removed rather than left as a null.
+// A pruned array element is removed from the array.
 jsongin.Aggregate( [ { _id: 1, level: 1, items: [ { level: 1 }, { level: 9 } ] } ], [
 	{ $redact: { $cond: [ { $lte: [ '$level', 3 ] }, '$$DESCEND', '$$PRUNE' ] } },
 ] );
 // returns [ { _id: 1, level: 1, items: [ { level: 1 } ] } ]
 
-// An answer which is not one of the three throws.
 jsongin.Aggregate( records, [ { $redact: '$$ROOT' } ] );   // throws
 ```
 
 
-## Stages Which Are Not Implemented
+## Stages Not Implemented
 
-Stages MongoDB documents and `jsongin` does not implement — `$lookup`, `$graphLookup`,
-  `$merge`, `$out`, `$unionWith`, `$geoNear`, `$collStats`, `$indexStats`, `$setWindowFields`,
-  and `$vectorSearch` — need a collection, an index, or a second collection to join against, and
-  `jsongin` works on an array of documents. See the
-  [Operator Reference](../Operator-Reference.md).
+`$lookup`, `$graphLookup`, `$unionWith`, `$merge`, `$out`, `$geoNear`, `$collStats`,
+  `$indexStats`, `$setWindowFields`, `$vectorSearch` and `$documents` are not implemented.
+They need a database collection or index, and `jsongin` works on an array of documents.
+See the [Operator Reference](../Operator-Reference.md).
 
 
 ## See Also
 
-- [`Aggregate( Documents, Pipeline )`](./Aggregate.md), which runs these stages.
-- [Accumulator Operators](./Accumulator-Operators.md), for what may appear inside a `$group`.
-- [Expression Operators](./Expression-Operators.md), for the values a stage computes.
-- [Operator Reference](../Operator-Reference.md), for which MongoDB operators are implemented.
+- [`Aggregate( Documents, Pipeline, Scope )`](./Aggregate.md)
+- [Accumulator Operators](./Accumulator-Operators.md)
+- [Expression Operators](./Expression-Operators.md)
+- [Operator Reference](../Operator-Reference.md)

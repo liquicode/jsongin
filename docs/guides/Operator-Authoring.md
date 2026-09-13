@@ -3,18 +3,15 @@
 
 # Operator Authoring
 
-Every operator `jsongin` supports is a self contained module which is registered into an engine
-  instance by name.
-Nothing about that registry is private, so you can add operators of your own the same way the
-  built-in ones are added.
+Every operator in `jsongin` is a small module, added to an engine by name.
+You can add operators of your own the same way.
 
-This document describes the operator contract and how to register one.
+This page describes what an operator looks like and how to add one.
 
 
 ## The Shape of an Operator Module
 
-An operator module exports a ***factory function*** which takes the engine and returns an
-  operator object:
+An operator module exports a ***factory function***. It takes the engine and returns the operator:
 
 ```js
 // docs-check: skip - an operator module, not a call.
@@ -38,63 +35,41 @@ module.exports = function ( jsongin )
 };
 ```
 
-The factory is called once per engine instance, so the operator closes over the engine it
-  belongs to.
-This is why two engines with different settings do not share operator state.
+The factory is called once for each engine, so each operator belongs to one engine.
 
-
-## Common Members
-
-Every operator carries one:
-
-| **Member**     | **Type** | **Description**                                                          |
-|----------------|:--------:|---------------------------------------------------------------------------|
-| `Engine`       |    o     | The engine instance this operator belongs to.                            |
+Every operator has an `Engine` member holding the engine it belongs to.
 
 
 ## The Five Kinds of Operator
 
-Which remaining members an operator needs depends on what kind it is.
-The kind is determined by which registry you put it in.
+What else an operator needs depends on which table you add it to:
 
-| **Registry**            | **Method**    | **Also needs**             | **Carries a Scope** |
-|-------------------------|---------------|----------------------------|:-------------------:|
-| `QueryOperators`        | `Query`       | `TopLevel`, `ValueTypes`   |          no         |
-| `ExpressionOperators`   | `Evaluate`    | `ArgTypes`                 |         ***yes***   |
-| `UpdateOperators`       | `Update`      | `TopLevel`, `ValueTypes`   |          no         |
-| `StageOperators`        | `Stage`       | `ArgTypes`                 |         ***yes***   |
-| `AccumulatorOperators`  | `Accumulate`  | `ArgTypes`                 |         ***yes***   |
+| **Table**               | **Function**  | **Also needs**             | **Receives a Scope** |
+|-------------------------|---------------|----------------------------|:--------------------:|
+| `QueryOperators`        | `Query`       | `TopLevel`, `ValueTypes`   |          no          |
+| `ExpressionOperators`   | `Evaluate`    | `ArgTypes`                 |        ***yes***     |
+| `UpdateOperators`       | `Update`      | `TopLevel`, `ValueTypes`   |          no          |
+| `StageOperators`        | `Stage`       | `ArgTypes`                 |        ***yes***     |
+| `AccumulatorOperators`  | `Accumulate`  | `ArgTypes`                 |        ***yes***     |
 
-The three which evaluate expressions take a `Scope` and pass it along. See
-  [The Scope Contract](#the-scope-contract) below, which is the one rule in this document that
-  is checked mechanically.
+The three kinds which evaluate expressions receive a `Scope`, and must pass it on.
+See [The Scope Rules](#the-scope-contract).
 
-`ValueTypes` and `ArgTypes` are the same idea under two names: the
-  [ShortTypes](./jsongin/ShortType.md) the operator accepts for the ***single value it is
-  handed***.
-The name follows what that value is called — a match value for a query, an argument for
-  everything else.
+`ValueTypes` and `ArgTypes` mean the same thing: the [short type codes](./jsongin/ShortType.md)
+  the operator accepts for the value it is given, such as `'n'` for a number or `'oa'` for an
+  object or array.
 
 
 ## Type Checking
 
-***The engine checks the declared types before it calls an operator.***
+`Query()`, `Evaluate()`, `Update()` and `Aggregate()` check the value against `ValueTypes` or
+  `ArgTypes` before calling the operator. If it does not fit, they ***throw***.
 
-`Query()`, `Evaluate()`, `Update()`, and `Aggregate()` each compare the value they are about to
-  pass against the operator's declared types, and refuse to dispatch when it does not fit.
-A query or an update reports to the [`OpLog`](./OpLog.md) and treats the clause as not matching;
-  an expression or a pipeline stage throws.
+***Declare the types accurately, and check the value in the operator too.***
+The engine only checks when the operator is reached through it. Code which calls an operator
+  directly, such as `jsongin.QueryOperators.$size.Query( doc, 'two' )`, skips the check.
 
-***Declare your operator's types accurately, and validate the value anyway.***
-
-The two are not redundant, because the check above only runs when the operator is reached
-  through the engine. An operator called directly, as
-  `jsongin.QueryOperators.$size.Query( doc, 'two' )`, gets whatever the caller passed.
-Every built-in operator therefore still validates what it receives.
-
-A declaration which is narrower than what the operator really accepts is worse than no
-  declaration at all: it turns working input into a rejection, and nothing about the operator's
-  own code will contradict it. Declare what the code actually handles.
+Do not declare fewer types than the operator really handles: that turns valid input into an error.
 
 
 ### Query Operators
@@ -103,19 +78,22 @@ A declaration which is narrower than what the operator really accepts is worse t
 Query: function ( Document, MatchValue, Path = '' )
 ```
 
-Returns `true` when the document satisfies the operator at `Path`, and `false` when it does not.
+Returns `true` when the document matches, and `false` when it does not.
 
-- `Document` is the whole document being tested.
-- `MatchValue` is whatever the query wrote as the operator's value.
-- `Path` is the document path the operator was found at, in dot notation. It is `''` at the top
-  level.
+- `Document` is the whole document.
+- `MatchValue` is the value written after the operator in the query.
+- `Path` is the dot notation path of the field the operator is under, or `''` at the top level.
 
-Use `Engine.GetValue( Document, Path )` to read the field being tested.
+To read the field, use `Engine.ResolveCandidates( Document, Path )`. It returns every value the
+  path can refer to, including array elements, the way MongoDB matches.
+See [`ResolveCandidates()`](./jsongin/ResolveCandidates.md).
 
 | **Member**   | **Description**                                                                |
 |--------------|---------------------------------------------------------------------------------|
-| `TopLevel`   | `true` when the operator appears as a key of the query itself, `false` when it appears within a field. `$and` is `true`; `$gt` is `false`. A `true` operator is refused within a field unless it also declares `FieldLevel: true`, which `$exprx` and `$noop` do. |
-| `ValueTypes` | The [ShortTypes](./jsongin/ShortType.md) this operator accepts as its `MatchValue`. A query which gives it anything else is rejected, and the clause does not match. |
+| `TopLevel`   | `true` for an operator used at the top level of a query, such as `$and`. `false` for one used under a field, such as `$gt`. |
+| `FieldLevel` | Optional. `true` lets a `TopLevel` operator also be used under a field, as `$exprx` and `$noop` are. |
+| `ElementLevel` | Optional. `true` lets a `TopLevel` operator be used inside `$elemMatch`, as `$jsonSchema` is. |
+| `ValueTypes` | The short type codes accepted for `MatchValue`. |
 
 
 ### Expression Operators
@@ -126,25 +104,19 @@ Evaluate: function ( Document, Args, Scope )
 
 Returns the computed value.
 
-- `Args` is the operator's operand or array of operands, each of which is itself an expression.
-  Evaluate them with `Engine.Evaluate( Document, arg, Scope )`.
-- `Scope` is the variables in effect. ***Pass it along to everything you call*** — see
-  [The Scope Contract](#the-scope-contract).
+- `Args` is what was written after the operator: one operand, or an array of operands.
+  Each operand is an expression. Evaluate it with `Engine.Evaluate( Document, operand, Scope )`.
+- `Scope` holds the variables. ***Pass it to everything you call.***
 
 | **Member**  | **Description**                                                             |
 |-------------|------------------------------------------------------------------------------|
-| `ArgTypes`  | The ShortTypes accepted for `Args`. An expression which gives it anything else throws. |
+| `ArgTypes`  | The short type codes accepted for `Args` itself, not for the operands inside it. |
 
-Note that `ArgTypes` describes `Args` itself, not the operands inside it.
-An operator which takes an operand list declares `'a'`, and one which also accepts a single
-  operand without the enclosing array — which the arithmetic operators do — declares the
-  expression types as well.
+An operator which takes a list declares `'a'`. One which also accepts a single operand without
+  the array, as the arithmetic operators do, declares the other types too.
 
-***Check the operand count yourself***, in the operator, and throw when it is wrong.
-There is no declaration for it: the count means something different for each operator —
-  `$literal` never counts its argument at all, `$cond` takes three operands or one object, and
-  the variadic operators take any number — so a single declared number could not be enforced
-  without carving out exceptions for the operators it does not fit.
+***Check the number of operands in the operator***, and throw when it is wrong.
+There is no member for this, because operators count their operands in too many different ways.
 
 
 ### Update Operators
@@ -153,15 +125,15 @@ There is no declaration for it: the count means something different for each ope
 Update: function ( Document, UpdateFields )
 ```
 
-Modifies `Document` in place and returns `true` on success, `false` on failure.
+Changes `Document` in place.
+Returns `true` if it worked, or `false` if it could not be applied, after sending the reason to
+  `OpLog`. `Update()` then throws.
 
-`UpdateFields` is the object of `field: value` pairs written under the operator's name.
-Use `Engine.SetValue` and `Engine.DeleteValue` to make the changes so that document paths are
-  handled consistently.
+`UpdateFields` is the object of `field: value` pairs written after the operator.
+Use `Engine.SetValue` and `Engine.DeleteValue` to make changes, so paths are handled the same way
+  as everywhere else.
 
-> ***Return the result.*** An update operator which reports success unconditionally makes a
-  failed update indistinguishable from a successful one. This was a real defect in `$push`
-  before v0.1.0.
+***Return the real result.*** An operator which always returns `true` hides its failures.
 
 
 ### Stage Operators
@@ -172,14 +144,12 @@ Stage: function ( Documents, StageArgs, Scope )
 
 Takes an array of documents and returns a new array of documents.
 
-`Scope` is the pipeline scope. A stage which evaluates an expression against a document makes
-  the frame for that document itself, with `Scope.ForDocument( document )`, because `$$ROOT` is
-  the document the ***stage*** was handed.
+`Scope` is the pipeline's scope. To evaluate an expression against one document, make a scope
+  for it with `Scope.ForDocument( document )`, so `$$ROOT` is that document.
 
-***Do not modify the input.***
-A stage which only selects or reorders documents may pass the original documents along.
-A stage which produces documents must clone with `Engine.SafeClone()` before writing, so that
-  dates and regular expressions survive the pipeline.
+***Do not change the input.***
+A stage which only selects or reorders documents can return the original objects.
+A stage which changes documents must copy them first with `Engine.SafeClone()`.
 
 
 ### Accumulators
@@ -188,96 +158,77 @@ A stage which produces documents must clone with `Engine.SafeClone()` before wri
 Accumulate: function ( Documents, Args, Scope )
 ```
 
-Takes the array of documents belonging to one group and returns a single value.
+Takes the documents of one group and returns one value.
+Make a scope for each document with `Scope.ForDocument( document )`, as a stage does.
 
-An accumulator reads `$$ROOT` of each document it is accumulating, so it makes a frame per
-  document with `Scope.ForDocument( document )` exactly as a stage does.
-
-Accumulators belong to the `$group` stage and cannot be used with `Evaluate` or `$expr`.
-
-> Note that accumulators conventionally ***ignore*** values of the wrong type rather than
-  throwing on them, which is the opposite of what the expression operators do.
-  An expression is authored against a single document, where a type error is an authoring
-  mistake worth surfacing. An accumulator runs across a whole group, where one malformed
-  document should not abort the report.
+By convention, accumulators ***skip*** values of the wrong type instead of throwing, unlike
+  expression operators.
 
 
-## The Scope Contract
+## The Scope Rules
 
 <a id="the-scope-contract"></a>
 
-***An operator which does not pass its `Scope` along loses every variable underneath it.***
-Nothing goes wrong at the time. It goes wrong later, when somebody writes a `$$name` inside
-  that one operator, and it reads as "`$map` is broken" rather than as "`$dateAdd` dropped the
-  scope". There are over 180 operators and helpers which each have to remember, so
-  ***remembering is not the plan***: the contract is checked.
+***An operator which does not pass its `Scope` on loses every variable below it.***
+Nothing fails at first. It fails later, when someone uses a `$$` variable inside that operator.
 
-Four rules, and `npm run scope-check` reads all four out of the source:
+`npm run scope-check` checks four rules in the source:
 
-1. Every `jsongin.Evaluate(` call passes three arguments. Two means the caller is making a
-   fresh root scope by accident, which is exactly how a variable goes missing.
-2. Every helper which evaluates takes `Scope` as its ***last*** parameter. The test is what the
-   body does, not what its first parameter is called: a query range test and an update
-   arithmetic helper both take a `Document` and neither one ever evaluates anything.
-3. Every operator module declares its `Evaluate` / `Stage` / `Accumulate` with a `Scope`,
-   as its trailing parameter.
-4. Every call of such a helper passes as many arguments as it declares. This is the rule that
-   earns its place: `date.ReadDateArgs` has an optional `ExtraFields` ahead of its scope, and
-   seventeen operators had left it off, so appending an argument put every one of those scopes
-   in the ***optional slot***. Nothing threw. The scope was simply somewhere else.
+1. Every call to `jsongin.Evaluate(` passes three arguments. With only two, a new, empty scope is
+   made and the variables are lost.
+2. Every helper function which evaluates expressions takes `Scope` as its ***last*** parameter.
+3. Every operator's `Evaluate`, `Stage` or `Accumulate` function takes `Scope` as its last
+   parameter.
+4. Every call to such a helper passes as many arguments as it declares, so the scope lands in the
+   right parameter.
 
-***What no static check can see is whether a caller actually passes the scope its helper
-  declares***, because reading that means reading the code. Close it from the other side, at
-  the top of any helper which evaluates:
+A static check cannot tell whether a caller really passes the scope it was given.
+To catch that, start every helper which evaluates with:
 
 ```js
 // docs-check: skip - Scope is the caller's own parameter.
 jsongin.Scope.Require( Scope, 'myfamily.ReadArgs' );
 ```
 
-A forgotten forward then fails loudly on the first test which touches the operator that forgot,
-  instead of silently years later.
+A missing scope then throws the first time a test uses the operator.
 
-***Bind names with `Scope.Child( { name: value } )`, never by writing into `Scope.Variables`.***
-A frame is immutable once made, and a child frame is what a binding is. If your operator binds
-  a name the caller chose, put it through `jsongin.Scope.RequireName( Name, '$myop' )` first, so
-  that a name which could be mistaken for a system variable is refused rather than shadowing
-  one.
+***To define a variable, make a child scope with `Scope.Child( { name: value } )`.***
+Never write into `Scope.Variables`.
+If the caller chose the name, check it first with `jsongin.Scope.RequireName( Name, '$myop' )`,
+  which throws for a name that could hide a system variable.
 
-See [Scope](./jsongin/Scope.md) for the object itself, and
-  [Variables](./jsongin/Expression-Operators.md#variables) for what the names mean.
+See [Scope](./jsongin/Scope.md) and [Variables](./jsongin/Expression-Operators.md#variables).
 
 
 ## Reporting Problems
 
-Operators do not print anything directly. They report through the engine's log handlers, which
-  are `null` unless the caller configured them.
+Operators never print directly. They send messages to the engine's `OpLog` and `OpError`, which
+  are `null` unless the caller set them.
 
 ```js
 try
 {
-	// An explanation: the operation completed, but not as expected.
+	// An explanation: it worked, but maybe not as expected.
 	if ( jsongin.OpLog ) { jsongin.OpLog( `$myop: cannot compare [${type}] at [${Path}].` ); }
 }
 catch ( error )
 {
-	// An error: the operation cannot complete.
+	// An error: it could not work.
 	if ( jsongin.OpError ) { jsongin.OpError( `Query.$myop: ${error.message}` ); }
 	throw error;
 }
 ```
 
-Always guard the call with `if ( jsongin.OpLog )`.
-Always prefix the message with your operator's name.
-When you catch an error to log it, ***rethrow it***; the log is an addition to the throw, not a
-  replacement for it.
+- Always check `if ( jsongin.OpLog )` before calling it.
+- Always start the message with your operator's name.
+- When you catch an error to report it, ***throw it again***.
 
-See the [OpLog](./OpLog.md) document.
+See [OpLog](./OpLog.md).
 
 
-## Registering an Operator
+## Adding an Operator
 
-Add it to the appropriate registry on an engine instance:
+Add it to the right table on an engine:
 
 ```js
 // docs-check: skip - registers an operator from a file of your own.
@@ -288,17 +239,16 @@ jsongin.QueryOperators.$startsWith = require( './my-operators/startsWith' )( jso
 jsongin.Query( { name: 'Alice' }, { name: { $startsWith: 'Al' } } ) === true
 ```
 
-The registries are plain objects keyed by operator name, so this is all registration amounts
-  to. Replacing an existing key overrides that operator for the instance.
+The tables are plain objects keyed by name. Using an existing name replaces that operator.
 
-Because the registry belongs to the instance, an operator you add to one engine is not visible
-  to another. Use `NewJsongin()` to make an instance to extend, and leave the module's default
-  instance alone if other code shares it.
+Each engine has its own tables, so an operator added to one engine is not in another.
+Make your own engine with `NewJsongin()` to add operators to, rather than changing the default
+  engine which other code may share.
 
 
 ## A Complete Example
 
-A query operator which matches a string field by its prefix:
+A query operator which matches a string field by how it starts:
 
 ```js
 // docs-check: skip - an operator module, not a call.
@@ -321,17 +271,19 @@ module.exports = function ( jsongin )
 					throw new Error( `$startsWith requires a string.` );
 				}
 
-				let value = jsongin.GetValue( Document, Path );
-				if ( jsongin.ShortType( value ) !== 's' )
+				// Every value the path can refer to, including array elements.
+				let candidates = jsongin.ResolveCandidates( Document, Path );
+				for ( let index = 0; index < candidates.length; index++ )
 				{
-					if ( jsongin.OpLog )
+					let value = candidates[ index ];
+					if ( ( jsongin.ShortType( value ) === 's' ) && value.startsWith( MatchValue ) )
 					{
-						// jsongin.OpLog( `$startsWith: [${Path}] is not a string.` );
+						return true;
 					}
-					return false;
 				}
 
-				return value.startsWith( MatchValue );
+				if ( jsongin.OpLog ) { jsongin.OpLog( `$startsWith: nothing at [${Path}] starts with [${MatchValue}].` ); }
+				return false;
 			}
 			catch ( error )
 			{
@@ -346,17 +298,15 @@ module.exports = function ( jsongin )
 ```
 
 
-## Conventions in the Source
+## Contributing an Operator
 
-Two conventions are worth following if you are contributing operators back rather than adding
-  them from outside:
+If you are adding an operator to `jsongin` itself:
 
-***One operator per file.***
-Operators live under `src/Operators/`, in a folder named for their kind, and are registered in
+- ***One operator per file***, under `src/Operators/`, in the folder for its kind. Register it in
   `src/jsongin.js`.
-
-***An `/*md` block at the top of the file.***
-Every operator carries a markdown comment describing its usage:
+- ***Start the file with an `/*md` comment*** describing how to use it. `npm run check-docs` fails
+  if an operator file does not have one. Files whose names start with `_` are helpers and are
+  skipped.
 
 ```js
 'use strict';
@@ -371,23 +321,14 @@ Returns the absolute value of a number.
 */
 ```
 
-***This is required, and it is checked.*** `npm run check-docs` verifies that every file under
-  `src/Operators/` has one, and fails the build when one is missing. Helper modules, whose names
-  begin with an underscore, are not operators and are skipped.
-
-Note that nothing ***reads*** these blocks to generate anything. They are documentation kept
-  beside the code, and the check only asserts that they are present.
-
-Write what the operator does and what it refuses, and state the cases which are easy to get
-  wrong — a missing field, a null, an empty array, a value of the wrong type. The
-  [Operator Reference](./Operator-Reference.md) carries the one-line summary; this block is for
-  the maintainer standing in the file.
+Describe what the operator does, what it refuses, and the cases which are easy to get wrong: a
+  missing field, `null`, an empty array, a value of the wrong type.
 
 
 ## See Also
 
-- [Operator Reference](./Operator-Reference.md) — every operator, supported or not.
+- [Operator Reference](./Operator-Reference.md)
 - [`Query()`](./jsongin/Query.md), [`Evaluate()`](./jsongin/Evaluate.md),
   [`Update()`](./jsongin/Update.md), [`Aggregate()`](./jsongin/Aggregate.md)
-- [`ShortType()`](./jsongin/ShortType.md) — the type codes used by `ValueTypes` and `ArgTypes`.
-- [NodeJS Usage](./Usage-NodeJS.md) — what else an engine instance exposes.
+- [`ShortType()`](./jsongin/ShortType.md), for the type codes.
+- [NodeJS Usage](./Usage-NodeJS.md)

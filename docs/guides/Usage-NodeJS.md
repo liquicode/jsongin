@@ -4,7 +4,7 @@
 # NodeJS Usage
 
 
-## Install jsongin with NPM
+## Install
 
 ```bash
 npm install --save @liquicode/jsongin
@@ -13,9 +13,9 @@ npm install --save @liquicode/jsongin
 `jsongin` has no runtime dependencies.
 
 
-## Include jsongin in your NodeJS Project
+## Require
 
-The module's default export is a ready-to-use engine ***instance***, not a factory:
+The module exports a ready-to-use ***engine***, not a function to call:
 
 ```js
 const jsongin = require( '@liquicode/jsongin' );
@@ -23,50 +23,40 @@ const jsongin = require( '@liquicode/jsongin' );
 console.log( jsongin.Library.name + ', v' + jsongin.Library.version );
 ```
 
-This instance has logging turned off.
-For most uses it is all you need.
+This engine has logging turned off. For most uses, it is all you need.
 
 
-## Import jsongin as an ES Module
+## Import as an ES Module
 
-The library is CommonJS, and an ESM wrapper ships beside it so that both import forms work:
+Both `import` forms work:
 
 ```mjs
 import jsongin from '@liquicode/jsongin';
 import { Query, Evaluate, Project } from '@liquicode/jsongin';
 ```
 
-***There is one engine, whichever way you load it.***
-`require()` and `import` reach the same object, because the wrapper re-exports the CommonJS
-  module rather than being a second build of it.
-  So, an operator registered through one handle will be visible through the other.
+`require()` and `import` give you the ***same*** engine, so an operator you add through one is
+  available through the other.
 
-***`OpLog` and `OpError` are not named exports.***
-They are mutable settings, and a named ESM export binds once at load time — `import { OpLog }`
-  would hand back the `null` it held then and go on handing it back after you had assigned a
-  logger.
-Reach them through the default export, where an assignment lands on the engine:
+Every member of the engine is a named export except `OpLog` and `OpError`.
+Set those on the default export instead, so the engine sees the change:
 
 ```mjs
 import jsongin from '@liquicode/jsongin';
 jsongin.OpLog = function ( Message ) { console.log( Message ); };
 ```
 
-Every other member of the engine is a named export.
+
+## TypeScript
+
+Type declarations are included in the package, in `types/`, so TypeScript projects and editors
+  know the engine's functions without installing anything else.
+`jsongin` itself is written in Javascript.
 
 
-## Use jsongin from TypeScript
+## Create an Engine with Settings
 
-A hand-written declaration ships in `types/`, so an editor completes the engine's surface and a
-  TypeScript project compiles against it with no `@types` package to install.
-
-***TypeScript is supported but never required.***
-There is no TypeScript in the source and no compiler in the build. `jsongin` is pure Javascript.
-
-
-## Create an Instance with Custom Settings
-
-To configure the engine, call the `NewJsongin( Settings )` factory method:
+To choose settings, call `NewJsongin( Settings )`:
 
 ```js
 let Settings = { OpLog: null, OpError: null };
@@ -74,56 +64,55 @@ let Settings = { OpLog: null, OpError: null };
 const jsongin = require( '@liquicode/jsongin' ).NewJsongin( Settings );
 ```
 
-Each instance carries its own settings and its own operator registries, so you can hold more
-  than one at a time — a quiet one for production paths and a logging one for the query you are
-  trying to understand.
+Each engine has its own settings and its own operators, so you can have more than one: for
+  example, a quiet one for normal use and a logging one while you work out a problem.
 
-> ***Note*** : the module export is an instance, so `require( '@liquicode/jsongin' )( Settings )`
+> The module export is an engine, not a function, so `require( '@liquicode/jsongin' )( Settings )`
   does not work. Use `NewJsongin( Settings )`.
 
 
-## Customize jsongin Behavior with Settings
+## Settings
 
 ```js
 // docs-check: skip - the shape of the settings object.
 let Settings = {
-	OpLog: null, // A function to call (such as console.log) to output OpLog messages.
-	OpError: null, // A function to call (such as console.error) to output OpError messages.
+	OpLog: null, // A function, such as console.log, to receive explanations.
+	OpError: null, // A function, such as console.error, to receive errors.
 }
 ```
 
-Both default to `null`, which emits nothing.
+Both default to `null`, which sends nothing.
 
 ```js
-// Explain what the engine is doing, on the console:
+// Log explanations and errors to the console.
 const jsongin = require( '@liquicode/jsongin' ).NewJsongin( {
 	OpLog: console.log,
 	OpError: console.error,
 } );
 ```
 
-> See the [OpLog](./OpLog.md) document for more information about how OpLog works.
+See [OpLog](./OpLog.md).
 
 
-## What the Engine Exposes
+## What an Engine Has
 
-Beyond the functions described in the [Library Guide](./Library-Guide.md), an engine instance
-  carries a few fields worth knowing about:
+Besides the functions in the [Library Guide](./Library-Guide.md), an engine has these fields:
 
 | **Field**                | **Description**                                                        |
 |--------------------------|-------------------------------------------------------------------------|
-| `Library`                | The library's `name`, `url`, and `version`.                            |
-| `Settings`               | The settings this instance was created with.                           |
-| `NewJsongin`             | The factory method, so any instance can make another.                  |
-| `Text`                   | The text helper functions.                                             |
-| `QueryOperators`         | The registered query operators, keyed by name.                         |
-| `ExpressionOperators`    | The registered expression operators.                                   |
-| `UpdateOperators`        | The registered update operators.                                       |
-| `StageOperators`         | The registered aggregation pipeline stages.                            |
-| `AccumulatorOperators`   | The registered accumulators.                                           |
+| `Library`                | The library's `name`, `url` and `version`.                             |
+| `Settings`               | The settings the engine was made with.                                 |
+| `NewJsongin`             | The factory method, so any engine can make another.                    |
+| `Text`                   | The [text functions](./Library-Guide.md#text-functions).               |
+| `Scope`                  | The [Scope](./jsongin/Scope.md) functions.                              |
+| `QueryOperators`         | The query operators, by name.                                          |
+| `ExpressionOperators`    | The expression operators, by name.                                     |
+| `UpdateOperators`        | The update operators, by name.                                         |
+| `StageOperators`         | The pipeline stages, by name.                                          |
+| `AccumulatorOperators`   | The accumulators, by name.                                             |
 
-The operator registries are plain objects, which is what makes it possible to add operators of
-  your own. See [Operator Authoring](./Operator-Authoring.md).
+The operator tables are plain objects, so you can add operators of your own.
+See [Operator Authoring](./Operator-Authoring.md).
 
 
 ## See Also

@@ -13,46 +13,37 @@
 
 ## Description
 
-Returns `true` when `Query` is an object which has at least one ***top-level*** key beginning
-  with `$`.
+Returns `true` when `Query` is an object with at least one ***top-level*** key starting with `$`.
 Returns `false` for everything else.
 
-The key does not have to be an operator this engine knows.
-A misspelled operator makes the object a ***malformed query***, which
-  [`Query()`](./Query.md) refuses, rather than a data value to compare a field against.
-Reading `{ $bogus: 1 }` as data compared the field against an object nobody meant to write and
-  reported that nothing matched, which hid the mistake.
+The key does not have to be a real operator.
+`{ $bogus: 1 }` is a query, just a malformed one, and [`Query()`](./Query.md) throws for it.
 
-Use it to tell a query document apart from a plain data document, which is a decision a storage
-  layer often has to make before choosing what to do with a parameter.
+Use `IsQuery` to tell whether a value holds operators or is plain data.
 
 
 ## It Only Looks at the Top Level
 
-This is the part worth knowing.
-`IsQuery` checks whether any of the object's ***own keys*** begins with `$`.
-It does not descend into fields, so a perfectly valid query whose operators are all nested
-  inside a field reports `false`:
+`IsQuery` does not look inside fields.
+A valid query whose operators are all inside a field returns `false`:
 
 ```js
 jsongin.IsQuery( { $and: [ { a: 1 } ] } ) === true    // $and is a top-level key
-jsongin.IsQuery( { a: { $eq: 1 } } ) === false        // $eq is nested inside a field
+jsongin.IsQuery( { a: { $eq: 1 } } ) === false        // $eq is inside the field a
 ```
 
-Both of those are valid queries and both work with [`Query()`](./Query.md).
-`IsQuery` recognizes only the first.
+A document with no operators, such as `{ a: 1 }`, also returns `false`, even though it works as a
+  query.
 
-An object with no operators at all is indistinguishable from a data document by inspection, so
-  a plain document like `{ a: 1 }` — which is also a valid query — reports `false`.
-
-***Treat a `true` result as a certainty and a `false` result as "no operator was found at the
-top level", not as "this is not a query."***
+So `true` means "this has an operator at the top level", and `false` means only that it does
+  not. It does ***not*** mean the value cannot be used as a query.
 
 
 ## See Also
 
 - [`Query( Document, Criteria )`](./Query.md)
-- [Operator Reference](../Operator-Reference.md) for the list of query operators.
+- [`ValidateQuery( Criteria )`](./ValidateQuery.md)
+- [Query Operators](./Query-Operators.md)
 
 
 ## Examples
@@ -65,7 +56,7 @@ jsongin.IsQuery( { $and: [] } ) === true
 ```
 
 
-### It does not find a nested one
+### It does not look inside fields
 ```js
 jsongin.IsQuery( { a: { $eq: 1 } } ) === false
 jsongin.IsQuery( { a: 1 } ) === false
@@ -73,7 +64,7 @@ jsongin.IsQuery( {} ) === false
 ```
 
 
-### Anything which is not an object is not a query
+### A value which is not an object returns false
 ```js
 jsongin.IsQuery( [] ) === false
 jsongin.IsQuery( null ) === false

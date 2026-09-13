@@ -142,6 +142,12 @@ describe( '510) Projection Computed Field Tests', () =>
 			assert.throws(
 				function () { jsongin.Project( { a: [ 1, 2 ] }, { a: { $: 1 } } ); },
 				/The projection operator \[\$\] is not supported/ );
+
+			// The positional operator's own form is a path element, which used to be read as a
+			// field named '$' and quietly projected an empty array.
+			assert.throws(
+				function () { jsongin.Project( { a: [ { x: 1 } ] }, { 'a.$': 1 } ); },
+				/The projection operator \[\$\] is not supported/ );
 		} );
 
 		it( 'should not mistake a computed field for a projection operator', () =>

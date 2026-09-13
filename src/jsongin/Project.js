@@ -374,6 +374,16 @@ module.exports = function ( jsongin )
 		let include_id = true;
 		for ( let key in flat_projection )
 		{
+			// The positional operator is written as a path element, { 'a.$': 1 }, rather than
+			// as an operator document, so projection_operator_name never sees it. It used to
+			// be read as a field named '$', which no document has, and quietly projected
+			// { a: [] }. It is refused by name here, the way { a: { $: 1 } } is below.
+			// A $project stage has no projection operators, so this is a find projection's rule.
+			if ( ( IsStage === false ) && ( key.split( '.' ).includes( '$' ) === true ) )
+			{
+				refuse( `The projection operator [$] is not supported.` );
+			}
+
 			let value = flat_projection[ key ];
 			let value_type = jsongin.ShortType( value );
 			let is_exclusion = ( ( ( value_type === 'n' ) && ( value === 0 ) ) || ( ( value_type === 'b' ) && ( value === false ) ) );

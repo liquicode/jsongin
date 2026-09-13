@@ -8,47 +8,43 @@
 
 | **Parameter** | **Allowed Types** | **Description**                          |
 |---------------|:-----------------:|------------------------------------------|
-| DocumentA     |         o         | The document to merge into.              |
-| DocumentB     |         o         | The document to merge from. Values from DocumentB overwrite values in DocumentA. |
+| DocumentA     |        olu        | The document to merge into.              |
+| DocumentB     |        olu        | The document to merge from. Its values win. |
 
 
 ## Description
 
-Merges two documents and returns the merged document.
+Returns a new document with the fields of `DocumentB` merged into `DocumentA`.
 
-Fields found in `DocumentB` overwrite the matching fields of `DocumentA`, and fields found in
-  only one of them are carried through.
-The merge is ***member-wise and recursive***: when both documents hold a sub-document at the
-  same field, those sub-documents are merged into each other.
+- A field in only one of the documents is copied into the result.
+- A field in both takes `DocumentB`'s value.
+- When ***both*** hold an object in the same field, the two objects are merged the same way.
 
-***Neither of the given documents is modified.***
-`Merge` clones with [`SafeClone()`](./SafeClone.md), so dates and regular expressions survive
-  into the result as themselves, and the result shares no structure with either input.
+***Neither document is changed.***
+The result is copied with [`SafeClone()`](./SafeClone.md), so dates stay dates and the result
+  shares nothing with either document.
 
-Both parameters must be objects.
-A `null` or missing document is treated as an empty one, so that a call like
-  `Merge( DEFAULTS, options )` still works when no options were supplied.
-Any other type — an array, a number, a string, a date — throws.
+A `null` or `undefined` document counts as `{}`, so `Merge( DEFAULTS, options )` works when
+  `options` was not given.
+Any other type, such as an array, a number or a date, throws.
 
 
-## Only Sub-Documents are Merged
+## Only Objects Are Merged
 
-`Merge` descends into a field only when ***both*** documents hold a sub-document there.
+`Merge` only looks inside a field when both documents hold an object there.
 Every other value in `DocumentB` ***replaces*** the value in `DocumentA`.
 
-An array is a value, not a structure to descend into.
-`DocumentB`'s array replaces `DocumentA`'s outright, rather than being combined with it:
+So an array replaces an array, rather than being combined with it:
 
 ```js
 // jsongin.Merge( { tags: [ 'a', 'b', 'c' ] }, { tags: [ 'a' ] } ) returns { tags: [ 'a' ] }
 // jsongin.Merge( { tags: [ 'a', 'b', 'c' ] }, { tags: [] } ) returns { tags: [] }
 ```
 
-This is what allows an override to ***narrow*** a list and not only extend it, which is the
-  behavior a defaults document needs.
-It is also how [`Diff()`](./Diff.md) treats arrays, and what the `$set` update operator does.
+This lets an override make a list shorter, not only longer.
+[`Diff()`](./Diff.md) and `$set` treat arrays the same way.
 
-To combine two arrays instead, do it explicitly:
+To combine two arrays, do it yourself:
 
 ```js
 let defaults = { tags: [ 'a', 'b' ] };
@@ -58,46 +54,34 @@ jsongin.Merge( defaults, { tags: defaults.tags.concat( custom.tags ) } );
 // returns { tags: [ 'a', 'b', 'c' ] }
 ```
 
-Dates and regular expressions are values in the same way, and replace rather than merge.
+Dates and regular expressions also replace rather than merge.
 
 
-## Null is a Value
+## null Is a Value
 
-A field set to `null` in `DocumentB` is set to `null` in the result.
-It is ***not*** removed.
+A field set to `null` in `DocumentB` becomes `null` in the result. It is ***not*** removed.
 
 ```js
 // jsongin.Merge( { a: 1, b: 2 }, { a: null } ) returns { a: null, b: 2 }
 ```
 
-***`Merge` adds and overwrites fields, but never removes one.***
-Use [`Update()`](./Update.md) with `$unset`, or [`DeleteValue()`](./DeleteValue.md), to remove a
-  field.
+***`Merge` adds and changes fields, but never removes one.***
+To remove a field, use [`Update()`](./Update.md) with `$unset`, or
+  [`DeleteValue()`](./DeleteValue.md).
 
-A field whose value is `undefined` in `DocumentB` is skipped rather than stored, since a key
-  holding `undefined` is reported by `Object.keys()` but does not appear in the document's JSON.
-
-
-## Relationship to RFC 7386
-
-`Merge` follows [RFC 7386, JSON Merge Patch](https://www.rfc-editor.org/rfc/rfc7386), with
-  ***one deliberate difference***.
-
-The RFC spends `null` on deletion, because a JSON Merge Patch is a standalone document with no
-  other way to express the removal of a field.
-`jsongin` is not under that constraint — it has `$unset` and `DeleteValue` — so `null` keeps its
-  ordinary meaning as a value.
-This also keeps `Merge` consistent with `ShortType()`, which gives `null` its own type `l`, and
-  with `Diff()`, which reports a change to `null` as `$set` rather than `$unset`.
-
-Everything else matches: objects merge recursively, arrays and scalars replace, and a value
-  which changes type simply takes on the new value.
+A field holding `undefined` in `DocumentB` is skipped.
 
 
-## A Note on Defaults
+## Compared With JSON Merge Patch
 
-`Merge` is designed for the case where a system defines a default document and accepts a
-  complete or partial override of it:
+`Merge` works like [RFC 7386, JSON Merge Patch](https://www.rfc-editor.org/rfc/rfc7386), except
+  for `null`.
+In a JSON Merge Patch, `null` removes a field. In `Merge`, `null` is an ordinary value.
+
+
+## Defaults and Overrides
+
+`Merge` is made for applying a full or partial set of overrides to a set of defaults:
 
 ```js
 const DEFAULT_SETTINGS = {
@@ -121,83 +105,80 @@ function GetSettings( CustomSettings )
 // }
 ```
 
-Note that the override reached into `editor` without having to restate `tabs`, and that
-  `GetSettings()` is safe to call with nothing at all.
+The override changed `editor.wrap` without repeating `tabs`, and `GetSettings()` also works with
+  no argument.
 
-`Merge` is ***idempotent***: applying the same overrides twice gives the same result as applying
-  them once, so settings can be layered without the result depending on how many times a layer
-  was applied.
+Merging the same overrides twice gives the same result as merging them once.
 
 
 ## See Also
 
 - [`SafeClone( Document, Exceptions )`](./SafeClone.md)
-- [`Update( Document, Updates )`](./Update.md), for removing fields and for array operations.
+- [`Update( Document, Updates )`](./Update.md), to remove fields or change arrays.
 - [`Diff( Before, After )`](./Diff.md)
-- [`ShortType( Value )`](./ShortType.md)
 
 
 ## Examples
 
 
-### It can merge with null or missing documents
+### It accepts null or undefined documents
 ```js
 let doc = { b: true, n: 3.14, s: 'abc' };
 
 let merged = jsongin.Merge( doc, null );
-// merged matches doc (effectively, a clone)
+// merged is a copy of doc
 
 merged = jsongin.Merge( null, doc );
-// merged matches doc (effectively, a clone)
+// merged is a copy of doc
 
 merged = jsongin.Merge( doc, undefined );
-// merged matches doc (effectively, a clone)
+// merged is a copy of doc
 ```
 
 
-### It can merge with empty objects
+### It accepts empty objects
 ```js
 let doc = { b: true, n: 3.14, s: 'abc' };
 
 let merged = jsongin.Merge( doc, {} );
-// merged matches doc (effectively, a clone)
+// merged is a copy of doc
 
 merged = jsongin.Merge( {}, doc );
-// merged matches doc (effectively, a clone)
+// merged is a copy of doc
 ```
 
 
-### It can add new fields
+### It adds new fields
 ```js
 let doc = { b: true, n: 3.14, s: 'abc' };
 
 let merged = jsongin.Merge( doc, { x: 42 } );
-// merged is { b: true, n: 3.14, s: 'abc', x: 42 } (new field x)
+// merged is { b: true, n: 3.14, s: 'abc', x: 42 }
 
 merged = jsongin.Merge( { x: 42 }, doc );
-// merged is { b: true, n: 3.14, s: 'abc', x: 42 } (New fields b, n, and s)
+// merged is { x: 42, b: true, n: 3.14, s: 'abc' }
 ```
 
 
-### It can update existing fields
+### It changes existing fields
 ```js
 let doc = { b: true, n: 3.14, s: 'abc' };
 
 let merged = jsongin.Merge( doc, { n: 42 } );
-// merged is { b: true, n: 42, s: 'abc' } (new value for n)
+// merged is { b: true, n: 42, s: 'abc' }
 
 merged = jsongin.Merge( { n: 42 }, doc );
-// merged is { b: true, n: 3.14, s: 'abc' } (new value for n, new fields b and s)
+// merged is { n: 3.14, b: true, s: 'abc' }
 ```
 
 
-### It can add new sub-fields
+### It merges objects inside fields
 ```js
 let merged = jsongin.Merge( { A: { B: 2 } }, { A: { C: 3 } } );
 // merged is { A: { B: 2, C: 3 } }
 
 merged = jsongin.Merge( { A: { C: 3 } }, { A: { B: 2 } } );
-// merged is { A: { B: 2, C: 3 } }
+// merged is { A: { C: 3, B: 2 } }
 ```
 
 
@@ -209,7 +190,7 @@ merged = jsongin.Merge( { A: { C: 3 } }, { A: { B: 2 } } );
 ```
 
 
-### It requires objects
+### It throws for anything but an object
 ```js
 jsongin.Merge( [ 1, 2 ], { a: 1 } )
 // throws: DocumentA must be an object.

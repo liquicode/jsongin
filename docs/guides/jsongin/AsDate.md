@@ -13,26 +13,21 @@
 
 ## Description
 
-Converts `Value` to a `Date` and returns it.
-Returns `null` when the value cannot be converted.
+Converts `Value` to a `Date`.
+Returns `null` if it cannot.
 
 Three kinds of value convert:
 
-- A ***date*** returns a copy, never the original object.
-- A ***number*** is treated as a millisecond timestamp.
-- A ***string*** is parsed. It converts when Javascript's `Date` constructor can read it.
+- A ***date*** returns a new copy of the date.
+- A ***number*** is read as milliseconds since 1970, so `0` is `1970-01-01T00:00:00.000Z`.
+- A ***string*** converts if Javascript's `Date` constructor can read it.
 
-Everything else returns `null`, including booleans, arrays, objects, and `null` itself.
+Everything else returns `null`, including booleans, arrays, objects, `null`, empty strings, and
+  `NaN`.
 
-> ***Note*** : `AsDate` is a conversion, not a classification.
-  It is willing to read a date out of a number or a string, which is exactly what
-  [`ShortType()`](./ShortType.md) refuses to do.
-  A number is still a number and a string is still a string; `AsDate` simply converts one on
-  request.
-
-> ***Fixed in v0.1.0*** :
-  `AsDate` tested its parameter for falsiness, so `AsDate( 0 )` returned `null` rather than the
-  epoch. Zero is a valid timestamp and now converts.
+`AsDate` converts when you ask it to.
+It does not change what type a value is: [`ShortType()`](./ShortType.md) still calls a number a
+  number and a string a string.
 
 
 ## What Converts
@@ -54,7 +49,6 @@ Everything else returns `null`, including booleans, arrays, objects, and `null` 
 - [`AsNumber( Value )`](./AsNumber.md)
 - [`AsBoolean( Value )`](./AsBoolean.md)
 - [`ShortType( Value )`](./ShortType.md), which explains why a date has its own short type `d`.
-- [`Update()`](./Update.md) and its `$currentDate` operator.
 
 
 ## Examples
@@ -78,11 +72,12 @@ copy.getTime() === original.getTime()
 ```
 
 
-### It rejects values which are not dates
+### It returns null for values which are not dates
 ```js
 jsongin.AsDate( 'abc' ) === null
 jsongin.AsDate( '' ) === null
 jsongin.AsDate( true ) === null
 jsongin.AsDate( [] ) === null
 jsongin.AsDate( null ) === null
+jsongin.AsDate( NaN ) === null
 ```

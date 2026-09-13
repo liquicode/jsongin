@@ -8,25 +8,58 @@
 
 | **Parameter** | **Allowed Types** | **Description**                          |
 |---------------|:-----------------:|------------------------------------------|
-| Document      |        o          | The flattened document to expand.        |
+| Document      |        o          | An object whose keys are dot notation paths. |
 
 
 ## Description
 
-Takes a previously flattened document (from `jsongin.Flatten()`) and returns it back to its original form.
+Turns an object whose keys are dot notation paths into a nested document.
+It is the reverse of [`Flatten()`](./Flatten.md).
 
-The `Document` parameter can be an object.
+The object does not have to come from `Flatten()`.
+You can use `Expand` to write a nested document as a flat list of paths.
+
+A number in a path creates an ***array***: `'tags.0'` makes `tags` an array.
+`Expand` is the only function in `jsongin` which does this.
+Everywhere else, such as [`SetValue()`](./SetValue.md) and `$set`, a number in a new path creates
+  an object field named `'0'`, as MongoDB does.
+
+An array position which nothing fills is set to `null`:
+
+```js
+let expanded = jsongin.Expand( { 'tags.2': 'Dept. C' } );
+// expanded is { tags: [ null, null, 'Dept. C' ] }
+```
+
+Empty objects, empty arrays and dates are kept as values.
+
+`Expand` throws when:
+
+- `Document` is not an object. An array is not accepted.
+- Two paths contradict each other, such as `{ a: 1, 'a.b': 2 }`, where `a` would have to be both
+  `1` and an object holding `b`. `Flatten()` never produces this.
+
+
+## Round Trip Limitations
+
+A dot notation path cannot record whether a container was an object or an array, so:
+
+- A document which is an array expands back as an object.
+- An object whose keys are whole numbers, such as `{ '0': 'x' }`, expands back as an array.
+
+See [Round Trip Limitations](./Flatten.md#round-trip-limitations) under `Flatten`.
 
 
 ## See Also
 
 - [`Flatten( Document )`](./Flatten.md)
+- [`SetValue( Document, Path, Value )`](./SetValue.md)
 
 
 ## Examples
 
 
-### It expands a flat document into a hierarchical one
+### It expands a flat document into a nested one
 ```js
 let flattened = {
 	id: 1001,
@@ -48,11 +81,7 @@ let expanded = jsongin.Expand( flattened );
 // };
 ```
 
-The document does not have to have come from `Flatten()`.
-Any object whose keys are dot notation paths can be expanded, which is what makes `Expand` a
-  way to write a nested document as a flat list of paths.
-
-### Use Expand() to turn a flattened document back into a hierarchical document
+### It reverses Flatten()
 ```js
 let document = {
 	id: 1001,
@@ -69,30 +98,19 @@ let expanded = jsongin.Expand( flattened );
 // expanded matches document
 ```
 
-### A numeric path element builds an array
+### A number in a path builds an array
 ```js
 let expanded = jsongin.Expand( { 'tags.0': 'Staff', 'tags.1': 'Dept. A' } );
 // expanded is { tags: [ 'Staff', 'Dept. A' ] }, and expanded.tags is a real array
 ```
 
-This is the one place in `jsongin` where a numeric path element creates an array.
-Everywhere else it creates a document, which is the rule MongoDB follows for an update.
-
-An index which nothing fills is filled with `null`, because an array cannot leave a position
-  out:
-
-```js
-let expanded = jsongin.Expand( { 'tags.2': 'Dept. C' } );
-// expanded is { tags: [ null, null, 'Dept. C' ] }
-```
-
-### It should expand an empty document
+### It expands an empty document
 ```js
 let expanded = jsongin.Expand( {} );
 // expanded is {}
 ```
 
-### It preserves empty objects and arrays
+### It keeps empty objects and arrays
 ```js
 let expanded = jsongin.Expand( { a: {}, b: [] } );
 // expanded is { a: {}, b: [] }, and expanded.b is a real array
@@ -104,30 +122,14 @@ let expanded = jsongin.Expand( { 'user.created': new Date( 1700000000000 ) } );
 ( expanded.user.created instanceof Date ) === true
 ```
 
-### It should not expand a non-document
+### It throws for anything but an object
 ```js
-jsongin.Expand( 3.14 );       // throws error: Document must be an object.
-jsongin.Expand( [ 1, 2 ] );   // throws error: Document must be an object.
+jsongin.Expand( 3.14 );       // throws: Document must be an object.
+jsongin.Expand( [ 1, 2 ] );   // throws: Document must be an object.
 ```
 
-`Expand` requires an object, where [`Flatten`](./Flatten.md) accepts an object or an array.
-An array holds no paths to expand, and the result is always an object in any case.
-
-### It should not expand paths which contradict each other
+### It throws for paths which contradict each other
 ```js
 let expanded = jsongin.Expand( { a: 1, 'a.b': 2 } );
-// throws error: The element [b] of the path [a.b] must reference an object or array.
+// throws: The element [b] of the path [a.b] must reference an object or array.
 ```
-
-`a` cannot be both the number `1` and the object which holds `b`.
-`Flatten` never produces such a pair, so this only arises in a flat document written by hand.
-
-
-## Round Trip Limitations
-
-`Expand` always builds an object, and a dot notation path cannot record whether a container
-  was an object or an array.
-So a document which is itself an array expands back as an object, and an object whose keys are
-  canonical integers expands back as an array.
-See [Round Trip Limitations](./Flatten.md) under `Flatten` for the details.
-

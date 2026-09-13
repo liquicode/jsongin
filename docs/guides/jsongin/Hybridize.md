@@ -13,26 +13,32 @@
 
 ## Description
 
-Takes a document and returns a hybridized copy of that document.
-The hybrid document will not contain any nested objects or arrays.
-Instead, the hybrid document will have only top-level fields and nested structures,
-  such as objects and arrays, are json encoded.
+Returns a copy of a document in which every top-level field holds a simple value.
 
-The `Document` parameter must be an object.
+- Numbers, strings, booleans and `null` are copied as they are.
+- Every other value is written as a JSON string which records its type: objects, arrays, dates,
+  regular expressions, errors, functions, symbols and `undefined`.
 
-Use the `jsongin.Unhybridize( Document )` function to return a hybrid document back to its
-  original state with nested objects and arrays.
+This is useful for storage which can only hold simple values in each column.
+Only the top level is changed. The inside of an object or array is stored in its JSON string.
+
+Use [`Unhybridize()`](./Unhybridize.md) to turn a hybrid document back into the original.
+
+Because the type is recorded, a date comes back from `Unhybridize` as a `Date`.
+[`Format()`](./Format.md) and [`Parse()`](./Parse.md) follow JSON's rules instead, where a date
+  becomes a string and stays a string.
 
 
 ## See Also
 
 - [`Unhybridize( Document )`](./Unhybridize.md)
+- [`Flatten( Document )`](./Flatten.md)
 
 
 ## Examples
 
 
-### It flattens a hierarchical document
+### It encodes nested values as strings
 ```js
 let document = {
 	id: 1001,
@@ -52,7 +58,7 @@ let hybrid = jsongin.Hybridize( document );
 // };
 ```
 
-### Use Unhybridize() to turn a hybrid document back into a hierarchical document
+### Unhybridize() reverses it
 ```js
 let document = {
 	id: 1001,
@@ -69,7 +75,7 @@ let unhybrid = jsongin.Unhybridize( hybrid );
 // unhybrid matches document
 ```
 
-### It preserves dates across the round trip
+### A date comes back as a date
 ```js
 let document = { created: new Date( 1700000000000 ) };
 
@@ -79,10 +85,3 @@ hybrid.created === '{"type":"d","value":"2023-11-14T22:13:20.000Z"}'
 let unhybrid = jsongin.Unhybridize( hybrid );
 ( unhybrid.created instanceof Date ) === true
 ```
-
-A `Date` is recorded with its own type marker `d`, so `Unhybridize` can rebuild an actual
-  `Date` rather than a string or an empty object.
-
-This is the round trip to use when the ***type*** of a date must survive.
-[`Format()`](./Format.md) and [`Parse()`](./Parse.md) follow JSON's rules instead, where a date
-  becomes an ISO string and reads back as a string.

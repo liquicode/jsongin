@@ -1,29 +1,29 @@
 # @liquicode/jsongin
 
 
-# Aggregate( Documents, Pipeline )
+# Aggregate( Documents, Pipeline, Scope )
 
 
 ## Parameters
 
 | **Parameter** | **Allowed Types** | **Description**                                        |
 |---------------|:-----------------:|----------------------------------------------------------|
-| Documents     |       array       | The array of documents to aggregate.                   |
-| Pipeline      |       array       | The array of aggregation stages to run them through.   |
+| Documents     |         a         | The documents to run through the pipeline.             |
+| Pipeline      |         a         | The stages to run them through, in order.              |
+| Scope         |         o         | Optional. The variables in effect. See [Scope](./Scope.md). |
 
 
 ## Description
 
-Runs an array of documents through a MongoDB aggregation `Pipeline` and returns the resulting
+Runs an array of documents through a MongoDB aggregation `Pipeline`, and returns the resulting
   array of documents.
 
 A pipeline is an array of ***stages***.
-Each stage is an object with exactly one field, whose name is a stage operator and whose value
-  is that operator's argument.
-Each stage receives the array of documents produced by the stage before it, so a pipeline reads
-  top to bottom.
+Each stage is an object with exactly one key: the stage operator, such as `$match`, and its
+  argument.
+Each stage works on the documents the previous stage returned.
 
-These documents are used by the examples on this page:
+The examples on this page use these documents:
 
 ```js
 let players = [
@@ -42,101 +42,106 @@ jsongin.Aggregate( players, [
 ] );
 ```
 
-Wherever a stage computes a value, it uses the same expression language that
-  [`Evaluate( Document, Expression )`](./Evaluate.md) implements.
-Wherever a stage matches documents, it uses the same query language that
-  [`Query( Document, Criteria )`](./Query.md) implements.
+A stage which computes values uses the same expressions as [`Evaluate()`](./Evaluate.md).
+A stage which matches documents uses the same queries as [`Query()`](./Query.md).
+
+Every stage in one run sees the same `$$NOW`.
 
 
-## Aggregate Never Modifies Its Input
+## Aggregate Never Changes Its Input
 
-`Documents`, and the documents within it, are treated as read-only.
+`Documents` and the documents in it are never changed.
 
-- ***Pass-through stages*** — `$match`, `$sort`, `$limit`, and `$skip` — select and reorder
-  documents. They return the caller's own document objects and clone nothing, which is what
-  [`Filter()`](./Filter.md) already does.
-- ***Document-producing stages*** — `$project`, `$addFields`, `$set`, `$unwind`, and `$group` —
-  clone every document they emit, with [`SafeClone()`](./SafeClone.md), before writing into it.
+- `$match`, `$sort`, `$limit`, `$skip` and `$sample` only select or reorder documents.
+  They return ***your own document objects***, not copies, the same as [`Filter()`](./Filter.md).
+- Every stage which changes a document, such as `$project`, `$addFields` or `$unwind`, copies it
+  first with [`SafeClone()`](./SafeClone.md).
 
-So a pipeline made only of pass-through stages hands back the original documents, and the moment
-  a stage changes anything it is working on a copy.
-Cloning on write rather than cloning the input up front matters: a `$match` which selects ten
-  documents out of a hundred thousand does not clone a hundred thousand documents first.
+So a pipeline of only `$match`, `$sort`, `$limit`, `$skip` and `$sample` gives back the original
+  objects. If you change them, you change your input.
 
-Dates survive a pipeline as dates, because `SafeClone` clones a `Date` by value.
+Dates stay dates.
 
 
-## Operator Summary
+## Stages
 
-***Stages*** — see [Stage Operators](./Stage-Operators.md) for the detail and examples.
+[Stage Operators](./Stage-Operators.md) describes each stage, with examples.
 
-| **Stage**                                          | **Usage**                                                            |
-|----------------------------------------------------|----------------------------------------------------------------------|
-| [`$match`](./Stage-Operators.md#$match)            | `{ $match: query }`                                                  |
-| [`$project`](./Stage-Operators.md#$project)        | `{ $project: { field: 1 \| 0, field: expression, ... } }`            |
-| [`$addFields`](./Stage-Operators.md#$addFields)    | `{ $addFields: { field: expression, ... } }`                         |
-| [`$set`](./Stage-Operators.md#$set)                | `{ $set: { field: expression, ... } }`                               |
-| [`$unwind`](./Stage-Operators.md#$unwind)          | `{ $unwind: '$path' }`                                               |
-| [`$group`](./Stage-Operators.md#$group)            | `{ $group: { _id: expression, field: { accumulator: expression } } }` |
-| [`$sort`](./Stage-Operators.md#$sort)              | `{ $sort: { field: 1 \| -1, ... } }`                                 |
-| [`$limit`](./Stage-Operators.md#$limit)            | `{ $limit: count }`                                                  |
-| [`$skip`](./Stage-Operators.md#$skip)              | `{ $skip: count }`                                                   |
-| [`$count`](./Stage-Operators.md#$count)            | `{ $count: 'field_name' }`                                           |
+| **Stage**                                              | **Usage**                                                            |
+|--------------------------------------------------------|----------------------------------------------------------------------|
+| [`$match`](./Stage-Operators.md#$match)                | `{ $match: query }`                                                  |
+| [`$project`](./Stage-Operators.md#$project)            | `{ $project: { field: 1 \| 0, field: expression, ... } }`            |
+| [`$addFields`](./Stage-Operators.md#$addFields)        | `{ $addFields: { field: expression, ... } }`                         |
+| [`$set`](./Stage-Operators.md#$set)                    | `{ $set: { field: expression, ... } }`                               |
+| [`$unset`](./Stage-Operators.md#$unset)                | `{ $unset: 'field' }` or `{ $unset: [ 'field', ... ] }`              |
+| [`$replaceRoot`](./Stage-Operators.md#$replaceRoot)    | `{ $replaceRoot: { newRoot: expression } }`                          |
+| [`$replaceWith`](./Stage-Operators.md#$replaceWith)    | `{ $replaceWith: expression }`                                       |
+| [`$unwind`](./Stage-Operators.md#$unwind)              | `{ $unwind: '$path' }`                                               |
+| [`$group`](./Stage-Operators.md#$group)                | `{ $group: { _id: expression, field: { accumulator: expression } } }` |
+| [`$bucket`](./Stage-Operators.md#$bucket)              | `{ $bucket: { groupBy: expression, boundaries: [ ... ] } }`          |
+| [`$bucketAuto`](./Stage-Operators.md#$bucketAuto)      | `{ $bucketAuto: { groupBy: expression, buckets: count } }`           |
+| [`$sortByCount`](./Stage-Operators.md#$sortByCount)    | `{ $sortByCount: expression }`                                       |
+| [`$count`](./Stage-Operators.md#$count)                | `{ $count: 'field_name' }`                                           |
+| [`$sort`](./Stage-Operators.md#$sort)                  | `{ $sort: { field: 1 \| -1, ... } }`                                 |
+| [`$limit`](./Stage-Operators.md#$limit)                | `{ $limit: count }`                                                  |
+| [`$skip`](./Stage-Operators.md#$skip)                  | `{ $skip: count }`                                                   |
+| [`$sample`](./Stage-Operators.md#$sample)              | `{ $sample: { size: count } }`                                       |
+| [`$facet`](./Stage-Operators.md#$facet)                | `{ $facet: { name: [ stage, ... ], ... } }`                          |
+| [`$fill`](./Stage-Operators.md#$fill)                  | `{ $fill: { output: { field: { value: expression } } } }`            |
+| [`$densify`](./Stage-Operators.md#$densify)            | `{ $densify: { field: 'field', range: { step: 1, bounds: 'full' } } }` |
+| [`$redact`](./Stage-Operators.md#$redact)              | `{ $redact: expression }`                                            |
 
-***Accumulators*** — only meaningful inside `$group`.
-See [Accumulator Operators](./Accumulator-Operators.md) for the detail and examples.
+***Accumulators*** are used inside `$group` and the other grouping stages.
+[Accumulator Operators](./Accumulator-Operators.md) describes each one.
 
 | [`$sum`](./Accumulator-Operators.md#$sum) | [`$avg`](./Accumulator-Operators.md#$avg) | [`$min`](./Accumulator-Operators.md#$min) | [`$max`](./Accumulator-Operators.md#$max) | [`$count`](./Accumulator-Operators.md#$count) |
 |:---:|:---:|:---:|:---:|:---:|
-| [`$push`](./Accumulator-Operators.md#$push) | [`$addToSet`](./Accumulator-Operators.md#$addToSet) | [`$first`](./Accumulator-Operators.md#$first) | [`$last`](./Accumulator-Operators.md#$last) | |
-
-Expressions inside a stage are evaluated by [`Evaluate()`](./Evaluate.md); see
-  [Expression Operators](./Expression-Operators.md).
+| [`$push`](./Accumulator-Operators.md#$push) | [`$addToSet`](./Accumulator-Operators.md#$addToSet) | [`$first`](./Accumulator-Operators.md#$first) | [`$last`](./Accumulator-Operators.md#$last) | [`$mergeObjects`](./Accumulator-Operators.md#$mergeObjects) |
+| [`$stdDevPop`](./Accumulator-Operators.md#$stdDevPop) | [`$stdDevSamp`](./Accumulator-Operators.md#$stdDevSamp) | [`$top`](./Accumulator-Operators.md#$top) | [`$bottom`](./Accumulator-Operators.md#$bottom) | [`$topN`](./Accumulator-Operators.md#$topN) |
+| [`$bottomN`](./Accumulator-Operators.md#$bottomN) | [`$firstN`](./Accumulator-Operators.md#$firstN) | [`$lastN`](./Accumulator-Operators.md#$lastN) | [`$minN`](./Accumulator-Operators.md#$minN) | [`$maxN`](./Accumulator-Operators.md#$maxN) |
 
 
 ## Errors
 
-`Aggregate` throws when the pipeline is malformed:
+`Aggregate` throws when:
 
 - `Documents` or `Pipeline` is not an array.
-- A stage is not an object, or does not have exactly one key. A stage object holding two keys is
-  the most common pipeline authoring mistake, so the error quotes the stage's index.
-- A stage operator or an accumulator is not recognized.
-- A stage's argument is of the wrong type, or a `$group` has no `_id`.
+- A stage is not an object, or does not have exactly one key. The error gives the stage's
+  position in the pipeline.
+- A stage or accumulator is not recognized.
+- A stage's argument is the wrong type, or is missing something it needs, such as `$group`'s
+  `_id`.
 
-Malformed expressions throw for the same reasons they throw in
-  [`Evaluate()`](./Evaluate.md).
-Missing and `null` values are not errors anywhere in a pipeline.
+An invalid expression inside a stage throws, as it does in [`Evaluate()`](./Evaluate.md).
+Missing and `null` values are not errors.
 
 
 ## What Is Not Implemented
 
-The stages `$lookup`, `$graphLookup`, and `$unionWith` need a second collection and are out of
-  scope for a library which operates on one array of documents at a time.
+`$lookup`, `$graphLookup` and `$unionWith` read a second collection, and `$out` and `$merge` write
+  to one. `Aggregate` works on one array of documents, so it has none of these.
 
-The stages `$bucket`, `$facet`, `$sortByCount`, `$replaceRoot`, `$sample`, `$unset`, `$out`,
-  `$merge`, and `$setWindowFields` are not implemented.
-Neither are the accumulators `$stdDevPop`, `$stdDevSamp`, `$mergeObjects`, `$top`, `$bottom`,
-  `$percentile`, and the `N` variants.
+`$documents`, `$geoNear`, `$setWindowFields`, `$collStats`, `$indexStats` and `$vectorSearch` are
+  also not implemented, nor are the `$accumulator`, `$median` and `$percentile` accumulators.
 
 See the [Operator Reference](../Operator-Reference.md) for the full list.
 
 
 ## See Also
 
-- [`Evaluate( Document, Expression )`](./Evaluate.md), the expression engine every computing stage uses.
+- [`Evaluate( Document, Expression )`](./Evaluate.md), which evaluates the expressions in a stage.
 - [`Query( Document, Criteria )`](./Query.md) and [`Filter( Documents, QueryCriteria )`](./Filter.md), which `$match` uses.
-- [`Project( Document, Projection )`](./Project.md), which `$project` uses.
+- [`Project( Document, Projection )`](./Project.md), which works like `$project`.
 - [`Sort( Documents, SortCriteria )`](./Sort.md), which `$sort` uses.
-- [`SafeClone( Document )`](./SafeClone.md), which the document-producing stages clone with.
+- [Scope](./Scope.md)
 - [Operator Reference](../Operator-Reference.md)
 
 
 ## Examples
 
-Given the documents declared above:
+These use the `players` documents above.
 
-### It scores the living players by team
+### Score the living players by team
 ```js
 jsongin.Aggregate( players, [
 	{ $match: { alive: true } },
@@ -146,7 +151,7 @@ jsongin.Aggregate( players, [
 // returns [ { _id: 'red', score: 8, top: 5 }, { _id: 'blue', score: 1, top: 1 } ]
 ```
 
-### It builds a leaderboard
+### Build a leaderboard
 ```js
 jsongin.Aggregate( players, [
 	{ $addFields: { bonus: { $multiply: [ '$points', 2 ] } } },
@@ -157,7 +162,7 @@ jsongin.Aggregate( players, [
 // returns [ { name: 'Eve', bonus: 18 }, { name: 'Bob', bonus: 10 } ]
 ```
 
-### It tallies the tags
+### Count the tags
 ```js
 jsongin.Aggregate( players, [
 	{ $unwind: '$tags' },
@@ -167,7 +172,7 @@ jsongin.Aggregate( players, [
 // returns [ { _id: 'ranged', count: 2 }, { _id: 'tank', count: 2 }, { _id: 'melee', count: 1 } ]
 ```
 
-### It summarizes everything in a single group
+### Summarize everything in one group
 ```js
 jsongin.Aggregate( players, [
 	{
@@ -182,7 +187,7 @@ jsongin.Aggregate( players, [
 // returns [ { _id: null, count: 4, total: 18, average: 4.5 } ]
 ```
 
-### It lists the members of each team
+### List the members of each team
 ```js
 jsongin.Aggregate( players, [
 	{ $sort: { name: 1 } },
@@ -192,7 +197,7 @@ jsongin.Aggregate( players, [
 // returns [ { _id: 'blue', members: [ 'Eve', 'Mallory' ] }, { _id: 'red', members: [ 'Alice', 'Bob' ] } ]
 ```
 
-### It pages through the documents
+### Page through the documents
 ```js
 jsongin.Aggregate( players, [
 	{ $sort: { _id: 1 } },

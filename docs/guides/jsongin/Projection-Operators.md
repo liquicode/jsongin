@@ -3,10 +3,12 @@
 
 # Projection Operators
 
-The operators which may appear as the value of a field in a projection, read by
-  [`Project()`](./Project.md) and by the `$project` aggregation stage.
+The operators which can be used as a field's value in a [`Project()`](./Project.md) projection.
 
-MongoDB defines four. `jsongin` implements two of them and refuses the other two by name.
+The [`$project`](./Stage-Operators.md#$project) pipeline stage does not use these.
+Inside a stage, `$slice` is the [expression operator](./Expression-Operators.md) of that name.
+
+MongoDB has four projection operators. `jsongin` supports two, and throws on the other two.
 
 | **Operator**                  | **Supported** | **Usage**                                        |
 |-------------------------------|:-------------:|--------------------------------------------------|
@@ -15,15 +17,14 @@ MongoDB defines four. `jsongin` implements two of them and refuses the other two
 | [`$`](#$)                     |       -       | `{ 'field.$': 1 }`                               |
 | [`$meta`](#$meta)             |       -       | `{ field: { $meta: 'textScore' } }`              |
 
-A projection field whose value is neither `1`/`true`, `0`/`false`, nor one of these operators is
-  a ***computed field***, evaluated as an expression. See
-  [`Project()`](./Project.md) and [Expression Operators](./Expression-Operators.md).
+A value which is not an include (`1`, `true`), an exclude (`0`, `false`), or one of these operators
+  is a ***computed field***, evaluated as an expression.
+See [`Project()`](./Project.md) and [Expression Operators](./Expression-Operators.md).
 
-***Whether an operator makes a projection an inclusion matters***, because a projection is
-  either an inclusion or an exclusion and never both.
-`$elemMatch` is an inclusion; `$slice` is not, which is what lets `$slice` sit beside exclusions.
+A projection either includes fields or excludes them, never both.
+`$elemMatch` counts as an inclusion. `$slice` does not, so it can be used beside exclusions.
 
-This document is used by the examples below:
+The examples below use this document:
 
 ```js
 let document =
@@ -43,14 +44,13 @@ let document =
 
 Returns part of an array field.
 
-A positive `count` takes from the front and a negative one takes from the end.
-The `[ skip, limit ]` pair skips that many elements and then takes that many.
+A positive `count` takes elements from the start, and a negative `count` takes them from the end.
+`[ skip, limit ]` skips `skip` elements and then takes `limit` elements.
+A negative `skip` counts back from the end.
 
-***`$slice` does not make a projection an inclusion.***
-The rest of the document comes back untouched, which is what lets a `$slice` sit beside
-  exclusions in the same projection.
+`$slice` is not an inclusion, so the rest of the document is returned as it is.
 
-A field which is not an array is left alone rather than refused.
+A field which is not an array is left unchanged.
 
 ### Example
 ```js
@@ -65,7 +65,7 @@ jsongin.Project( document, { scores: { $slice: -2 } } );
 jsongin.Project( document, { scores: { $slice: [ 1, 2 ] } } );
 // returns { _id: 1, name: 'Alice', scores: [ 20, 30 ], items: [ { sku: 'a', qty: 1 }, { sku: 'b', qty: 9 } ] }
 
-// It sits beside an exclusion, because it is not an inclusion itself.
+// It can be used beside an exclusion.
 jsongin.Project( document, { name: 0, scores: { $slice: 2 } } );
 // returns { _id: 1, scores: [ 10, 20 ], items: [ { sku: 'a', qty: 1 }, { sku: 'b', qty: 9 } ] }
 ```
@@ -76,24 +76,22 @@ jsongin.Project( document, { name: 0, scores: { $slice: 2 } } );
 
 **Usage** : `{ field: { $elemMatch: criteria } }`
 
-Returns only the ***first*** element of an array field which matches the criteria.
-The criteria is an ordinary query criteria — see
-  [Query Operators](./Query-Operators.md).
+Returns only the ***first*** element of an array field which matches `criteria`.
+`criteria` is an ordinary query; see [Query Operators](./Query-Operators.md).
 
-***`$elemMatch` does make a projection an inclusion***, so only `_id` and the named fields come
-  back.
-When no element matches, the field is omitted rather than coming back empty.
+`$elemMatch` is an inclusion, so on its own it returns only `_id` and the field.
+If no element matches, the field is left out.
 
-This is the ***projection*** `$elemMatch`. There is also a
-  [query `$elemMatch`](./Query-Operators.md#$elemMatch), which selects documents rather than
-  reshaping them.
+This is the ***projection*** `$elemMatch`.
+The [query `$elemMatch`](./Query-Operators.md#$elemMatch) is a different operator, which selects
+  documents instead of reshaping them.
 
 ### Example
 ```js
 jsongin.Project( document, { items: { $elemMatch: { qty: { $gt: 5 } } } } );
 // returns { _id: 1, items: [ { sku: 'b', qty: 9 } ] }
 
-// Nothing matched, so the field is omitted.
+// Nothing matched, so the field is left out.
 jsongin.Project( document, { items: { $elemMatch: { qty: { $gt: 99 } } } } );
 // returns { _id: 1 }
 ```
@@ -104,21 +102,15 @@ jsongin.Project( document, { items: { $elemMatch: { qty: { $gt: 99 } } } } );
 
 **Usage** : `{ 'field.$': 1 }`  ***(not supported)***
 
-In MongoDB, the positional operator projects the first array element which matched the ***query***
-  that selected the document.
-`jsongin` does not support it, because [`Project()`](./Project.md) reshapes a document it is
-  handed directly and has no query to take a matched position from.
-
-Written as an operator document it is refused by name:
+In MongoDB, this returns the first array element which matched the query that found the
+  document.
+`Project()` is given a document, not a query, so there is no matched element to return.
+It throws.
 
 ### Example
 ```js
+jsongin.Project( document, { 'items.$': 1 } );      // throws, $ is not supported
 jsongin.Project( document, { items: { $: 1 } } );   // throws, $ is not supported
-
-// Written as a path element it is not an operator at all, and '$' is read as
-// an ordinary field name, which no document has.
-jsongin.Project( document, { 'items.$': 1 } );
-// returns { _id: 1, items: [ {}, {} ] }
 ```
 
 
@@ -127,9 +119,9 @@ jsongin.Project( document, { 'items.$': 1 } );
 
 **Usage** : `{ field: { $meta: 'textScore' } }`  ***(not supported)***
 
-In MongoDB, `$meta` projects metadata the server produced while running the query, such as a
-  full-text search score.
-`jsongin` has no such metadata, so there is nothing for it to return, and it is refused by name.
+In MongoDB, this returns information the server produced while running the query, such as a
+  text search score.
+`jsongin` has no such information, so it throws.
 
 ### Example
 ```js

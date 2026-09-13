@@ -8,19 +8,20 @@
 
 | **Parameter** | **Allowed Types** | **Description**                          |
 |---------------|:-----------------:|------------------------------------------|
-| Document      |        olu        | The document to fill. `null` or missing starts from an empty one. |
-| Schema        |        ob         | The JSON Schema whose defaults fill it. |
+| Document      |        olu        | The document to fill in. `null` or `undefined` starts from `{}`. |
+| Schema        |        ob         | The JSON Schema whose `default` values are used. |
 | Options       |         o         | Optional. `ForceRequired`, `Dialect` and `Registry`, described below. |
 
 
 ## Description
 
-Returns a copy of `Document` with every absent field the schema has a `default` for filled in.
+Returns a copy of `Document` with each missing field set to the schema's `default` for it.
 
-A field the document ***has*** is left exactly as it is, whatever the schema says about it: this
-  fills absences and never repairs values, which is the rule `Merge( DEFAULTS, options )`
-  follows. An object filled in from a default is filled through, so nested defaults reach their
-  places.
+- A field the document already has is left alone, whatever the schema says about it.
+- A default object is filled in too, so defaults inside it are applied.
+- `Document` is not changed.
+
+This is the same idea as `Merge( DEFAULTS, options )`, with the defaults taken from a schema.
 
 ```js
 let settings = {
@@ -41,16 +42,13 @@ jsongin.InitSchema( { count: 3, editor: { tabs: 2 } }, settings );
 // returns { count: 3, editor: { tabs: 2, wrap: true }, theme: 'light' }
 ```
 
-***The document given is never modified.***
-
 ```js
 let given = { count: 3 };
 jsongin.InitSchema( given, settings );
 given;   // returns { count: 3 }
 ```
 
-A `null` or missing document starts from an empty one, so a new document can be made from a
-  schema alone:
+Pass `null` to build a new document from the schema alone:
 
 ```js
 jsongin.InitSchema( null, settings );   // returns { count: 10, theme: 'light', editor: { tabs: 4, wrap: true } }
@@ -59,12 +57,13 @@ jsongin.InitSchema( null, settings );   // returns { count: 10, theme: 'light', 
 
 ## Required Fields With No Default
 
-`name` above is required and has no default, and the results above leave it absent: nothing
-  says what it holds. With `ForceRequired: true` such a field is given its type's ***empty
-  value*** - `''` for a string, `0` for a number or integer, `false` for a boolean, `{}` for an
-  object, `[]` for an array and `null` for null - so a document built from a schema with no
-  defaults is at least complete. A `type` list takes its first entry, and a field with no type
-  is left absent either way.
+`name` above is required but has no default, so it is left out.
+
+With `ForceRequired: true`, such a field is set to an empty value for its `type`:
+  `''` for a string, `0` for a number or integer, `false` for a boolean, `{}` for an object, `[]`
+  for an array, and `null` for null.
+If `type` is a list, the first type is used.
+A field with no `type` is still left out.
 
 ```js
 jsongin.InitSchema( null, settings, { ForceRequired: true } );
@@ -76,12 +75,13 @@ jsongin.InitSchema( null, settings, { ForceRequired: true } );
 
 | **Option**      | **Type** | **Description**                                                  |
 |-----------------|:--------:|------------------------------------------------------------------|
-| `ForceRequired` |    b     | Whether a required field with no default is given its type's empty value. `false` when absent. |
-| `Dialect`       |    s     | The draft to read the schema in when its `$schema` does not say. `'2020-12'` when absent. |
-| `Registry`      |    o     | Schemas a `$ref` may reach, keyed by URI, as for [`ValidateDocument()`](./ValidateDocument.md). |
+| `ForceRequired` |    b     | When `true`, a required field with no default gets an empty value. Defaults to `false`. |
+| `Dialect`       |    s     | The draft to use when the schema's `$schema` does not name one. Defaults to `'2020-12'`. |
+| `Registry`      |    o     | Schemas that `$ref` can refer to, as for [`ValidateDocument()`](./ValidateDocument.md). |
 
-The schema is read through its `$ref` references and its `allOf` branches. An `anyOf` or a
-  `oneOf` is not guessed at, since nothing says which branch the document is meant to satisfy.
+Defaults are also found through `$ref` and `allOf`.
+`anyOf` and `oneOf` are ignored, because there is no way to know which choice the document is
+  meant to follow.
 
 ```js
 let composed = {
@@ -95,7 +95,7 @@ jsongin.InitSchema( {}, composed );   // returns { own: true, kind: 'base', size
 
 ## Errors
 
-`InitSchema` throws when `Document` is anything but an object, `null` or `undefined`.
+`InitSchema` throws when `Document` is not an object, `null` or `undefined`.
 
 ```js
 jsongin.InitSchema( 'abc', settings );   // throws
@@ -104,7 +104,7 @@ jsongin.InitSchema( 'abc', settings );   // throws
 
 ## See Also
 
-- [`Merge( DocumentA, DocumentB )`](./Merge.md), the same idiom with a hand-written defaults document.
+- [`Merge( DocumentA, DocumentB )`](./Merge.md), which applies a defaults document you write yourself.
 - [`ValidateDocument( Document, Schema, Options )`](./ValidateDocument.md)
 - [`InferSchema( Documents, Options )`](./InferSchema.md)
-- [`ProjectSchema( Document, Schema )`](./ProjectSchema.md)
+- [`ProjectSchema( Document, Schema, Options )`](./ProjectSchema.md)

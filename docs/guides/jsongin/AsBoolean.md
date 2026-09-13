@@ -13,26 +13,24 @@
 
 ## Description
 
-Converts `Value` to a boolean, using ***MongoDB's*** expression evaluation rules.
+Converts `Value` to a boolean, using ***MongoDB's*** rules.
 
-Only four things are false:
+Only four values are false:
 
 - `false`
 - `0`
 - `null`
-- a missing value (`undefined`)
+- `undefined`
 
-***Everything else is true.***
-This includes the empty string `""` and the empty array `[]`, both of which Javascript treats
-  as falsy in the first case and truthy in the second.
+***Everything else is true***, including the empty string `''`, the empty array `[]`, and `NaN`.
 
-This is the rule applied by the logical and conditional expression operators (`$and`, `$or`,
-  `$not`, `$cond`, `$switch`), so it is what decides which branch an expression takes.
+This is the rule the expression operators `$and`, `$or`, `$not`, `$cond`, `$switch` and
+  `$filter` use to decide what is true, and so do the `$expr` and `$exists` query operators.
 
 
-## Javascript Disagrees
+## Where Javascript Differs
 
-The difference worth remembering is the empty string.
+Javascript treats `''` and `NaN` as false. `AsBoolean` treats them as true.
 
 | **Value** | **`AsBoolean`** | **Javascript truthiness** |
 |-----------|:---------------:|:-------------------------:|
@@ -41,26 +39,25 @@ The difference worth remembering is the empty string.
 | `null`    |     `false`     |          `false`          |
 | `undefined` |   `false`     |          `false`          |
 | `''`      |   ***`true`***  |      ***`false`***        |
+| `NaN`     |   ***`true`***  |      ***`false`***        |
 | `[]`      |     `true`      |          `true`           |
 | `{}`      |     `true`      |          `true`           |
 | `'abc'`   |     `true`      |          `true`           |
 | `1`       |     `true`      |          `true`           |
-
-Note that `NaN` is a number and is not `0`, so it converts to `true`.
 
 
 ## See Also
 
 - [`AsNumber( Value )`](./AsNumber.md)
 - [`AsDate( Value )`](./AsDate.md)
-- [`Evaluate( Document, Expression )`](./Evaluate.md) and its logical and conditional operators.
+- [`Evaluate( Document, Expression )`](./Evaluate.md)
 - [Operator Reference](../Operator-Reference.md)
 
 
 ## Examples
 
 
-### Only false, zero, null, and missing are false
+### Only false, zero, null, and undefined are false
 ```js
 jsongin.AsBoolean( false ) === false
 jsongin.AsBoolean( 0 ) === false
@@ -72,6 +69,7 @@ jsongin.AsBoolean( undefined ) === false
 ### Everything else is true
 ```js
 jsongin.AsBoolean( '' ) === true
+jsongin.AsBoolean( NaN ) === true
 jsongin.AsBoolean( [] ) === true
 jsongin.AsBoolean( {} ) === true
 jsongin.AsBoolean( 'abc' ) === true
@@ -80,7 +78,7 @@ jsongin.AsBoolean( new Date() ) === true
 ```
 
 
-### It is what expression operators use
+### Expression operators use it
 ```js
 // The empty string is true, so $cond takes its first branch.
 jsongin.Evaluate( { name: '' }, { $cond: [ '$name', 'has a name', 'no name' ] } ) === 'has a name'

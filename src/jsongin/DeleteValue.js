@@ -11,9 +11,9 @@ module.exports = function ( jsongin )
 	// document's contents agree with each other.
 	// Note that a path which addresses an array element leaves a hole in the array rather than
 	// shortening it, the same way the Javascript delete operator does.
-	// A non numeric key against an array runs the implicit iterator and applies to every
-	// element, matching GetValue and SetValue. That is a jsongin path extension: MongoDB
-	// requires the all positional operator, as in 'a.$[].x', to unset through an array.
+	// A non numeric key against an array removes nothing and returns false, which is what
+	// MongoDB's $unset does. Unsetting through an array takes the all positional operator,
+	// as in 'a.$[].x', which Update() expands before this is called.
 	function DeleteValue( Document, Path )
 	{
 		try

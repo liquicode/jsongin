@@ -14,69 +14,59 @@
 
 ## Description
 
-Performs a ***strict*** equality comparison between two values and returns `true` or `false`.
+Returns `true` if two values are ***strictly*** equal.
 
-Strict means two things:
+Strict means:
 
-1. Values must match exactly, as Javascript's `===` does. No type coercion is applied.
-2. Values must appear in the ***same order*** within objects and arrays.
+1. There is no type conversion, so `1` does not equal `'1'`.
+2. Fields and array elements must be in the ***same order***.
 
-`StrictEquals` is [`CompareValues()`](./CompareValues.md) asked whether its result is zero.
+`StrictEquals( A, B )` is the same as `CompareValues( A, B ) === 0`.
+See [`CompareValues()`](./CompareValues.md).
+
+This is not quite Javascript's `===`:
+
+- Two dates holding the same moment are equal.
+- Two regular expressions with the same text and flags are equal.
+- `null` and `undefined` are equal. A field holding `null` is not equal to a missing field,
+  though, because the objects have different fields.
 
 ```js
 let a = { hp: 10 };
 let b = { hp: 10 };
 
 jsongin.StrictEquals( a, b ) === true
-
-// which is the same question as
 ( jsongin.CompareValues( a, b ) === 0 ) === true
 ```
 
-Dates are compared by their time value, so two distinct `Date` objects holding the same instant
-  are equal. Regular expressions are compared by their text, for the same reason.
 
-`null` and a missing value are equal to each other.
+## Not the Same as `$eq`
 
-
-## Not the Same as the `$eq` Query Operator
-
-`StrictEquals` is ***not*** the `$eq` query operator applied to two values, and the difference
-  is worth knowing if you are comparing the two.
-
-A query operator's parameters are not peers. The first is a document field and the second is a
-  match value, and `$eq` lets a match value equal an ***element*** of a document array — which
-  is what MongoDB does, and is why `{ tags: [ 'A', 'B' ] }` matches a document whose `tags`
-  field holds `[ [ 'A', 'B' ], 'x' ]`.
-
-That rule is correct for querying and wrong for equality, because it is not symmetric.
-`StrictEquals` therefore uses `CompareValues`, which is.
+The `$eq` query operator can match one ***element*** of an array, so
+  `{ tags: { $eq: [ 1, 2 ] } }` matches a document whose `tags` holds `[ [ 1, 2 ] ]`.
+That is right for a query, but it is not equality.
+`StrictEquals` does not do this, and gives the same result whichever value you pass first:
 
 ```js
 jsongin.StrictEquals( [ [ 1, 2 ] ], [ 1, 2 ] ) === false
 jsongin.StrictEquals( [ 1, 2 ], [ [ 1, 2 ] ] ) === false
 
-// The query operator answers the other question, and answers it correctly:
+// The query operator matches the element:
 jsongin.Query( { tags: [ [ 1, 2 ] ] }, { tags: { $eq: [ 1, 2 ] } } ) === true
 ```
-
-> ***Fixed in v0.1.0*** : `StrictEquals` called `$eq` and so inherited that asymmetry.
-  `StrictEquals( [ [ 1, 2 ] ], [ 1, 2 ] )` returned `true` while the reverse returned `false`.
-  This also caused `Diff()` to miss a change between those two values and report an empty patch.
 
 
 ## See Also
 
-- [`LooseEquals( DocumentA, DocumentB )`](./LooseEquals.md), the order-insensitive counterpart.
-- [`CompareValues( ValueA, ValueB )`](./CompareValues.md), which orders values rather than
-  testing them for equality.
+- [`LooseEquals( DocumentA, DocumentB )`](./LooseEquals.md), which ignores order.
+- [`CompareValues( ValueA, ValueB )`](./CompareValues.md)
 - [`Query()`](./Query.md) and its `$eq` operator.
 
 
 ## Examples
 
 
-### It does not coerce types
+### It does not convert types
 ```js
 jsongin.StrictEquals( 1, 1 ) === true
 jsongin.StrictEquals( 1, '1' ) === false
@@ -98,14 +88,14 @@ jsongin.StrictEquals( [ 1, 2 ], [ 2, 1 ] ) === false
 ```
 
 
-### Dates compare by value
+### Dates compare by the moment they hold
 ```js
 jsongin.StrictEquals( new Date( 1 ), new Date( 1 ) ) === true
 jsongin.StrictEquals( new Date( 1 ), new Date( 2 ) ) === false
 ```
 
 
-### Null and missing are equal
+### null and undefined are equal
 ```js
 jsongin.StrictEquals( null, undefined ) === true
 ```

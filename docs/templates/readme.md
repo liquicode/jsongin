@@ -115,8 +115,8 @@ Each kind of document you write is answered by its own family of operators:
 The expression language is the same wherever it turns up: inside an `$expr` in a query, in a
   computed field of a projection, in an `$addFields` stage, and in a `$do` step of a
   [jsonproc](http://jsonproc.liquicode.com) process, it is the same `Evaluate()`.
-Paths work the same way everywhere too - `'user.name'` means one thing to every function here,
-  because it is MongoDB's path syntax rather than an extension of it.
+Paths use MongoDB's dot notation everywhere, such as `'user.name'`, with no extensions of
+  `jsongin`'s own.
 
 Every one of these families is MongoDB's, and `jsongin` implements <%- Context.Coverage.Percent %>% of them:
   <%- Context.Coverage.Implemented %> of the <%- Context.Coverage.Total %> operators MongoDB documents.
@@ -416,7 +416,7 @@ More Functions
 - [ValidateDocument( Document, Schema, Options )](/docs/guides/jsongin/ValidateDocument.md)
 - [InferSchema( Documents, Options )](/docs/guides/jsongin/InferSchema.md)
 - [InitSchema( Document, Schema, Options )](/docs/guides/jsongin/InitSchema.md)
-- [ProjectSchema( Document, Schema )](/docs/guides/jsongin/ProjectSchema.md)
+- [ProjectSchema( Document, Schema, Options )](/docs/guides/jsongin/ProjectSchema.md)
 
 **Object Matching and Cloning**
 
@@ -424,7 +424,7 @@ More Functions
 - [StrictEquals( DocumentA, DocumentB )](/docs/guides/jsongin/StrictEquals.md)
 - [CompareValues( ValueA, ValueB )](/docs/guides/jsongin/CompareValues.md)
 - [Clone( Document )](/docs/guides/jsongin/Clone.md)
-- [SafeClone( Document )](/docs/guides/jsongin/SafeClone.md)
+- [SafeClone( Document, Exceptions )](/docs/guides/jsongin/SafeClone.md)
 
 **Data Types and Conversions**
 

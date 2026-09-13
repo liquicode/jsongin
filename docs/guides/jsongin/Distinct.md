@@ -8,17 +8,17 @@
 
 | **Parameter**    | **Allowed Types** | **Description**                           |
 |------------------|:-----------------:|-------------------------------------------|
-| Documents        |        a          | The array of documents to examine.        |
-| DistinctCriteria |        o          | The fields used to distinguish documents. |
+| Documents        |        a          | The documents to look through.            |
+| DistinctCriteria |        o          | The fields to compare, as `{ field: 1 }`. |
 
 
 ## Description
 
-Returns the distinct combinations of the named fields found across a set of documents.
+Returns one document for each distinct combination of values found in the named fields.
 
-`DistinctCriteria` names the fields to look at. Any truthy value selects a field, so `1` and
-  `true` mean the same thing. The result is an array of documents holding only those fields,
-  one for each combination which appears in the input.
+Each key of `DistinctCriteria` names a field, and can be a dot notation path.
+Only the keys are used, so `{ type: 1 }` and `{ type: true }` mean the same thing.
+Each result document holds only the named fields.
 
 ```js
 let documents = [
@@ -34,37 +34,37 @@ jsongin.Distinct( documents, { type: 1, category: 1 } );
 // returns [ { type: 1, category: 'A' }, { type: 2, category: 'B' } ]
 ```
 
-Combinations are returned in the order they were first seen, so the result is deterministic and
-  can be compared in a test.
+Results come back in the order each combination first appears.
+
+`Distinct` throws if `Documents` is not an array or `DistinctCriteria` is not an object.
 
 
 ## How Values Are Compared
 
-Values are compared by ***content***, not by reference, and the comparison is type strict.
-Each field's key carries its type, so `1` and `'1'` are different values, as are `0` and
-  `false`.
-This is the same rule the `$group` aggregation stage uses.
+Values are compared by ***content and type***.
+`1` and `'1'` are different values, and so are `0` and `false`, and a date and its ISO string.
+The `$group` stage compares values the same way.
 
 ```js
 jsongin.Distinct( [ { v: 1 }, { v: '1' } ], { v: 1 } );
 // returns [ { v: 1 }, { v: '1' } ]
 ```
 
-A document which does not have a named field contributes a combination without it, which is
-  distinct from any combination that has it:
+A document without a named field counts as its own combination, separate from one where the
+  field is `null`.
+In the result, that field holds `undefined`:
 
 ```js
 jsongin.Distinct( [ { a: 1 }, { b: 2 } ], { a: 1 } );
-// returns [ { a: 1 }, {} ]
+// returns [ { a: 1 }, { a: undefined } ]
 ```
 
 
 ## Notes
 
-The returned documents are ***clones***, so the result does not alias the documents it was
-  built from and can be modified freely.
+The result documents are ***copies***, so you can change them without affecting `Documents`.
 
-An empty input gives an empty result.
+An empty array gives an empty result.
 
 ```js
 jsongin.Distinct( [], { a: 1 } );
@@ -74,8 +74,8 @@ jsongin.Distinct( [], { a: 1 } );
 
 ## See Also
 
-- [`Filter( Documents, QueryCriteria )`](./Filter.md), which selects documents rather than values.
-- [`$group`](./Stage-Operators.md#$group), the aggregation stage which groups by a key.
+- [`Filter( Documents, QueryCriteria )`](./Filter.md), which selects whole documents.
+- [`$group`](./Stage-Operators.md#$group), the pipeline stage which groups documents by a value.
 - [`Aggregate( Documents, Pipeline )`](./Aggregate.md)
 - [`CompareValues( ValueA, ValueB )`](./CompareValues.md)
 
@@ -116,7 +116,7 @@ jsongin.Distinct( documents, { type: true } );
 // returns [ { type: 1 }, { type: 2 } ]
 ```
 
-### It counts each combination once, however many documents hold it
+### It returns each combination once
 ```js
 let documents = [ { v: 'x' }, { v: 'x' }, { v: 'x' }, { v: 'y' } ];
 

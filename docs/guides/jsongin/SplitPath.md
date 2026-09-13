@@ -8,18 +8,21 @@
 
 | **Parameter** | **Allowed Types** | **Description**                          |
 |---------------|:-----------------:|------------------------------------------|
-| Path          |       ulsn        | The path of a document field in dot-notation.   |
+| Path          |       ulsn        | A dot notation path.                     |
 
 
 ## Description
 
-Splits a string `Path` into an array of individual path components.
+Splits a dot notation path into an array of its parts.
 
-If the `Path` is empty (`undefined`, `null`, or empty string `""`), then an empty array `[]` is returned.
-Otherwise `Path` must be a string, in dot-notation, which identifies a field within a document.
-`Path` can be numeric when specifying an element of an array.
+A part which is a plain whole number, such as `1` or `-1`, is returned as a number.
+Every other part stays a string, including `'01'` and `'1e2'`, which are field names.
 
-If `Path` is not of type `ulsn`, then an error is thrown.
+A number `Path` is treated as a one-part path.
+An empty path (`undefined`, `null` or `''`) returns `[]`.
+Any other type of `Path` throws.
+
+A negative number is returned as a number, but it is not an array index anywhere in `jsongin`.
 
 
 ## See Also
@@ -30,37 +33,36 @@ If `Path` is not of type `ulsn`, then an error is thrown.
 ## Examples
 
 
-### It returns an array of path components
+### It splits a path into parts
 ```js
 // jsongin.SplitPath( 'user' ) returns [ 'user' ]
 // jsongin.SplitPath( 'user.name' ) returns [ 'user', 'name' ]
 ```
 
-### It returns array indexes as numerics in the output array
+### Whole numbers become numbers
 ```js
-// jsongin.SplitPath( document, '1' ) returns [ 1 ]
-// jsongin.SplitPath( document, 'users.1' ) returns [ 'users', 1 ]
-// jsongin.SplitPath( document, 'users.1.name' ) returns [ 'users', 1, 'name' ]
+// jsongin.SplitPath( '1' ) returns [ 1 ]
+// jsongin.SplitPath( 'users.1' ) returns [ 'users', 1 ]
+// jsongin.SplitPath( 'users.1.name' ) returns [ 'users', 1, 'name' ]
+// jsongin.SplitPath( 'users.-1' ) returns [ 'users', -1 ]
 ```
 
-### Array indexes within a path can be positive or negative
+### Other number-like text stays a string
 ```js
-// jsongin.SplitPath( document, '-1' ) returns [ -1 ]
-// jsongin.SplitPath( document, 'users.-1' ) returns [ 'users', -1 ]
-// jsongin.SplitPath( document, 'users.-1.name' ) returns [ 'users', -1, 'name' ]
+// jsongin.SplitPath( 'a.01' ) returns [ 'a', '01' ]
+// jsongin.SplitPath( 'a.1e2' ) returns [ 'a', '1e2' ]
 ```
 
-### If the path is undefined, null, or empty "", then it returns an empty array []
+### An empty path returns an empty array
 ```js
 // jsongin.SplitPath() returns []
 // jsongin.SplitPath( null ) returns []
 // jsongin.SplitPath( '' ) returns []
 ```
 
-### It throws an error when an invalid path is given
+### It throws for a path of the wrong type
 ```js
 jsongin.SplitPath( true ) // throws 'Path is invalid ...'
 jsongin.SplitPath( {} ) // throws 'Path is invalid ...'
 jsongin.SplitPath( [] ) // throws 'Path is invalid ...'
 ```
-

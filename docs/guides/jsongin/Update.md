@@ -8,79 +8,95 @@
 
 | **Parameter** | **Allowed Types** | **Description**                          |
 |---------------|:-----------------:|------------------------------------------|
-| Document      |         o         | The document to perform updates on.      |
-| Updates       |         o         | The set of updates to perform.           |
+| Document      |         o         | The document to update.                  |
+| Updates       |         o         | The update operators to apply.           |
 
 
 ## Description
 
-`jsongin` supports the MongoDB update mechanic with the function `jsongin.Update( Document, Updates )`.
-This function will update the given document with update operations found in `Updates`.
-It returns the updated document.
+`jsongin.Update( Document, Updates )` applies MongoDB update operators to a document and returns
+  the result.
 
-Updates are specified by one more update operators (see below).
-Each operator will be followed by a number of `field: value` arguments that specify the document field
-  to update and the value to use in the update.
-
-The given `Document` is never written to.
-`Update()` returns an updated ***copy***, cloned with [`SafeClone()`](./SafeClone.md) so that
-  dates survive.
-
-
-## Refusing an Update
-
-An update ***document*** which cannot be applied throws:
+`Updates` holds one or more update operators.
+Each operator takes an object of `field: value` pairs, naming the fields to change and how:
 
 ```js
-jsongin.Update( { a: 1 }, { $bogus: { a: 2 } } );            // throws: Unknown update operator
-jsongin.Update( { a: 1 }, { a: 2 } );                        // throws, a replacement is a different call
-jsongin.Update( { a: 1 }, { $set: 'abc' } );                 // throws, $set takes an object
-jsongin.Update( { a: 1 }, { $set: { a: 2 }, $inc: { a: 1 } } ); // throws, both write to 'a'
+jsongin.Update( { count: 1 }, { $inc: { count: 5 } } );   // { count: 6 }
 ```
 
-Two operators ***conflict*** when they write to the same path, or to a path and one below it,
-  because the result would depend on which of them ran first.
-The whole update document is checked before any of it is applied, so a refused update leaves the
-  document untouched rather than half written.
+`Document` is never changed.
+`Update` works on a copy, made with [`SafeClone()`](./SafeClone.md) so that dates stay dates,
+  and returns the copy.
 
-MongoDB refuses each of them.
+To reach every element of an array, write `$[]` in the path.
+`{ $inc: { 'items.$[].qty': 1 } }` adds one to the `qty` of each element of `items`.
+See [`$[]`](./Update-Operators.md#$[]).
 
-***An operator which cannot apply itself is also refused.*** `$inc` against a string, or `$pop`
-  against a scalar, is a well formed update meeting a document it does not suit. The operator
-  reports the reason through the `OpLog`, and `Update()` raises it as an error:
+
+## When Update Throws
+
+`Update` throws when the update document is wrong:
 
 ```js
-jsongin.Update( { a: 'abc' }, { $inc: { a: 1 } } );  // throws, $inc is numeric on both sides
-jsongin.Update( { a: 5 }, { $pop: { a: 1 } } );      // throws, $pop needs an array
+jsongin.Update( { a: 1 }, { $bogus: { a: 2 } } );               // throws: unknown operator
+jsongin.Update( { a: 1 }, { a: 2 } );                           // throws: not an operator
+jsongin.Update( { a: 1 }, { $set: 'abc' } );                    // throws: $set takes an object
+jsongin.Update( { a: 1 }, { $set: { a: 2 }, $inc: { a: 1 } } ); // throws: both change 'a'
+jsongin.Update( { a: 1 }, { $set: { $x: 1 } } );                // throws: a new field cannot start with $
 ```
 
-Nothing is half written when it happens, because `Update()` works on a clone and discards it.
+`{ a: 2 }` is a replacement document, not an update, so `Update` refuses it.
 
-A field which is ***not there*** is a no-op rather than a refusal, so `$pop`, `$pullAll`,
-  `$unset`, and `$rename` all return the document unchanged, and `$inc` creates the field.
+Two operators ***conflict*** when they change the same field, or a field and something inside it,
+  such as `a` and `a.b`.
+The result would depend on which ran first, so `Update` refuses them.
 
-`null` is returned only for a `Document` or `Updates` parameter of the wrong type.
+`Update` also throws when an operator cannot be applied to this particular document, such as `$inc`
+  on a string or `$pop` on something which is not an array.
+The reason is sent to the [`OpLog`](../OpLog.md).
+
+```js
+jsongin.Update( { a: 'abc' }, { $inc: { a: 1 } } );  // throws: $inc needs a number
+jsongin.Update( { a: 5 }, { $pop: { a: 1 } } );      // throws: $pop needs an array
+```
+
+MongoDB rejects all of these as well.
+Because `Update` works on a copy, a refused update never leaves `Document` partly changed.
+
+
+## When Nothing Happens
+
+A few updates change nothing, and are not errors:
+
+- A field which does not exist is left alone by `$pop`, `$pull`, `$pullAll`, `$unset` and
+  `$rename`. Operators which add, such as `$set`, `$inc` and `$push`, create it.
+- An empty update, `{}`, returns an unchanged copy. MongoDB refuses it, but `jsongin` allows it so
+  that the output of [`Diff()`](./Diff.md) for two identical documents can always be applied.
+- An `Updates` of `null` or `undefined` returns an unchanged copy.
+
+`Update` returns `null` when `Document` is not an object, or when `Updates` is some other type
+  which is not an object.
 
 
 ## Operator Summary
 
-|                    **Field**                     |                 **Array**                  |
-|:------------------------------------------------:|:------------------------------------------:|
-|  [$set](./Update-Operators.md#$set), [$unset](./Update-Operators.md#$unset)  |  [$addToSet](./Update-Operators.md#$addToSet)  |
-|          [$rename](./Update-Operators.md#$rename)          |       [$pop](./Update-Operators.md#$pop)       |
-|   [$inc](./Update-Operators.md#$inc), [$mul](./Update-Operators.md#$mul)   |      [$push](./Update-Operators.md#$push)      |
-|   [$min](./Update-Operators.md#$min), [$max](./Update-Operators.md#$max)   |   [$pullAll](./Update-Operators.md#$pullAll)   |
-|    [$currentDate](./Update-Operators.md#$currentDate)     |                                            |
+|                    **Field**                     |                 **Array**                  |       **Bitwise**       |
+|:------------------------------------------------:|:------------------------------------------:|:-----------------------:|
+|  [$set](./Update-Operators.md#$set), [$unset](./Update-Operators.md#$unset)  |  [$addToSet](./Update-Operators.md#$addToSet)  | [$bit](./Update-Operators.md#$bit) |
+|          [$rename](./Update-Operators.md#$rename)          |       [$pop](./Update-Operators.md#$pop)       |                         |
+|   [$inc](./Update-Operators.md#$inc), [$mul](./Update-Operators.md#$mul)   |      [$push](./Update-Operators.md#$push)      |                         |
+|   [$min](./Update-Operators.md#$min), [$max](./Update-Operators.md#$max)   | [$pull](./Update-Operators.md#$pull), [$pullAll](./Update-Operators.md#$pullAll) |                         |
+|    [$currentDate](./Update-Operators.md#$currentDate)     |          [$[]](./Update-Operators.md#$[])          |                         |
 
-Each operator is described in detail, with examples, in
-  [Update Operators](./Update-Operators.md).
+[Update Operators](./Update-Operators.md) describes each operator, with examples.
 
-***Every update operator takes a document*** of `field: value` pairs, so
-  `{ $inc: 5 }` is refused and `{ $inc: { count: 5 } }` is the form.
+Every update operator takes an object, so `{ $inc: 5 }` is refused and `{ $inc: { count: 5 } }` is
+  correct.
 
 
 ## See Also
 
+- [`Diff( Before, After )`](./Diff.md)
 - [`GetValue( Document, Path )`](./GetValue.md)
 - [`SetValue( Document, Path, Value )`](./SetValue.md)
 - [Update Operators](./Update-Operators.md)
@@ -112,10 +128,9 @@ let updates = {
 	$addToSet: { tags: 'Logged In' },
 };
 
-// Apply the updates and return the updated document.
+// Apply the updates and get back the updated copy.
 let updated = jsongin.Update( document, updates );
 
-// Updated document has all the changes:
 // updated is {
 // 	id: 101,
 // 	user: {
@@ -132,5 +147,4 @@ let updated = jsongin.Update( document, updates );
 // 		started: Date( '2023-11-24T07:51:47.064Z' ),
 // 	},
 // }
-
 ```

@@ -4,8 +4,8 @@
 # Recipes: Aggregate
 
 Task-oriented aggregation pipelines for [`Aggregate( Documents, Pipeline )`](../jsongin/Aggregate.md).
-Each recipe is self-contained. A pipeline is an array of stages that runs top to
-bottom, and `$group` output should be sorted before you rely on its order.
+Each recipe stands on its own. A pipeline is an array of stages which run in order.
+`$group` does not promise any order, so add a `$sort` after it when the order matters.
 
 The recipes use this collection:
 
@@ -21,7 +21,7 @@ let players = [
 
 ### Count the documents
 
-The `$count` stage writes the running count to a field of your choice:
+The `$count` stage returns one document holding the number of documents, in a field you name:
 
 ```js
 jsongin.Aggregate( players, [ { $count: 'total' } ] )

@@ -8,15 +8,16 @@
 
 | **Parameter** | **Allowed Types** | **Description**                          |
 |---------------|:-----------------:|------------------------------------------|
-| Document      |       (any)       | The value to validate. Usually a document, but a schema can describe any value. |
+| Document      |       (any)       | The value to check. Usually a document, but a schema can describe any value. |
 | Schema        |        ob         | A JSON Schema, or `true` or `false`.     |
 | Options       |         o         | Optional. `Dialect`, `Registry` and `FormatAssertion`, described below. |
 
 
 ## Description
 
-Validates a value against a JSON Schema and returns the ***findings***: one for each assertion
-  the value failed, and an empty array for a value which satisfies the schema.
+Checks a value against a JSON Schema and returns a list of ***findings***, one for each rule the
+  value breaks.
+An empty list means the value is valid.
 
 ```js
 let schema = {
@@ -31,8 +32,8 @@ let schema = {
 jsongin.ValidateDocument( { name: 'Alice', age: 30 }, schema );   // returns []
 ```
 
-A finding is written in the specification's own ***basic output*** form, so it says which
-  keyword failed, where that keyword is in the schema, and where the value is in the document:
+Each finding says which rule failed, where the rule is in the schema, and where the value is in
+  the document:
 
 ```js
 let findings = jsongin.ValidateDocument( { age: -1 }, schema );
@@ -43,26 +44,30 @@ findings[ 1 ].keywordLocation === '/properties/age/minimum'
 findings[ 1 ].instanceLocation === '/age'
 ```
 
-Each finding carries `valid` (always `false`), `keywordLocation`, `absoluteKeywordLocation`,
-  `instanceLocation` and `error`. The member names are the specification's, which is why they
-  are not written the way the rest of `jsongin` is.
+A finding has the fields `valid` (always `false`), `keywordLocation`, `absoluteKeywordLocation`,
+  `instanceLocation` and `error`.
+This is the specification's "basic" output format, which is why these names are not written in
+  `jsongin`'s usual style.
 
-The schema is read in the draft its `$schema` names, or in the `Dialect` option's draft when it
-  names none, or in draft 2020-12 when neither says. Every draft from 4 to 2020-12 is read, and
-  the evaluator is measured against the specification's own test suite. See the
-  [JSON Schema guide](../JSON-Schema.md) for what each draft reads and how a value which JSON
-  has no form for, such as a `Date`, is treated.
+The schema is read using:
+
+1. the draft named by its `$schema`, if it names one `jsongin` knows,
+2. otherwise the `Dialect` option,
+3. otherwise draft 2020-12.
+
+See the [JSON Schema guide](../JSON-Schema.md) for the drafts, and for how dates and other
+  non-JSON values are checked.
 
 
 ## Options
 
 | **Option**        | **Type** | **Description**                                                  |
 |-------------------|:--------:|------------------------------------------------------------------|
-| `Dialect`         |    s     | The draft to read the schema in when its `$schema` does not say: `'2020-12'`, `'2019-09'`, `'draft-07'`, `'draft-04'` or `'mongodb'`. `'2020-12'` when absent. |
-| `Registry`        |    o     | Schemas a `$ref` may reach, keyed by the URI they are reached at. Nothing is ever fetched. |
-| `FormatAssertion` |    b     | Whether `format` refuses a string which does not have the format, rather than annotating it. `false` when absent, which is what the specification says a validator does unless asked. |
+| `Dialect`         |    s     | The draft to use when the schema's `$schema` does not name one: `'2020-12'`, `'2019-09'`, `'draft-07'`, `'draft-04'` or `'mongodb'`. Defaults to `'2020-12'`. |
+| `Registry`        |    o     | Schemas that `$ref` can refer to, keyed by their URI. Nothing is ever downloaded. |
+| `FormatAssertion` |    b     | When `true`, `format` rejects a string in the wrong format. Defaults to `false`, where `format` checks nothing, as the specification says. |
 
-A `$schema` naming a known draft always wins over the `Dialect` option:
+A `$schema` naming a known draft always wins over `Dialect`:
 
 ```js
 let draft4 = { maximum: 5, exclusiveMaximum: true };
@@ -72,8 +77,8 @@ jsongin.ValidateDocument( 5, draft4_declared ).length === 1
 jsongin.ValidateDocument( 5, draft4_declared, { Dialect: '2020-12' } ).length === 1
 ```
 
-A reference to another document is answered from the `Registry`, and a reference nothing
-  answers throws:
+A `$ref` to another document is looked up in the `Registry`.
+If it is not there, `ValidateDocument` throws:
 
 ```js
 let registry = { 'https://example.com/schemas/name.json': { type: 'string', minLength: 1 } };
@@ -81,10 +86,10 @@ let referencing = { properties: { name: { $ref: 'https://example.com/schemas/nam
 
 jsongin.ValidateDocument( { name: '' }, referencing, { Registry: registry } ).length === 1
 jsongin.ValidateDocument( { name: 'Bo' }, referencing, { Registry: registry } ).length === 0
-jsongin.ValidateDocument( { name: 'Bo' }, referencing );   // throws, nothing answers the reference
+jsongin.ValidateDocument( { name: 'Bo' }, referencing );   // throws: nothing answers the reference
 ```
 
-A format is an annotation until asked to assert:
+`format` only rejects values when `FormatAssertion` is `true`:
 
 ```js
 jsongin.ValidateDocument( 'not an address', { format: 'ipv4' } ).length === 0
@@ -93,12 +98,14 @@ jsongin.ValidateDocument( '10.0.0.1', { format: 'ipv4' }, { FormatAssertion: tru
 ```
 
 
-## Values JSON Has No Form For
+## Dates, Regular Expressions and undefined
 
-A `jsongin` document may hold a `Date`, a `RegExp` or an `undefined`, and a JSON Schema speaks
-  only of JSON. In the drafts of the specification a `Date` is a string, its ISO form, so
-  `type: 'string'` and `format: 'date-time'` both describe it; a `RegExp` is a string, its
-  source; and an `undefined` is absent, the way `Merge()` and `Diff()` read it.
+JSON Schema only knows JSON values, so `jsongin` treats these as follows:
+
+- A `Date` is a string holding its ISO form, so `type: 'string'` and `format: 'date-time'` both
+  match it.
+- A `RegExp` is a string holding its pattern.
+- A field holding `undefined` is missing.
 
 ```js
 let when = new Date( 1700000000000 );
@@ -106,8 +113,8 @@ jsongin.ValidateDocument( when, { type: 'string', format: 'date-time' }, { Forma
 jsongin.ValidateDocument( { a: undefined }, { required: [ 'a' ] } ).length === 1
 ```
 
-The `mongodb` dialect reads them as MongoDB does instead: a date is a `date` and never a
-  string, and is asked for with `bsonType`.
+The `mongodb` dialect follows MongoDB instead: a date is a `date`, never a string, and is checked
+  with `bsonType`.
 
 ```js
 jsongin.ValidateDocument( { d: when }, { properties: { d: { bsonType: 'date' } } }, { Dialect: 'mongodb' } ).length === 0
@@ -117,22 +124,25 @@ jsongin.ValidateDocument( { d: when }, { properties: { d: { type: 'string' } } }
 
 ## Errors
 
-A schema which cannot be evaluated throws rather than answering: a dialect the engine does not
-  know, a reference nothing answers, a schema which is neither an object nor a boolean, and, in
-  the `mongodb` dialect, any schema MongoDB would refuse.
+`ValidateDocument` throws when the schema cannot be used:
+
+- an unknown `Dialect`
+- a `$ref` which nothing answers
+- a schema, or part of one, which is not an object or a boolean
+- in the `mongodb` dialect, a schema MongoDB would reject
 
 ```js
 jsongin.ValidateDocument( 1, { type: 'string' }, { Dialect: 'draft-99' } );   // throws
 jsongin.ValidateDocument( { a: 1 }, { properties: { a: 42 } } );               // throws
-jsongin.ValidateDocument( { a: 1 }, { properties: { a: { const: 1 } } }, { Dialect: 'mongodb' } );   // throws, MongoDB has no const
+jsongin.ValidateDocument( { a: 1 }, { properties: { a: { const: 1 } } }, { Dialect: 'mongodb' } );   // throws: MongoDB has no const
 ```
 
 
 ## See Also
 
-- [JSON Schema guide](../JSON-Schema.md), for the drafts, the instance model and the formats.
+- [JSON Schema guide](../JSON-Schema.md)
 - [`InferSchema( Documents, Options )`](./InferSchema.md), which writes a schema from documents.
-- [`InitSchema( Document, Schema, Options )`](./InitSchema.md), which fills a document from a schema.
-- [`ProjectSchema( Document, Schema )`](./ProjectSchema.md), which keeps the fields a schema names.
-- [`$jsonSchema`](./Query-Operators.md#$jsonSchema), the query operator, which reads a schema as MongoDB does.
-- [`ValidateQuery( Criteria )`](./ValidateQuery.md), which checks a criteria rather than a document.
+- [`InitSchema( Document, Schema, Options )`](./InitSchema.md), which fills in a document from a schema.
+- [`ProjectSchema( Document, Schema, Options )`](./ProjectSchema.md), which keeps the fields a schema names.
+- [`$jsonSchema`](./Query-Operators.md#$jsonSchema), the query operator.
+- [`ValidateQuery( Criteria )`](./ValidateQuery.md), which checks a query rather than a document.
