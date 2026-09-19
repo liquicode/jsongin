@@ -124,17 +124,11 @@ module.exports = {
 		{ $CopyFile: { from: 'history.md', to: 'docs/external/history.md' } },
 		{ $CopyFile: { from: 'tests.md', to: 'docs/external/tests.md' } },
 
-		// Rebuild the browser bundle and copy it into the playground, where it becomes
-		// the page's "current build" entry. That is how the playground is exercised
-		// against code which has not been released.
+		// Rebuild the browser bundle, which is what a release ships in dist/.
 		//
-		// The name begins with a tilde, so `.gitignore` excludes it from source control
-		// and update_aws_docs excludes it from the S3 sync. The published site therefore
-		// offers published versions only, and the entry appears just where the file was
-		// built - the page adds it only when the file is really there.
+		// ***The playground does not run it.*** The page fetches a published version from the
+		// CDN and nothing else (user, 2026-09-18), so no copy is left beside it any more.
 		{ $RunTask: { task: 'run_webpack' } },
-		{ $EnsureFolder: { folder: 'docs/playground' } },
-		{ $CopyFile: { from: 'dist/jsongin.min.js', to: 'docs/playground/~jsongin.local.js' } },
 
 		// Check the generated docs.
 		// Halts the build on a code fence which does not parse, a link which does not

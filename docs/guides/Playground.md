@@ -1,8 +1,8 @@
 # Playground
 
-Try `jsongin` in your browser, with any released version of the library.
+Try `jsongin` in your browser.
 
-Choose a version and a function, edit the boxes, and press **Run**.
+Choose a function, edit the boxes, and press **Run**.
 Each of the function's parameters gets its own box, filled in with a working example.
 
 <iframe
@@ -33,17 +33,9 @@ For functions which change the document in place, such as `SetValue()` and `Dele
 
 A result of `false` or `null` is shown as a result. Only a thrown error is shown as an error.
 
-## The Function List
+## The Version
 
-The list shows only the functions the chosen version has, so older versions offer fewer.
+The Playground runs the published `jsongin` named in its version box, loaded from
+  [UNPKG](https://unpkg.com) as described in [Browser Usage](/guides/Usage-Browser.md), so it needs
+  an internet connection.
 
-Before version 0.0.19, the library exported a function which had to be called to get an engine.
-From 0.0.19 on, it exports the engine itself. The Playground handles both.
-
-## The Versions
-
-The versions are loaded from [UNPKG](https://unpkg.com), as described in
-  [Browser Usage](/guides/Usage-Browser.md), so the Playground needs an internet connection.
-
-If you build the documentation from a copy of the source, the Playground also offers a
-  **current build** entry, which runs your own unreleased copy. It only appears on your machine.

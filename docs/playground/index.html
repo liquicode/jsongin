@@ -277,36 +277,24 @@
 		{
 
 			//---------------------------------------------------------------------
-			// The versions offered.
+			// The version offered.
 			//
-			// Every published version ships dist/jsongin.min.js in its npm tarball, so
-			// unpkg serves each one.
-			//
-			// The "current build" entry is different, and conditional. build_docs writes
-			// the freshly packed bundle beside this page as a tilde prefixed file, which
-			// is excluded from source control and from the S3 sync, so it exists only
-			// where somebody built it. The page therefore offers that entry only after
-			// finding the file, which is what keeps the published site to published
-			// versions without this page needing to know where it is running.
+			// ***The library is always fetched from the CDN, at a published version.*** Every
+			// published version from 0.2.0 on ships a dist/jsongin.min.js built for a browser in
+			// its npm tarball, and unpkg serves it. There is no local build: a page which ran a
+			// bundle only its builder had was a page nobody else could check, and the published
+			// list went stale behind it (user, 2026-09-18).
 			//---------------------------------------------------------------------
 
-			var PUBLISHED_VERSIONS = [
-				'0.0.23', '0.0.22', '0.0.21', '0.0.20', '0.0.19', '0.0.18', '0.0.17',
-				'0.0.16', '0.0.15', '0.0.14', '0.0.12', '0.0.11', '0.0.10', '0.0.9',
-				'0.0.8', '0.0.7', '0.0.6', '0.0.5', '0.0.4', '0.0.3', '0.0.2', '0.0.1',
-			];
-
-			var LOCAL_SCRIPT_URL = '~jsongin.local.js';
+			var PUBLISHED_VERSIONS = [ '0.2.0' ];
 
 			function version_script_url( Version )
 			{
-				if ( Version === 'current' ) { return LOCAL_SCRIPT_URL; }
 				return 'https://unpkg.com/@liquicode/jsongin@' + Version + '/dist/jsongin.min.js';
 			}
 
 			function version_label( Version )
 			{
-				if ( Version === 'current' ) { return 'current build'; }
 				return Version;
 			}
 
@@ -601,7 +589,7 @@
 				run_button.disabled = true;
 				command_select.disabled = true;
 				set_status( 'Could not load jsongin ' + version_label( Version ) + ' - ' + Reason + '.', 'is-error' );
-				show_result( 'jsongin ' + version_label( Version ) + ' did not load, because ' + Reason + '.\n\nEvery version except the current build is fetched from unpkg, so this page needs a network connection to offer them.', true );
+				show_result( 'jsongin ' + version_label( Version ) + ' did not load, because ' + Reason + '.\n\nThe library is fetched from unpkg, so this page needs a network connection.', true );
 			}
 
 			function on_engine_ready( Version )
@@ -839,17 +827,9 @@
 			// Wire up and start.
 			//---------------------------------------------------------------------
 
-			function build_version_list( IncludeCurrent )
+			function build_version_list()
 			{
 				version_select.innerHTML = '';
-
-				if ( IncludeCurrent )
-				{
-					var option = document.createElement( 'option' );
-					option.value = 'current';
-					option.textContent = 'current build';
-					version_select.appendChild( option );
-				}
 
 				var index = 0;
 				for ( index = 0; index < PUBLISHED_VERSIONS.length; index++ )
@@ -861,45 +841,9 @@
 				}
 			}
 
-			// Look for a local build before offering it. A script element is used rather
-			// than a fetch because this page also has to work opened straight from disk,
-			// where a fetch would be refused and a script element still loads. The probe
-			// is the load, so finding the file costs nothing extra.
 			function start()
 			{
-				set_status( 'Looking for a local build ...' );
-
-				var probe = document.createElement( 'script' );
-				probe.id = 'version-script';
-
-				probe.onload = function ()
-				{
-					if ( typeof window.jsongin === 'undefined' )
-					{
-						start_without_current();
-						return;
-					}
-					engine = normalize_engine( window.jsongin );
-					engine_cache[ 'current' ] = engine;
-					build_version_list( true );
-					version_select.value = 'current';
-					on_engine_ready( 'current' );
-				};
-
-				probe.onerror = function ()
-				{
-					probe.remove();
-					start_without_current();
-				};
-
-				probe.src = LOCAL_SCRIPT_URL;
-				document.head.appendChild( probe );
-			}
-
-			// No local build, which is the published site's normal state.
-			function start_without_current()
-			{
-				build_version_list( false );
+				build_version_list();
 				version_select.value = PUBLISHED_VERSIONS[ 0 ];
 				load_version( PUBLISHED_VERSIONS[ 0 ] );
 			}
