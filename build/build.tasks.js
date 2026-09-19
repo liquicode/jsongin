@@ -166,9 +166,17 @@ module.exports = {
 		// published site, the way `.gitignore` keeps it out of source control. `aws s3
 		// sync` reads neither `.gitignore` nor anything like it, so this has to be said
 		// here. The first pattern covers a nested file, the second one at the top.
+		//
+		// ***`--cache-control no-cache` makes a browser ask before it reuses a page.*** The bucket
+		// sends no caching header of its own, so a browser kept a page for a tenth of its age -
+		// days, for a page weeks old - and a mended playground went on showing broken inside its
+		// frame (2026-09-19). With the header a browser revalidates, and an unchanged page is a
+		// 304. ***Never rewrite a bucket's headers with an S3-to-S3 copy***: `--metadata-directive
+		// REPLACE` resets every Content-Type to binary/octet-stream, and an index.html served that
+		// way is a download. Upload again from docs/ instead, which guesses the types as a sync does.
 		{
 			$Shell: {
-				command: 'set "AWS_PROFILE=${AWS_ProfileName}" & aws s3 sync docs s3://${AWS_BucketName} --exclude "*/~*" --exclude "~*"',
+				command: 'set "AWS_PROFILE=${AWS_ProfileName}" & aws s3 sync docs s3://${AWS_BucketName} --cache-control no-cache --exclude "*/~*" --exclude "~*"',
 				out: { console: true },
 				err: { console: true },
 			},

@@ -7,14 +7,14 @@ Each of the function's parameters gets its own box, filled in with a working exa
 
 <iframe
 	id="playground-frame"
-	src="playground/index.html"
+	src="playground/index.html?v=0.2.0"
 	title="jsongin Playground"
 	loading="lazy"
 	style="width:100%; height:78vh; min-height:620px; border:1px solid var(--border-color,#d8dee4); border-radius:8px;"
 ></iframe>
 
 <p>
-	<a href="playground/index.html" target="_blank" rel="noopener noreferrer">Open the Playground in its own tab</a>
+	<a href="playground/index.html?v=0.2.0" target="_blank" rel="noopener noreferrer">Open the Playground in its own tab</a>
 </p>
 
 ## The Boxes
