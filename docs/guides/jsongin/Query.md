@@ -108,7 +108,8 @@ jsongin.Query( { DomeId: 'B' }, { $expr: { $eq: [ '$DomeId', '$$Left.Dome' ] } }
 ```
 
 `$field` still means a field of the document being tested, and `$$ROOT` still means that document.
-This is what lets a criteria compare two documents.
+This is what lets a criteria compare two documents, and it is how [`Join()`](./Join.md) lends
+  the document it is matching from as `$$Left`.
 
 ***Lend a frame which descends from a pipeline frame***, as above.
 `$$NOW` and `$$REMOVE` are bound there, so a bare `Scope.New()` frame leaves them undefined:

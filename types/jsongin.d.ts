@@ -183,7 +183,8 @@ declare module '@liquicode/jsongin'
 		//--- Query, evaluation, and transformation.
 		/** Options is { ExpandArrays, Scope }, or a boolean meaning ExpandArrays. It travels through the whole criteria. */
 		Query( Document: JsonDocument, Criteria: QueryCriteria, Path?: string, Options?: QueryOptions | boolean ): boolean;
-		ValidateQuery( Criteria: QueryCriteria ): void;
+		/** Takes the same Options as Query, so a criteria naming a lent variable can be checked without a document. */
+		ValidateQuery( Criteria: QueryCriteria, Path?: string, Options?: QueryOptions | boolean ): void;
 		Evaluate( Document: JsonDocument, Expression: any, Scope?: JsonDocument ): any;
 		Aggregate( Documents: JsonDocument[], Pipeline: JsonDocument[], Scope?: JsonDocument ): JsonDocument[];
 		Project( Document: JsonDocument, Projection: JsonDocument, IsStage?: boolean, Scope?: JsonDocument ): JsonDocument;
@@ -191,6 +192,10 @@ declare module '@liquicode/jsongin'
 		Filter( Documents: JsonDocument[], QueryCriteria: QueryCriteria ): JsonDocument[];
 		Sort( Documents: JsonDocument[], SortCriteria: JsonDocument ): JsonDocument[];
 		Distinct( Documents: JsonDocument[], DistinctCriteria: any ): any[];
+		/** Joins two sets of documents. JoinCriteria is matched against each JoinDocuments document with '$$Left' lent. */
+		Join( Documents: JsonDocument[] | JsonDocument, JoinDocuments: JsonDocument[] | JsonDocument, JoinCriteria: QueryCriteria, JoinType?: string, JoinName?: string ): JsonDocument[];
+		/** One set of documents after another. A concatenation: nothing is de-duplicated and nothing is copied. */
+		Union( Documents: JsonDocument[] | JsonDocument, UnionDocuments: JsonDocument[] | JsonDocument ): JsonDocument[];
 		Diff( Before: JsonDocument, After: JsonDocument ): JsonDocument;
 		Invert( Before: JsonDocument, Patch: JsonDocument ): JsonDocument;
 
@@ -259,6 +264,8 @@ declare module '@liquicode/jsongin'
 	export const Filter: JsonginEngine[ 'Filter' ];
 	export const Sort: JsonginEngine[ 'Sort' ];
 	export const Distinct: JsonginEngine[ 'Distinct' ];
+	export const Join: JsonginEngine[ 'Join' ];
+	export const Union: JsonginEngine[ 'Union' ];
 	export const Diff: JsonginEngine[ 'Diff' ];
 	export const Invert: JsonginEngine[ 'Invert' ];
 

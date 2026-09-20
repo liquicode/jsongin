@@ -418,6 +418,236 @@ describe( '130) Engine Function Tests', () =>
 
 
 	//---------------------------------------------------------------------
+	/*
+		***Two sets of documents, matched against each other.***
+
+		MongoDB does this as the `$lookup` stage, which names a collection on a server; this
+		takes the documents themselves, so the engine needs no collection to join. The shape of
+		the answer is `$lookup`'s: one document out for each document in, holding everything it
+		matched - not SQL's row multiplication.
+
+		The criteria is matched against each join document with the document being joined from
+		lent as `$$Left`, which is what the options a query carries were built for.
+	*/
+	describe( 'Join Tests', () =>
+	{
+
+		let bookings = [ { Id: 1, Dome: 'A' }, { Id: 2, Dome: 'C' } ];
+		let nights = [ { DomeId: 'A', Night: 'clear' }, { DomeId: 'A', Night: 'rain' }, { DomeId: 'B', Night: 'fog' } ];
+		let on_dome = { $expr: { $eq: [ '$DomeId', '$$Left.Dome' ] } };
+
+		it( 'should gather the matches under a name, one document out for each in', () =>
+		{
+			let joined = jsongin.Join( bookings, nights, on_dome, 'Left', 'Nights' );
+			assert.strictEqual( joined.length, 2 );
+			assert.deepStrictEqual( joined[ 0 ], {
+				Id: 1, Dome: 'A',
+				Nights: [ { DomeId: 'A', Night: 'clear' }, { DomeId: 'A', Night: 'rain' } ],
+			} );
+			// ***A document which matched nothing keeps the shape***, so the answer can be read
+			// without asking whether anything matched.
+			assert.deepStrictEqual( joined[ 1 ], { Id: 2, Dome: 'C', Nights: [] } );
+		} );
+
+		it( 'should merge the matches into the document when it is given no name', () =>
+		{
+			let joined = jsongin.Join( bookings, nights, on_dome );
+			// Merged one after another, so a field two matches share takes the last one's value.
+			assert.deepStrictEqual( joined[ 0 ], { Id: 1, Dome: 'A', DomeId: 'A', Night: 'rain' } );
+			// And a document which matched nothing is itself.
+			assert.deepStrictEqual( joined[ 1 ], { Id: 2, Dome: 'C' } );
+		} );
+
+		it( 'should answer for each of the four joins', () =>
+		{
+			function ids( Joined )
+			{
+				return Joined.map( function ( Each ) { return ( typeof Each.Id === 'undefined' ) ? Each.Night : Each.Id; } );
+			}
+			assert.deepStrictEqual( ids( jsongin.Join( bookings, nights, on_dome, 'Left', 'N' ) ), [ 1, 2 ] );
+			assert.deepStrictEqual( ids( jsongin.Join( bookings, nights, on_dome, 'Inner', 'N' ) ), [ 1 ] );
+			// An unmatched join document comes back alone: there is nothing to attach it to.
+			assert.deepStrictEqual( ids( jsongin.Join( bookings, nights, on_dome, 'Right', 'N' ) ), [ 1, 'fog' ] );
+			assert.deepStrictEqual( ids( jsongin.Join( bookings, nights, on_dome, 'Outer', 'N' ) ), [ 1, 2, 'fog' ] );
+			// The unmatched one carries no JoinName field.
+			let outer = jsongin.Join( bookings, nights, on_dome, 'Outer', 'N' );
+			assert.deepStrictEqual( outer[ 2 ], { DomeId: 'B', Night: 'fog' } );
+			// The name is matched without regard to case, and Left is the default.
+			assert.deepStrictEqual( jsongin.Join( bookings, nights, on_dome, 'inner', 'N' ).length, 1 );
+			assert.deepStrictEqual( jsongin.Join( bookings, nights, on_dome, null, 'N' ).length, 2 );
+		} );
+
+		it( 'should take one document on either side', () =>
+		{
+			assert.deepStrictEqual( jsongin.Join( { Dome: 'A' }, { DomeId: 'A' }, on_dome, 'Left', 'N' ),
+				[ { Dome: 'A', N: [ { DomeId: 'A' } ] } ] );
+			assert.deepStrictEqual( jsongin.Join( [], nights, on_dome, 'Left', 'N' ), [] );
+			assert.deepStrictEqual( jsongin.Join( bookings, [], on_dome, 'Inner', 'N' ), [] );
+		} );
+
+		it( 'should take a criteria which lends neither side, and one which matches every pair', () =>
+		{
+			// An ordinary filter on the join documents: every document gets the same matches.
+			let filtered = jsongin.Join( bookings, nights, { Night: 'fog' }, 'Left', 'N' );
+			assert.deepStrictEqual( filtered[ 0 ].N, [ { DomeId: 'B', Night: 'fog' } ] );
+			assert.deepStrictEqual( filtered[ 1 ].N, [ { DomeId: 'B', Night: 'fog' } ] );
+			// An empty criteria matches every pair, which is a cross product gathered by document.
+			let every = jsongin.Join( bookings, nights, {}, 'Left', 'N' );
+			assert.strictEqual( every[ 0 ].N.length, 3 );
+			assert.strictEqual( every[ 1 ].N.length, 3 );
+		} );
+
+		it( 'should read $$Right, and the join document, as the same document', () =>
+		{
+			let by_root = jsongin.Join( bookings, nights, { $expr: { $eq: [ '$$Right.DomeId', '$$Left.Dome' ] } }, 'Inner', 'N' );
+			assert.deepStrictEqual( by_root, jsongin.Join( bookings, nights, on_dome, 'Inner', 'N' ) );
+		} );
+
+		// ***A production, so it clones.*** Neither input is touched, and nothing in the answer
+		// is a document the caller handed over.
+		it( 'should leave both inputs alone', () =>
+		{
+			let left = [ { Id: 1, Dome: 'A' } ];
+			let right = [ { DomeId: 'A', Night: 'clear' } ];
+			let joined = jsongin.Join( left, right, on_dome, 'Left', 'N' );
+			joined[ 0 ].Dome = 'changed';
+			joined[ 0 ].N[ 0 ].Night = 'changed';
+			assert.deepStrictEqual( left, [ { Id: 1, Dome: 'A' } ] );
+			assert.deepStrictEqual( right, [ { DomeId: 'A', Night: 'clear' } ] );
+			// The same for the merged form, and for an unmatched join document.
+			let merged = jsongin.Join( left, right, on_dome );
+			merged[ 0 ].Night = 'changed';
+			assert.deepStrictEqual( right, [ { DomeId: 'A', Night: 'clear' } ] );
+			let outer = jsongin.Join( [], right, on_dome, 'Outer' );
+			outer[ 0 ].Night = 'changed';
+			assert.deepStrictEqual( right, [ { DomeId: 'A', Night: 'clear' } ] );
+		} );
+
+		// ***Which document this is, is where it sits in the array.*** These documents carry no
+		// identifier of their own, so two identical ones are two documents - as they are two
+		// rows on a server, where an _id tells them apart.
+		it( 'should treat two identical join documents as two documents', () =>
+		{
+			let twice = [ { DomeId: 'A' }, { DomeId: 'A' } ];
+			let joined = jsongin.Join( [ { Dome: 'A' } ], twice, on_dome, 'Left', 'N' );
+			assert.strictEqual( joined[ 0 ].N.length, 2 );
+			// And neither is left over as unmatched.
+			assert.strictEqual( jsongin.Join( [ { Dome: 'A' } ], twice, on_dome, 'Outer', 'N' ).length, 1 );
+		} );
+
+		it( 'should write the matches at a path, keeping what is beside it', () =>
+		{
+			let joined = jsongin.Join( [ { Dome: 'A', Site: { Name: 'North' } } ], nights, on_dome, 'Left', 'Site.Nights' );
+			assert.deepStrictEqual( joined[ 0 ].Site.Name, 'North' );
+			assert.strictEqual( joined[ 0 ].Site.Nights.length, 2 );
+		} );
+
+		it( 'should join on a Date, and keep one in a joined document', () =>
+		{
+			// A Date has its own short type, and a function which walks documents member-wise is
+			// where that distinction goes missing. See 120).
+			let instant = new Date( '2026-09-20T04:00:00.000Z' );
+			let left = [ { At: instant } ];
+			let right = [ { When: new Date( instant.getTime() ), Night: 'clear' }, { When: new Date( 0 ), Night: 'fog' } ];
+			let joined = jsongin.Join( left, right, { $expr: { $eq: [ '$When', '$$Left.At' ] } }, 'Inner', 'N' );
+			assert.strictEqual( joined.length, 1 );
+			assert.strictEqual( joined[ 0 ].N.length, 1 );
+			assert.strictEqual( jsongin.ShortType( joined[ 0 ].At ), 'd' );
+			assert.strictEqual( jsongin.ShortType( joined[ 0 ].N[ 0 ].When ), 'd' );
+			assert.strictEqual( joined[ 0 ].N[ 0 ].When.getTime(), instant.getTime() );
+		} );
+
+		// ***A criteria which cannot mean anything is refused before any of it runs.*** Query()
+		// only refuses a mistake when it reaches it, and a join whose second side holds nothing
+		// evaluates nothing at all - so a typo would quietly answer a set of unjoined documents.
+		it( 'should refuse a malformed criteria even when nothing would be matched', () =>
+		{
+			assert.throws( () => jsongin.Join( bookings, [], { $bogus: 1 }, 'Left', 'N' ), /\$bogus/ );
+			assert.throws( () => jsongin.Join( bookings, [], { a: { $size: 'two' } }, 'Left', 'N' ), /\$size/ );
+			// And the names it lends are bound while it is checked, so a join criteria is not
+			// refused for naming them.
+			assert.doesNotThrow( () => jsongin.Join( bookings, [], on_dome, 'Left', 'N' ) );
+		} );
+
+		it( 'should refuse what it cannot join', () =>
+		{
+			assert.throws( () => jsongin.Join( 'nope', nights, on_dome ), /Documents must be an array/ );
+			assert.throws( () => jsongin.Join( bookings, 7, on_dome ), /JoinDocuments must be an array/ );
+			assert.throws( () => jsongin.Join( [ 1 ], nights, on_dome ), /Documents\[ 0 \] must be an object/ );
+			assert.throws( () => jsongin.Join( bookings, nights, 'nope' ), /JoinCriteria must be an object/ );
+			assert.throws( () => jsongin.Join( bookings, nights, on_dome, 'sideways' ), /is not one of Left, Inner, Right, Outer/ );
+			assert.throws( () => jsongin.Join( bookings, nights, on_dome, 7 ), /JoinType must be one of/ );
+			assert.throws( () => jsongin.Join( bookings, nights, on_dome, 'Left', 7 ), /JoinName must be a string/ );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	/*
+		***One set of documents after another.***
+
+		This is MongoDB's `$unionWith`, which is a concatenation and not a set union: measured
+		against 8.3.8 on 2026-09-20, a document repeated across two collections came back twice,
+		`_id` and all. `Distinct()` is what reduces the result.
+	*/
+	describe( 'Union Tests', () =>
+	{
+
+		it( 'should answer one set after the other', () =>
+		{
+			assert.deepStrictEqual(
+				jsongin.Union( [ { Id: 1 }, { Id: 2 } ], [ { Id: 3 } ] ),
+				[ { Id: 1 }, { Id: 2 }, { Id: 3 } ] );
+			assert.deepStrictEqual( jsongin.Union( [], [ { Id: 1 } ] ), [ { Id: 1 } ] );
+			assert.deepStrictEqual( jsongin.Union( [ { Id: 1 } ], [] ), [ { Id: 1 } ] );
+			assert.deepStrictEqual( jsongin.Union( [], [] ), [] );
+		} );
+
+		it( 'should take one document on either side', () =>
+		{
+			assert.deepStrictEqual( jsongin.Union( { Id: 1 }, { Id: 2 } ), [ { Id: 1 }, { Id: 2 } ] );
+			assert.deepStrictEqual( jsongin.Union( { Id: 1 }, [ { Id: 2 } ] ), [ { Id: 1 }, { Id: 2 } ] );
+		} );
+
+		// ***A concatenation, not a set union.*** Two identical documents are two documents.
+		it( 'should keep every duplicate', () =>
+		{
+			let repeated = jsongin.Union( [ { Id: 1, Dome: 'A' } ], [ { Id: 1, Dome: 'A' }, { Id: 2, Dome: 'A' } ] );
+			assert.strictEqual( repeated.length, 3 );
+			assert.deepStrictEqual( repeated[ 0 ], repeated[ 1 ] );
+			// Distinct is what reduces it, which is the same division of labour MongoDB has.
+			assert.strictEqual( jsongin.Distinct( repeated, { Id: 1 } ).length, 2 );
+		} );
+
+		// ***A selection, so the documents are the caller's own.*** Filter states the rule: a
+		// function which selects hands back what it was given, and only one which produces new
+		// documents copies first.
+		it( 'should hand back the documents it was given, uncopied', () =>
+		{
+			let left = [ { Id: 1 } ];
+			let right = [ { Id: 2 } ];
+			let united = jsongin.Union( left, right );
+			assert.strictEqual( united[ 0 ], left[ 0 ] );
+			assert.strictEqual( united[ 1 ], right[ 0 ] );
+			// The array itself is new, so adding to it does not reach either input.
+			united.push( { Id: 3 } );
+			assert.strictEqual( left.length, 1 );
+			assert.strictEqual( right.length, 1 );
+		} );
+
+		it( 'should refuse what it cannot join together', () =>
+		{
+			assert.throws( () => jsongin.Union( 'nope', [] ), /Documents must be an array/ );
+			assert.throws( () => jsongin.Union( [], 7 ), /UnionDocuments must be an array/ );
+			assert.throws( () => jsongin.Union( [ 1 ], [] ), /Documents\[ 0 \] must be an object/ );
+			assert.throws( () => jsongin.Union( [], [ null ] ), /UnionDocuments\[ 0 \] must be an object/ );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
 	describe( 'Update Tests', () =>
 	{
 

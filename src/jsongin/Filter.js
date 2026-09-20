@@ -15,7 +15,11 @@ module.exports = function ( jsongin )
 	// docs/guides/jsongin/Aggregate.md names Filter as the thing they follow. A stage which
 	// produces documents rather than selecting them clones with SafeClone before writing.
 	// Filter.md states the same rule for callers.
-	function Filter( Documents, QueryCriteria )
+	// ***Options is Query's***, and is passed to every document: { ExpandArrays, Scope }. A
+	// filter which is part of a pipeline hands its scope along here, which is what lets a
+	// '$$name' bound by $lookup's `let` resolve inside a $match's $expr - the pipeline frame
+	// would otherwise stop at this function. See src/QueryOptions.js.
+	function Filter( Documents, QueryCriteria, Options )
 	{
 		try
 		{
@@ -24,7 +28,7 @@ module.exports = function ( jsongin )
 			let filtered = [];
 			for ( let index = 0; index < Documents.length; index++ )
 			{
-				if ( jsongin.Query( Documents[ index ], QueryCriteria ) )
+				if ( jsongin.Query( Documents[ index ], QueryCriteria, '', Options ) )
 				{
 					filtered.push( Documents[ index ] );
 				}

@@ -319,6 +319,7 @@ function NewJsongin( EngineSettings = {} )
 		$densify: require( './Operators/Stage/densify' )( Engine ),
 		$redact: require( './Operators/Stage/redact' )( Engine ),
 
+
 	};
 
 	//---------------------------------------------------------------------
@@ -370,6 +371,12 @@ function NewJsongin( EngineSettings = {} )
 	Engine.Filter = require( './jsongin/Filter' )( Engine );
 	Engine.Sort = require( './jsongin/Sort' )( Engine );
 	Engine.Distinct = require( './jsongin/Distinct' )( Engine );
+	// Two sets of documents, matched against each other. MongoDB does this as the $lookup
+	// stage, which names a collection; this takes the documents themselves, so the engine
+	// needs no collection to join.
+	Engine.Join = require( './jsongin/Join' )( Engine );
+	// One set of documents after another, which is what MongoDB's $unionWith stage does.
+	Engine.Union = require( './jsongin/Union' )( Engine );
 
 	//---------------------------------------------------------------------
 	// Snapshots

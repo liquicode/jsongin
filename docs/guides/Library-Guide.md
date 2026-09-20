@@ -41,6 +41,12 @@ These functions work the way MongoDB's queries, updates, projections and aggrega
 - [Distinct( Documents, DistinctCriteria )](./jsongin/Distinct.md)
   : Returns one document for each distinct combination of the fields named in `DistinctCriteria`.
 
+- [Join( Documents, JoinDocuments, JoinCriteria, JoinType, JoinName )](./jsongin/Join.md)
+  : Matches two sets of documents against each other, gathering what each one matched.
+
+- [Union( Documents, UnionDocuments )](./jsongin/Union.md)
+  : Returns one set of documents after another. A concatenation: nothing is removed and nothing is copied.
+
 - [Sort( Documents, SortCriteria )](./jsongin/Sort.md)
   : Sorts an array of documents in place, by fields given as `{ field: 1 }` or `{ field: -1 }`.
 

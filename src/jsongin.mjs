@@ -51,6 +51,8 @@ export const Update = ENGINE.Update;
 export const Filter = ENGINE.Filter;
 export const Sort = ENGINE.Sort;
 export const Distinct = ENGINE.Distinct;
+export const Join = ENGINE.Join;
+export const Union = ENGINE.Union;
 export const Diff = ENGINE.Diff;
 export const Invert = ENGINE.Invert;
 

@@ -29,7 +29,10 @@ module.exports = function ( jsongin )
 			try
 			{
 				if ( jsongin.ShortType( Args ) !== 'o' ) { throw new Error( `$match requires a query object.` ); }
-				return jsongin.Filter( Documents, Args );
+				// The pipeline's frame goes with the criteria, so a '$$name' inside an $expr
+				// resolves - a `let` variable of the $lookup this pipeline may be running in,
+				// or anything else the caller bound.
+				return jsongin.Filter( Documents, Args, { Scope: Scope } );
 			}
 			catch ( error )
 			{

@@ -237,8 +237,9 @@ module.exports = function ( jsongin )
 	// mirrors for the element form.
 	const LOGICAL = [ '$and', '$or', '$nor', '$not' ];
 
-	function ValidateQuery( Criteria, Path = '' )
+	function ValidateQuery( Criteria, Path = '', Options )
 	{
+		let options = LIB_QUERY_OPTIONS.Normalize( Options );
 		if ( jsongin.ShortType( Criteria ) !== 'o' )
 		{
 			refuse( `The Criteria parameter must be an object.` );
@@ -259,7 +260,7 @@ module.exports = function ( jsongin )
 
 			if ( typeof jsongin.QueryOperators[ key ] !== 'undefined' )
 			{
-				validate_operator( key, Criteria, Path );
+				validate_operator( key, Criteria, Path, options );
 				continue;
 			}
 
@@ -272,7 +273,7 @@ module.exports = function ( jsongin )
 			let sub_query_path = jsongin.JoinPaths( Path, key );
 			if ( jsongin.IsQuery( sub_query ) )
 			{
-				ValidateQuery( sub_query, sub_query_path );
+				ValidateQuery( sub_query, sub_query_path, options );
 			}
 			else if ( typeof sub_query === 'undefined' )
 			{
@@ -284,7 +285,7 @@ module.exports = function ( jsongin )
 
 
 	// One operator: the shared checks, the criteria it carries, then its own refusals.
-	function validate_operator( key, Criteria, Path )
+	function validate_operator( key, Criteria, Path, Options )
 	{
 		let operator = jsongin.QueryOperators[ key ];
 		let sub_query = check_operator( key, Criteria, Path );
@@ -294,16 +295,16 @@ module.exports = function ( jsongin )
 		{
 			if ( sub_type === 'a' )
 			{
-				for ( let index = 0; index < sub_query.length; index++ ) { ValidateQuery( sub_query[ index ], Path ); }
+				for ( let index = 0; index < sub_query.length; index++ ) { ValidateQuery( sub_query[ index ], Path, Options ); }
 			}
 		}
 		else if ( key === '$not' )
 		{
-			if ( sub_type === 'o' ) { ValidateQuery( sub_query, Path ); }
+			if ( sub_type === 'o' ) { ValidateQuery( sub_query, Path, Options ); }
 		}
 		else if ( key === '$elemMatch' )
 		{
-			if ( sub_type === 'o' ) { validate_element_criteria( sub_query, Path ); }
+			if ( sub_type === 'o' ) { validate_element_criteria( sub_query, Path, Options ); }
 		}
 		else if ( key === '$all' )
 		{
@@ -314,14 +315,14 @@ module.exports = function ( jsongin )
 					let entry = sub_query[ index ];
 					if ( ( jsongin.ShortType( entry ) === 'o' ) && ( Object.keys( entry )[ 0 ] === '$elemMatch' ) )
 					{
-						validate_operator( '$elemMatch', entry, Path );
+						validate_operator( '$elemMatch', entry, Path, Options );
 					}
 				}
 			}
 		}
 
 		// The operator's own checks, which it makes before looking at a document.
-		operator.Query( {}, sub_query, Path );
+		operator.Query( {}, sub_query, Path, Options );
 		return;
 	};
 
@@ -329,7 +330,7 @@ module.exports = function ( jsongin )
 	// The criteria an $elemMatch carries, in the shape element_matches reads it: a logical key
 	// combines element criteria, another operator applies to the element itself, and anything
 	// else is a field of the element.
-	function validate_element_criteria( Criteria, Path )
+	function validate_element_criteria( Criteria, Path, Options )
 	{
 		for ( let key in Criteria )
 		{
@@ -339,13 +340,13 @@ module.exports = function ( jsongin )
 			{
 				if ( key === '$not' )
 				{
-					if ( value_type === 'o' ) { validate_element_criteria( value, Path ); }
+					if ( value_type === 'o' ) { validate_element_criteria( value, Path, Options ); }
 				}
 				else if ( value_type === 'a' )
 				{
 					for ( let index = 0; index < value.length; index++ )
 					{
-						if ( jsongin.ShortType( value[ index ] ) === 'o' ) { validate_element_criteria( value[ index ], Path ); }
+						if ( jsongin.ShortType( value[ index ] ) === 'o' ) { validate_element_criteria( value[ index ], Path, Options ); }
 					}
 				}
 				continue;
@@ -358,15 +359,15 @@ module.exports = function ( jsongin )
 				// asked for its own refusals the way the top level asks.
 				if ( jsongin.QueryOperators[ key ].ElementLevel === true )
 				{
-					jsongin.QueryOperators[ key ].Query( {}, value, '' );
+					jsongin.QueryOperators[ key ].Query( {}, value, '', Options );
 					continue;
 				}
-				if ( ( key !== '$comment' ) && !( operator_is_top_level_only( key ) ) ) { validate_operator( key, Criteria, Path ); }
+				if ( ( key !== '$comment' ) && !( operator_is_top_level_only( key ) ) ) { validate_operator( key, Criteria, Path, Options ); }
 				continue;
 			}
 			let sub_criteria = {};
 			sub_criteria[ key ] = value;
-			ValidateQuery( sub_criteria, Path );
+			ValidateQuery( sub_criteria, Path, Options );
 		}
 		return;
 	};

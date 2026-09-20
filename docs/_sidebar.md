@@ -26,6 +26,8 @@
 	- [`Aggregate()`](/guides/jsongin/Aggregate.md)
 	- [`Filter()`](/guides/jsongin/Filter.md)
 	- [`Distinct()`](/guides/jsongin/Distinct.md)
+	- [`Join()`](/guides/jsongin/Join.md)
+	- [`Union()`](/guides/jsongin/Union.md)
 	- [`Sort()`](/guides/jsongin/Sort.md)
 	- [`Project()`](/guides/jsongin/Project.md)
 	- [`Update()`](/guides/jsongin/Update.md)
