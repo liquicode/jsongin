@@ -33,6 +33,9 @@ See [`Aggregate()`](./Aggregate.md) for the rules of a whole pipeline, and
 | [`$fill`](#$fill)                  | `{ $fill: { output: { field: { value: ... } \| { method: ... } } } }` |
 | [`$densify`](#$densify)            | `{ $densify: { field: 'name', range: { step: ..., bounds: ... } } }` |
 | [`$redact`](#$redact)              | `{ $redact: expression }`                                            |
+| [`$lookup`](#$lookup)              | `{ $lookup: { from, localField, foreignField, as } }`                 |
+| [`$unionWith`](#$unionWith)        | `{ $unionWith: documents }` or `{ $unionWith: { coll, pipeline } }`   |
+| [`$graphLookup`](#$graphLookup)    | `{ $graphLookup: { from, startWith, connectFromField, connectToField, as } }` |
 
 
 Most examples below use these documents:
@@ -565,12 +568,216 @@ jsongin.Aggregate( records, [ { $redact: '$$ROOT' } ] );   // throws
 ```
 
 
+
+<a id="$lookup"></a>$lookup
+---------------------------------------------------------------------
+
+**Usage** : `{ $lookup: { from: <documents>, localField: 'field', foreignField: 'field', as: 'field' } }`
+
+or `{ $lookup: { from: <documents>, let: { name: expression }, pipeline: [ stage, ... ], as: 'field' } }`
+
+Joins each document with a second set of documents, gathering what it matched into an array.
+
+***`from` is the documents themselves, or a `$$name` bound in the pipeline's scope.***
+MongoDB names a collection there and reads it from the database.
+`jsongin` has no collections, so it takes the array - and that is the only difference between
+  the two.
+A name which is not a `$variable` is refused rather than read as a collection.
+
+```js
+let bookings = [ { Id: 1, Dome: 'A' }, { Id: 2, Dome: 'C' } ];
+let nights = [ { DomeId: 'A', Night: 'clear' } ];
+
+jsongin.Aggregate( bookings, [
+	{ $lookup: { from: nights, localField: 'Dome', foreignField: 'DomeId', as: 'Nights' } },
+] );
+// returns [ { Id: 1, Dome: 'A', Nights: [ { DomeId: 'A', Night: 'clear' } ] }, { Id: 2, Dome: 'C', Nights: [] } ]
+```
+
+The same pipeline with the documents bound in the scope instead:
+
+```js
+let bookings = [ { Id: 1, Dome: 'A' } ];
+let scope = jsongin.Scope.NewPipeline().Child( { Nights: [ { DomeId: 'A', Night: 'clear' } ] } );
+
+jsongin.Aggregate( bookings, [
+	{ $lookup: { from: '$$Nights', localField: 'Dome', foreignField: 'DomeId', as: 'Nights' } },
+], scope );
+// returns [ { Id: 1, Dome: 'A', Nights: [ { DomeId: 'A', Night: 'clear' } ] } ]
+```
+
+***The equality form matches where the local value is among the foreign ones.***
+An array on either side matches element by element, and a ***missing field counts as null***,
+  so a document with no local field matches foreign documents whose field is null or missing.
+Numbers compare across their types, and a number never matches its text.
+All of this was measured against MongoDB 8.3.8.
+
+```js
+let domes = [ { Id: 1, Dome: [ 'A', 'B' ] }, { Id: 2 } ];
+let nights = [ { N: 1, DomeId: 'A' }, { N: 2, DomeId: [ 'B', 'Z' ] }, { N: 3, DomeId: null } ];
+
+jsongin.Aggregate( domes, [
+	{ $lookup: { from: nights, localField: 'Dome', foreignField: 'DomeId', as: 'F' } },
+] );
+// returns [ { Id: 1, Dome: [ 'A', 'B' ], F: [ { N: 1, DomeId: 'A' }, { N: 2, DomeId: [ 'B', 'Z' ] } ] }, { Id: 2, F: [ { N: 3, DomeId: null } ] } ]
+```
+
+***The pipeline form runs a pipeline over the second set***, with `let` bound as variables a
+  `$match`'s `$expr` can read.
+Both forms may be given together, and both apply.
+
+```js
+let bookings = [ { Id: 1, Dome: 'A', Minimum: 2 } ];
+let stays = [ { DomeId: 'A', Nights: 1 }, { DomeId: 'A', Nights: 5 } ];
+
+jsongin.Aggregate( bookings, [
+	{ $lookup: {
+		from: stays,
+		let: { dome: '$Dome', minimum: '$Minimum' },
+		pipeline: [ { $match: { $expr: { $and: [ { $eq: [ '$DomeId', '$$dome' ] }, { $gt: [ '$Nights', '$$minimum' ] } ] } } } ],
+		as: 'Long',
+	} },
+] );
+// returns [ { Id: 1, Dome: 'A', Minimum: 2, Long: [ { DomeId: 'A', Nights: 5 } ] } ]
+```
+
+`as` is ***always written***, holding an empty array where nothing matched.
+It may be a dotted path, which keeps what is beside it, and it replaces whatever was there.
+
+The documents it writes are copies, so neither set is changed.
+
+See [`Join( Documents, JoinDocuments, JoinCriteria, JoinType, JoinName )`](./Join.md), which is
+  this stage without a pipeline, and which can answer a right or outer join as well.
+
+
+<a id="$unionWith"></a>$unionWith
+---------------------------------------------------------------------
+
+**Usage** : `{ $unionWith: <documents> }` or `{ $unionWith: { coll: <documents>, pipeline: [ stage, ... ] } }`
+
+Adds a second set of documents to the stream, after the ones already in it.
+
+***`coll` is the documents themselves, or a `$$name` bound in the pipeline's scope***, as it
+  is for [`$lookup`](#$lookup).
+MongoDB names a collection there; `jsongin` has no collections.
+
+```js
+let morning = [ { Id: 1, When: 'morning' } ];
+let evening = [ { Id: 2, When: 'evening' }, { Id: 3, When: 'evening', Clouded: true } ];
+
+jsongin.Aggregate( morning, [ { $unionWith: evening } ] );
+// returns [ { Id: 1, When: 'morning' }, { Id: 2, When: 'evening' }, { Id: 3, When: 'evening', Clouded: true } ]
+```
+
+***This is a concatenation, not a set union.***
+Nothing is de-duplicated, and a document which is in both sets comes back twice - measured
+  against MongoDB 8.3.8, where the same `_id` in both collections came back twice.
+Follow it with [`$group`](#$group) to reduce it.
+
+A `pipeline` runs over the second set only, before it joins the stream:
+
+```js
+let morning = [ { Id: 1, When: 'morning' } ];
+let evening = [ { Id: 2, When: 'evening' }, { Id: 3, When: 'evening', Clouded: true } ];
+
+jsongin.Aggregate( morning, [
+	{ $unionWith: { coll: evening, pipeline: [ { $match: { Clouded: { $ne: true } } } ] } },
+] );
+// returns [ { Id: 1, When: 'morning' }, { Id: 2, When: 'evening' } ]
+```
+
+Every stage after this one sees both sets.
+The documents are the caller's own, as they are through [`$match`](#$match): this stage adds
+  documents to the stream rather than making new ones.
+
+See [`Union( Documents, UnionDocuments )`](./Union.md), which is this stage without a pipeline.
+
+
+<a id="$graphLookup"></a>$graphLookup
+---------------------------------------------------------------------
+
+**Usage** : `{ $graphLookup: { from: <documents>, startWith: expression, connectFromField: 'field', connectToField: 'field', as: 'field', maxDepth: number, depthField: 'field', restrictSearchWithMatch: query } }`
+
+Follows a chain through a second set of documents, gathering everything it reaches.
+
+Each round matches `connectToField` against the values it is looking for, and what it finds
+  supplies the next round through `connectFromField`.
+The first round looks for whatever `startWith` evaluates to.
+
+***`from` is the documents themselves, or a `$$name` bound in the pipeline's scope***, as it
+  is for [`$lookup`](#$lookup).
+
+```js
+let bookings = [ { Id: 1, Dome: 'A' } ];
+let domes = [
+	{ Name: 'A', Parent: 'B' },
+	{ Name: 'B', Parent: 'C' },
+	{ Name: 'C' },
+];
+
+let found = jsongin.Aggregate( bookings, [
+	{ $graphLookup: {
+		from: domes, startWith: '$Dome',
+		connectFromField: 'Parent', connectToField: 'Name',
+		as: 'Chain', depthField: 'Level',
+	} },
+] );
+
+found[ 0 ].Chain.map( function ( Each ) { return Each.Name + '@' + Each.Level; } ).sort().join( ' ' ) === 'A@0 B@1 C@2'
+```
+
+***A document is reached once, and carries the shallowest depth it was reached at.***
+`depthField` counts from 0 for the documents `startWith` found, and is written only when it
+  is asked for.
+A cycle ends, because a document already reached is not followed again.
+
+***Which document a document is, is where it sits in the array.***
+MongoDB tells two identical documents apart by their `_id`; here their positions do that, so
+  two documents which look alike are still two documents.
+
+`maxDepth` bounds the rounds, and `0` is the first round alone:
+
+```js
+let domes = [ { Name: 'A', Parent: 'B' }, { Name: 'B', Parent: 'C' }, { Name: 'C' } ];
+
+let found = jsongin.Aggregate( [ { Dome: 'A' } ], [
+	{ $graphLookup: {
+		from: domes, startWith: '$Dome',
+		connectFromField: 'Parent', connectToField: 'Name',
+		as: 'Chain', depthField: 'Level', maxDepth: 1,
+	} },
+] );
+
+found[ 0 ].Chain.length === 2
+```
+
+A negative or fractional `maxDepth` is refused, as MongoDB refuses it.
+
+***`restrictSearchWithMatch` is a query the documents must also match***, the first round
+  included, and what lies beyond a document it excludes is never reached.
+
+An array on either side matches element by element.
+A `startWith` which evaluates to nothing finds nothing; one which evaluates to `null` looks
+  for `null`.
+`as` is always written, holding an empty array where nothing was found, and may be a dotted
+  path.
+
+***The order of what it found is not MongoDB's.***
+The server answers in its own order, which an in-memory engine cannot reproduce, so read what
+  it found rather than the array as it stands.
+Every other rule above was measured against MongoDB 8.3.8.
+
+See [`Join( Documents, JoinDocuments, JoinCriteria, JoinType, JoinName )`](./Join.md), which
+  is one round of this without the walk.
+
 ## Stages Not Implemented
 
-`$lookup`, `$graphLookup`, `$unionWith`, `$merge`, `$out`, `$geoNear`, `$collStats`,
-  `$indexStats`, `$setWindowFields`, `$vectorSearch` and `$documents` are not implemented.
-They need a database collection or index, and `jsongin` works on an array of documents.
-See the [Operator Reference](../Operator-Reference.md).
+`$merge`, `$out`, `$geoNear`, `$collStats`, `$indexStats`,
+  `$setWindowFields`, `$vectorSearch` and `$documents` are not implemented.
+`$merge` and `$out` write to a database collection, and the rest need one, an index, or a
+  source `jsongin` does not have.
+***`$lookup`, `$unionWith` and `$graphLookup` used to be on this list***, and are not any more: they needed a second collection
+  only because MongoDB names one. See the [Operator Reference](../Operator-Reference.md).
 
 
 ## See Also

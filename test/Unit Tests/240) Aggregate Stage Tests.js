@@ -556,6 +556,357 @@ describe( '240) Aggregate Stage Tests', () =>
 
 
 	//---------------------------------------------------------------------
+	/*
+		***$lookup, which reads a second set of documents.***
+
+		MongoDB names a collection in `from`; jsongin takes the documents themselves, inline or
+		from a `$$name` bound in the pipeline's scope. ***That is the only difference***, and
+		everything below was measured against MongoDB 8.3.8 on 2026-09-20 - the equality rules
+		especially, which are `$in` over the local values rather than anything new:
+		`jsonx/.plans/tools/lookup-parity-probe.js`.
+
+		The same cases run against a live server in the parity suite. These run without one.
+	*/
+	describe( '$lookup Tests', () =>
+	{
+
+		let bookings = [ { _id: 1, Dome: 'A' }, { _id: 2, Dome: 'C' } ];
+		let nights = [ { _id: 'a', DomeId: 'A' }, { _id: 'b', DomeId: 'B' } ];
+
+		function looked_up( Documents, Args, Scope )
+		{
+			return jsongin.Aggregate( Documents, [ { $lookup: Args } ], Scope );
+		}
+
+		it( 'should gather the matches, and write an empty array where there were none', () =>
+		{
+			let answer = looked_up( bookings, { from: nights, localField: 'Dome', foreignField: 'DomeId', as: 'F' } );
+			assert.deepStrictEqual( answer[ 0 ].F, [ { _id: 'a', DomeId: 'A' } ] );
+			assert.deepStrictEqual( answer[ 1 ].F, [] );
+			assert.strictEqual( answer.length, 2 );
+		} );
+
+		it( 'should take the documents from a variable in the scope', () =>
+		{
+			let scope = jsongin.Scope.NewPipeline().Child( { Nights: nights } );
+			let answer = looked_up( bookings, { from: '$$Nights', localField: 'Dome', foreignField: 'DomeId', as: 'F' }, scope );
+			assert.deepStrictEqual( answer[ 0 ].F, [ { _id: 'a', DomeId: 'A' } ] );
+		} );
+
+		// ***jsongin has no collections***, so a name is refused rather than read as one.
+		it( 'should refuse a from which is neither documents nor a bound variable', () =>
+		{
+			assert.throws( () => looked_up( bookings, { from: 'nights', localField: 'Dome', foreignField: 'DomeId', as: 'F' } ), /no collections/ );
+			assert.throws( () => looked_up( bookings, { from: '$$Nope', localField: 'Dome', foreignField: 'DomeId', as: 'F' } ), /is not defined/ );
+			assert.throws( () => looked_up( bookings, { localField: 'Dome', foreignField: 'DomeId', as: 'F' } ), /from/ );
+		} );
+
+		// ***The equality rules, all measured on 8.3.8.*** An array on either side matches
+		// element by element, and a missing field is a null one.
+		it( 'should match an array on either side, element by element', () =>
+		{
+			let many = [ { _id: 1, Dome: [ 'A', 'B' ] } ];
+			let some = [ { _id: 'a', DomeId: 'A' }, { _id: 'b', DomeId: [ 'B', 'Z' ] }, { _id: 'c', DomeId: 'C' } ];
+			let answer = looked_up( many, { from: some, localField: 'Dome', foreignField: 'DomeId', as: 'F' } );
+			assert.deepStrictEqual( answer[ 0 ].F.map( function ( Each ) { return Each._id; } ), [ 'a', 'b' ] );
+		} );
+
+		it( 'should treat a missing local field as null, and match a missing foreign field', () =>
+		{
+			let nothing = [ { _id: 1 } ];
+			let some = [ { _id: 'a', DomeId: null }, { _id: 'b' }, { _id: 'c', DomeId: 'A' } ];
+			let answer = looked_up( nothing, { from: some, localField: 'Dome', foreignField: 'DomeId', as: 'F' } );
+			assert.deepStrictEqual( answer[ 0 ].F.map( function ( Each ) { return Each._id; } ), [ 'a', 'b' ] );
+			// And the same from the other side: a local null matches both.
+			let null_local = looked_up( [ { _id: 1, Dome: null } ], { from: some, localField: 'Dome', foreignField: 'DomeId', as: 'F' } );
+			assert.deepStrictEqual( null_local[ 0 ].F.map( function ( Each ) { return Each._id; } ), [ 'a', 'b' ] );
+		} );
+
+		it( 'should reach a nested field, and through an array of documents', () =>
+		{
+			let nested = [ { _id: 1, Site: { Dome: 'A' } } ];
+			assert.strictEqual( looked_up( nested, { from: nights, localField: 'Site.Dome', foreignField: 'DomeId', as: 'F' } )[ 0 ].F.length, 1 );
+			let sites = [ { _id: 1, Sites: [ { Dome: 'A' }, { Dome: 'B' } ] } ];
+			assert.strictEqual( looked_up( sites, { from: nights, localField: 'Sites.Dome', foreignField: 'DomeId', as: 'F' } )[ 0 ].F.length, 2 );
+		} );
+
+		it( 'should write as at a dotted path, keeping its siblings, and replace what was there', () =>
+		{
+			let sites = [ { _id: 1, Dome: 'A', Site: { Name: 'North' } } ];
+			let nested = looked_up( sites, { from: nights, localField: 'Dome', foreignField: 'DomeId', as: 'Site.F' } );
+			assert.strictEqual( nested[ 0 ].Site.Name, 'North' );
+			assert.strictEqual( nested[ 0 ].Site.F.length, 1 );
+			let occupied = [ { _id: 1, Dome: 'A', F: 'was here' } ];
+			assert.deepStrictEqual( looked_up( occupied, { from: nights, localField: 'Dome', foreignField: 'DomeId', as: 'F' } )[ 0 ].F, [ { _id: 'a', DomeId: 'A' } ] );
+		} );
+
+		// ***The correlated form.*** `let` binds variables the sub-pipeline reads with $$, and
+		// a $match's $expr is where they are read - which is what the pipeline's frame carries.
+		it( 'should run a pipeline with let bound', () =>
+		{
+			let bookings_with_minimum = [ { _id: 1, Dome: 'A', Minimum: 2 } ];
+			let stays = [ { _id: 'a', DomeId: 'A', N: 1 }, { _id: 'b', DomeId: 'A', N: 5 } ];
+			let answer = looked_up( bookings_with_minimum, {
+				from: stays,
+				let: { dome: '$Dome', minimum: '$Minimum' },
+				pipeline: [ { $match: { $expr: { $and: [ { $eq: [ '$DomeId', '$$dome' ] }, { $gt: [ '$N', '$$minimum' ] } ] } } } ],
+				as: 'F',
+			} );
+			assert.deepStrictEqual( answer[ 0 ].F, [ { _id: 'b', DomeId: 'A', N: 5 } ] );
+		} );
+
+		it( 'should apply a key match and a pipeline together', () =>
+		{
+			let stays = [ { _id: 'a', DomeId: 'A', N: 1 }, { _id: 'b', DomeId: 'A', N: 9 }, { _id: 'c', DomeId: 'B', N: 9 } ];
+			let answer = looked_up( [ { _id: 1, Dome: 'A' } ], {
+				from: stays, localField: 'Dome', foreignField: 'DomeId',
+				pipeline: [ { $match: { N: { $gt: 5 } } } ], as: 'F',
+			} );
+			assert.deepStrictEqual( answer[ 0 ].F.map( function ( Each ) { return Each._id; } ), [ 'b' ] );
+		} );
+
+		it( 'should run an uncorrelated pipeline, giving every document the same answer', () =>
+		{
+			let answer = looked_up( bookings, { from: nights, pipeline: [ { $match: { DomeId: 'B' } } ], as: 'F' } );
+			assert.deepStrictEqual( answer[ 0 ].F, answer[ 1 ].F );
+			assert.deepStrictEqual( answer[ 0 ].F, [ { _id: 'b', DomeId: 'B' } ] );
+		} );
+
+		it( 'should refuse arguments it cannot use', () =>
+		{
+			assert.throws( () => looked_up( bookings, { from: nights, localField: 'Dome', as: 'F' } ), /foreignField/ );
+			assert.throws( () => looked_up( bookings, { from: nights, foreignField: 'DomeId', as: 'F' } ), /localField/ );
+			assert.throws( () => looked_up( bookings, { from: nights, localField: 'Dome', foreignField: 'DomeId' } ), /as/ );
+			assert.throws( () => looked_up( bookings, { from: nights, as: 'F' } ), /localField and a foreignField, or a pipeline/ );
+			assert.throws( () => looked_up( bookings, { from: nights, pipeline: 'nope', as: 'F' } ), /pipeline must be an array/ );
+			assert.throws( () => looked_up( bookings, { from: nights, let: 'nope', pipeline: [], as: 'F' } ), /let must be a document/ );
+		} );
+
+		// A production, so the documents it writes are new ones.
+		it( 'should leave both sets alone', () =>
+		{
+			let left = [ { _id: 1, Dome: 'A' } ];
+			let right = [ { _id: 'a', DomeId: 'A' } ];
+			let answer = looked_up( left, { from: right, localField: 'Dome', foreignField: 'DomeId', as: 'F' } );
+			answer[ 0 ].Dome = 'changed';
+			answer[ 0 ].F[ 0 ].DomeId = 'changed';
+			assert.deepStrictEqual( left, [ { _id: 1, Dome: 'A' } ] );
+			assert.deepStrictEqual( right, [ { _id: 'a', DomeId: 'A' } ] );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	/*
+		***$unionWith, which adds a second set of documents to the stream.***
+
+		A concatenation and not a set union: measured against MongoDB 8.3.8, a document in both
+		collections came back twice, `_id` and all.
+	*/
+	describe( '$unionWith Tests', () =>
+	{
+
+		let main = [ { _id: 1, Side: 'main' } ];
+		let other = [ { _id: 'a', Side: 'join', Keep: true }, { _id: 'b', Side: 'join', Keep: false } ];
+
+		it( 'should add the second set after the first', () =>
+		{
+			let answer = jsongin.Aggregate( main, [ { $unionWith: other } ] );
+			assert.deepStrictEqual( answer.map( function ( Each ) { return Each._id; } ), [ 1, 'a', 'b' ] );
+			// The long form says the same thing.
+			assert.deepStrictEqual( jsongin.Aggregate( main, [ { $unionWith: { coll: other } } ] ), answer );
+		} );
+
+		it( 'should take the documents from a variable in the scope', () =>
+		{
+			let scope = jsongin.Scope.NewPipeline().Child( { Other: other } );
+			let answer = jsongin.Aggregate( main, [ { $unionWith: { coll: '$$Other' } } ], scope );
+			assert.strictEqual( answer.length, 3 );
+			assert.deepStrictEqual( jsongin.Aggregate( main, [ { $unionWith: '$$Other' } ], scope ), answer );
+		} );
+
+		it( 'should run a pipeline over the second set only', () =>
+		{
+			let answer = jsongin.Aggregate( main, [ { $unionWith: { coll: other, pipeline: [ { $match: { Keep: true } } ] } } ] );
+			assert.deepStrictEqual( answer.map( function ( Each ) { return Each._id; } ), [ 1, 'a' ] );
+		} );
+
+		// ***A concatenation, not a set union.***
+		it( 'should keep a document which is in both sets', () =>
+		{
+			let answer = jsongin.Aggregate( main, [ { $unionWith: [ { _id: 1, Side: 'join' } ] } ] );
+			assert.strictEqual( answer.length, 2 );
+			assert.deepStrictEqual( answer.map( function ( Each ) { return Each.Side; } ), [ 'main', 'join' ] );
+		} );
+
+		it( 'should let a later stage see both sets', () =>
+		{
+			let answer = jsongin.Aggregate( main, [ { $unionWith: other }, { $match: { Side: 'join' } } ] );
+			assert.strictEqual( answer.length, 2 );
+		} );
+
+		it( 'should refuse what it cannot add', () =>
+		{
+			assert.throws( () => jsongin.Aggregate( main, [ { $unionWith: {} } ] ), /requires documents to add/ );
+			assert.throws( () => jsongin.Aggregate( main, [ { $unionWith: 3 } ] ), /\$unionWith/ );
+			assert.throws( () => jsongin.Aggregate( main, [ { $unionWith: 'somecollection' } ] ), /no collections/ );
+			assert.throws( () => jsongin.Aggregate( main, [ { $unionWith: '$$Nope' } ] ), /is not defined/ );
+			assert.throws( () => jsongin.Aggregate( main, [ { $unionWith: { coll: other, pipeline: 'nope' } } ] ), /pipeline must be an array/ );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	/*
+		***$graphLookup, which follows a chain through a second set of documents.***
+
+		Every rule here was measured against MongoDB 8.3.8 on 2026-09-20 before it was built:
+		`jsonx/.plans/tools/lookup-parity-probe.js`. The parity suite runs the same cases
+		against a live server; these run without one.
+
+		***What is deliberately not asserted is the order of what it finds.*** The server
+		answers in its own, which an in-memory engine cannot reproduce, so these tests read the
+		names and the depths rather than the array as it stands.
+	*/
+	describe( '$graphLookup Tests', () =>
+	{
+
+		let chain = [
+			{ _id: 'a', Name: 'A', Parent: 'B' },
+			{ _id: 'b', Name: 'B', Parent: 'C' },
+			{ _id: 'c', Name: 'C' },
+		];
+
+		function walked( Documents, Args, Scope )
+		{
+			let base = { startWith: '$Dome', connectFromField: 'Parent', connectToField: 'Name', as: 'Chain', depthField: 'Level' };
+			return jsongin.Aggregate( Documents, [ { $graphLookup: Object.assign( base, Args ) } ], Scope );
+		}
+
+		// The names and their depths, sorted, which is what can be compared.
+		function reached( Answer, Field )
+		{
+			let found = Field ? Answer[ 0 ][ Field ] : Answer[ 0 ].Chain;
+			return found.map( function ( Each ) { return Each.Name + '@' + Each.Level; } ).sort();
+		}
+
+		it( 'should follow the chain, numbering from zero', () =>
+		{
+			assert.deepStrictEqual( reached( walked( [ { _id: 1, Dome: 'A' } ], { from: chain } ) ), [ 'A@0', 'B@1', 'C@2' ] );
+		} );
+
+		it( 'should stop at maxDepth, where zero is the first round alone', () =>
+		{
+			assert.deepStrictEqual( reached( walked( [ { _id: 1, Dome: 'A' } ], { from: chain, maxDepth: 0 } ) ), [ 'A@0' ] );
+			assert.deepStrictEqual( reached( walked( [ { _id: 1, Dome: 'A' } ], { from: chain, maxDepth: 1 } ) ), [ 'A@0', 'B@1' ] );
+		} );
+
+		// ***A cycle ends***, because a document is reached once - by its place in the array,
+		// which is what an _id does on a server.
+		it( 'should end on a cycle', () =>
+		{
+			let ring = [ { _id: 'a', Name: 'A', Parent: 'B' }, { _id: 'b', Name: 'B', Parent: 'A' } ];
+			assert.deepStrictEqual( reached( walked( [ { _id: 1, Dome: 'A' } ], { from: ring } ) ), [ 'A@0', 'B@1' ] );
+		} );
+
+		// ***Identity is the document, not the value it connects on.***
+		it( 'should follow two documents which share a connecting value', () =>
+		{
+			let forked = [
+				{ _id: 'a1', Name: 'A', Parent: 'B' },
+				{ _id: 'a2', Name: 'A', Parent: 'C' },
+				{ _id: 'b', Name: 'B' },
+				{ _id: 'c', Name: 'C' },
+			];
+			assert.deepStrictEqual( reached( walked( [ { _id: 1, Dome: 'A' } ], { from: forked } ) ), [ 'A@0', 'A@0', 'B@1', 'C@1' ] );
+		} );
+
+		// ***The shallowest depth wins.*** D is one hop away and also three.
+		it( 'should stamp a document reached twice with the shallower depth', () =>
+		{
+			let both_ways = [
+				{ _id: 'a', Name: 'A', Parent: [ 'B', 'D' ] },
+				{ _id: 'b', Name: 'B', Parent: 'C' },
+				{ _id: 'c', Name: 'C', Parent: 'D' },
+				{ _id: 'd', Name: 'D' },
+			];
+			assert.deepStrictEqual( reached( walked( [ { _id: 1, Dome: 'A' } ], { from: both_ways } ) ), [ 'A@0', 'B@1', 'C@2', 'D@1' ] );
+		} );
+
+		it( 'should start from every value when startWith is an array, and evaluate an expression', () =>
+		{
+			let names = [ { _id: 'a', Name: 'A' }, { _id: 'b', Name: 'B' }, { _id: 'c', Name: 'C' } ];
+			let several = walked( [ { _id: 1, Domes: [ 'A', 'C' ] } ], { from: names, startWith: '$Domes', connectFromField: 'Name' } );
+			assert.deepStrictEqual( reached( several ), [ 'A@0', 'C@0' ] );
+			// An expression is evaluated against the document.
+			assert.deepStrictEqual( reached( walked( [ { _id: 1, Dome: 'a' } ], { from: chain, startWith: { $toUpper: '$Dome' } } ) ), [ 'A@0', 'B@1', 'C@2' ] );
+		} );
+
+		it( 'should find nothing when startWith has no value, and look for null when it is null', () =>
+		{
+			assert.deepStrictEqual( walked( [ { _id: 1 } ], { from: chain } )[ 0 ].Chain, [] );
+			let with_null = chain.concat( [ { _id: 'n', Name: null } ] );
+			assert.deepStrictEqual( reached( walked( [ { _id: 1, Dome: null } ], { from: with_null } ) ), [ 'null@0' ] );
+		} );
+
+		// ***restrictSearchWithMatch prunes the walk***, including the first round, so what lies
+		// beyond an excluded document is never reached.
+		it( 'should apply restrictSearchWithMatch, and stop the walk at what it excludes', () =>
+		{
+			let gated = [
+				{ _id: 'a', Name: 'A', Parent: 'B', Open: true },
+				{ _id: 'b', Name: 'B', Parent: 'C', Open: false },
+				{ _id: 'c', Name: 'C', Open: true },
+			];
+			assert.deepStrictEqual( reached( walked( [ { _id: 1, Dome: 'A' } ], { from: gated, restrictSearchWithMatch: { Open: true } } ) ), [ 'A@0' ] );
+			// Excluding the starting document finds nothing at all.
+			assert.deepStrictEqual( walked( [ { _id: 1, Dome: 'A' } ], { from: gated, restrictSearchWithMatch: { Name: { $ne: 'A' } } } )[ 0 ].Chain, [] );
+			// An expression is allowed there, which the server accepts although its manual says otherwise.
+			assert.deepStrictEqual( reached( walked( [ { _id: 1, Dome: 'A' } ], { from: chain, restrictSearchWithMatch: { $expr: { $eq: [ '$Name', 'A' ] } } } ) ), [ 'A@0' ] );
+		} );
+
+		it( 'should write the depth only when it is asked for, and write as at a dotted path', () =>
+		{
+			let plain = jsongin.Aggregate( [ { _id: 1, Dome: 'A' } ], [ {
+				$graphLookup: { from: chain, startWith: '$Dome', connectFromField: 'Parent', connectToField: 'Name', as: 'Chain' },
+			} ] );
+			assert.strictEqual( plain[ 0 ].Chain.length, 3 );
+			assert.strictEqual( typeof plain[ 0 ].Chain[ 0 ].Level, 'undefined' );
+
+			let nested = walked( [ { _id: 1, Dome: 'A', S: { N: 1 } } ], { from: chain, as: 'S.Chain' } );
+			assert.strictEqual( nested[ 0 ].S.N, 1 );
+			assert.strictEqual( nested[ 0 ].S.Chain.length, 3 );
+		} );
+
+		it( 'should take the documents from a variable, and refuse what it cannot walk', () =>
+		{
+			let scope = jsongin.Scope.NewPipeline().Child( { Chain: chain } );
+			assert.deepStrictEqual( reached( walked( [ { _id: 1, Dome: 'A' } ], { from: '$$Chain' }, scope ) ), [ 'A@0', 'B@1', 'C@2' ] );
+
+			assert.throws( () => walked( [ { _id: 1 } ], { from: 'somecollection' } ), /no collections/ );
+			assert.throws( () => walked( [ { _id: 1 } ], { from: chain, maxDepth: -1 } ), /nonnegative/ );
+			assert.throws( () => walked( [ { _id: 1 } ], { from: chain, maxDepth: 1.5 } ), /whole number/ );
+			assert.throws( () => walked( [ { _id: 1 } ], { from: chain, connectToField: undefined } ), /connectToField/ );
+			assert.throws( () => walked( [ { _id: 1 } ], { from: chain, as: undefined } ), /as/ );
+			assert.throws( () => walked( [ { _id: 1 } ], { from: chain, restrictSearchWithMatch: 'nope' } ), /restrictSearchWithMatch/ );
+		} );
+
+		it( 'should leave both sets alone', () =>
+		{
+			let documents = [ { _id: 1, Dome: 'A' } ];
+			let answer = walked( documents, { from: chain } );
+			answer[ 0 ].Chain[ 0 ].Name = 'changed';
+			answer[ 0 ].Dome = 'changed';
+			assert.deepStrictEqual( documents, [ { _id: 1, Dome: 'A' } ] );
+			assert.deepStrictEqual( chain[ 0 ], { _id: 'a', Name: 'A', Parent: 'B' } );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
 	describe( 'Input Immutability', () =>
 	{
 

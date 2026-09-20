@@ -116,10 +116,32 @@ An invalid expression inside a stage throws, as it does in [`Evaluate()`](./Eval
 Missing and `null` values are not errors.
 
 
+## Reading A Second Set Of Documents
+
+[`$lookup`](./Stage-Operators.md#$lookup), [`$unionWith`](./Stage-Operators.md#$unionWith) and
+  [`$graphLookup`](./Stage-Operators.md#$graphLookup) read a second set of documents.
+MongoDB names a collection in `from` or `coll` and reads it from the database.
+***`Aggregate` has no collections, so it takes the documents themselves*** - written into the
+  stage, or bound in the scope the pipeline was given:
+
+```js
+let bookings = [ { Id: 1, Dome: 'A' } ];
+let nights = [ { DomeId: 'A', Night: 'clear' } ];
+let scope = jsongin.Scope.NewPipeline().Child( { Nights: nights } );
+
+jsongin.Aggregate( bookings, [
+	{ $lookup: { from: '$$Nights', localField: 'Dome', foreignField: 'DomeId', as: 'Nights' } },
+], scope );
+// returns [ { Id: 1, Dome: 'A', Nights: [ { DomeId: 'A', Night: 'clear' } ] } ]
+```
+
+That argument is the whole of the difference; everything else these stages do was measured
+  against MongoDB 8.3.8 and answers the same.
+
+
 ## What Is Not Implemented
 
-`$lookup`, `$graphLookup` and `$unionWith` read a second collection, and `$out` and `$merge` write
-  to one. `Aggregate` works on one array of documents, so it has none of these.
+`$out` and `$merge` write to a database collection, which is not something `Aggregate` can do.
 
 `$documents`, `$geoNear`, `$setWindowFields`, `$collStats`, `$indexStats` and `$vectorSearch` are
   also not implemented, nor are the `$accumulator`, `$median` and `$percentile` accumulators.

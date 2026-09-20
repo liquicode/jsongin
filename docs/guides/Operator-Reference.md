@@ -317,11 +317,11 @@ Stages are the steps of a pipeline, run by [`Aggregate()`](./jsongin/Aggregate.m
 | Stage         |      Yes      | [$facet](./jsongin/Stage-Operators.md#$facet)       | Runs several pipelines over the same documents. |
 | Stage         |      Yes      | [$fill](./jsongin/Stage-Operators.md#$fill)       | Populates missing field values. |
 | Stage         |       -       | $geoNear         | Orders documents by proximity to a point.                                |
-| Stage         |       -       | $graphLookup     | Performs a recursive search across a collection.                         |
+| Stage         |      Yes      | [$graphLookup](./jsongin/Stage-Operators.md#$graphLookup)       | Follows a chain through a second set of documents. |
 | Stage         |      Yes      | [$group](./jsongin/Stage-Operators.md#$group)           | Groups documents and reduces each group with accumulators.               |
 | Stage         |       -       | $indexStats      | Returns statistics about index usage.                                    |
 | Stage         |      Yes      | [$limit](./jsongin/Stage-Operators.md#$limit)           | Passes the first N documents along.                                      |
-| Stage         |       -       | $lookup          | Joins documents from another collection.                                 |
+| Stage         |      Yes      | [$lookup](./jsongin/Stage-Operators.md#$lookup)       | Joins documents from a second set of documents. |
 | Stage         |      Yes      | [$match](./jsongin/Stage-Operators.md#$match)           | Selects the documents which match a query.                               |
 | Stage         |       -       | $merge           | Writes the results into a collection.                                    |
 | Stage         |       -       | $out             | Writes the results into a new collection.                                |
@@ -335,12 +335,15 @@ Stages are the steps of a pipeline, run by [`Aggregate()`](./jsongin/Aggregate.m
 | Stage         |      Yes      | [$skip](./jsongin/Stage-Operators.md#$skip)            | Discards the first N documents.                                          |
 | Stage         |      Yes      | [$sort](./jsongin/Stage-Operators.md#$sort)            | Sorts the documents by one or more fields.                               |
 | Stage         |      Yes      | [$sortByCount](./jsongin/Stage-Operators.md#$sortByCount)       | Groups documents and sorts the groups by count. |
-| Stage         |       -       | $unionWith       | Appends the documents of another collection.                             |
+| Stage         |      Yes      | [$unionWith](./jsongin/Stage-Operators.md#$unionWith)       | Appends a second set of documents. |
 | Stage         |      Yes      | [$unset](./jsongin/Stage-Operators.md#$unset)       | Removes fields from each document, as a stage. See the note below. |
 | Stage         |      Yes      | [$unwind](./jsongin/Stage-Operators.md#$unwind)          | Emits one document per element of an array field.                        |
 | Stage         |       -       | $vectorSearch    | Performs a vector similarity search.                                     |
 
-The stages which are not supported read or write a database collection or index.
+The stages which are not supported write to a database collection, or read an index or a
+source which is not an array of documents.
+***A stage which reads a second set of documents is supported***: `$lookup`, `$unionWith` and
+`$graphLookup` take the documents themselves, where MongoDB names a collection.
 `jsongin` works on an array of documents, so it has nothing for them to use.
 
 `$count`, `$set` and `$unset` are both stages and other kinds of operator. All of those forms are

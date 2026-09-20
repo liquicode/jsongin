@@ -318,6 +318,12 @@ function NewJsongin( EngineSettings = {} )
 		$fill: require( './Operators/Stage/fill' )( Engine ),
 		$densify: require( './Operators/Stage/densify' )( Engine ),
 		$redact: require( './Operators/Stage/redact' )( Engine ),
+		// The joining stages. MongoDB reads a second collection for these; jsongin takes the
+		// documents themselves, inline or from a '$$name' in the pipeline's scope, which is
+		// the only difference between them. Built on Join() and Union().
+		$lookup: require( './Operators/Stage/lookup' )( Engine ),
+		$unionWith: require( './Operators/Stage/unionWith' )( Engine ),
+		$graphLookup: require( './Operators/Stage/graphLookup' )( Engine ),
 
 
 	};

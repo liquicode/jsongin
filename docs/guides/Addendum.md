@@ -72,9 +72,10 @@ Versions, publication dates and download figures were read from npm in August 20
 	The closest match to `jsongin`.
 	Queries, projection, updates, and aggregation pipelines with accumulators, expressions and
 	window operators. Actively maintained, no dependencies, written in TypeScript.
-	***Differs*** : `mingo` has more pipeline stages, including `$setWindowFields`, `$lookup`,
-	`$graphLookup`, `$unionWith`, `$out` and `$merge`. All but the first need a database
-	collection, which `jsongin` does not have.
+	***Differs*** : `mingo` has more pipeline stages, including `$setWindowFields`, `$out` and
+	`$merge`. `$out` and `$merge` write to a database collection, which `jsongin` does not have.
+	`$lookup`, `$unionWith` and `$graphLookup` are here: they read a second set of documents, and
+	`jsongin` takes that set rather than the name of a collection.
 	`jsongin` adds the document functions above, and tests each behavior against a running
 	MongoDB server.
 
