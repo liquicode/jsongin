@@ -78,6 +78,12 @@ module.exports = function ()
 	let mongodb_settings = {
 		database_name: 'test',								// Name of the MongoDB database.
 		collection_name: 'jsongin-UnitTests',					// Name of the MongoDB collection.
+		// ***The second set a join reads.*** A stage which joins needs documents somewhere other
+		// than the collection being aggregated, and on a server that somewhere is another
+		// collection. jsongin names an array instead, which is the one difference between the
+		// two engines these suites cannot test away - so a suite asks the driver for what to
+		// write in 'from' rather than writing one itself.
+		join_collection_name: 'jsongin-UnitTests-Join',
 		connection_string: mongodb_url,						// Connection string to the MongoDB server.
 	};
 
@@ -108,6 +114,29 @@ module.exports = function ()
 					// stating a behavior, and a parity test has to be able to see it.
 					throw error;
 				}
+			},
+
+
+		//---------------------------------------------------------------------
+		// The documents a joining stage reads, put where the server can reach them.
+		SetJoinData:
+			async function ( Data )
+			{
+				let client = await Client( mongodb_settings );
+				let collection = client.db( mongodb_settings.database_name ).collection( mongodb_settings.join_collection_name );
+				await collection.deleteMany( {} );
+				if ( Data.length > 0 ) { await collection.insertMany( Data ); }
+				return true;
+			},
+
+
+		//---------------------------------------------------------------------
+		// What a stage's 'from' or 'coll' should say: a collection name here, and the documents
+		// themselves under jsongin.
+		JoinFrom:
+			function ()
+			{
+				return mongodb_settings.join_collection_name;
 			},
 
 

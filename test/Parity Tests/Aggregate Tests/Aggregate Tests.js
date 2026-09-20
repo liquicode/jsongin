@@ -44,6 +44,7 @@ module.exports = function ( Driver )
 		require( './test-suite/Expression Rejection Tests.js' )( Driver );
 		require( './test-suite/Redact Tests.js' )( Driver );
 		require( './test-suite/Variable Scope Tests.js' )( Driver );
+		require( './test-suite/Join Stage Tests.js' )( Driver );
 	} );
 
 };

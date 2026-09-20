@@ -21,6 +21,9 @@ module.exports = function ( Settings )
 		//---------------------------------------------------------------------
 		Engine: jsongin,
 		Storage: [],
+		// The second set a joining stage reads. On a server this is another collection; here
+		// it is an array, which is the whole reason jsongin can join without one.
+		JoinStorage: [],
 
 
 		//---------------------------------------------------------------------
@@ -29,6 +32,25 @@ module.exports = function ( Settings )
 			{
 				this.Storage = Data;
 				return true;
+			},
+
+
+		//---------------------------------------------------------------------
+		SetJoinData:
+			async function ( Data )
+			{
+				this.JoinStorage = Data;
+				return true;
+			},
+
+
+		//---------------------------------------------------------------------
+		// What a stage's 'from' or 'coll' should say. A collection name on a server, and here
+		// the documents themselves: jsongin has no collection to name.
+		JoinFrom:
+			function ()
+			{
+				return this.JoinStorage;
 			},
 
 

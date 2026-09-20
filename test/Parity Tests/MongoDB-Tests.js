@@ -30,6 +30,17 @@
 		npm run parity-test-mongodb
 		npx mocha -u bdd "test/Parity Tests/MongoDB-Tests.js" --timeout 0
 
+	***The server does not have to be on this machine.*** JSONGIN_MONGODB_URL moves the run,
+	which is how it reaches the fleet the family measures against:
+
+		JSONGIN_MONGODB_URL=mongodb://cube4:27019 npm run parity-test-mongodb
+
+	***A joining stage reads a second collection***, which the driver fills through SetJoinData
+	and names through JoinFrom. A suite writes neither: under jsongin the same call hands back
+	the documents themselves, because there is no collection to name. See Drivers/*-Driver.js
+	and Aggregate Tests/test-suite/_join-helpers.js, which states the one comparison a joining
+	suite is allowed to relax.
+
 	To measure jsongin against this baseline:
 
 		npm run parity-report
