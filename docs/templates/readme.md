@@ -224,6 +224,39 @@ let pairs = jsongin.Distinct( players, { team: 1, alive: 1 } );
 See [Distinct](/docs/guides/jsongin/Distinct.md).
 
 
+### Join( Documents, JoinDocuments, JoinCriteria, JoinType, JoinName )
+
+Matches two sets of documents against each other, gathering what each one matched.
+The criteria is matched against each join document, with the document being joined from lent
+  as `$$Left`.
+
+```js
+let bookings = [ { Id: 1, Dome: 'A' }, { Id: 2, Dome: 'C' } ];
+let nights = [ { DomeId: 'A', Night: 'clear' }, { DomeId: 'A', Night: 'rain' } ];
+
+jsongin.Join( bookings, nights, { $expr: { $eq: [ '$DomeId', '$$Left.Dome' ] } }, 'Left', 'Nights' );
+// returns one document per booking, each holding the nights it matched
+
+// Left, Inner, Right and Outer, and without a name the matches are merged in.
+jsongin.Join( bookings, nights, { $expr: { $eq: [ '$DomeId', '$$Left.Dome' ] } }, 'Inner' );
+```
+
+See [Join](/docs/guides/jsongin/Join.md).
+
+
+### Union( Documents, UnionDocuments )
+
+Returns one set of documents after another.
+A concatenation rather than a set union: nothing is de-duplicated, and nothing is copied.
+
+```js
+jsongin.Union( [ { Id: 1 } ], [ { Id: 2 }, { Id: 3 } ] );
+// returns [ { Id: 1 }, { Id: 2 }, { Id: 3 } ]
+```
+
+See [Union](/docs/guides/jsongin/Union.md).
+
+
 ### Project( Document, Projection )
 
 Reshapes a document by including or excluding fields.

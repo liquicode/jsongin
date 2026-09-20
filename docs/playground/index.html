@@ -349,6 +349,25 @@
 					],
 				},
 				{
+					Name: 'Join',
+					Signature: 'Join( Documents, JoinDocuments, JoinCriteria, JoinType, JoinName )',
+					Parameters: [
+						{ Label: 'Documents (array)', Kind: 'json', Default: '[\n\t{ "Id": 1, "Dome": "A" },\n\t{ "Id": 2, "Dome": "C" }\n]' },
+						{ Label: 'JoinDocuments (array)', Kind: 'json', Default: '[\n\t{ "DomeId": "A", "Night": "clear" },\n\t{ "DomeId": "A", "Night": "rain" }\n]' },
+						{ Label: 'JoinCriteria', Kind: 'json', Default: '{ "$expr": { "$eq": [ "$DomeId", "$$Left.Dome" ] } }' },
+						{ Label: 'JoinType', Kind: 'text', Default: 'Left' },
+						{ Label: 'JoinName', Kind: 'text', Default: 'Nights' },
+					],
+				},
+				{
+					Name: 'Union',
+					Signature: 'Union( Documents, UnionDocuments )',
+					Parameters: [
+						{ Label: 'Documents (array)', Kind: 'json', Default: '[\n\t{ "Id": 1, "Side": "first" }\n]' },
+						{ Label: 'UnionDocuments (array)', Kind: 'json', Default: '[\n\t{ "Id": 2, "Side": "second" }\n]' },
+					],
+				},
+				{
 					Name: 'Aggregate',
 					Signature: 'Aggregate( Documents, Pipeline )',
 					Parameters: [

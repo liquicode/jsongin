@@ -15,6 +15,34 @@ This version changes which queries are refused and what some of them answer, whi
 Parity with MongoDB is ***100%*** across 1054 compared behaviors. Run `npm run parity-report` to
   measure it.
 
+***Two sets of documents can be matched against each other.*** `jsongin` had no join of any
+  kind, and the three MongoDB stages which do one were refused for needing a collection to read.
+  They need a second set of documents, which is a different thing, so they are here - and what
+  each of them does was measured against MongoDB 8.3.8 before it was written.
+
+- **`Join( Documents, JoinDocuments, JoinCriteria, JoinType, JoinName )`** matches two sets
+  against each other, gathering what each document matched. `Left`, `Inner`, `Right` and
+  `Outer`; the matches are written at `JoinName`, or merged into the document when it is
+  absent. The criteria is an ordinary query criteria, matched against each join document with
+  the document being joined from lent as `$$Left`.
+- **`Union( Documents, UnionDocuments )`** returns one set after another. A concatenation, not
+  a set union: nothing is removed and nothing is copied.
+- **`$lookup`, `$unionWith` and `$graphLookup`** are implemented as stages over those two.
+  ***`from` and `coll` take the documents themselves, or a `$$name` bound in the pipeline's
+  scope***, where MongoDB names a collection. That argument is the whole of the difference; a
+  parity suite runs the same 37 cases against both engines.
+
+***A query carries options, and a caller can lend it variables.*** `Query`, `ValidateQuery`,
+  `Filter` and every query operator take `{ ExpandArrays, Scope }` as their last argument, and
+  it travels unchanged through the whole criteria. A boolean still means `ExpandArrays`, which
+  is what the fourth argument meant before, so an operator written against the older signature
+  keeps working. ***`ExpandArrays: false` is now a setting a caller can make*** for a whole
+  criteria, where a path means only what it lands on; it is a `jsongin` extension which MongoDB
+  has no counterpart for.
+
+***`$facet` gives its branches the frame around them.*** A branch used to build its own, so a
+  variable the caller bound was not visible inside one and `$$NOW` was read again per branch.
+
 ***The first key of an object decides whether it holds operators or is a value***, as it does in
   MongoDB. Measured against MongoDB 6.0.28 and 8.3.8.
 
