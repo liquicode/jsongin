@@ -438,7 +438,9 @@ Fills in fields which are missing ***or `null`***.
 - `linear` needs numbers on both sides of the gap, and no repeated `sortBy` values.
 - Giving both `value` and `method` throws. Giving neither fills nothing.
 - `partitionBy` and `partitionByFields` fill each group of documents separately.
-  `partitionBy` takes an object, such as `{ k: '$k' }`, not a path.
+  `partitionBy` takes an object, such as `{ k: '$k' }`, or a field path such as `'$k'`.
+  A MongoDB 6.0 server refuses the field path; 7.0 and later accept it. See
+  [MongoDB Versions](../MongoDB-Versions.md).
 
 ### Example
 ```js
@@ -704,8 +706,12 @@ Each round matches `connectToField` against the values it is looking for, and wh
   supplies the next round through `connectFromField`.
 The first round looks for whatever `startWith` evaluates to.
 
-***`from` is the documents themselves, or a `$$name` bound in the pipeline's scope***, as it
+***`from` is the documents themselves, or a `$name` bound in the pipeline's scope***, as it
   is for [`$lookup`](#$lookup).
+
+***Nothing promises the order of the array this stage fills.*** jsongin answers in the order it
+  reached the documents, and every MongoDB version answers in a different one. Sort the array if
+  the order matters to you. See [MongoDB Versions](../MongoDB-Versions.md).
 
 ```js
 let bookings = [ { Id: 1, Dome: 'A' } ];

@@ -525,7 +525,154 @@ The largest operand. It works like [`$min`](#$min) in every other way.
 ```js
 jsongin.Evaluate( document, { $max: [ 3, 1, 2 ] } );
 // returns 3
+
+// Nothing to choose from gives null.
+jsongin.Evaluate( document, { $min: [] } );
+// returns null
 ```
+
+
+# Summarizing Operators
+
+These six read a list of values and answer one summary of them. Each is also an accumulator,
+which reads a field across a group of documents instead. The rules about what they ignore are
+the same in both places, so [the accumulator guide](./Accumulator-Operators.md) is worth reading
+beside this one.
+
+***A single operand which is an array supplies the values***, so `{ $sum: '$scores' }` adds the
+numbers a field holds. Several operands work too: `{ $sum: [ 1, 2, 3 ] }`.
+
+***Values which are not numbers are ignored***, including `null` and missing ones.
+
+
+<a id="$sum"></a>$sum
+---------------------------------------------------------------------
+
+**Usage** : `{ $sum: expression }` or `{ $sum: [ expression, ... ] }`
+
+Adds numbers together.
+
+Nothing to add gives `0`, which is the one place this family does not answer `null`.
+
+### Example
+```js
+jsongin.Evaluate( document, { $sum: '$scores' } );
+// returns 60
+
+jsongin.Evaluate( document, { $sum: [ 1, 2, 3 ] } );
+// returns 6
+
+// Nothing numeric to add.
+jsongin.Evaluate( document, { $sum: '$name' } );
+// returns 0
+```
+
+
+<a id="$avg"></a>$avg
+---------------------------------------------------------------------
+
+**Usage** : `{ $avg: expression }` or `{ $avg: [ expression, ... ] }`
+
+The average of the numbers. Values which are not numbers are left out of the divisor as well as
+the total.
+
+Nothing to average gives `null`.
+
+### Example
+```js
+jsongin.Evaluate( document, { $avg: '$scores' } );
+// returns 20
+
+jsongin.Evaluate( document, { $avg: [] } );
+// returns null
+```
+
+
+<a id="$stdDevPop"></a>$stdDevPop
+---------------------------------------------------------------------
+
+**Usage** : `{ $stdDevPop: expression }` or `{ $stdDevPop: [ expression, ... ] }`
+
+The population standard deviation: the squared deviations divided by the count.
+
+A single value gives `0`, because one value is a population with no spread. Nothing numeric
+gives `null`.
+
+### Example
+```js
+jsongin.Evaluate( document, { $stdDevPop: '$scores' } );
+// returns 8.16496580927726
+```
+
+
+<a id="$stdDevSamp"></a>$stdDevSamp
+---------------------------------------------------------------------
+
+**Usage** : `{ $stdDevSamp: expression }` or `{ $stdDevSamp: [ expression, ... ] }`
+
+The sample standard deviation: the squared deviations divided by one less than the count. Use
+this one when the values are a sample of something larger, and [`$stdDevPop`](#$stdDevPop) when
+they are the whole of it.
+
+***Fewer than two values gives `null`***, where `$stdDevPop` gives `0` for one value. A sample of
+one cannot say what the spread is.
+
+### Example
+```js
+jsongin.Evaluate( document, { $stdDevSamp: '$scores' } );
+// returns 10
+
+jsongin.Evaluate( document, { $stdDevSamp: [ 5 ] } );
+// returns null
+```
+
+
+<a id="$median"></a>$median
+---------------------------------------------------------------------
+
+**Usage** : `{ $median: { input: expression, method: 'approximate' } }`
+
+The middle value.
+
+***This is [`$percentile`](#$percentile) at `p` 0.5.*** The answer is one of the values rather
+than an average of two, so an even count gives the lower of the middle pair.
+
+`method` is required and `'approximate'` is the only value it takes. Any other field in the
+argument is refused.
+
+### Example
+```js
+jsongin.Evaluate( document, { $median: { input: '$scores', method: 'approximate' } } );
+// returns 20
+```
+
+
+<a id="$percentile"></a>$percentile
+---------------------------------------------------------------------
+
+**Usage** : `{ $percentile: { input: expression, p: [ number, ... ], method: 'approximate' } }`
+
+One value for each `p`, in the order the `p` values were asked for.
+
+***A percentile picks a value by rank and never interpolates.*** For values sorted smallest to
+largest, `p` chooses the one at `ceil( p * count ) - 1`, counting from zero. The answer is always
+one of the values given to it.
+
+`p` is a list of numbers from 0.0 through 1.0, written out rather than read from a field.
+`method` is required and `'approximate'` is the only value it takes.
+
+A value which cannot be ranked is left out, which includes `NaN`. An infinity is kept and sorts
+to its end.
+
+### Example
+```js
+jsongin.Evaluate( document,
+	{ $percentile: { input: '$scores', p: [ 0, 0.5, 1 ], method: 'approximate' } } );
+// returns [ 10, 20, 30 ]
+```
+
+***At `p` 1.0 a MongoDB server answers wrongly when the largest value is not positive.*** jsongin
+answers the largest value. See [MongoDB Versions](../MongoDB-Versions.md).
 
 
 # Array Operators
@@ -1882,7 +2029,12 @@ jsongin.Evaluate( document, { $isNumber: '$empty' } );
 
 **Usage** : `{ $toString: expression }`
 
-Converts a value to a string. A date becomes an ISO 8601 string. An array or object throws.
+Converts a value to a string. A date becomes an ISO 8601 string. An array or object is rendered
+as JSON.
+
+***A MongoDB 7.0 server refuses an array or an object here.*** See
+[MongoDB Versions](../MongoDB-Versions.md) before using it on something you will also send to a
+server.
 
 ### Example
 ```js
@@ -1893,7 +2045,10 @@ jsongin.Evaluate( document, { $toString: true } );
 // returns 'true'
 
 jsongin.Evaluate( document, { $toString: '$scores' } );
-// throws
+// returns '[10,20,30]'
+
+jsongin.Evaluate( document, { $toString: '$user' } );
+// returns '{"role":"admin"}'
 ```
 
 
@@ -2284,6 +2439,10 @@ Reads one field of an object.
 
 A `null` input gives `null`. A missing input, or one which is not an object, gives nothing.
 
+The name may be written out, or computed by an expression which produces a string. ***A MongoDB
+7.0 server refuses a computed name***, and so do `$setField` and `$unsetField` on every version.
+See [MongoDB Versions](../MongoDB-Versions.md).
+
 ### Example
 ```js
 jsongin.Evaluate( document, { $getField: { field: 'role', input: '$user' } } );
@@ -2300,8 +2459,12 @@ jsongin.Evaluate( document, { $getField: { field: { $literal: '$price' }, input:
 jsongin.Evaluate( document, { $getField: { field: 'role', input: '$empty' } } );
 // returns null
 
-// A computed name throws.
-jsongin.Evaluate( document, { $getField: { field: { $concat: [ 'role' ] }, input: '$user' } } );   // throws
+// A computed name is read the same way.
+jsongin.Evaluate( document, { $getField: { field: { $concat: [ 'role' ] }, input: '$user' } } );
+// returns 'admin'
+
+jsongin.Evaluate( document, { $getField: { field: '$name', input: { $literal: { Alice: 1 } } } } );
+// returns 1
 ```
 
 

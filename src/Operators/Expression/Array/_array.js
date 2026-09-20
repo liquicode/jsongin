@@ -14,7 +14,7 @@
 	be a whole number of one or more, and asking for more elements than there are is not an
 	error but simply gives what there is.
 
-	Verified against MongoDB 6.0.1. See
+	Verified against MongoDB 7.0.40. See
 	test/Parity Tests/Aggregate Tests/test-suite/Array Operator Tests.js.
 */
 
@@ -118,7 +118,7 @@ module.exports = function ( jsongin )
 	//
 	// ***`as` renames the element binding rather than adding one.*** Given `as: 'p'` the
 	// element is $$p and $$this is not bound at all, so an `in` written against $$this stops
-	// working the moment an `as` is added. Verified against MongoDB 6.0.1.
+	// working the moment an `as` is added. Verified against MongoDB 7.0.40.
 	helper.ReadBindingArgs = function ( Document, Args, OperatorName, Allowed, Required, Scope )
 	{
 		jsongin.Scope.Require( Scope, 'array.ReadBindingArgs' );

@@ -100,7 +100,7 @@ module.exports = function ( jsongin )
 				// The candidate list carries the array itself as well as its elements, so both
 				// answers fall out without a special case: an array field offers itself, which
 				// satisfies { $type: 'array' }, and offers its elements, which satisfy their
-				// own types. Verified against MongoDB 6.0.1.
+				// own types. Verified against MongoDB 7.0.40.
 				let candidates = jsongin.ResolveCandidates( Document, Path, options.ExpandArrays );
 
 				for ( let match_index = 0; match_index < match_values.length; match_index++ )

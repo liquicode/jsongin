@@ -60,7 +60,7 @@ module.exports = function ( jsongin )
 				// array holding it", which is what the candidate list expresses, so this
 				// operator does not need to reason about arrays itself.
 				// $all is the same operator with AND between the values.
-				// Verified against MongoDB 6.0.1.
+				// Verified against MongoDB 7.0.40.
 				//
 				// $in takes values to compare against, not queries to run, and MongoDB refuses
 				// a query operator nested inside it. Without a refusal, $ImplicitEq would hand
@@ -71,7 +71,7 @@ module.exports = function ( jsongin )
 				// first element which succeeds, so { $in: [ 9, { $gt: 5 } ] } against { a: 9 }
 				// would otherwise return true without ever reaching the second element.
 				// This used to write to the OpLog and skip the element.
-				// Verified against MongoDB 6.0.1.
+				// Verified against MongoDB 7.0.40.
 				for ( let index = 0; index < MatchValue.length; index++ )
 				{
 					let match_element = MatchValue[ index ];

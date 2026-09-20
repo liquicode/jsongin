@@ -18,11 +18,18 @@ const HELPERS = require( './_join-helpers.js' );
 	reproduce. `_join-helpers.js` states that relaxation once; nothing else about a document is
 	relaxed.
 
-	***Every case here was measured against MongoDB 8.3.8 first***, by
+	***Every case here was measured against a server first***, by
 	`jsonx/.plans/tools/lookup-parity-probe.js`, and the rules it found are what jsongin was
-	then built to. Run this against the server to see the baseline for yourself:
+	then built to. Run this against the baseline to see it for yourself:
 
-		JSONGIN_MONGODB_URL=mongodb://cube4:27019 npm run parity-test-mongodb
+		JSONGIN_MONGODB_URL=mongodb://cube4:27018 npm run parity-test-mongodb
+
+	***The joining stages are the one part of the surface which no version moved.*** The probe
+	was run against 6.0.28, 7.0.40 and 8.3.8 on 2026-09-20: of its 38 cases, `$lookup` and
+	`$unionWith` answered identically on all three - the same documents in the same order - and
+	the only difference anywhere was the order `$graphLookup` fills its array in, which differs
+	on all three and is what the set comparison above exists for. So these cases hold at the
+	7.0.40 baseline and would hold at either neighbour.
 */
 
 module.exports = function ( Driver )

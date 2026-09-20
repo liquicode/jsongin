@@ -13,7 +13,7 @@ module.exports = function ( jsongin )
 	// A path which crosses an array gathers the values of its elements, which is what MongoDB
 	// does. Elements which do not have the field contribute ***nothing*** rather than a
 	// placeholder, and a path which crosses an array always produces an array, even an empty
-	// one. Verified against MongoDB 6.0.1:
+	// one. Verified against MongoDB 7.0.40:
 	//
 	//   { a: [ { x: 5 }, { y: 9 } ] }   '$a.x'    =>  [ 5 ]
 	//   { a: [ { y: 9 } ] }             '$a.x'    =>  []
@@ -44,7 +44,7 @@ module.exports = function ( jsongin )
 			// MongoDB applies every key to the elements, so '$a.2' against { a: [ 1, 2, 3 ] }
 			// gathers the field '2' from each element and finds none, giving []. Positional
 			// access is $arrayElemAt, which is a different thing entirely.
-			// Verified against MongoDB 6.0.1, where '$a.2' and '$a.-1' both give [].
+			// Verified against MongoDB 7.0.40, where '$a.2' and '$a.-1' both give [].
 			//
 			// This used to index the array here, counting from the end when the key was
 			// negative, so '$a.2' gave 3 and '$a.-1' gave 3. Both disagreed with MongoDB.
@@ -156,7 +156,7 @@ module.exports = function ( jsongin )
 			//
 			// ***A position which produces nothing is filled with a null.*** An array cannot
 			// leave a position out without moving every element after it, so it cannot answer
-			// a missing value the way a document does. Verified against MongoDB 6.0.1, where
+			// a missing value the way a document does. Verified against MongoDB 7.0.40, where
 			// [ 1, '$nope', 3 ] and [ 1, '$$REMOVE', 3 ] both give [ 1, null, 3 ].
 			if ( expression_type === 'a' )
 			{

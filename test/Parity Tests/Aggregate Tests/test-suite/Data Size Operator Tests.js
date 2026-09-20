@@ -25,7 +25,7 @@ const assert = require( 'assert' );
 	That is the same rule $type follows and the same rule the BSON serializer uses, so a
 	document written by the driver and the same document held by jsongin agree.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )

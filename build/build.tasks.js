@@ -9,8 +9,13 @@ const API_COVERAGE = require( './api-coverage.js' ).Measure();
 
 
 //---------------------------------------------------------------------
-// The browser bundle's size, read from the file rather than remembered. publish_version
-// runs webpack before build_docs, so a release always reports the bundle it is shipping.
+// The browser bundle's size, read from the file rather than remembered.
+//
+// ***This is measured when this file loads, before any task runs***, so a webpack inside a
+// task cannot affect it - the number would describe the bundle from the build before. That is
+// why `npm run "build docs"` runs webpack in its own process first and this task no longer
+// runs one: by the time this file is read, dist/ already holds the bundle being described.
+//
 // A missing bundle is not an error: the docs still have to build in a fresh clone.
 const BUNDLE_SIZE = measure_bundle_size();
 
@@ -124,11 +129,12 @@ module.exports = {
 		{ $CopyFile: { from: 'history.md', to: 'docs/external/history.md' } },
 		{ $CopyFile: { from: 'tests.md', to: 'docs/external/tests.md' } },
 
-		// Rebuild the browser bundle, which is what a release ships in dist/.
+		// ***The browser bundle is built before this task, not inside it.*** `npm run "build
+		// docs"` runs webpack in its own process first, because the bundle size reported above
+		// is read when this file loads - a webpack here would be measured one build too late.
 		//
-		// ***The playground does not run it.*** The page fetches a published version from the
-		// CDN and nothing else (user, 2026-09-18), so no copy is left beside it any more.
-		{ $RunTask: { task: 'run_webpack' } },
+		// ***The playground does not run the bundle.*** The page fetches a published version
+		// from the CDN and nothing else (user, 2026-09-18), so no copy is left beside it.
 
 		// Check the generated docs.
 		// Halts the build on a code fence which does not parse, a link which does not
@@ -254,9 +260,18 @@ module.exports = {
 	publish_version: [
 
 		// Finalize and publish the existing version.
-		{ $RunTask: { task: 'run_webpack' } },
+		//
+		// ***The docs are built through npm rather than as a task here***, because that script
+		// runs webpack in a separate process first and the bundle size is read when the task
+		// file loads. Run as a task, the size would describe the previous build.
 		{ $RunTask: { task: 'run_tests' } },
-		{ $RunTask: { task: 'build_docs' } },
+		{
+			$Shell: {
+				command: 'npm run "build docs"',
+				out: { console: true },
+				err: { console: true },
+			}
+		},
 		{ $RunTask: { task: 'update_aws_docs' } },
 		{ $RunTask: { task: 'git_publish_version' } },
 

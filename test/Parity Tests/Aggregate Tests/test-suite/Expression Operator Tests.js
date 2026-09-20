@@ -14,7 +14,7 @@ const assert = require( 'assert' );
 	by the BSON ordering, while { a: { $gt: 1 } } never matches a string. See the
 	Operators Which Share a Name section of the operator reference.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )

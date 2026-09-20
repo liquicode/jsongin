@@ -90,7 +90,7 @@ module.exports = function ( jsongin )
 
 					// The source. A path through an array is refused. A path which reaches
 					// nothing is a no-op: MongoDB reports a successful update with
-					// modifiedCount 0 in that case, verified against MongoDB 6.0.1, and the
+					// modifiedCount 0 in that case, verified against MongoDB 7.0.40, and the
 					// target is not created.
 					let source = walk_to_container( Document, field );
 					if ( source.Array === true )

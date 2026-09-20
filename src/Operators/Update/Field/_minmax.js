@@ -20,7 +20,7 @@ module.exports = function ( jsongin )
 	// Direction is -1 for $min, which keeps the smaller value, and 1 for $max, which keeps
 	// the larger one.
 	//
-	// MongoDB semantics, verified against MongoDB 6.0.1:
+	// MongoDB semantics, verified against MongoDB 7.0.40:
 	//
 	// - Neither operator is numeric. Values are compared by the BSON ordering, so strings,
 	//   dates, booleans, and comparisons across types are all legitimate.

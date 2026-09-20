@@ -15,7 +15,7 @@ const assert = require( 'assert' );
 	are the three questions an implementation can get wrong while passing every simple test, so
 	each is asked below before anything else.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )

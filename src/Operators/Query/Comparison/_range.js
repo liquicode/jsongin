@@ -28,7 +28,7 @@ module.exports = function ( jsongin )
 	// which are not.
 	//
 	// MongoDB brackets these operators by type: { $gt: 1 } never matches the string 'hello',
-	// however the BSON ordering ranks the two. Verified against MongoDB 6.0.1. The same type
+	// however the BSON ordering ranks the two. Verified against MongoDB 7.0.40. The same type
 	// test below is what enforces that, and ShortType already treats every number as 'n'.
 	//
 	// Objects and arrays are inside the bracket, compared against their own type: MongoDB

@@ -17,7 +17,7 @@ const assert = require( 'assert' );
 	***$sample is random***, so the tests assert how many documents come back and that each one
 	came from the collection. Asserting which documents would be asserting a coin toss.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )

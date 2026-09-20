@@ -17,7 +17,7 @@ const assert = require( 'assert' );
 	are a different operator with the same name, registered in a different place. See the
 	'Operators Which Share a Name' section of the Operator Reference.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )

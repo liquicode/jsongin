@@ -4,12 +4,21 @@
 	What a joining stage's answer has to be compared with, and why it cannot be compared
 	directly.
 
-	***MongoDB does not promise an order, and it does not give the same one jsongin does.***
-	Measured against MongoDB 8.3.8 on 2026-09-20 (`jsonx/.plans/tools/lookup-parity-probe.js`):
-	a `$graphLookup` over a three document chain answered them as `b, a, c`, while the array a
-	`$lookup` fills came back in the join collection's own order. Both were identical across two
-	runs, so the order is the server's own rather than random - and it is not one an in-memory
-	engine can reproduce, because it belongs to how the collection is stored.
+	***MongoDB does not promise an order, it does not give the same one jsongin does, and it
+	does not give the same one twice across versions.*** Measured on 2026-09-20 with
+	`jsonx/.plans/tools/lookup-parity-probe.js`, a `$graphLookup` over the same three document
+	chain answered:
+
+		jsongin   a, b, c        breadth first, in the order the walk reached them
+		6.0.28    a, b, c
+		7.0.40    b, c, a
+		8.3.8     b, a, c
+
+	The same three documents carrying the same depths every time, in four different orders. Each
+	was identical across two runs, so a server's order is its own rather than random - and it is
+	not one an in-memory engine can reproduce, because it belongs to how the collection is
+	stored. The array a `$lookup` fills came back in the join collection's own order, and that
+	one did not move between versions at all.
 
 	So an answer is compared as a ***set***: the documents in any order, and the documents inside
 	a named array in any order. Everything else about them still has to match exactly.

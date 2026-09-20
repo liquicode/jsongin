@@ -37,7 +37,7 @@ module.exports = function ( jsongin )
 		{
 			try
 			{
-				let read = object.ReadArgs( Document, Args, '$unsetField', [ 'field', 'input' ], Scope );
+				let read = object.ReadArgs( Document, Args, '$unsetField', [ 'field', 'input' ], false, Scope );
 
 				let input = object.AsInputDocument( read.Input, '$unsetField' );
 				if ( input === null ) { return null; }

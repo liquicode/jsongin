@@ -49,7 +49,7 @@ module.exports = function ( jsongin )
 	//
 	// ***NaN and the infinities are numbers here***, not refusals. They are ordinary BSON
 	// doubles, and MongoDB computes with them rather than rejecting them, so { $add: [ NaN, 1 ] }
-	// is NaN and { $round: [ Infinity, 2 ] } is Infinity. Verified against MongoDB 6.0.1.
+	// is NaN and { $round: [ Infinity, 2 ] } is Infinity. Verified against MongoDB 7.0.40.
 	//
 	// This used to pass the operand through AsNumber(), which returns null for a NaN, and then
 	// read that null as "not a number" and threw. The ShortType test above has already

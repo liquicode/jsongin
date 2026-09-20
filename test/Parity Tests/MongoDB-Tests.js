@@ -52,6 +52,17 @@ const Driver = require( './Drivers/MongoDB-Driver.js' )();
 //---------------------------------------------------------------------
 describe( 'MongoDB Parity Tests', function ()
 {
+
+	// ***The server is reached once, before anything is asserted.***
+	//
+	// The driver states the version it found and refuses one which is not the baseline. Doing
+	// that here means a wrong-version run ends as a single failing hook naming the version,
+	// rather than as hundreds of identical failures with the sentence buried among them.
+	before( async function ()
+	{
+		await Driver.SetData( [] );
+	} );
+
 	require( './Query Tests/Query Tests.js' )( Driver );
 	require( './Update Tests/Update Tests.js' )( Driver );
 	require( './Projection Tests/Projection Tests.js' )( Driver );

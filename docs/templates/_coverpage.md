@@ -23,7 +23,7 @@
 		<li>Document updating and aggregation.</li>
 		<li>100% pure javascript. No dependencies.</li>
 		<li>Faithfully reproduces MongoDB behavior.</li>
-		<li>100% parity with MongoDB across 1054 behaviors, <%- Context.Coverage.Implemented %> operators.</li>
+		<li>100% parity with MongoDB 7.0 across 1102 behaviors, <%- Context.Coverage.Implemented %> operators.</li>
 		<li>Supports CommonJS, ESM, and TypeScript.</li>
 		<li>Single minified file (~<%- Context.Bundle.CompressedKb %>k compressed) for web deployment.</li>
 		<li>All operations are in-memory. This is not a storage library.</li>

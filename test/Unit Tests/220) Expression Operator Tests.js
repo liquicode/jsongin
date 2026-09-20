@@ -108,7 +108,7 @@ describe( '220) Expression Operator Tests', () =>
 		} );
 
 		// A field reference which crosses an array gathers the values of the elements.
-		// Every case below was measured against MongoDB 6.0.1.
+		// Every case below was measured against MongoDB 7.0.40.
 
 		it( 'should gather a field reference through an array', () =>
 		{
@@ -147,7 +147,7 @@ describe( '220) Expression Operator Tests', () =>
 			// An aggregation field path never indexes an array, not even with a numeric key.
 			// MongoDB applies every key to the elements, so '$a.1.x' gathers the field '1'
 			// from each element and finds none. Positional access is $arrayElemAt, which is
-			// a different thing. Verified against MongoDB 6.0.1.
+			// a different thing. Verified against MongoDB 7.0.40.
 			//
 			// Query paths are the ones which index: { 'a.1.x': 2 } does match. The two
 			// languages resolve a path differently and jsongin now follows each of them.
@@ -919,6 +919,116 @@ describe( '220) Expression Operator Tests', () =>
 		it( 'should still refuse a variable nobody bound', () =>
 		{
 			assert.throws( function () { jsongin.Evaluate( { a: 1 }, '$$nope' ); } );
+		} );
+
+	} );
+
+
+
+	//---------------------------------------------------------------------
+	describe( 'Beyond the Parity Baseline', () =>
+	{
+
+		/*
+			***Two behaviors which the parity baseline refuses and jsongin performs.***
+
+			MongoDB 7.0 is the parity baseline. MongoDB 8.3 added both of the behaviors below,
+			and jsongin does them too - so jsongin is ahead of its baseline here rather than
+			behind it. They are asserted here and never in the parity suite, because a parity
+			case cannot hold a behavior the two engines answer differently on purpose.
+
+			Measured against MongoDB 8.3.8 on 2026-09-20. The table a reader needs is in
+			docs/guides/MongoDB-Versions.md.
+
+			***Both are refused by a 7.0 server***, so a caller who writes one is writing
+			something their database would not accept. That is the whole reason they are
+			written down here rather than left to be discovered.
+		*/
+
+		it( 'should render an array as JSON with $toString', () =>
+		{
+			assert.strictEqual( jsongin.Evaluate( { a: [ 1, 2 ] }, { $toString: '$a' } ), '[1,2]' );
+			assert.strictEqual( jsongin.Evaluate( { a: [ 1, [ 2, 3 ] ] }, { $toString: '$a' } ), '[1,[2,3]]' );
+			assert.strictEqual( jsongin.Evaluate( { a: [] }, { $toString: '$a' } ), '[]' );
+			assert.strictEqual(
+				jsongin.Evaluate( { a: [ null, true, 'a', 1.5 ] }, { $toString: '$a' } ), '[null,true,"a",1.5]' );
+		} );
+
+		it( 'should render a document as JSON with $toString', () =>
+		{
+			assert.strictEqual(
+				jsongin.Evaluate( { o: { p: 1, q: 2 } }, { $toString: '$o' } ), '{"p":1,"q":2}' );
+			assert.strictEqual(
+				jsongin.Evaluate( { o: { a: { b: 1 } } }, { $toString: '$o' } ), '{"a":{"b":1}}' );
+			assert.strictEqual( jsongin.Evaluate( { o: {} }, { $toString: '$o' } ), '{}' );
+			// ***A dotted key is kept as written***, which is the whole point of a name being
+			// a name rather than a path.
+			assert.strictEqual(
+				jsongin.Evaluate( { o: { 'a.b': 5 } }, { $toString: '$o' } ), '{"a.b":5}' );
+		} );
+
+		it( 'should render a date inside a container as its ISO string', () =>
+		{
+			assert.strictEqual(
+				jsongin.Evaluate( { a: [ new Date( 1700000000000 ) ] }, { $toString: '$a' } ),
+				'["2023-11-14T22:13:20.000Z"]' );
+		} );
+
+		it( 'should leave what $toString already answered alone', () =>
+		{
+			// The conversions which were always there, so that adding two cannot have moved
+			// the others.
+			assert.strictEqual( jsongin.Evaluate( {}, { $toString: 42 } ), '42' );
+			assert.strictEqual( jsongin.Evaluate( {}, { $toString: true } ), 'true' );
+			assert.strictEqual( jsongin.Evaluate( { n: null }, { $toString: '$n' } ), null );
+		} );
+
+		it( 'should take a computed field name in $getField', () =>
+		{
+			let document = { doc: { p: 1, q: 2 }, name: 'p' };
+			assert.strictEqual(
+				jsongin.Evaluate( document, { $getField: { field: '$name', input: '$doc' } } ), 1 );
+			assert.strictEqual(
+				jsongin.Evaluate( document, { $getField: { field: { $concat: [ 'p' ] }, input: '$doc' } } ), 1 );
+		} );
+
+		it( 'should reach a name which holds a dot through a computed name', () =>
+		{
+			let document = { doc: { 'a.b': 5 }, name: 'a.b' };
+			assert.strictEqual(
+				jsongin.Evaluate( document, { $getField: { field: '$name', input: '$doc' } } ), 5 );
+		} );
+
+		it( 'should answer nothing for a computed name which names nothing', () =>
+		{
+			let document = { doc: { p: 1 }, name: 'zz' };
+			assert.strictEqual(
+				jsongin.Evaluate( document, { $getField: { field: '$name', input: '$doc' } } ), undefined );
+		} );
+
+		it( 'should refuse a computed name which is not a string', () =>
+		{
+			// 8.3 refuses this one as well, so the extra is the computing and not the type.
+			assert.throws( function ()
+			{
+				jsongin.Evaluate( { doc: { p: 1 } }, { $getField: { field: { $add: [ 1, 1 ] }, input: '$doc' } } );
+			} );
+		} );
+
+		it( 'should still require a constant name in $setField and $unsetField', () =>
+		{
+			// ***The extra is $getField alone.*** Measured on 8.3.8: the other two refuse a
+			// computed name there exactly as they do on 7.0, so jsongin does too.
+			assert.throws( function ()
+			{
+				jsongin.Evaluate( { doc: { p: 1 } },
+					{ $setField: { field: { $concat: [ 'p' ] }, input: '$doc', value: 9 } } );
+			} );
+			assert.throws( function ()
+			{
+				jsongin.Evaluate( { doc: { p: 1 } },
+					{ $unsetField: { field: { $concat: [ 'p' ] }, input: '$doc' } } );
+			} );
 		} );
 
 	} );

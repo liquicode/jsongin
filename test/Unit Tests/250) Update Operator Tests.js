@@ -104,7 +104,7 @@ describe( '250) Update Operator Tests', () =>
 			it( 'should null an array element rather than leaving a hole', () =>
 			{
 				// The array keeps its length and the elements after the removed one keep their
-				// positions. Verified against MongoDB 6.0.1.
+				// positions. Verified against MongoDB 7.0.40.
 				let document = { a: [ 1, 2, 3 ] };
 				assert.ok( jsongin.UpdateOperators.$unset.Update( document, { 'a.1': '' } ) );
 				assert.deepStrictEqual( document.a, [ 1, null, 3 ] );
@@ -114,7 +114,7 @@ describe( '250) Update Operator Tests', () =>
 			{
 				// A negative index is not an index. MongoDB reads '-1' as a field name, which
 				// an array does not have, so $unset of 'a.-1' changes nothing and still
-				// reports a successful update. Verified against MongoDB 6.0.1.
+				// reports a successful update. Verified against MongoDB 7.0.40.
 				let document = { a: [ 1, 2, 3 ] };
 				assert.ok( jsongin.UpdateOperators.$unset.Update( document, { 'a.-1': '' } ) );
 				assert.deepStrictEqual( document.a, [ 1, 2, 3 ] );
@@ -203,7 +203,7 @@ describe( '250) Update Operator Tests', () =>
 			it( 'should leave a source field which is not there alone', () =>
 			{
 				// The target field is not created, and the update is a successful no-op rather
-				// than a failure. Verified against MongoDB 6.0.1.
+				// than a failure. Verified against MongoDB 7.0.40.
 				let messages = [];
 				let engine = require( '../../src/jsongin' ).NewJsongin( {
 					OpLog: function ( Message ) { messages.push( Message ); },
@@ -379,7 +379,7 @@ describe( '250) Update Operator Tests', () =>
 				assert.ok( document.nest.c === 3 );
 			} );
 
-			// Every case below was measured against MongoDB 6.0.1. $min and $max are not
+			// Every case below was measured against MongoDB 7.0.40. $min and $max are not
 			// numeric operators: they compare by the BSON ordering, which is what
 			// CompareValues implements.
 
@@ -463,7 +463,7 @@ describe( '250) Update Operator Tests', () =>
 				assert.ok( document.nest.c === 100 );
 			} );
 
-			// The mirror of the $min cases above, measured against MongoDB 6.0.1.
+			// The mirror of the $min cases above, measured against MongoDB 7.0.40.
 
 			it( 'should set a field which is not there', () =>
 			{
@@ -891,7 +891,7 @@ describe( '250) Update Operator Tests', () =>
 			{
 				// $each is what makes a document a modifier document. Without one there is no
 				// modifier to read, so the object is a plain value to append — even when it
-				// carries $slice, $sort, or $position. Verified against MongoDB 6.0.1.
+				// carries $slice, $sort, or $position. Verified against MongoDB 7.0.40.
 				// These used to be refused, which was safer and was not what MongoDB does.
 				assert.deepStrictEqual( pushed( [ 1 ], { $slice: 2 } ), [ 1, { $slice: 2 } ] );
 				assert.deepStrictEqual( pushed( [ 1 ], { $sort: 1 } ), [ 1, { $sort: 1 } ] );

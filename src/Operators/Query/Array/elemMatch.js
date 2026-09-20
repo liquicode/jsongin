@@ -39,7 +39,7 @@ module.exports = function ( jsongin )
 	//
 	// Every criterion has to hold for the same element, which is the point of $elemMatch:
 	// { a: [ 1, 9 ] } does not match { $gt: 2, $lt: 5 } while { a: [ 1, 4, 9 ] } does.
-	// Verified against MongoDB 6.0.1.
+	// Verified against MongoDB 7.0.40.
 	//
 	// ***The element is a value, not a container.*** Within $elemMatch an element which is
 	// itself an array is never looked inside, whether the criterion is a comparison, a field,
@@ -56,7 +56,7 @@ module.exports = function ( jsongin )
 	//     { $or: [ { x: 1 } ] } has to miss { a: [ [ { x: 1 } ] ] } exactly as a bare
 	//     { x: 1 } does.
 	//
-	// Verified against MongoDB 6.0.1.
+	// Verified against MongoDB 7.0.40.
 	function element_matches( Element, Criteria, Options )
 	{
 		let element_type = jsongin.ShortType( Element );
@@ -103,7 +103,7 @@ module.exports = function ( jsongin )
 	// which meant the refusal depended on there being an element to reach it: { v: [] }, a
 	// field which is not an array, and a field which is not there all quietly returned false
 	// for a criteria MongoDB refuses to run at all.
-	// Verified against MongoDB 6.0.1.
+	// Verified against MongoDB 7.0.40.
 	function validate_criteria( Criteria )
 	{
 		check_form( Criteria );
@@ -159,7 +159,7 @@ module.exports = function ( jsongin )
 			// A branch of a logical operator is a criteria in its own right, so an operator
 			// which cannot stand at the top of one is refused here as it would be there. A bare
 			// { $gt: 1 } is a legitimate $elemMatch criteria and is not a legitimate $or branch.
-			// Verified against MongoDB 6.0.1.
+			// Verified against MongoDB 7.0.40.
 			for ( let index = 0; index < value.length; index++ )
 			{
 				let branch = value[ index ];

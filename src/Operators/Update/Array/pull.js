@@ -48,7 +48,7 @@ module.exports = function ( jsongin )
 	// A value is not put through Query() as an implicit equality, which would be the obvious
 	// thing to do and is wrong: an implicit equality against an array field matches when any
 	// element of it matches, so pulling 1 would take a [ 1, 2 ] element with it. Verified
-	// against MongoDB 6.0.1.
+	// against MongoDB 7.0.40.
 	function selects( Condition, Element )
 	{
 		if ( jsongin.ShortType( Condition ) !== 'o' )
@@ -60,7 +60,7 @@ module.exports = function ( jsongin )
 		// on fields - including an empty document, which selects every element that has fields
 		// and nothing else. Deciding it the other way round, by asking whether every key is an
 		// operator, reads {} as an operator condition and matches scalars too. Verified against
-		// MongoDB 6.0.1.
+		// MongoDB 7.0.40.
 		let keys = Object.keys( Condition );
 		let has_operator = false;
 		for ( let index = 0; index < keys.length; index++ )

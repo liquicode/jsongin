@@ -41,7 +41,7 @@ module.exports = function ( jsongin )
 				}
 
 				// An empty array asks nothing. MongoDB refuses it rather than treating it as
-				// a condition which everything satisfies, verified against MongoDB 6.0.1, and
+				// a condition which everything satisfies, verified against MongoDB 7.0.40, and
 				// a query which cannot mean anything is refused rather than answered.
 				if ( MatchValue.length === 0 )
 				{

@@ -9,18 +9,22 @@
 	That is the whole reason the three exist: a document may hold a field literally called
 	'a.b', and ordinary dotted-path syntax cannot reach it, because it means the b of the a.
 
-	***The name has to be a constant***, known before anything runs, which is unusual in an
-	expression language where almost every operand may be computed. MongoDB refuses a computed
-	name however simple it is - even { $concat: [ 'a' ] }, whose operands are all constants.
-	So the name is read from the ***written*** argument rather than from an evaluated one, and
-	only two forms are constants:
+	***$setField and $unsetField require a constant name***, known before anything runs, which is
+	unusual in an expression language where almost every operand may be computed. MongoDB refuses
+	a computed name there however simple it is - even { $concat: [ 'a' ] }, whose operands are all
+	constants, and on 8.3 as much as on the 7.0 baseline. So the name is read from the ***written***
+	argument rather than from an evaluated one, and only two forms are constants:
 
 		field: 'name'                a plain string, which must not begin with a '$'
 		field: { $literal: 'name' }  which is how a name that does begin with one is written
 
 	A bare '$name' is a field path, and reading it as a name instead would quietly do something
-	other than what it says. It is refused, and the $literal form is how a caller says they
-	meant the name.
+	other than what it says. It is refused for those two, and the $literal form is how a caller
+	says they meant the name.
+
+	***$getField is the exception***, and takes a name from any expression which produces a
+	string. The parity baseline refuses that and jsongin performs it deliberately; see
+	ReadComputedFieldName below and docs/guides/MongoDB-Versions.md.
 
 	***The three operators disagree about an input which is not a document***, and that is
 	reproduced here rather than smoothed over. $getField answers a null with a null and
@@ -29,7 +33,7 @@
 	answer a null or a missing with a null and ***refuse*** any other non-document, because
 	they have to hand a document back and there is nothing to build one from.
 
-	Verified against MongoDB 6.0.1. See
+	Verified against MongoDB 7.0.40. See
 	test/Parity Tests/Aggregate Tests/test-suite/Object Operator Tests.js.
 */
 
@@ -74,11 +78,62 @@ module.exports = function ( jsongin )
 
 
 	//---------------------------------------------------------------------
+	/*
+		Reads a field name which may be computed rather than written out.
+
+		***This is for $getField alone.*** MongoDB 8.3 lets $getField take a name from an
+		expression - a field path, a $concat, anything which evaluates to a string - while
+		$setField and $unsetField still require a constant on 8.3 as on 7.0. Measured on both
+		servers on 2026-09-20; see jsonx/.plans/tools and the extras probe beside it.
+
+		***The parity baseline refuses this***, so jsongin is ahead of its baseline here rather
+		than behind it, and the parity suite says nothing about it. It is pinned in the unit
+		tests and described in docs/guides/MongoDB-Versions.md.
+
+		A name which evaluates to something other than a string is refused, which is what 8.3
+		does too.
+	*/
+	helper.ReadComputedFieldName = function ( Document, FieldExpression, OperatorName, Scope )
+	{
+		jsongin.Scope.Require( Scope, 'object.ReadComputedFieldName' );
+
+		let expression_type = jsongin.ShortType( FieldExpression );
+
+		// The two constant forms are read exactly as they were before, so that a plain name
+		// and a [$literal] never reach the evaluator at all.
+		if ( expression_type === 's' )
+		{
+			if ( FieldExpression.startsWith( '$' ) === false ) { return FieldExpression; }
+		}
+		else if ( expression_type === 'o' )
+		{
+			let keys = Object.keys( FieldExpression );
+			if ( ( keys.length === 1 ) && ( keys[ 0 ] === '$literal' ) )
+			{
+				return helper.ReadFieldName( FieldExpression, OperatorName );
+			}
+		}
+
+		let name = jsongin.Evaluate( Document, FieldExpression, Scope );
+		if ( jsongin.ShortType( name ) !== 's' )
+		{
+			throw new Error( `${OperatorName}: requires [field] to name a string, but it evaluated to ${JSON.stringify( name )} instead.` );
+		}
+
+		return name;
+	};
+
+
+	//---------------------------------------------------------------------
 	// Reads the argument document of $getField, $setField, or $unsetField.
 	// Every field named in Allowed is required, because none of the three has an optional one.
 	// Returns the field name and the evaluated input; a `value` is left to the caller, which
 	// is the only one of the three that has one.
-	helper.ReadArgs = function ( Document, Args, OperatorName, Allowed, Scope )
+	//
+	// AllowComputedName is true for $getField alone. False means the name must be a constant,
+	// which is what $setField and $unsetField require. It sits ahead of Scope because a helper
+	// which evaluates an expression carries Scope last - see build/scope-check.js.
+	helper.ReadArgs = function ( Document, Args, OperatorName, Allowed, AllowComputedName, Scope )
 	{
 		jsongin.Scope.Require( Scope, 'object.ReadArgs' );
 
@@ -107,8 +162,18 @@ module.exports = function ( jsongin )
 			}
 		}
 
+		let name = null;
+		if ( AllowComputedName === true )
+		{
+			name = helper.ReadComputedFieldName( Document, Args.field, OperatorName, Scope );
+		}
+		else
+		{
+			name = helper.ReadFieldName( Args.field, OperatorName );
+		}
+
 		return {
-			Name: helper.ReadFieldName( Args.field, OperatorName ),
+			Name: name,
 			Input: jsongin.Evaluate( Document, Args.input, Scope ),
 		};
 	};

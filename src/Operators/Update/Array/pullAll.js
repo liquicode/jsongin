@@ -56,7 +56,7 @@ module.exports = function ( jsongin )
 					{
 						// A field which is not there has nothing to pull from, and MongoDB
 						// reports a successful update with modifiedCount 0 rather than an
-						// error. Verified against MongoDB 6.0.1. This is a no-op and not a
+						// error. Verified against MongoDB 7.0.40. This is a no-op and not a
 						// refusal: the two used to share a branch, so once Update() began
 						// raising a refusal, pulling from a field which was not there raised
 						// too.

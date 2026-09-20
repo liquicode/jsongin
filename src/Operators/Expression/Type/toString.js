@@ -5,7 +5,10 @@
 
 Usage: `$toString: expression`
 
-Converts a value to a string. A date becomes an ISO 8601 string, and a number, boolean, or string is rendered as it reads. An array or an object throws.
+Converts a value to a string. A date becomes an ISO 8601 string, and a number, boolean, or string is rendered as it reads. An array or an object is rendered as JSON.
+
+***A MongoDB 7.0 server refuses an array or an object here.*** See
+  [MongoDB Versions](../../guides/MongoDB-Versions.md).
 
 A null or missing operand makes the result null.
 This is a shorthand for [$convert](#$convert), which adds `onError` and `onNull`.

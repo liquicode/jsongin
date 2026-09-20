@@ -24,7 +24,7 @@
 	refuse one. That is reproduced here rather than smoothed over, because a caller's expression
 	has to mean the same thing against both engines.
 
-	Verified against MongoDB 6.0.1. See
+	Verified against MongoDB 7.0.40. See
 	test/Parity Tests/Aggregate Tests/test-suite/Set Operator Tests.js.
 */
 

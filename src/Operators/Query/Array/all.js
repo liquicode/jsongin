@@ -56,7 +56,7 @@ module.exports = function ( jsongin )
 				// to reason about arrays itself. Delegating to $eq is what makes
 				// { a: [ { x: [ 5, 6 ] } ] } match { 'a.x': { $all: [ 5, 6 ] } }, which it did
 				// not when this asked GetValue for one gathered value.
-				// Verified against MongoDB 6.0.1.
+				// Verified against MongoDB 7.0.40.
 
 				// An empty match array asks for nothing and MongoDB selects nothing for it.
 				if ( MatchValue.length === 0 )

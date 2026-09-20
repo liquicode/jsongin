@@ -4,7 +4,7 @@
 	Shared handling for the pipeline stages.
 	This is a helper module, not a stage.
 
-	Verified against MongoDB 6.0.1. See
+	Verified against MongoDB 7.0.40. See
 	test/Parity Tests/Aggregate Tests/test-suite/Reshaping Stage Tests.js.
 */
 
@@ -136,8 +136,10 @@ module.exports = function ( jsongin )
 	// the next, so this is written once. With neither a partitionBy nor partitionByFields
 	// there is a single partition holding everything.
 	//
-	// ***partitionBy takes a document rather than a path***, which MongoDB enforces: a bare
-	// '$k' is refused for being a string.
+	// ***partitionBy takes a document or a field path.*** MongoDB 6.0 refused a bare '$k' and
+	// 7.0, the parity baseline, accepts it - partitioning exactly as partitionByFields would.
+	// Either way the value it evaluates to is the key, so nothing below has to tell the two
+	// forms apart.
 	helper.Partitions = function ( Documents, PartitionBy, PartitionFields, OperatorName, Scope )
 	{
 		jsongin.Scope.Require( Scope, 'stage.Partitions' );
@@ -209,9 +211,15 @@ module.exports = function ( jsongin )
 		let partition_by = null;
 		if ( 'partitionBy' in Args )
 		{
-			if ( jsongin.ShortType( Args.partitionBy ) !== 'o' )
+			// ***A field path is allowed here as well as a document.*** MongoDB 6.0 refused a
+			// bare '$k' and 7.0 accepts it, partitioning exactly as partitionByFields: [ 'k' ]
+			// does, and a dotted path reaches a nested value the same way. The parity baseline
+			// is 7.0, so this is the accepted form. Measured on 7.0.40 and 8.3.8 on 2026-09-20
+			// by jsonx/.plans/tools/v7-pin-probe.js.
+			let short_type = jsongin.ShortType( Args.partitionBy );
+			if ( ( short_type !== 'o' ) && ( short_type !== 's' ) )
 			{
-				throw new Error( `$fill: requires [partitionBy] to be a document but found a [${jsongin.ShortType( Args.partitionBy )}] instead.` );
+				throw new Error( `$fill: requires [partitionBy] to be a document or a field path but found a [${short_type}] instead.` );
 			}
 			partition_by = Args.partitionBy;
 		}

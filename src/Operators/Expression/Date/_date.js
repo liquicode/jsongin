@@ -15,7 +15,7 @@
 	here. Intl is a language feature rather than a Node built-in, so this still bundles for the
 	browser - the same constraint which kept Buffer out of the string operators.
 
-	Every rule here was established against MongoDB 6.0.1 first. See
+	Every rule here was established against MongoDB 7.0.40 first. See
 	test/Parity Tests/Aggregate Tests/test-suite/Date Operator Tests.js.
 */
 

@@ -12,7 +12,7 @@ module.exports = function ( jsongin )
 	// matched", which is a legitimate answer and gives the caller no way to tell a typo from
 	// an empty result: { $bogus: 1 } and { a: { $size: 'x' } } both used to report, quietly,
 	// that nothing matched. MongoDB refuses every one of these with an error, verified against
-	// MongoDB 6.0.1.
+	// MongoDB 7.0.40.
 	//
 	// This is only for a criteria the caller could not have meant. A document which simply
 	// does not match still returns false, and so does a Document parameter which is not an
@@ -386,7 +386,7 @@ module.exports = function ( jsongin )
 	//
 	// MongoDB accepts $options only beside a $regex, and refuses it beside a regexp which
 	// already carries its own flags, rather than deciding which of the two wins.
-	// Verified against MongoDB 6.0.1.
+	// Verified against MongoDB 7.0.40.
 	function combine_regex_options( Pattern, Options, Path )
 	{
 		let options_type = jsongin.ShortType( Options );

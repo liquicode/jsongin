@@ -118,7 +118,7 @@ module.exports = function ( jsongin )
 			// append — including an object which happens to carry $slice, $position, or $sort.
 			// MongoDB appends { $slice: 1 } as data rather than reading it as a modifier,
 			// because $each is what makes a document a modifier document at all.
-			// Verified against MongoDB 6.0.1. This used to refuse the update instead, which
+			// Verified against MongoDB 7.0.40. This used to refuse the update instead, which
 			// was safer and was not what MongoDB does.
 			//
 			// Cloned, so that the array element does not share structure with the update
@@ -201,7 +201,7 @@ module.exports = function ( jsongin )
 					{
 						// A field which is not there is created as an array holding what is
 						// pushed, and the path to it is created with it. Verified against
-						// MongoDB 6.0.1. This used to refuse the update, which made starting a
+						// MongoDB 7.0.40. This used to refuse the update, which made starting a
 						// list a two step operation.
 						array = [];
 						array_type = 'a';

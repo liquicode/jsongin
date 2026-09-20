@@ -112,7 +112,7 @@ module.exports = function ( jsongin )
 	//
 	// Truncate says whether a fractional value is truncated toward zero or refused, and the
 	// two substring families disagree about it: $substrBytes truncates and $substrCP refuses.
-	// Verified against MongoDB 6.0.1.
+	// Verified against MongoDB 7.0.40.
 	helper.AsPosition = function ( Operand, OperatorName, Label, Truncate, AllowNegative )
 	{
 		let short_type = jsongin.ShortType( Operand );
@@ -399,7 +399,7 @@ module.exports = function ( jsongin )
 	//
 	// ***idx is counted in code points***, not in Javascript characters and not in bytes, so a
 	// match after an accented letter reports the same offset it would in an ASCII string.
-	// Verified against MongoDB 6.0.1.
+	// Verified against MongoDB 7.0.40.
 	helper.MatchResult = function ( Text, Match )
 	{
 		let captures = [];
@@ -427,7 +427,7 @@ module.exports = function ( jsongin )
 	// and Javascript disagree: exec() in a loop finds one at position length and MongoDB does
 	// not, so 'ab' against `x*` is two matches rather than three. The empty string is the
 	// exception, because position 0 is both its start and its end and the match there is kept.
-	// Verified against MongoDB 6.0.1; see 'Patterns Which Match Nothing' in the String
+	// Verified against MongoDB 7.0.40; see 'Patterns Which Match Nothing' in the String
 	// Operator Tests.
 	helper.MatchAll = function ( Text, Pattern )
 	{

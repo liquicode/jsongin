@@ -23,7 +23,7 @@ const assert = require( 'assert' );
 	smoothed over: $setUnion, $setIntersection, and $setDifference answer a null with a null,
 	while $setEquals, $setIsSubset, $allElementsTrue, and $anyElementTrue refuse one.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )

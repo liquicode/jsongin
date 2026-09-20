@@ -47,6 +47,7 @@
 	- [Projection Operators](/guides/jsongin/Projection-Operators.md)
 	- **Reference**
 	- [Operator Reference](/guides/Operator-Reference.md)
+	- [MongoDB Versions](/guides/MongoDB-Versions.md)
 	- [Operator Authoring](/guides/Operator-Authoring.md)
 
 <hr>

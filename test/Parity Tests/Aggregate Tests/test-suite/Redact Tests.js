@@ -22,7 +22,7 @@ const assert = require( 'assert' );
 	been graduated on the strength of an accident. The refusals are below now that a refusal
 	means the engine agreed with the server.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )

@@ -29,7 +29,7 @@ module.exports = function ( jsongin )
 			//
 			// This used to ask AsNumber(), which also accepts '01', '1e2', '0x10', and
 			// 'Infinity'. Fields in those forms became array indices and their data was
-			// unreachable. Verified against MongoDB 6.0.1: a query on 'a.01' finds
+			// unreachable. Verified against MongoDB 7.0.40: a query on 'a.01' finds
 			// { a: { '01': 'x' } } and a query on 'a.1e2' finds { a: { '1e2': 'x' } }.
 			const CANONICAL_INTEGER = /^-?(0|[1-9][0-9]*)$/;
 			for ( let path_index = 0; path_index < path_elements.length; path_index++ )

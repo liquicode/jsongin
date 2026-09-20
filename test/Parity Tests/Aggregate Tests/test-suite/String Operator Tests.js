@@ -17,7 +17,7 @@ const assert = require( 'assert' );
 	'héllo' is what tells them apart: the accented letter is two bytes and one code point. A
 	test which used only ASCII would pass against either implementation.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )

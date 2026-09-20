@@ -237,7 +237,7 @@ describe( '510) Projection Computed Field Tests', () =>
 		// Inclusion through an array keeps the array and produces one object per element.
 		// This is a different rule from the one an aggregation expression follows: '$a.x'
 		// gathers to [ 1, 2 ] while { 'a.x': 1 } produces [ { x: 1 }, { x: 2 } ].
-		// Every case below was measured against MongoDB 6.0.1.
+		// Every case below was measured against MongoDB 7.0.40.
 
 		it( 'should include a field through an array, keeping the array', () =>
 		{
@@ -325,7 +325,7 @@ describe( '510) Projection Computed Field Tests', () =>
 		it( 'should exclude a field through an array, keeping the array', () =>
 		{
 			// MongoDB removes the field from every element and keeps the array.
-			// Verified against MongoDB 6.0.1.
+			// Verified against MongoDB 7.0.40.
 			//
 			// Exclusion used to route through DeleteValue, which follows the $unset update
 			// operator and refuses a path reaching into an array by field name. That made
@@ -355,7 +355,7 @@ describe( '510) Projection Computed Field Tests', () =>
 		{
 			// A projection exclusion does not index an array, not even with a numeric key.
 			// MongoDB applies every key to the elements, so { 'a.1': 0 } removes nothing.
-			// Verified against MongoDB 6.0.1.
+			// Verified against MongoDB 7.0.40.
 			//
 			// This used to index the array and `delete` the element, which both disagreed
 			// with MongoDB and left a sparse hole that is not representable in JSON.

@@ -69,7 +69,7 @@ module.exports = function ( jsongin )
 						// A negative index is not an index. MongoDB reads '-1' as a field
 						// name, and a field cannot be created on an array, so it refuses the
 						// write with "Cannot create field '-1' in element {a: [ 1, 2, 3 ]}".
-						// Verified against MongoDB 6.0.1.
+						// Verified against MongoDB 7.0.40.
 						// This used to index from the end of the array, which was a jsongin
 						// path extension with no MongoDB counterpart on either side.
 						let container_path = path_elements.slice( 0, path_index ).join( '.' );
@@ -78,7 +78,7 @@ module.exports = function ( jsongin )
 					if ( st_key === 'n' )
 					{
 						// A write past the end of an array fills the gap with nulls rather than
-						// leaving holes. Verified against MongoDB 6.0.1, where { a: [ 1 ] }
+						// leaving holes. Verified against MongoDB 7.0.40, where { a: [ 1 ] }
 						// with { $set: { 'a.4': 9 } } gives [ 1, null, null, null, 9 ].
 						// A hole is not representable in JSON, and it only ever looked like a
 						// null because JSON.stringify renders it as one.
@@ -107,7 +107,7 @@ module.exports = function ( jsongin )
 						// A non numeric key against an array.
 						// MongoDB rejects this outright, with "Cannot create field 'x' in
 						// element {a: [ ... ]}", for $set and for every arithmetic update
-						// operator. Verified against MongoDB 6.0.1.
+						// operator. Verified against MongoDB 7.0.40.
 						// Reaching through an array on the write side requires the all
 						// positional operator, 'a.$[].x'.
 						let container_path = path_elements.slice( 0, path_index ).join( '.' );
@@ -127,7 +127,7 @@ module.exports = function ( jsongin )
 						// whatever the next key looks like. A numeric key does not imply an
 						// array: MongoDB creates { a: { '0': 9 } } for { $set: { 'a.0': 9 } }
 						// against a document which has no 'a', and only the array update
-						// operators ever create an array. Verified against MongoDB 6.0.1.
+						// operators ever create an array. Verified against MongoDB 7.0.40.
 						// This used to create an array whenever the next key was numeric, which
 						// produced { a: [ 9 ] } instead, and it is still what CreateArrays asks
 						// for on behalf of Expand().

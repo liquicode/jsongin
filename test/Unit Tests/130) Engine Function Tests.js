@@ -928,7 +928,7 @@ describe( '130) Engine Function Tests', () =>
 		it( 'should report a number outside the int32 range as a double', () =>
 		{
 			// A Javascript number is a double, and BSON stores it as an int32 only when it
-			// fits that range. It is never a long. Verified against MongoDB 6.0.1 by
+			// fits that range. It is never a long. Verified against MongoDB 7.0.40 by
 			// inserting each of these and reading back $type.
 			assert.strictEqual( jsongin.BsonType( 2147483648, true ), 'double' );
 			assert.strictEqual( jsongin.BsonType( -2147483649, true ), 'double' );
@@ -1138,7 +1138,7 @@ describe( '130) Engine Function Tests', () =>
 		it( 'should not reach into an array by field name', () =>
 		{
 			// MongoDB's $unset does nothing here and reports modifiedCount 0. Verified
-			// against MongoDB 6.0.1. Reaching through an array on the write side requires
+			// against MongoDB 7.0.40. Reaching through an array on the write side requires
 			// the all positional operator, 'a.$[].x'.
 			let document = { a: [ { x: 1 }, { x: 2 } ] };
 			assert.strictEqual( jsongin.DeleteValue( document, 'a.x' ), false );
@@ -1153,7 +1153,7 @@ describe( '130) Engine Function Tests', () =>
 		{
 			// A negative index is not an index. MongoDB reads '-1' as a field name, which an
 			// array does not have, so $unset of 'a.-1' is a no-op that changes nothing.
-			// Verified against MongoDB 6.0.1.
+			// Verified against MongoDB 7.0.40.
 			let document = { a: [ 1, 2, 3 ] };
 			assert.strictEqual( jsongin.DeleteValue( document, 'a.-1' ), false );
 			assert.deepStrictEqual( document, { a: [ 1, 2, 3 ] } );

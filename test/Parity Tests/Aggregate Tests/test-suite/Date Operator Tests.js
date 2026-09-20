@@ -26,7 +26,7 @@ const assert = require( 'assert' );
 	The second one is there because the ISO week year and the calendar year disagree about it,
 	which is the whole reason $isoWeekYear exists as a separate operator.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )

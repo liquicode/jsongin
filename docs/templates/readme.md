@@ -122,10 +122,15 @@ Every one of these families is MongoDB's, and `jsongin` implements <%- Context.C
   <%- Context.Coverage.Implemented %> of the <%- Context.Coverage.Total %> operators MongoDB documents.
 
 ***What is implemented is measured rather than asserted.***
-Each implemented behavior is compared against a running MongoDB server, and the suite reports
-  100% agreement across 1054 compared behaviors.
+Each implemented behavior is compared against a running ***MongoDB 7.0*** server, and the suite
+  reports 100% agreement across 1102 compared behaviors.
 Run `npm run parity-report` for that number and `npm run api-coverage` for the surface numbers
   above.
+
+The version is part of the claim. MongoDB changes its own behavior between releases, and the
+  test run refuses to measure against anything but 7.0 so the number cannot go stale quietly.
+  jsongin departs from that baseline in three places, each of them deliberate and each written
+  down in [MongoDB Versions](/docs/guides/MongoDB-Versions.md).
 
 The sections below introduce each of the main functions.
 See the [Operator Reference](/docs/guides/Operator-Reference.md) for the full list of supported
@@ -483,10 +488,14 @@ Features
 ---------------------------------------------------------------------
 
 - MongoDB Compatibility:
-	- 100% parity across 1054 compared behaviors, each one measured against a running MongoDB server.
+	- 100% parity with MongoDB 7.0 across 1102 compared behaviors, each one measured against a running server.*
 	- <%- Context.Coverage.Percent %>% of the documented operator surface: <%- Context.Coverage.Implemented %> of <%- Context.Coverage.Total %> operators.
 	- MongoDB's own path syntax, value ordering, and type rules, rather than an approximation of them.
 	- Measure both numbers yourself with `npm run parity-report` and `npm run api-coverage`.
+
+*Three behaviors depart from the 7.0 baseline on purpose: two which a 7.0 server refuses and
+jsongin performs, and one where jsongin is right and the server is wrong. See
+[MongoDB Versions](/docs/guides/MongoDB-Versions.md).
 
 - Object Based Queries:
 	- Compose queries in a structured and logical manner.

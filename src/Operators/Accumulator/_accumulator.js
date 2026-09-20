@@ -16,7 +16,7 @@
 		              documents by it, then read an output expression from each. They are the
 		              only ones which can sort by one field and answer with another.
 
-	Verified against MongoDB 6.0.1. See
+	Verified against MongoDB 7.0.40. See
 	test/Parity Tests/Aggregate Tests/test-suite/Accumulator Operator Tests.js.
 */
 
@@ -288,6 +288,125 @@ module.exports = function ( jsongin )
 		}
 
 		return Math.sqrt( squared / Divisor );
+	};
+
+
+	//---------------------------------------------------------------------
+	/*
+		***The reductions below take a list of values rather than a group of documents.***
+
+		Six of these operators are also expression operators, where the values come from
+		evaluating one operand instead of reading a field out of every document in a group.
+		The arithmetic is the same either way, so it is written once here and the two forms
+		call it - which is what keeps `$avg` in a `$group` and `$avg` in a `$project` from
+		quietly growing apart.
+
+		Measured against MongoDB 7.0.40 on 2026-09-20,
+		`jsonx/.plans/tools/accumulator-expression-probe.js`.
+	*/
+
+
+	//---------------------------------------------------------------------
+	// The numbers among a list of values. Everything else - a string, a document, a null, a
+	// missing value - is left out rather than refused, which is the rule this whole family
+	// follows.
+	//
+	// ***A NaN is a number and is kept here.*** $sum and $avg carry it into their answer.
+	// $percentile takes it out again, because a value which compares false against everything
+	// cannot be put in rank order.
+	helper.OnlyNumbers = function ( Values )
+	{
+		let numbers = [];
+		for ( let index = 0; index < Values.length; index++ )
+		{
+			if ( jsongin.ShortType( Values[ index ] ) !== 'n' ) { continue; }
+			numbers.push( Values[ index ] );
+		}
+		return numbers;
+	};
+
+
+	//---------------------------------------------------------------------
+	// The total of a list of numbers. An empty list totals zero, which is why $sum answers 0
+	// where every other operator in the family answers null.
+	helper.Total = function ( Numbers )
+	{
+		let total = 0;
+		for ( let index = 0; index < Numbers.length; index++ )
+		{
+			total += Numbers[ index ];
+		}
+		return total;
+	};
+
+
+	//---------------------------------------------------------------------
+	// The average of a list of numbers, or null when there are none to average.
+	helper.Average = function ( Numbers )
+	{
+		if ( Numbers.length === 0 ) { return null; }
+		return ( helper.Total( Numbers ) / Numbers.length );
+	};
+
+
+	//---------------------------------------------------------------------
+	// Orders two numbers without subtracting them, so that an infinity compares as itself
+	// rather than producing a NaN.
+	function compare_numbers( ValueA, ValueB )
+	{
+		if ( ValueA < ValueB ) { return -1; }
+		if ( ValueA > ValueB ) { return 1; }
+		return 0;
+	}
+
+
+	//---------------------------------------------------------------------
+	/*
+		The percentiles of a list of values, one answer per p, in the order the p values were
+		asked for.
+
+		***This selects a value by rank and never interpolates.*** Measured across seven group
+		sizes and thirteen p values on MongoDB 7.0.40, every answer is one of the input values
+		and the rule is:
+
+			index = max( 0, ceil( p * count ) - 1 )    over the values sorted ascending
+
+		A NaN is left out - it cannot be ranked. An infinity is kept and sorts to its end.
+		A list with no numbers in it answers null for every p.
+
+		***MongoDB is wrong at p 1.0 when the largest value is not positive***: it answers
+		2.2250738585072014e-308, the smallest positive normal double, rather than the maximum.
+		Measured identically on 7.0.40 and 8.3.8, so it is a defect of long standing rather
+		than a version difference. jsongin answers the maximum, which is the one place this
+		family departs from the baseline on purpose. See the parity matrix in the guides.
+	*/
+	helper.Percentiles = function ( Values, PValues )
+	{
+		let numbers = [];
+		for ( let index = 0; index < Values.length; index++ )
+		{
+			if ( jsongin.ShortType( Values[ index ] ) !== 'n' ) { continue; }
+			if ( Number.isNaN( Values[ index ] ) ) { continue; }
+			numbers.push( Values[ index ] );
+		}
+
+		let answers = [];
+		if ( numbers.length === 0 )
+		{
+			for ( let index = 0; index < PValues.length; index++ ) { answers.push( null ); }
+			return answers;
+		}
+
+		numbers.sort( compare_numbers );
+
+		for ( let index = 0; index < PValues.length; index++ )
+		{
+			let rank = Math.ceil( PValues[ index ] * numbers.length ) - 1;
+			if ( rank < 0 ) { rank = 0; }
+			answers.push( numbers[ rank ] );
+		}
+
+		return answers;
 	};
 
 

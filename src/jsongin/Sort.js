@@ -7,7 +7,7 @@ module.exports = function ( jsongin )
 	// Returned by sort_key when a path produces no sort key candidates at all.
 	// This happens when the field holds an empty array, or when the path crosses one.
 	// Such a document sorts below every value, including null, and below documents which
-	// are missing the field entirely. Verified against MongoDB 6.0.1.
+	// are missing the field entirely. Verified against MongoDB 7.0.40.
 	const NO_KEY = { NoSortKey: true };
 
 
@@ -63,7 +63,7 @@ module.exports = function ( jsongin )
 				// A negative index addresses nothing, so the path cannot be followed and
 				// contributes null. MongoDB has no reverse indexing: it reads '-1' as a
 				// field name, which an array does not have, so sorting by 'a.-1' places
-				// every document with the nulls. Verified against MongoDB 6.0.1.
+				// every document with the nulls. Verified against MongoDB 7.0.40.
 				if ( key < 0 ) { Candidates.push( null ); return; }
 				if ( key >= Node.length ) { Candidates.push( null ); return; }
 				collect_candidates( Node[ key ], Segments.slice( 1 ), Candidates );
@@ -72,7 +72,7 @@ module.exports = function ( jsongin )
 			// An empty array offers no element to descend into, so the path cannot be
 			// followed and contributes null. Note that this is NOT the same as an empty
 			// array found at the end of the path, which contributes nothing at all.
-			// Verified against MongoDB 6.0.1: sorting { a: [] } by 'a.x' places it with
+			// Verified against MongoDB 7.0.40: sorting { a: [] } by 'a.x' places it with
 			// the nulls, while { a: [ { x: [] } ] } sorts below them.
 			if ( Node.length === 0 ) { Candidates.push( null ); return; }
 

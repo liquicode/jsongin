@@ -45,7 +45,7 @@ module.exports = function ( jsongin )
 		{
 			try
 			{
-				let read = object.ReadArgs( Document, Args, '$setField', [ 'field', 'input', 'value' ], Scope );
+				let read = object.ReadArgs( Document, Args, '$setField', [ 'field', 'input', 'value' ], false, Scope );
 
 				let input = object.AsInputDocument( read.Input, '$setField' );
 				if ( input === null ) { return null; }

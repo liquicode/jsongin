@@ -1,16 +1,17 @@
 'use strict';
 /*md
 
-## Operators > Expression > $max
+## Operators > Expression > $min
 
-Usage: `$max: [ expression1, expression2, ... ]` or `$max: expression`
+Usage: `$min: [ expression1, expression2, ... ]` or `$min: expression`
 
-Returns the largest of the given values.
+Returns the smallest of the given values.
 Null and missing values are ignored.
-Returns null when all of the values are null or missing.
+Returns null when all of the values are null or missing, and when no values are given at all.
+MongoDB answers null for an empty array here rather than refusing it, and so does this.
 
-Note that this is the expression operator `$max` and not the update operator `$max`.
-The expression operator selects the largest of several values.
+Note that this is the expression operator `$min` and not the update operator `$min`.
+The expression operator selects the smallest of several values.
 The update operator conditionally modifies a document field.
 
 */
@@ -18,7 +19,7 @@ The update operator conditionally modifies a document field.
 module.exports = function ( jsongin )
 {
 
-	const arithmetic = require( './_arithmetic' )( jsongin );
+	const expression_values = require( './_expression-values' )( jsongin );
 	function compare( ValueA, ValueB ) { return jsongin.CompareValues( ValueA, ValueB ); }
 
 	let operator =
@@ -34,13 +35,7 @@ module.exports = function ( jsongin )
 		{
 			try
 			{
-				let operands = arithmetic.Operands( Document, Args, '$max', 1, null, Scope );
-
-				// A single array operand supplies the values.
-				if ( operands.length === 1 )
-				{
-					if ( jsongin.ShortType( operands[ 0 ] ) === 'a' ) { operands = operands[ 0 ]; }
-				}
+				let operands = expression_values.Operands( Document, Args, '$min', Scope );
 
 				let selected = null;
 				let has_value = false;
@@ -54,7 +49,7 @@ module.exports = function ( jsongin )
 						has_value = true;
 						continue;
 					}
-					if ( compare( operands[ index ], selected ) > 0 ) { selected = operands[ index ]; }
+					if ( compare( operands[ index ], selected ) < 0 ) { selected = operands[ index ]; }
 				}
 
 				if ( has_value === false ) { return null; }
@@ -62,7 +57,7 @@ module.exports = function ( jsongin )
 			}
 			catch ( error )
 			{
-				if ( jsongin.OpError ) { jsongin.OpError( `Expression.$max: ${error.message}` ); }
+				if ( jsongin.OpError ) { jsongin.OpError( `Expression.$min: ${error.message}` ); }
 				throw error;
 			}
 		},

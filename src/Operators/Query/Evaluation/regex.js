@@ -80,7 +80,7 @@ module.exports = function ( jsongin )
 					// MongoDB matches a field holding /MongoDB/ against { $regex: /MongoDB/ }
 					// and does not match one holding /MongoDB/i, so this is an equality test
 					// on the source and the flags rather than a pattern match.
-					// Verified against MongoDB 6.0.1.
+					// Verified against MongoDB 7.0.40.
 					if ( candidate_type === 'r' )
 					{
 						if ( candidate.source !== pattern.source ) { continue; }

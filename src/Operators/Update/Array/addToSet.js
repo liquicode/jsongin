@@ -62,7 +62,7 @@ module.exports = function ( jsongin )
 					{
 						// A field which is not there is created as an array holding what is
 						// added, and the path to it is created with it. Verified against
-						// MongoDB 6.0.1. This used to refuse the update, the same way $push
+						// MongoDB 7.0.40. This used to refuse the update, the same way $push
 						// did before it was fixed.
 						array = [];
 						array_type = 'a';

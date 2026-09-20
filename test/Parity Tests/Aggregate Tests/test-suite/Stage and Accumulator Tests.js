@@ -9,7 +9,7 @@ const assert = require( 'assert' );
 	them apart instead, so that a single option which drifts is named by the failure rather
 	than hidden inside a larger pipeline.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )

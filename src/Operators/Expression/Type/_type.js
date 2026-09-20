@@ -20,7 +20,7 @@
 		                   string would mean different instants on two machines. MongoDB reads
 		                   it as UTC. It also accepts a bare year, which MongoDB refuses.
 
-	Every rule here was established against MongoDB 6.0.1 first. See
+	Every rule here was established against MongoDB 7.0.40 first. See
 	test/Parity Tests/Aggregate Tests/test-suite/Type Operator Tests.js.
 */
 
@@ -111,6 +111,23 @@ module.exports = function ( jsongin )
 		if ( ShortType === 'n' ) { return String( Value ); }
 		if ( ShortType === 'b' ) { return Value ? 'true' : 'false'; }
 		if ( ShortType === 'd' ) { return Value.toISOString(); }
+
+		// ***An array or a document is rendered as JSON, which the parity baseline refuses.***
+		//
+		// MongoDB 6.0 and 7.0 both refuse this conversion and 8.3 performs it, so jsongin is
+		// ahead of its own baseline here rather than behind it. Kept deliberately: it is a
+		// useful thing for an engine which lives in Javascript to be able to do, and a caller
+		// who writes it is writing something a 7.0 server would refuse.
+		//
+		// ***So do not assert this in the parity suite.*** It is pinned in the unit tests and
+		// described in docs/guides/MongoDB-Versions.md. Measured against MongoDB 8.3.8 on
+		// 2026-09-20: a date inside a container renders as its ISO string, a dotted key is
+		// kept as written, and an empty array or document renders as [] or {}.
+		if ( ( ShortType === 'a' ) || ( ShortType === 'o' ) )
+		{
+			return JSON.stringify( Value );
+		}
+
 		throw new Error( `${OperatorName}: cannot convert a [${ShortType}] value to a string.` );
 	};
 

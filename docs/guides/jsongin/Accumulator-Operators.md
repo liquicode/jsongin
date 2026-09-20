@@ -36,6 +36,8 @@ Each accumulator takes an expression, which is evaluated for every document in t
 | [`$bottom`](#$bottom)       | The `output` of the last document, sorted by `sortBy`.                           |
 | [`$topN`](#$topN)           | The `output` of the first `n` documents, sorted by `sortBy`.                     |
 | [`$bottomN`](#$bottomN)     | The `output` of the last `n` documents, sorted by `sortBy`.                      |
+| [`$median`](#$median)       | The middle value, picked by rank rather than averaged.                           |
+| [`$percentile`](#$percentile) | One value for each percentile asked for, picked by rank.                       |
 
 ***`$sum`, `$avg` and the standard deviations skip values which are not numbers.***
 This is different from expression operators like `$add`, which throw.
@@ -425,6 +427,52 @@ Sorts the group's documents by `sortBy`, and gives an array of `output` for the 
 jsongin.Aggregate( players, [ { $group: { _id: '$team', worst: { $bottomN: { n: 1, sortBy: { points: -1 }, output: '$name' } } } } ] );
 // returns [ { _id: 'red', worst: [ 'Bob' ] }, { _id: 'blue', worst: [ 'Carol' ] } ]
 ```
+
+
+<a id="$median"></a>$median
+---------------------------------------------------------------------
+
+**Usage** : `{ field: { $median: { input: expression, method: 'approximate' } } }`
+
+The middle value of the numbers in the group.
+
+***This is [`$percentile`](#$percentile) at `p` 0.5.*** The answer is one of the values rather
+than an average of two, so an even count gives the lower of the middle pair.
+
+`method` is required and `'approximate'` is the only value it takes. Any other field in the
+argument is refused, including `p`.
+
+### Example
+```js
+jsongin.Aggregate( players, [ { $group: { _id: '$team', middle: { $median: { input: '$points', method: 'approximate' } } } } ] );
+// returns [ { _id: 'red', middle: 3 }, { _id: 'blue', middle: 9 } ]
+```
+
+
+<a id="$percentile"></a>$percentile
+---------------------------------------------------------------------
+
+**Usage** : `{ field: { $percentile: { input: expression, p: [ number, ... ], method: 'approximate' } } }`
+
+One value for each `p`, in the order the `p` values were asked for.
+
+***A percentile picks a value by rank and never interpolates.*** For the group's values sorted
+smallest to largest, `p` chooses the one at `ceil( p * count ) - 1`, counting from zero.
+
+`p` is a list of numbers from 0.0 through 1.0, written out rather than read from a field.
+`method` is required and `'approximate'` is the only value it takes.
+
+A value which cannot be ranked is left out, which includes `NaN` as well as the values every
+accumulator here skips. An infinity is kept and sorts to its end.
+
+### Example
+```js
+jsongin.Aggregate( players, [ { $group: { _id: null, spread: { $percentile: { input: '$points', p: [ 0, 0.5, 1 ], method: 'approximate' } } } } ] );
+// returns [ { _id: null, spread: [ 3, 7, 9 ] } ]
+```
+
+***At `p` 1.0 a MongoDB server answers wrongly when the largest value is not positive.*** jsongin
+answers the largest value. See [MongoDB Versions](../MongoDB-Versions.md).
 
 
 ## See Also

@@ -53,7 +53,7 @@ module.exports = function ( jsongin )
 				{
 					// A non numeric key against an array.
 					// MongoDB's $unset does nothing here and reports a successful update with
-					// modifiedCount 0. Verified against MongoDB 6.0.1. Returning false is what
+					// modifiedCount 0. Verified against MongoDB 7.0.40. Returning false is what
 					// produces that: $unset treats it as a no-op rather than a failure.
 					// Reaching through an array on the write side requires the all positional
 					// operator, 'a.$[].x'.
@@ -65,7 +65,7 @@ module.exports = function ( jsongin )
 				{
 					// A numeric key indexes the array. A negative index addresses nothing:
 					// MongoDB reads '-1' as a field name, and an array has no such field, so
-					// $unset of 'a.-1' is a no-op. Verified against MongoDB 6.0.1.
+					// $unset of 'a.-1' is a no-op. Verified against MongoDB 7.0.40.
 					if ( ( key < 0 ) || ( key >= node.length ) )
 					{
 						if ( jsongin.OpLog ) { jsongin.OpLog( `DeleteValue: The index [${path_elements[ path_index ]}] of the path [${Path}] is out of range.` ); }

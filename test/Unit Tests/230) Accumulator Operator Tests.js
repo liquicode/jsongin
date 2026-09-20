@@ -348,4 +348,77 @@ describe( '230) Accumulator Operator Tests', () =>
 	} );
 
 
+
+	//---------------------------------------------------------------------
+	describe( '$percentile and $median Tests', () =>
+	{
+
+		//---------------------------------------------------------------------
+		// Builds a group from a list of values.
+		function group_of( Values )
+		{
+			let documents = [];
+			for ( let index = 0; index < Values.length; index++ )
+			{
+				documents.push( { n: Values[ index ] } );
+			}
+			return documents;
+		}
+
+
+		//---------------------------------------------------------------------
+		// ***What follows is the one place jsongin departs from the parity baseline on
+		// purpose, so it is asserted here rather than in the parity suite.***
+		//
+		// At p 1.0, where the largest value is not positive, MongoDB answers
+		// 2.2250738585072014e-308 - the smallest positive normal double - instead of the
+		// maximum. Measured identically on MongoDB 7.0.40 and 8.3.8 on 2026-09-20 by
+		// jsonx/.plans/tools/percentile-rank-probe.js, so it is a defect of long standing
+		// rather than a difference between versions, and jsongin does not reproduce it.
+		//
+		// A parity suite cannot hold a case the two engines answer differently, which is why
+		// these live here. The guides carry the same table for a reader.
+
+		it( 'should answer the maximum at p 1.0 when every value is negative', () =>
+		{
+			assert.deepStrictEqual(
+				accumulate( '$percentile', group_of( [ -30, -20, -10 ] ),
+					{ input: '$n', p: [ 1 ], method: 'approximate' } ), [ -10 ] );
+		} );
+
+		it( 'should answer the maximum at p 1.0 when the largest value is zero', () =>
+		{
+			assert.deepStrictEqual(
+				accumulate( '$percentile', group_of( [ -30, -20, 0 ] ),
+					{ input: '$n', p: [ 1 ], method: 'approximate' } ), [ 0 ] );
+		} );
+
+		it( 'should answer the value itself at p 1.0 for a single negative value', () =>
+		{
+			assert.deepStrictEqual(
+				accumulate( '$percentile', group_of( [ -7 ] ),
+					{ input: '$n', p: [ 1 ], method: 'approximate' } ), [ -7 ] );
+		} );
+
+		it( 'should agree with the baseline at p 1.0 when the largest value is positive', () =>
+		{
+			// The other side of the same case, where MongoDB is right and the two agree. Kept
+			// beside the three above so that a reader can see where the line falls.
+			assert.deepStrictEqual(
+				accumulate( '$percentile', group_of( [ -30, -20, 10 ] ),
+					{ input: '$n', p: [ 1 ], method: 'approximate' } ), [ 10 ] );
+		} );
+
+		it( 'should read $median of negative values as the middle one', () =>
+		{
+			// $median is p 0.5 and never reaches the defect, which is worth pinning so that a
+			// later change to the shared code cannot quietly move it.
+			assert.strictEqual(
+				accumulate( '$median', group_of( [ -30, -20, -10 ] ),
+					{ input: '$n', method: 'approximate' } ), -20 );
+		} );
+
+	} );
+
+
 } );

@@ -118,14 +118,19 @@ The expression language is the same wherever it turns up: inside an `$expr` in a
 Paths use MongoDB's dot notation everywhere, such as `'user.name'`, with no extensions of
   `jsongin`'s own.
 
-Every one of these families is MongoDB's, and `jsongin` implements 86.6% of them:
-  220 of the 254 operators MongoDB documents.
+Every one of these families is MongoDB's, and `jsongin` implements 88.8% of them:
+  231 of the 260 operators MongoDB documents.
 
 ***What is implemented is measured rather than asserted.***
-Each implemented behavior is compared against a running MongoDB server, and the suite reports
-  100% agreement across 1054 compared behaviors.
+Each implemented behavior is compared against a running ***MongoDB 7.0*** server, and the suite
+  reports 100% agreement across 1102 compared behaviors.
 Run `npm run parity-report` for that number and `npm run api-coverage` for the surface numbers
   above.
+
+The version is part of the claim. MongoDB changes its own behavior between releases, and the
+  test run refuses to measure against anything but 7.0 so the number cannot go stale quietly.
+  jsongin departs from that baseline in three places, each of them deliberate and each written
+  down in [MongoDB Versions](/docs/guides/MongoDB-Versions.md).
 
 The sections below introduce each of the main functions.
 See the [Operator Reference](/docs/guides/Operator-Reference.md) for the full list of supported
@@ -222,6 +227,39 @@ let pairs = jsongin.Distinct( players, { team: 1, alive: 1 } );
 ```
 
 See [Distinct](/docs/guides/jsongin/Distinct.md).
+
+
+### Join( Documents, JoinDocuments, JoinCriteria, JoinType, JoinName )
+
+Matches two sets of documents against each other, gathering what each one matched.
+The criteria is matched against each join document, with the document being joined from lent
+  as `$$Left`.
+
+```js
+let bookings = [ { Id: 1, Dome: 'A' }, { Id: 2, Dome: 'C' } ];
+let nights = [ { DomeId: 'A', Night: 'clear' }, { DomeId: 'A', Night: 'rain' } ];
+
+jsongin.Join( bookings, nights, { $expr: { $eq: [ '$DomeId', '$$Left.Dome' ] } }, 'Left', 'Nights' );
+// returns one document per booking, each holding the nights it matched
+
+// Left, Inner, Right and Outer, and without a name the matches are merged in.
+jsongin.Join( bookings, nights, { $expr: { $eq: [ '$DomeId', '$$Left.Dome' ] } }, 'Inner' );
+```
+
+See [Join](/docs/guides/jsongin/Join.md).
+
+
+### Union( Documents, UnionDocuments )
+
+Returns one set of documents after another.
+A concatenation rather than a set union: nothing is de-duplicated, and nothing is copied.
+
+```js
+jsongin.Union( [ { Id: 1 } ], [ { Id: 2 }, { Id: 3 } ] );
+// returns [ { Id: 1 }, { Id: 2 }, { Id: 3 } ]
+```
+
+See [Union](/docs/guides/jsongin/Union.md).
 
 
 ### Project( Document, Projection )
@@ -450,10 +488,14 @@ Features
 ---------------------------------------------------------------------
 
 - MongoDB Compatibility:
-	- 100% parity across 1054 compared behaviors, each one measured against a running MongoDB server.
-	- 86.6% of the documented operator surface: 220 of 254 operators.
+	- 100% parity with MongoDB 7.0 across 1102 compared behaviors, each one measured against a running server.*
+	- 88.8% of the documented operator surface: 231 of 260 operators.
 	- MongoDB's own path syntax, value ordering, and type rules, rather than an approximation of them.
 	- Measure both numbers yourself with `npm run parity-report` and `npm run api-coverage`.
+
+*Three behaviors depart from the 7.0 baseline on purpose: two which a 7.0 server refuses and
+jsongin performs, and one where jsongin is right and the server is wrong. See
+[MongoDB Versions](/docs/guides/MongoDB-Versions.md).
 
 - Object Based Queries:
 	- Compose queries in a structured and logical manner.
@@ -471,7 +513,7 @@ Features
 - Developer Features:
 	- No external dependencies. None. Zero.
 	- 100% pure javascript, on the server and in the browser.
-	- Single minified file (~267k, ~58k compressed) for web deployment.
+	- Single minified file (~283k, ~62k compressed) for web deployment.
 	- Use the `OpLog` feature to help understand and debug queries.
 	- Extend `jsongin` with operators of your own; no registry is private.
 	  See [Operator Authoring](/docs/guides/Operator-Authoring.md).

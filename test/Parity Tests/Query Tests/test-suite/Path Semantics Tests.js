@@ -10,7 +10,7 @@ const assert = require( 'assert' );
 	These are the cases where getting it wrong is invisible, because both readings produce a
 	plausible answer.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )

@@ -11,7 +11,7 @@ const assert = require( 'assert' );
 	$bit is the last of the update operators MongoDB documents which jsongin has not built,
 	apart from the five which need something the single-document model does not have.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )

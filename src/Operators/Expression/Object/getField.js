@@ -58,7 +58,7 @@ module.exports = function ( jsongin )
 				{
 					// ***The shorthand reads the field from $$CURRENT.*** Only this form
 					// defaults; the object form with no `input` is refused rather than
-					// meaning the same thing, which is what MongoDB 6.0.1 does.
+					// meaning the same thing, which is what MongoDB 7.0.40 does.
 					jsongin.Scope.Require( Scope, '$getField' );
 					read = {
 						Name: object.ReadFieldName( Args, '$getField' ),
@@ -67,7 +67,9 @@ module.exports = function ( jsongin )
 				}
 				else
 				{
-					read = object.ReadArgs( Document, Args, '$getField', [ 'field', 'input' ], Scope );
+					// ***The true is the one thing which makes this operator different.***
+					// $getField takes a computed name, where $setField and $unsetField do not.
+					read = object.ReadArgs( Document, Args, '$getField', [ 'field', 'input' ], true, Scope );
 				}
 
 				let short_type = jsongin.ShortType( read.Input );

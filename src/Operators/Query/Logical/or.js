@@ -38,7 +38,7 @@ module.exports = function ( jsongin )
 				}
 
 				// An empty array asks nothing. MongoDB refuses it rather than treating it as a
-				// condition nothing satisfies. Verified against MongoDB 6.0.1.
+				// condition nothing satisfies. Verified against MongoDB 7.0.40.
 				if ( MatchValue.length === 0 )
 				{
 					throw new Error( `$or: requires a non-empty array of criteria at [${Path}].` );

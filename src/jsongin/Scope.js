@@ -165,7 +165,7 @@ module.exports = function ( jsongin )
 	// as one character class applied to the whole name. An underscore is refused first and
 	// accepted after that, which is the distinction a single rule would quietly lose.
 	// Non-ASCII characters are allowed anywhere, including first, which is what MongoDB
-	// documents. Verified against MongoDB 6.0.1.
+	// documents. Verified against MongoDB 7.0.40.
 	function RequireName( Name, OperatorName )
 	{
 		if ( jsongin.ShortType( Name ) !== 's' )

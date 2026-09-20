@@ -110,8 +110,25 @@ function NewJsongin( EngineSettings = {} )
 		$divide: require( './Operators/Expression/Arithmetic/divide' )( Engine ),
 		$mod: require( './Operators/Expression/Arithmetic/mod' )( Engine ),
 		$abs: require( './Operators/Expression/Arithmetic/abs' )( Engine ),
-		$min: require( './Operators/Expression/Arithmetic/min' )( Engine ),
-		$max: require( './Operators/Expression/Arithmetic/max' )( Engine ),
+		// ***The accumulators which are also expressions.***
+		//
+		// MongoDB lets six of the accumulators be written in a $project as well as in a
+		// $group, reading their values from one operand instead of from every document in a
+		// group. All six live together in Operators/Expression/Accumulator - $min and $max
+		// were moved there from Arithmetic, where they had arrived first and sat apart from
+		// the family they belong to.
+		//
+		// The arithmetic itself is shared with the accumulator form rather than written twice,
+		// and so is the way an operand becomes a list of values. See
+		// Operators/Expression/Accumulator/_expression-values.js.
+		$min: require( './Operators/Expression/Accumulator/min' )( Engine ),
+		$max: require( './Operators/Expression/Accumulator/max' )( Engine ),
+		$sum: require( './Operators/Expression/Accumulator/sum' )( Engine ),
+		$avg: require( './Operators/Expression/Accumulator/avg' )( Engine ),
+		$stdDevPop: require( './Operators/Expression/Accumulator/stdDevPop' )( Engine ),
+		$stdDevSamp: require( './Operators/Expression/Accumulator/stdDevSamp' )( Engine ),
+		$median: require( './Operators/Expression/Accumulator/median' )( Engine ),
+		$percentile: require( './Operators/Expression/Accumulator/percentile' )( Engine ),
 		$ceil: require( './Operators/Expression/Arithmetic/ceil' )( Engine ),
 		$floor: require( './Operators/Expression/Arithmetic/floor' )( Engine ),
 		$round: require( './Operators/Expression/Arithmetic/round' )( Engine ),
@@ -343,6 +360,11 @@ function NewJsongin( EngineSettings = {} )
 		$last: require( './Operators/Accumulator/last' )( Engine ),
 		$stdDevPop: require( './Operators/Accumulator/stdDevPop' )( Engine ),
 		$stdDevSamp: require( './Operators/Accumulator/stdDevSamp' )( Engine ),
+
+		// ***The two which arrived with MongoDB 7.0***, which is the parity baseline. Both are
+		// also expression operators; see the note beside the expression table above.
+		$median: require( './Operators/Accumulator/median' )( Engine ),
+		$percentile: require( './Operators/Accumulator/percentile' )( Engine ),
 		$mergeObjects: require( './Operators/Accumulator/mergeObjects' )( Engine ),
 		$firstN: require( './Operators/Accumulator/firstN' )( Engine ),
 		$lastN: require( './Operators/Accumulator/lastN' )( Engine ),

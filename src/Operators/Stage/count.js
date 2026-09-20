@@ -39,7 +39,7 @@ module.exports = function ( jsongin )
 				if ( Args.includes( '.' ) ) { throw new Error( `$count field name [${Args}] cannot contain a '.'.` ); }
 
 				// An empty stream counts nothing, and says so by emitting nothing. Verified
-				// against MongoDB 6.0.1, where a $count after a $match which selected no
+				// against MongoDB 7.0.40, where a $count after a $match which selected no
 				// documents returns no documents rather than a zero.
 				if ( Documents.length === 0 ) { return []; }
 

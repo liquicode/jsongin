@@ -14,7 +14,7 @@ const assert = require( 'assert' );
 	when the array is empty, when an element cannot hold the field being written, and whether
 	`$[]` can stand at the end of a path as well as in the middle.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )

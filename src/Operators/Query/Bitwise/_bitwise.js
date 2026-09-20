@@ -10,7 +10,7 @@
 	bit. BigInt also gets a negative value right, because it treats one as two's complement
 	extending indefinitely - which is what makes { v: -20 } match bit position 40.
 
-	Verified against MongoDB 6.0.1. See
+	Verified against MongoDB 7.0.40. See
 	test/Parity Tests/Query Tests/test-suite/Bitwise Query Operator Tests.js.
 */
 

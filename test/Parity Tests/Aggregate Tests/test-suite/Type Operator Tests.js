@@ -22,7 +22,7 @@ const assert = require( 'assert' );
 	zone-less time as local and accepts a bare year. MongoDB disagrees with every one of those,
 	so the tests below pin each down.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )
@@ -278,8 +278,10 @@ module.exports = function ( Driver )
 
 			it( 'should refuse a value which has no reading at all', async () =>
 			{
-				assert.strictEqual( await refused( { $toString: '$list' } ), true );
-				assert.strictEqual( await refused( { $toString: '$obj' } ), true );
+				// ***$toString on an array or a document is not asserted here.*** The baseline
+				// refuses both and jsongin renders them as JSON, which is deliberate - see
+				// docs/guides/MongoDB-Versions.md. A parity case cannot hold a behavior the two
+				// engines answer differently on purpose, so that one is pinned in the unit tests.
 				assert.strictEqual( await refused( { $toInt: '$list' } ), true );
 				assert.strictEqual( await refused( { $toDate: '$list' } ), true );
 				// ***$toBool refuses nothing.*** An array and an object are both true, which

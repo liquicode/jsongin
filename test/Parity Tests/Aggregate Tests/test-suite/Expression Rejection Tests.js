@@ -20,7 +20,7 @@ const assert = require( 'assert' );
 	object. Declaring the count never made an engine refuse anything. Measuring the refusal
 	does.
 
-	Verified against MongoDB 6.0.1, where all 41 assertions below were run against the live
+	Verified against MongoDB 7.0.40, where all 41 assertions below were run against the live
 	server before being written down.
 */
 

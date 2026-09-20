@@ -363,7 +363,7 @@ describe( '150) Error Handling Tests', () =>
 		{
 			let reported = sweep( 'AccumulatorOperators', 'Accumulator.',
 				function ( Engine, Name ) { Engine.AccumulatorOperators[ Name ].Accumulate( 'abc', '$n', Engine.Scope.NewPipeline() ); } );
-			assert.strictEqual( reported, 20 );
+			assert.strictEqual( reported, 22 );
 		} );
 
 		it( 'should report from every stage which rejects its argument', () =>
@@ -413,13 +413,15 @@ describe( '150) Error Handling Tests', () =>
 			if ( [ '$firstN', '$lastN', '$minN', '$maxN' ].includes( Name ) ) { return { input: '$n', n: 1 }; }
 			if ( [ '$top', '$bottom' ].includes( Name ) ) { return { sortBy: { n: 1 }, output: '$n' }; }
 			if ( [ '$topN', '$bottomN' ].includes( Name ) ) { return { n: 1, sortBy: { n: 1 }, output: '$n' }; }
+			if ( Name === '$median' ) { return { input: '$n', method: 'approximate' }; }
+			if ( Name === '$percentile' ) { return { input: '$n', p: [ 0.5 ], method: 'approximate' }; }
 			return '$n';
 		}
 
 		it( 'should reject a non-array Documents to every accumulator', () =>
 		{
 			let names = Object.keys( jsongin.AccumulatorOperators );
-			assert.strictEqual( names.length, 20 );
+			assert.strictEqual( names.length, 22 );
 			for ( let index = 0; index < names.length; index++ )
 			{
 				assert.throws(

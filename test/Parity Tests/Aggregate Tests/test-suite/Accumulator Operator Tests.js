@@ -11,7 +11,7 @@ const assert = require( 'assert' );
 		$mergeObjects                  reduces a group of documents to one document
 		$firstN, $lastN, $minN, $maxN  take several values rather than one
 		$top, $bottom, $topN, $bottomN take values by a sort of their own
-		$median, $percentile           MongoDB 7.0, so not measurable against the baseline
+		$median, $percentile           select a value by rank, and are the baseline's own arrivals
 
 	***The N accumulators and the top/bottom accumulators answer different questions***, and
 	the difference is worth stating because the names suggest otherwise. $minN takes the
@@ -24,7 +24,7 @@ const assert = require( 'assert' );
 	in the order it arrived, so they depend on a $sort earlier in the pipeline; $top and
 	$bottom carry their own sortBy and do not. Both are exercised here.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )
@@ -308,20 +308,147 @@ module.exports = function ( Driver )
 		describe( 'The 7.0 Accumulators ($median, $percentile)', () =>
 		{
 
-			// These were introduced in MongoDB 7.0 and the parity baseline is 6.0.1, so what
-			// is recorded here is that the baseline does not have them. If the baseline server
-			// is ever upgraded, these two assertions are the ones to replace with real ones.
+			// ***These two arrived with MongoDB 7.0, which is the parity baseline.*** Every
+			// rule below was measured before it was written down, across seven group sizes and
+			// thirteen p values, by jsonx/.plans/tools/percentile-rank-probe.js.
+			//
+			// ***One behavior is deliberately not asserted here.*** At p 1.0, where the largest
+			// value is not positive, MongoDB answers 2.2250738585072014e-308 rather than the
+			// maximum - identically on 7.0.40 and 8.3.8, so a defect of long standing rather
+			// than a version difference. jsongin answers the maximum. A parity suite cannot
+			// hold a case the two engines answer differently on purpose, so that one is pinned
+			// in the unit tests and described in the guides.
 
-			it( 'should not be available on the baseline server', async () =>
+			it( 'should select a value by rank rather than interpolating', async () =>
+			{
+				// Values ten apart, so an interpolated answer could not be mistaken for one of
+				// the inputs. The rule is index = ceil( p * count ) - 1, counting from zero.
+				assert.deepStrictEqual(
+					await accumulated_over( [ 10, 20, 30, 40 ],
+						{ $percentile: { input: '$n', p: [ 0.25 ], method: 'approximate' } } ), [ 10 ] );
+				assert.deepStrictEqual(
+					await accumulated_over( [ 10, 20, 30, 40 ],
+						{ $percentile: { input: '$n', p: [ 0.3 ], method: 'approximate' } } ), [ 20 ] );
+				assert.deepStrictEqual(
+					await accumulated_over( [ 10, 20, 30, 40 ],
+						{ $percentile: { input: '$n', p: [ 0.6 ], method: 'approximate' } } ), [ 30 ] );
+				assert.deepStrictEqual(
+					await accumulated_over( [ 10, 20, 30, 40 ],
+						{ $percentile: { input: '$n', p: [ 0.8 ], method: 'approximate' } } ), [ 40 ] );
+			} );
+
+			it( 'should answer the ends at p 0 and p 1', async () =>
+			{
+				assert.deepStrictEqual(
+					await accumulated_over( [ 10, 20, 30 ],
+						{ $percentile: { input: '$n', p: [ 0, 1 ], method: 'approximate' } } ), [ 10, 30 ] );
+			} );
+
+			it( 'should answer one value per p, in the order they were asked for', async () =>
+			{
+				assert.deepStrictEqual(
+					await accumulated_over( [ 10, 20, 30, 40 ],
+						{ $percentile: { input: '$n', p: [ 0.75, 0.25 ], method: 'approximate' } } ), [ 30, 10 ] );
+				// A repeated p is answered twice rather than collapsed.
+				assert.deepStrictEqual(
+					await accumulated_over( [ 10, 20, 30, 40 ],
+						{ $percentile: { input: '$n', p: [ 0.5, 0.5 ], method: 'approximate' } } ), [ 20, 20 ] );
+			} );
+
+			it( 'should read $median as p 0.5, answering a value rather than an array', async () =>
 			{
 				assert.strictEqual(
-					await refused( { $median: { input: '$n', method: 'approximate' } } ), true );
+					await accumulated_over( [ 10, 20, 30 ],
+						{ $median: { input: '$n', method: 'approximate' } } ), 20 );
+				// ***An even count answers the lower of the two middle values***, which falls
+				// out of selecting by rank rather than averaging the pair.
 				assert.strictEqual(
-					await refused( { $percentile: { input: '$n', p: [ 0.5 ], method: 'approximate' } } ), true );
+					await accumulated_over( [ 10, 20, 30, 40 ],
+						{ $median: { input: '$n', method: 'approximate' } } ), 20 );
+			} );
+
+			it( 'should ignore what it cannot rank', async () =>
+			{
+				// A string, a null and a missing field are left out, the same rule $sum and
+				// $avg follow. Three numbers remain, so p 0.5 is the second of them.
+				assert.deepStrictEqual(
+					await accumulated_over( [ 10, 'x', 20, 30 ],
+						{ $percentile: { input: '$n', p: [ 0.5 ], method: 'approximate' } } ), [ 20 ] );
+				assert.deepStrictEqual(
+					await accumulated_over( [ 10, null, 20, 30 ],
+						{ $percentile: { input: '$n', p: [ 0.5 ], method: 'approximate' } } ), [ 20 ] );
+				// ***A NaN is left out as well***, where $sum and $avg keep it: a value which
+				// compares false against everything cannot be put in rank order.
+				assert.deepStrictEqual(
+					await accumulated_over( [ 10, NaN, 20, 30 ],
+						{ $percentile: { input: '$n', p: [ 0, 0.5, 1 ], method: 'approximate' } } ), [ 10, 20, 30 ] );
+			} );
+
+			it( 'should keep an infinity, which sorts to its end', async () =>
+			{
+				assert.deepStrictEqual(
+					await accumulated_over( [ 10, Infinity, 20, 30 ],
+						{ $percentile: { input: '$n', p: [ 1 ], method: 'approximate' } } ), [ Infinity ] );
+				assert.deepStrictEqual(
+					await accumulated_over( [ 10, -Infinity, 20, 30 ],
+						{ $percentile: { input: '$n', p: [ 0 ], method: 'approximate' } } ), [ -Infinity ] );
+			} );
+
+			it( 'should answer null when nothing in the group is numeric', async () =>
+			{
+				assert.deepStrictEqual(
+					await accumulated_over( [ 'a', 'b' ],
+						{ $percentile: { input: '$n', p: [ 0.5 ], method: 'approximate' } } ), [ null ] );
+				assert.strictEqual(
+					await accumulated_over( [ 'a', 'b' ],
+						{ $median: { input: '$n', method: 'approximate' } } ), null );
+			} );
+
+			it( 'should require input and method, and take only approximate', async () =>
+			{
+				assert.strictEqual( await refused( { $median: { method: 'approximate' } } ), true );
+				assert.strictEqual( await refused( { $median: { input: '$n' } } ), true );
+				assert.strictEqual( await refused( { $median: { input: '$n', method: 'exact' } } ), true );
+				// ***The comparison is case sensitive.***
+				assert.strictEqual( await refused( { $median: { input: '$n', method: 'Approximate' } } ), true );
+			} );
+
+			it( 'should refuse a field the argument document does not have', async () =>
+			{
+				// Stricter than most of the surface: a misspelled option is an error here
+				// rather than something quietly ignored.
+				assert.strictEqual(
+					await refused( { $median: { input: '$n', method: 'approximate', extra: 1 } } ), true );
+			} );
+
+			it( 'should refuse an argument which is not a document', async () =>
+			{
+				assert.strictEqual( await refused( { $median: [ 1, 2, 3 ] } ), true );
+				assert.strictEqual( await refused( { $median: '$n' } ), true );
+			} );
+
+			it( 'should require p of $percentile, and only as constants within 0 and 1', async () =>
+			{
+				assert.strictEqual(
+					await refused( { $percentile: { input: '$n', method: 'approximate' } } ), true );
+				assert.strictEqual(
+					await refused( { $percentile: { input: '$n', p: [ 1.5 ], method: 'approximate' } } ), true );
+				assert.strictEqual(
+					await refused( { $percentile: { input: '$n', p: 0.5, method: 'approximate' } } ), true );
+				assert.strictEqual(
+					await refused( { $percentile: { input: '$n', p: [], method: 'approximate' } } ), true );
+				// ***A field path cannot supply p***, though a $literal holding the array can.
+				assert.strictEqual(
+					await refused( { $percentile: { input: '$n', p: '$n', method: 'approximate' } } ), true );
+			} );
+
+			it( 'should never give $median a p', async () =>
+			{
+				assert.strictEqual(
+					await refused( { $median: { input: '$n', p: [ 0.5 ], method: 'approximate' } } ), true );
 			} );
 
 		} );
-
 	} );
 
 };

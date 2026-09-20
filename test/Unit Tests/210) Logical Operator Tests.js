@@ -18,7 +18,7 @@ describe( '210) Logical Operator Tests', () =>
 		{
 			// This used to default to true, which is a condition every document satisfies.
 			// MongoDB refuses it instead, and a query which cannot mean anything is refused
-			// rather than answered. Verified against MongoDB 6.0.1.
+			// rather than answered. Verified against MongoDB 7.0.40.
 			assert.throws(
 				function () { jsongin.QueryOperators.$and.Query( { a: 1 }, [] ); },
 				/non-empty array/ );

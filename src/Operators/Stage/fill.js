@@ -23,8 +23,9 @@ The three ways to fill a field:
 
 `sortBy` gives the order the methods work along. Without one they use the order the documents
   reached the stage in. `partitionBy` or `partitionByFields` splits the documents into separate
-  series, so nothing carries from one to the next; `partitionBy` takes a document rather than a
-  path, so a bare `'$k'` is refused and `{ k: '$k' }` is the way to write it.
+  series, so nothing carries from one to the next; `partitionBy` takes a document such as
+  `{ k: '$k' }`, or a field path such as `'$k'`, which partition the same way. A MongoDB 6.0
+  server refuses the field path and the 7.0 baseline accepts it.
 
 ***`linear` needs a number on both sides.*** A document before the first known value or after
   the last is left alone, since there is nothing to interpolate between.

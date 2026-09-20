@@ -37,7 +37,7 @@ module.exports = function ( jsongin )
 
 				// MongoDB refuses an empty specification here, which is the opposite of the
 				// Project() rule: Project( Document, {} ) returns the whole document.
-				// Verified against MongoDB 6.0.1. The stage states this itself because
+				// Verified against MongoDB 7.0.40. The stage states this itself because
 				// Project() cannot tell which of its callers it is serving.
 				if ( Object.keys( Args ).length === 0 ) { throw new Error( `$project requires at least one field.` ); }
 

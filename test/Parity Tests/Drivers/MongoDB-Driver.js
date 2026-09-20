@@ -25,8 +25,33 @@ module.exports = function ()
 	// fix and the way the driver is meant to be used.
 	let shared_client = null;
 
+	//---------------------------------------------------------------------
+	// ***The parity baseline is a version, and the run reads it rather than saying it.***
+	//
+	// These suites assert what one MongoDB version does. The version used to live only in a
+	// comment at the top of each suite file, while `JSONGIN_MONGODB_URL` would aim a run at
+	// any server on the fleet and nothing recorded which one answered - so a green run against
+	// the wrong version was indistinguishable from a green run against the right one. That is
+	// how the baseline came to name a version nobody had any more.
+	//
+	// ***A deliberate run against another version is still possible***, which is how the drift
+	// between versions gets measured at all:
+	//
+	//		JSONGIN_MONGODB_ANY_VERSION=true JSONGIN_MONGODB_URL=mongodb://cube4:27019 npm run parity-test-mongodb
+	//
+	// It says what it is doing and carries on, because there the failures are the measurement.
+	const PARITY_BASELINE_VERSION = '7.0';
+
+
+	// ***A refused version is remembered.*** The client is assigned only on success, so without
+	// this every later call would reconnect, re-read buildInfo and refuse again - one failure
+	// and one printed line per suite, which buries the one sentence that matters.
+	let version_refusal = null;
+
+
 	async function Client( Settings )
 	{
+		if ( version_refusal !== null ) { throw version_refusal; }
 		if ( shared_client !== null ) { return shared_client; }
 
 		// Assigned only after the connection succeeds, so a failed attempt leaves nothing
@@ -38,6 +63,33 @@ module.exports = function ()
 			}
 		);
 		if ( !client ) { throw new Error( `Unable to establish a connection to the mongodb database server.` ); }
+
+		// ***What answered, said out loud.*** A run now states its server and its version, so
+		// the thing every assertion depends upon is in the log rather than in a comment.
+		//
+		// ***Written to stderr rather than stdout.*** build/parity.js runs these suites under
+		// mocha's JSON reporter and parses stdout as one document, so a line of ours on stdout
+		// is a parse error rather than a note. A terminal shows both streams alike.
+		let build_info = await client.db( 'admin' ).command( { buildInfo: 1 } );
+		let server_version = build_info.version;
+		console.error( `      MongoDB ${server_version} at ${Settings.connection_string}` );
+
+		let is_baseline = server_version.startsWith( PARITY_BASELINE_VERSION + '.' );
+		let any_version = process.env.JSONGIN_MONGODB_ANY_VERSION;
+		let override_given = ( typeof any_version === 'string' ) && ( any_version !== '' );
+
+		if ( !is_baseline && !override_given )
+		{
+			// Closed before throwing, so a refused run leaves no connection behind.
+			await client.close();
+			version_refusal = new Error( `The parity baseline is MongoDB ${PARITY_BASELINE_VERSION} and this server is ${server_version}.`
+				+ ` Set JSONGIN_MONGODB_ANY_VERSION to measure another version deliberately.` );
+			throw version_refusal;
+		}
+		if ( !is_baseline )
+		{
+			console.error( `      Not the ${PARITY_BASELINE_VERSION} baseline. Running anyway, because JSONGIN_MONGODB_ANY_VERSION is set.` );
+		}
 
 		shared_client = client;
 		return shared_client;
@@ -103,7 +155,10 @@ module.exports = function ()
 						async function ( Collection )
 						{
 							await Collection.deleteMany( {} );
-							await Collection.insertMany( Data );
+							// ***An empty set empties the collection and writes nothing.***
+							// insertMany refuses an empty batch, so without this a suite
+							// cannot say "no documents" the way SetJoinData already lets it.
+							if ( Data.length > 0 ) { await Collection.insertMany( Data ); }
 							return true;
 						} );
 					return result;

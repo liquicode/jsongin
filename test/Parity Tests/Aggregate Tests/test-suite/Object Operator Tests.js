@@ -25,7 +25,7 @@ const assert = require( 'assert' );
 	suite can only hold what an operator will one day satisfy; jsongin's refusal of the
 	shorthand is a unit test instead. See .reviews/2026-08-19/review.md, Bucket C.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )
@@ -299,18 +299,25 @@ module.exports = function ( Driver )
 					await projected( { $getField: { field: 'a', input: '$text' } } ), {} );
 			} );
 
-			it( 'should take the field name from a constant only', async () =>
+			it( 'should take the field name from a constant', async () =>
 			{
-				// ***The name has to be known before the pipeline runs.*** A $literal is a
-				// constant and is accepted - it is how a name beginning with a '$' is written,
-				// since a bare '$a' would be read as a field path. A computed expression is
-				// refused however simple it is, even one whose operands are all constants.
+				// ***A $literal is how a name beginning with a dollar sign is written***, since
+				// a bare '$a' would be read as a field path instead.
 				assert.strictEqual(
 					await evaluated( { $getField: { field: { $literal: 'a' }, input: '$doc' } } ), 1 );
+
+				// ***$setField and $unsetField require a constant name on every version***, and
+				// refuse a computed one however simple it is - even one whose operands are all
+				// constants. Measured on 7.0.40 and 8.3.8 on 2026-09-20.
 				assert.strictEqual(
-					await refused( { $getField: { field: { $concat: [ 'a' ] }, input: '$doc' } } ), true );
+					await refused( { $setField: { field: { $concat: [ 'a' ] }, input: '$doc', value: 9 } } ), true );
 				assert.strictEqual(
-					await refused( { $getField: { field: '$text', input: '$doc' } } ), true );
+					await refused( { $unsetField: { field: { $concat: [ 'a' ] }, input: '$doc' } } ), true );
+
+				// ***$getField is the exception, and is not asserted here.*** The baseline
+				// refuses a computed name there and jsongin accepts one, deliberately - see
+				// docs/guides/MongoDB-Versions.md. A parity case cannot hold a behavior the two
+				// engines answer differently on purpose, so that one is in the unit tests.
 			} );
 
 			it( 'should refuse a field name which is not a string', async () =>

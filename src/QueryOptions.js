@@ -19,7 +19,7 @@
 	***`$elemMatch` narrows, and is the only thing which does.*** It applies its criteria to an
 	element, where an element which is itself an array is a value rather than a container, so it
 	passes `ExpandArrays: false` to the operators it applies there whatever it was given. It
-	narrows and never widens. Verified against MongoDB 6.0.1: `{ a: { $elemMatch: { x: 1 } } }`
+	narrows and never widens. Verified against MongoDB 7.0.40: `{ a: { $elemMatch: { x: 1 } } }`
 	does not match `{ a: [ [ { x: 1 } ] ] }`.
 
 	***A boolean is still accepted, and means what it always meant.*** Twenty-three operators

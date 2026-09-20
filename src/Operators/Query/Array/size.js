@@ -70,7 +70,7 @@ module.exports = function ( jsongin )
 				//                                   document whose x really is a two element
 				//                                   array did not match
 				//
-				// Verified against MongoDB 6.0.1, which matches only the second.
+				// Verified against MongoDB 7.0.40, which matches only the second.
 				//
 				// ***The leaf is never expanded***, whatever the caller asked. Expanding it
 				// offered each element of the field as a candidate too, so { a: [ [ 1, 2 ] ] }

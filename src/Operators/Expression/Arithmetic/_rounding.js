@@ -23,7 +23,7 @@ module.exports = function ( jsongin )
 	//
 	// A null or missing operand gives null rather than an error, which is how the arithmetic
 	// operators treat one. Anything else which is not a number is an error.
-	// Verified against MongoDB 6.0.1.
+	// Verified against MongoDB 7.0.40.
 	helper.Apply = function ( Document, Args, OperatorName, Operation, Scope )
 	{
 		jsongin.Scope.Require( Scope, 'rounding.Apply' );
@@ -105,7 +105,7 @@ module.exports = function ( jsongin )
 	//---------------------------------------------------------------------
 	// Rounds to the nearest integer, sending a value exactly half way to the ***even***
 	// neighbour. This is what MongoDB does, and it is not what Math.round() does:
-	// Math.round( 2.5 ) is 3, and this is 2. Verified against MongoDB 6.0.1, where
+	// Math.round( 2.5 ) is 3, and this is 2. Verified against MongoDB 7.0.40, where
 	// { $round: [ 2.5 ] } is 2 and { $round: [ 3.5 ] } is 4.
 	//
 	// Math.round() is also asymmetric about zero, rounding -2.5 up to -2 while rounding 2.5

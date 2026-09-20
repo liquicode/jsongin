@@ -55,7 +55,7 @@ module.exports = function ( jsongin )
 
 				// ***A null limit is no limit***, which is not the same as a limit of zero.
 				// Zero is refused, because a filter which can keep nothing is a mistake rather
-				// than a request. Verified against MongoDB 6.0.1.
+				// than a request. Verified against MongoDB 7.0.40.
 				let limit = read.Values.length;
 				if ( 'limit' in Args )
 				{

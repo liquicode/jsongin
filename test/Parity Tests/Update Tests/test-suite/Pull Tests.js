@@ -15,7 +15,7 @@ const assert = require( 'assert' );
 	`{ b: 1 }`, or elements whose `b` is 1? The two differ for every element which has a `b` of
 	1 and other fields besides, and only one of them is MongoDB.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )

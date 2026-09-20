@@ -18,7 +18,7 @@
 	A candidate list keeps them distinct. The first document yields the candidates 1 and 2,
 	neither an array. The second yields the one candidate [ 5, 6 ].
 
-	The rules below were measured against MongoDB 6.0.1 rather than assumed, and the two
+	The rules below were measured against MongoDB 7.0.40 rather than assumed, and the two
 	which concern a missing field against MongoDB 6.0.28, 7.0.40 and 8.3.8. See
 	.plans/2026-08-14/parity-explicit-operators-through-arrays.md for the first sweep and the
 	jsonx root's .plans/jsongin-parity-repairs.md for the second.
@@ -42,7 +42,7 @@ module.exports = function ( jsongin )
 	// rule ordinary equality follows. Pass false to get only the values the path lands on.
 	// $elemMatch is the caller which needs that: it asks about the elements of the array
 	// itself, so an element which is another array is a value it tests, not a second array to
-	// look inside. Verified against MongoDB 6.0.1, where { a: { $elemMatch: { x: 1 } } } does
+	// look inside. Verified against MongoDB 7.0.40, where { a: { $elemMatch: { x: 1 } } } does
 	// not match { a: [ [ { x: 1 } ] ] }.
 	//
 	// Report, when an object is given, has Missing set true when the path met a ***missing
@@ -114,7 +114,7 @@ module.exports = function ( jsongin )
 			// matches { tags: [ 'red', 'blue' ] } while { tags: [ 'red' ] } matches both
 			// { tags: [ 'red' ] } as a whole and { tags: [ [ 'red' ] ] } by its element.
 			// Exactly one level deep: an element which is itself an array is a candidate as
-			// the array it is, and is not expanded again. Verified against MongoDB 6.0.1,
+			// the array it is, and is not expanded again. Verified against MongoDB 7.0.40,
 			// where { tags: 'red' } does not match { tags: [ [ 'red' ] ] }.
 			if ( ExpandArrays === false ) { return; }
 			if ( jsongin.ShortType( Node ) === 'a' )
@@ -160,7 +160,7 @@ module.exports = function ( jsongin )
 				// query path: { 'a.2': 3 } matches { a: [ 1, 2, 3 ] }.
 				// A negative index addresses nothing. MongoDB has no reverse indexing: it
 				// reads '-1' as a field name, and an array has no such field, so
-				// { 'a.-1': 3 } matches nothing. Verified against MongoDB 6.0.1.
+				// { 'a.-1': 3 } matches nothing. Verified against MongoDB 7.0.40.
 				// An index past the end addresses nothing either, and nothing is not a missing
 				// field: { 'a.5': null } does not match { a: [ 1 ] }.
 				let element_index = key;

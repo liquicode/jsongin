@@ -15,7 +15,7 @@ const assert = require( 'assert' );
 	and that is what the tests below do. Asserting a particular draw would be asserting the
 	seed.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )

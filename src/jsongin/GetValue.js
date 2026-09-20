@@ -39,7 +39,7 @@ module.exports = function ( jsongin )
 						// query path: { 'a.2': 3 } matches { a: [ 1, 2, 3 ] }.
 						// A negative index addresses nothing. MongoDB has no reverse indexing:
 						// it reads '-1' as a field name, and an array has no such field, so
-						// { 'a.-1': 3 } matches nothing. Verified against MongoDB 6.0.1.
+						// { 'a.-1': 3 } matches nothing. Verified against MongoDB 7.0.40.
 						if ( key < 0 ) { return undefined; }
 						if ( key >= node.length ) { return undefined; }
 						// Get the array element and continue down the path.

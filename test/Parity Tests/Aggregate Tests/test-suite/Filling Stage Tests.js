@@ -15,7 +15,7 @@ const assert = require( 'assert' );
 	variables the engine does not have. The tests say which, so that neither is mistaken for an
 	oversight.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )
@@ -108,8 +108,9 @@ module.exports = function ( Driver )
 
 			it( 'should partition by an expression as well as by field names', async () =>
 			{
-				// ***partitionBy takes a document, not a path.*** A bare '$k' is refused for
-				// being a string; the two forms below are the same partition written two ways.
+				// ***partitionBy takes a document or a field path.*** MongoDB 6.0 refused a bare
+				// '$k' for being a string and 7.0, the baseline, accepts it - the three forms
+				// below are the same partition written three ways.
 				let by_expression = await piped( [
 					{ $fill: { partitionBy: { k: '$k' }, sortBy: { t: 1 }, output: { v: { method: 'locf' } } } },
 					{ $project: { _id: 0, k: 1, t: 1, v: 1 } },
@@ -117,9 +118,21 @@ module.exports = function ( Driver )
 				] );
 				assert.strictEqual( by_expression[ 1 ].v, 10 );
 
-				assert.strictEqual(
-					await refused( [ { $fill: { partitionBy: '$k', sortBy: { t: 1 }, output: { v: { method: 'locf' } } } } ] ),
-					true );
+				let by_path = await piped( [
+					{ $fill: { partitionBy: '$k', sortBy: { t: 1 }, output: { v: { method: 'locf' } } } },
+					{ $project: { _id: 0, k: 1, t: 1, v: 1 } },
+					{ $sort: { t: 1 } },
+				] );
+				assert.deepStrictEqual( by_path, by_expression );
+
+				// A dotted path reaches a nested value and partitions on that.
+				let nested = await piped( [
+					{ $addFields: { o: { j: '$k' } } },
+					{ $fill: { partitionBy: '$o.j', sortBy: { t: 1 }, output: { v: { method: 'locf' } } } },
+					{ $project: { _id: 0, k: 1, t: 1, v: 1 } },
+					{ $sort: { t: 1 } },
+				] );
+				assert.deepStrictEqual( nested, by_expression );
 			} );
 
 			it( 'should fill a value which is null as well as one which is missing', async () =>

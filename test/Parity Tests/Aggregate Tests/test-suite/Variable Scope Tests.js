@@ -25,7 +25,7 @@ const assert = require( 'assert' );
 	passes before a line of code exists and `parity-report` reads the operator as implemented.
 	A gap suite can only state what MongoDB ***does***.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )
@@ -472,7 +472,7 @@ module.exports = function ( Driver )
 			} );
 
 			// ***Only the string shorthand defaults to $$CURRENT.*** The object form with no
-			// `input` looks like it should mean the same thing, and MongoDB 6.0.1 refuses it:
+			// `input` looks like it should mean the same thing, and MongoDB 7.0.40 refuses it:
 			//   $getField requires 'input' to be specified
 			// So `{ $getField: 'a' }` and `{ $getField: { field: 'a' } }` are not two spellings
 			// of one expression. The review read this family as "acts on $$CURRENT when input

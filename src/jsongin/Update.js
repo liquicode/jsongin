@@ -21,7 +21,7 @@ module.exports = function ( jsongin )
 	// This throws rather than returning the document unchanged. An unchanged document is
 	// indistinguishable from a legitimate no-op, so a misspelled operator was silently
 	// nothing at all. MongoDB refuses each of these with an error, verified against
-	// MongoDB 6.0.1.
+	// MongoDB 7.0.40.
 	//
 	// The line this draws is between the update ***document*** and the update ***operation***.
 	// A malformed update document is the caller's mistake and throws. An operator which cannot
@@ -144,7 +144,7 @@ module.exports = function ( jsongin )
 	// Expanding the path keeps read and write on the same element.
 	//
 	// $rename is the exception and is refused: it names one source and one target, and there
-	// is no sensible target for a source which expands to many. Verified against MongoDB 6.0.1.
+	// is no sensible target for a source which expands to many. Verified against MongoDB 7.0.40.
 	function expand_all_positional( Node, Elements, Prefix, Paths, Path )
 	{
 		for ( let index = 0; index < Elements.length; index++ )

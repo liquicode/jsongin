@@ -38,7 +38,7 @@ module.exports = function ( jsongin )
 	// They used to be compared by their JSON.stringify text, which discards the type before
 	// comparing: a Date renders as its ISO string, so an object holding a date compared equal
 	// to an object holding the equivalent string. undefined members, NaN, and Infinity collapse
-	// the same way. Verified against MongoDB 6.0.1, which matches none of those.
+	// the same way. Verified against MongoDB 7.0.40, which matches none of those.
 	function equals_value( ActualValue, MatchValue, Path )
 	{
 		let actual_type = jsongin.ShortType( ActualValue );
@@ -54,7 +54,7 @@ module.exports = function ( jsongin )
 			// A regexp match value here is a value to compare against, not a pattern to test
 			// with. { field: { $eq: /re/ } } matches only a field which is itself that regexp,
 			// while the implicit form { field: /re/ } pattern matches.
-			// That asymmetry is MongoDB's, verified against MongoDB 6.0.1, and the implicit
+			// That asymmetry is MongoDB's, verified against MongoDB 7.0.40, and the implicit
 			// form is handled separately at ImplicitEq.js:132.
 			if ( actual_type !== 'r' ) { return false; }
 			// Two Regexp objects are never === to each other, the same trap dates have below,

@@ -9,7 +9,7 @@ const assert = require( 'assert' );
 	projection is a small aggregation. That makes a computed field an inclusion, which is why
 	combining one with an exclusion is refused.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )

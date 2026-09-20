@@ -20,7 +20,7 @@ module.exports = function ( jsongin )
 	//
 	// Operation takes the stored value and the operand, and returns the value to store.
 	//
-	// MongoDB semantics, verified against MongoDB 6.0.1:
+	// MongoDB semantics, verified against MongoDB 7.0.40:
 	//
 	// - A field which is not there is treated as a zero, and the path to it is created.
 	//   { $inc: { a: 5 } } against {} gives { a: 5 }, and { $mul: { a: 5 } } gives { a: 0 }.

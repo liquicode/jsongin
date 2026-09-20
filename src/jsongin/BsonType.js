@@ -26,7 +26,7 @@ module.exports = function ( jsongin )
 			// only when it is a whole number inside the int32 range, and as a double in every
 			// other case, so those are the only two types a number can report here.
 			//
-			// Verified against MongoDB 6.0.1 by inserting each value and reading back $type:
+			// Verified against MongoDB 7.0.40 by inserting each value and reading back $type:
 			//   42 and 2147483647          => int
 			//   2147483648, 3000000000     => double
 			//   9007199254740991, 3.14     => double

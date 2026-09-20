@@ -55,7 +55,7 @@ module.exports = function ( jsongin )
 		// A negative index is not an index. MongoDB reads '-1' as a field name, which an
 		// array does not have, so $unset of 'a.-1' leaves the array alone. Returning null
 		// sends it down the DeleteValue path, which reports the same no-op.
-		// Verified against MongoDB 6.0.1.
+		// Verified against MongoDB 7.0.40.
 		let index = last_key;
 		if ( ( index < 0 ) || ( index >= node.length ) ) { return null; }
 
@@ -82,7 +82,7 @@ module.exports = function ( jsongin )
 				{
 					// An array element is set to null rather than being removed, which keeps
 					// the array's length and the positions of the elements after it.
-					// Verified against MongoDB 6.0.1.
+					// Verified against MongoDB 7.0.40.
 					// DeleteValue is deliberately not used for this case. It mirrors the
 					// Javascript delete operator and leaves a sparse hole, which is its
 					// documented contract, and a hole is not representable in JSON: it only
@@ -101,7 +101,7 @@ module.exports = function ( jsongin )
 					{
 						// Naming a field the document does not have is not an error. MongoDB
 						// reports a successful update with modifiedCount 0 in that case,
-						// verified against MongoDB 6.0.1, so this is a no-op rather than a
+						// verified against MongoDB 7.0.40, so this is a no-op rather than a
 						// failure. DeleteValue throws on a malformed document or path, which
 						// is the real error path.
 						if ( jsongin.OpLog ) { jsongin.OpLog( `Update.$unset: The field [${field}] was not present and was left alone.` ); }

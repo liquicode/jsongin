@@ -41,7 +41,7 @@ module.exports = function ( jsongin )
 			// A projection exclusion does NOT index an array, not even with a numeric key.
 			// MongoDB applies every key to the elements, so { 'a.2': 0 } against
 			// { a: [ 1, 2, 3 ] } removes nothing and { 'a.0.x': 0 } against an array of
-			// documents removes nothing either. Verified against MongoDB 6.0.1.
+			// documents removes nothing either. Verified against MongoDB 7.0.40.
 			//
 			// This used to index the array here, counting from the end when the key was
 			// negative, and then `delete` the element — which both disagreed with MongoDB
@@ -78,7 +78,7 @@ module.exports = function ( jsongin )
 	// { 'a.x': 1 } produces [ { x: 1 }, { x: 2 } ]. Computed fields keep using Evaluate and
 	// so keep the gathering rule, which is why the two are resolved separately below.
 	//
-	// Every rule here was measured against MongoDB 6.0.1:
+	// Every rule here was measured against MongoDB 7.0.40:
 	//   { a: [ { x:1, y:2 }, { x:3, y:4 } ] }  'a.x'    =>  { a: [ { x:1 }, { x:3 } ] }
 	//   { a: [ { x:1 }, { y:9 } ] }            'a.x'    =>  { a: [ { x:1 }, {} ] }
 	//   { a: [ { x:1 }, 5, { x:2 } ] }         'a.x'    =>  { a: [ { x:1 }, { x:2 } ] }
@@ -218,7 +218,7 @@ module.exports = function ( jsongin )
 	//   - any key beginning with '$', which makes the value an expression
 	//   - empty, which MongoDB refuses with "An empty sub-projection is not a valid value"
 	//
-	// Verified against MongoDB 6.0.1.
+	// Verified against MongoDB 7.0.40.
 	function flatten_projection( Projection, Prefix, Flattened, SubDocuments )
 	{
 		for ( let key in Projection )
@@ -272,7 +272,7 @@ module.exports = function ( jsongin )
 	// The argument is either a count, or a [ skip, limit ] pair. A negative count takes from
 	// the end, and a negative skip counts back from the end before taking forward.
 	// A field which is not an array is left exactly as it is, which is what MongoDB does.
-	// Verified against MongoDB 6.0.1.
+	// Verified against MongoDB 7.0.40.
 	//
 	// ***The argument arrives already validated.*** projection_operator_name() only reads a
 	// { $slice: ... } as the projection operator when the argument is a number, or two of
@@ -458,7 +458,7 @@ module.exports = function ( jsongin )
 		// ***Neither $slice nor $elemMatch conflicts with an exclusion.*** Both only decide
 		// the type of projection when nothing else has, so both sit beside an exclusion quite
 		// happily and are applied within it. jsongin used to refuse $elemMatch beside an
-		// exclusion, which MongoDB accepts. Verified against MongoDB 6.0.1:
+		// exclusion, which MongoDB accepts. Verified against MongoDB 7.0.40:
 		//
 		//   { n: 5, s: 'x', a: [ { x:1 }, { x:2 } ] }
 		//     { n: 0, a: { $elemMatch: { x: 2 } } }  =>  { s: 'x', a: [ { x: 2 } ] }
@@ -481,7 +481,7 @@ module.exports = function ( jsongin )
 			// at all. MongoDB returns the whole document for both, so both are exclusion
 			// projections. An empty projection used to stay an inclusion with nothing to
 			// include, which returned an empty document.
-			// Verified against MongoDB 6.0.1.
+			// Verified against MongoDB 7.0.40.
 			//
 			// The aggregation $project stage has the opposite rule and refuses an empty
 			// specification. That is enforced in the stage, which is the only caller that can
@@ -519,7 +519,7 @@ module.exports = function ( jsongin )
 				{
 					// Nothing matched, or the field is not an array. The field is dropped, the
 					// same way it is omitted from an inclusion projection.
-					// Verified against MongoDB 6.0.1.
+					// Verified against MongoDB 7.0.40.
 					exclude_path( projected, jsongin.SplitPath( elem_match.Path ), 0 );
 					continue;
 				}
@@ -583,7 +583,7 @@ module.exports = function ( jsongin )
 				let elem_match = elem_match_keys[ index ];
 				let matched = apply_elem_match( Document, elem_match.Path, elem_match.Argument );
 				// Nothing matched, or the field is not an array. The field is omitted rather
-				// than being set to an empty array. Verified against MongoDB 6.0.1.
+				// than being set to an empty array. Verified against MongoDB 7.0.40.
 				if ( typeof matched === 'undefined' ) { continue; }
 				jsongin.SetValue( projected, elem_match.Path, matched );
 			}
@@ -611,7 +611,7 @@ module.exports = function ( jsongin )
 			// { nope: { x: 1 } } asks for a field the document does not have, and produces
 			// nothing at all. The two are told apart by what their leaves turned out to be, so
 			// this only fires where every flattened key under the path is a computed one.
-			// Verified against MongoDB 6.0.1:
+			// Verified against MongoDB 7.0.40:
 			//
 			//   { r: { x: '$nope' } }        =>  { r: {} }
 			//   { r: { s: { x: '$nope' } } } =>  { r: { s: {} } }

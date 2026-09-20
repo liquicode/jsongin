@@ -38,23 +38,19 @@ module.exports = function ( jsongin )
 			{
 				let values = accumulator.Values( Documents, Args, Scope );
 
-				let total = 0;
-				for ( let index = 0; index < values.length; index++ )
-				{
-					// Non-numeric values are ignored, which is MongoDB's rule for $sum: a
-					// string or a document in the stream contributes nothing rather than
-					// making the whole total an error.
-					//
-					// ***A NaN is a number and is not ignored.*** It accumulates like any
-					// other double and takes the total with it, which is what MongoDB does.
-					// It used to be skipped alongside the non-numeric values, which quietly
-					// produced a total that looked sound.
-					// Verified against MongoDB 6.0.1.
-					if ( jsongin.ShortType( values[ index ] ) !== 'n' ) { continue; }
-					total += values[ index ];
-				}
-
-				return total;
+				// Non-numeric values are ignored, which is MongoDB's rule for $sum: a string
+				// or a document in the stream contributes nothing rather than making the whole
+				// total an error.
+				//
+				// ***A NaN is a number and is not ignored.*** It accumulates like any other
+				// double and takes the total with it, which is what MongoDB does. It used to
+				// be skipped alongside the non-numeric values, which quietly produced a total
+				// that looked sound.
+				//
+				// The two steps are shared with the expression operator of the same name, so
+				// that `$sum` in a `$group` and `$sum` in a `$project` cannot drift apart.
+				// Verified against MongoDB 7.0.40.
+				return accumulator.Total( accumulator.OnlyNumbers( values ) );
 			}
 			catch ( error )
 			{

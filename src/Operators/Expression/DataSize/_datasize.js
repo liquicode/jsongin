@@ -18,7 +18,7 @@
 	driver and the same document held by jsongin agree on their size. It is also the rule $type
 	reports, and the two cannot drift apart while they read it from the same place.
 
-	Verified against MongoDB 6.0.1. See
+	Verified against MongoDB 7.0.40. See
 	test/Parity Tests/Aggregate Tests/test-suite/Data Size Operator Tests.js.
 */
 

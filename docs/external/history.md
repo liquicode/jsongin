@@ -12,8 +12,64 @@ This version changes which queries are refused and what some of them answer, whi
   `0.2.0` rather than a patch. Every change moves the engine closer to MongoDB. Version `0.1.2`
   was never published; everything written under it is in this release.
 
-Parity with MongoDB is ***100%*** across 1054 compared behaviors. Run `npm run parity-report` to
-  measure it.
+Parity with MongoDB is ***100%*** across 1102 compared behaviors, measured against
+  ***MongoDB 7.0***. Run `npm run parity-report` to measure it.
+
+***The parity baseline is a version now, and the run reads it.*** The suites used to name their
+  server in a comment, which had drifted to a version nobody was running. The test driver asks
+  the server what it is, says so, and refuses to measure against anything but 7.0 unless it is
+  told to deliberately. jsongin departs from that baseline in three places on purpose, and
+  [MongoDB Versions](/docs/guides/MongoDB-Versions.md) is the page which says which.
+
+***`$median` and `$percentile` are built***, as accumulators and as expressions. Both pick a
+  value by rank and never interpolate, so the answer is always one of the values given to them.
+  At `p` 1.0, where the largest value is not positive, a MongoDB server answers the smallest
+  positive double rather than the maximum; jsongin answers the maximum.
+
+***Four more accumulators can be written as expressions.*** `$sum`, `$avg`, `$stdDevPop` and
+  `$stdDevSamp` work in a `$project` as well as in a `$group`, which they did not before, and
+  `$min` and `$max` moved to sit with them. Both forms share one reduction, so the two can no
+  longer answer differently.
+
+***Two things a MongoDB 7.0 server refuses.*** `$toString` renders an array or a document as
+  JSON, and `$getField` takes a field name computed by an expression. Both were added by
+  MongoDB 8.3 and are useful enough to keep. `$setField` and `$unsetField` still require a
+  name written out, which is what every server version requires.
+
+***`$fill` takes a field path in `partitionBy`***, such as `'$k'`, which partitions exactly as
+  `partitionByFields: [ 'k' ]` does. MongoDB 6.0 refused it and 7.0 accepts it.
+
+***`$min` and `$max` answer `null` for an empty list*** rather than refusing it.
+
+***Two sets of documents can be matched against each other.*** `jsongin` had no join of any
+  kind, and the three MongoDB stages which do one were refused for needing a collection to read.
+  They need a second set of documents, which is a different thing, so they are here - and what
+  each of them does was measured against a server before it was written - and measured again
+  on 6.0, 7.0 and 8.3, which answer identically apart from the order `$graphLookup` fills its
+  array in. Nothing promises that order, so sort the array if it matters to you.
+
+- **`Join( Documents, JoinDocuments, JoinCriteria, JoinType, JoinName )`** matches two sets
+  against each other, gathering what each document matched. `Left`, `Inner`, `Right` and
+  `Outer`; the matches are written at `JoinName`, or merged into the document when it is
+  absent. The criteria is an ordinary query criteria, matched against each join document with
+  the document being joined from lent as `$$Left`.
+- **`Union( Documents, UnionDocuments )`** returns one set after another. A concatenation, not
+  a set union: nothing is removed and nothing is copied.
+- **`$lookup`, `$unionWith` and `$graphLookup`** are implemented as stages over those two.
+  ***`from` and `coll` take the documents themselves, or a `$$name` bound in the pipeline's
+  scope***, where MongoDB names a collection. That argument is the whole of the difference; a
+  parity suite runs the same 37 cases against both engines.
+
+***A query carries options, and a caller can lend it variables.*** `Query`, `ValidateQuery`,
+  `Filter` and every query operator take `{ ExpandArrays, Scope }` as their last argument, and
+  it travels unchanged through the whole criteria. A boolean still means `ExpandArrays`, which
+  is what the fourth argument meant before, so an operator written against the older signature
+  keeps working. ***`ExpandArrays: false` is now a setting a caller can make*** for a whole
+  criteria, where a path means only what it lands on; it is a `jsongin` extension which MongoDB
+  has no counterpart for.
+
+***`$facet` gives its branches the frame around them.*** A branch used to build its own, so a
+  variable the caller bound was not visible inside one and `$$NOW` was read again per branch.
 
 ***The first key of an object decides whether it holds operators or is a value***, as it does in
   MongoDB. Measured against MongoDB 6.0.28 and 8.3.8.

@@ -151,6 +151,12 @@ MongoDB adds expression operators in new server versions, so this list may not b
 
 | **Category**  | **Supported** | **Operator**       | **Description**                                                                              |
 |---------------|:-------------:|--------------------|-----------------------------------------------------------------------------------------------|
+| Accumulator   |      Yes      | [$avg](./jsongin/Expression-Operators.md#$avg)               | Returns the average of numeric values. Also an accumulator.                                  |
+| Accumulator   |      Yes      | [$median](./jsongin/Expression-Operators.md#$median)            | Returns the middle value, picked by rank. Also an accumulator.                               |
+| Accumulator   |      Yes      | [$percentile](./jsongin/Expression-Operators.md#$percentile)        | Returns values at given percentiles, picked by rank. Also an accumulator.                    |
+| Accumulator   |      Yes      | [$stdDevPop](./jsongin/Expression-Operators.md#$stdDevPop)         | Returns the population standard deviation. Also an accumulator.                              |
+| Accumulator   |      Yes      | [$stdDevSamp](./jsongin/Expression-Operators.md#$stdDevSamp)        | Returns the sample standard deviation. Also an accumulator.                                  |
+| Accumulator   |      Yes      | [$sum](./jsongin/Expression-Operators.md#$sum)               | Returns the sum of numeric values. Also an accumulator.                                      |
 | Arithmetic    |      Yes      | [$abs](./jsongin/Expression-Operators.md#$abs)               | Returns the absolute value of a number.                                                      |
 | Arithmetic    |      Yes      | [$add](./jsongin/Expression-Operators.md#$add)               | Adds numbers together. Adds milliseconds to a date.                                          |
 | Arithmetic    |      Yes      | [$ceil](./jsongin/Expression-Operators.md#$ceil)              | Returns the smallest integer which is greater than or equal to a number.                     |
@@ -369,11 +375,11 @@ They are used in `$group`, `$bucket` and `$bucketAuto`, and not in `Evaluate()` 
 | Accumulator   |      Yes      | [$lastN](./jsongin/Accumulator-Operators.md#$lastN)         | Returns the values from the last N documents.                              |
 | Accumulator   |      Yes      | [$max](./jsongin/Accumulator-Operators.md#$max)           | Returns the largest value. See the note below.                             |
 | Accumulator   |      Yes      | [$maxN](./jsongin/Accumulator-Operators.md#$maxN)          | Returns the N largest values.                                              |
-| Accumulator   |       -       | $median        | Returns the median value. MongoDB 7.0. See the note below.                 |
+| Accumulator   |      Yes      | [$median](./jsongin/Accumulator-Operators.md#$median)         | Returns the middle value, picked by rank. MongoDB 7.0.                     |
 | Accumulator   |      Yes      | [$mergeObjects](./jsongin/Accumulator-Operators.md#$mergeObjects)  | Merges documents together into a single document.                          |
 | Accumulator   |      Yes      | [$min](./jsongin/Accumulator-Operators.md#$min)           | Returns the smallest value. See the note below.                            |
 | Accumulator   |      Yes      | [$minN](./jsongin/Accumulator-Operators.md#$minN)          | Returns the N smallest values.                                             |
-| Accumulator   |       -       | $percentile    | Returns values at given percentiles. MongoDB 7.0. See the note below.      |
+| Accumulator   |      Yes      | [$percentile](./jsongin/Accumulator-Operators.md#$percentile)     | Returns values at given percentiles, picked by rank. MongoDB 7.0.          |
 | Accumulator   |      Yes      | [$push](./jsongin/Accumulator-Operators.md#$push)          | Collects the values of a field into an array.                              |
 | Accumulator   |      Yes      | [$stdDevPop](./jsongin/Accumulator-Operators.md#$stdDevPop)     | Returns the population standard deviation of numeric values.               |
 | Accumulator   |      Yes      | [$stdDevSamp](./jsongin/Accumulator-Operators.md#$stdDevSamp)    | Returns the sample standard deviation of numeric values.                   |
@@ -381,7 +387,8 @@ They are used in `$group`, `$bucket` and `$bucketAuto`, and not in `Evaluate()` 
 | Accumulator   |      Yes      | [$top](./jsongin/Accumulator-Operators.md#$top)           | Returns the first value in a given ordering.                               |
 | Accumulator   |      Yes      | [$topN](./jsongin/Accumulator-Operators.md#$topN)          | Returns the first N values in a given ordering.                            |
 
-- `$median` and `$percentile` were added in MongoDB 7.0 and are not supported.
+- `$median` and `$percentile` were added in MongoDB 7.0, which is the version jsongin is
+  measured against. See [MongoDB Versions](./MongoDB-Versions.md).
 - `$min` and `$max` compare values of any type, in MongoDB's type order.
 - `$sum` and `$avg` skip values which are not numbers. The expression operators, such as `$add`,
   throw instead. MongoDB behaves the same way.
@@ -426,6 +433,9 @@ Inside a `$project` ***stage***, `$slice` is always the expression operator.
 | `$mergeObjects`    | `{ $group: { _id: '$k', d: { $mergeObjects: '$v' } } }` merges the objects from every document in a group. | `{ $mergeObjects: [ '$a', '$b' ] }` merges the objects given to it. |
 | `$firstN` `$lastN` | `{ $group: { _id: '$k', f: { $firstN: { input: '$v', n: 2 } } } }` takes values from one end of a group. | `{ $firstN: { input: '$tags', n: 2 } }` takes elements from one end of an array. |
 | `$minN` `$maxN`    | `{ $group: { _id: '$k', m: { $minN: { input: '$v', n: 2 } } } }` takes the smallest values in a group. | `{ $minN: { input: '$tags', n: 2 } }` takes the smallest elements of an array. |
+| `$sum` `$avg`      | `{ $group: { _id: '$k', t: { $sum: '$v' } } }` totals a field across a group. | `{ $sum: '$scores' }` totals the numbers one document holds. |
+| `$stdDevPop` `$stdDevSamp` | `{ $group: { _id: '$k', d: { $stdDevPop: '$v' } } }` measures the spread across a group. | `{ $stdDevPop: '$scores' }` measures the spread within one array. |
+| `$median` `$percentile` | `{ $group: { _id: '$k', m: { $median: { input: '$v', method: 'approximate' } } } }` picks the middle of a group. | `{ $median: { input: '$scores', method: 'approximate' } }` picks the middle of one array. |
 
 | **Operator**   | **As an Update Operator**                                              | **As an Expression Operator**                                          |
 |----------------|------------------------------------------------------------------------|-------------------------------------------------------------------------|

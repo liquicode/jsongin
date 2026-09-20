@@ -34,23 +34,17 @@ module.exports = function ( jsongin )
 			{
 				let values = accumulator.Values( Documents, Args, Scope );
 
-				let total = 0;
-				let count = 0;
-				for ( let index = 0; index < values.length; index++ )
-				{
-					// Non-numeric values are ignored, and are left out of the count as well as
-					// the total, so the average is taken over the numbers alone.
-					//
-					// ***A NaN is a number and is not ignored.*** It is averaged like any
-					// other double and takes the result with it, which is what MongoDB does.
-					// Verified against MongoDB 6.0.1. See $sum for the same rule.
-					if ( jsongin.ShortType( values[ index ] ) !== 'n' ) { continue; }
-					total += values[ index ];
-					count++;
-				}
-
-				if ( count === 0 ) { return null; }
-				return ( total / count );
+				// Non-numeric values are ignored, and are left out of the count as well as the
+				// total, so the average is taken over the numbers alone.
+				//
+				// ***A NaN is a number and is not ignored.*** It is averaged like any other
+				// double and takes the result with it, which is what MongoDB does. See $sum
+				// for the same rule.
+				//
+				// The two steps are shared with the expression operator of the same name, so
+				// that `$avg` in a `$group` and `$avg` in a `$project` cannot drift apart.
+				// Verified against MongoDB 7.0.40.
+				return accumulator.Average( accumulator.OnlyNumbers( values ) );
 			}
 			catch ( error )
 			{

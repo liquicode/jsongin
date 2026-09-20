@@ -793,7 +793,7 @@ describe( '100) Core Tests', () =>
 		// It is not registered on the engine yet. It lands ahead of the operators which will
 		// use it, so the mechanism can be proven before any operator changes behavior.
 		//
-		// Every rule below was measured against MongoDB 6.0.1. See
+		// Every rule below was measured against MongoDB 7.0.40. See
 		// .plans/2026-08-14/parity-explicit-operators-through-arrays.md
 
 		const ResolveCandidates = require( '../../src/jsongin/ResolveCandidates' )( jsongin );
@@ -876,7 +876,7 @@ describe( '100) Core Tests', () =>
 		{
 			// MongoDB has no reverse indexing. It reads '-1' as a field name, and an array
 			// has no such field, so { 'a.-1': 'q' } matches nothing.
-			// Verified against MongoDB 6.0.1.
+			// Verified against MongoDB 7.0.40.
 			assert.deepStrictEqual( ResolveCandidates( { a: [ 'p', 'q' ] }, 'a.-1' ), [] );
 			assert.deepStrictEqual( ResolveCandidates( { a: [ 'p', 'q' ] }, 'a.-9' ), [] );
 
@@ -946,7 +946,7 @@ describe( '100) Core Tests', () =>
 		{
 			// AsNumber() also accepts these forms, and using it here turned field names
 			// like '01' into array indices, making the field unreachable.
-			// Verified against MongoDB 6.0.1: a query on 'a.01' finds { a: { '01': 'x' } }.
+			// Verified against MongoDB 7.0.40: a query on 'a.01' finds { a: { '01': 'x' } }.
 			assert.strictEqual( jsongin.SplitPath( '01' )[ 0 ], '01' );
 			assert.strictEqual( jsongin.SplitPath( '1e2' )[ 0 ], '1e2' );
 			assert.strictEqual( jsongin.SplitPath( '0x10' )[ 0 ], '0x10' );
@@ -1129,7 +1129,7 @@ describe( '100) Core Tests', () =>
 		it( 'It does not index an array from the end', () =>
 		{
 			// MongoDB has no reverse indexing, on either side of the engine.
-			// Verified against MongoDB 6.0.1.
+			// Verified against MongoDB 7.0.40.
 			let document = [ 'one', 'two', 'three' ];
 			assert.strictEqual( jsongin.GetValue( document, '-1' ), undefined );
 			assert.strictEqual( jsongin.GetValue( document, '-9' ), undefined );
@@ -1252,7 +1252,7 @@ describe( '100) Core Tests', () =>
 		{
 			// The gap is filled with nulls rather than left as holes. A hole is not
 			// representable in JSON, and it only looked like a null because JSON.stringify
-			// renders it as one. MongoDB writes nulls here, verified against MongoDB 6.0.1.
+			// renders it as one. MongoDB writes nulls here, verified against MongoDB 7.0.40.
 			let document = [ 'one', 'two', 'three' ];
 
 			assert.ok( jsongin.SetValue( document, 4, 'xyz' ) );
@@ -1270,7 +1270,7 @@ describe( '100) Core Tests', () =>
 			// A negative index is not an index. MongoDB reads '-1' as a field name, and a
 			// field cannot be created on an array, so it refuses the write with
 			// "Cannot create field '-1' in element {a: [ 1, 2, 3 ]}".
-			// Verified against MongoDB 6.0.1.
+			// Verified against MongoDB 7.0.40.
 			let document = [ 'one', 'two', 'three' ];
 			assert.throws( function () { jsongin.SetValue( document, -1, 'xyz' ); }, /Cannot create field/ );
 			assert.deepStrictEqual( document, [ 'one', 'two', 'three' ] );
@@ -1313,7 +1313,7 @@ describe( '100) Core Tests', () =>
 		it( 'It rejects a field name against an array', () =>
 		{
 			// MongoDB rejects this outright, with "Cannot create field 'status' in element
-			// {users: [ ... ]}". Verified against MongoDB 6.0.1. Reaching through an array
+			// {users: [ ... ]}". Verified against MongoDB 7.0.40. Reaching through an array
 			// on the write side requires the all positional operator, 'users.$[].status'.
 			let document = {
 				users: [
@@ -2130,7 +2130,7 @@ describe( '100) Core Tests', () =>
 	//---------------------------------------------------------------------
 	describe( 'Sort Keys Through an Array Tests', () =>
 	{
-		// Every ordering below was verified against MongoDB 6.0.1.
+		// Every ordering below was verified against MongoDB 7.0.40.
 		//
 		// A sort key is built from a set of candidates, not from a single resolved value.
 		// Each array crossed while walking the path applies the remaining path to its

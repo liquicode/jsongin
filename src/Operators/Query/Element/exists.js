@@ -41,7 +41,7 @@ module.exports = function ( jsongin )
 				// { $exists: 1 } and { $exists: 0 } both return false — the second of them the
 				// opposite of the right answer. The narrow declaration was a deviation
 				// introduced by enforcing ValueTypes, which turned it from a note into behavior.
-				// Verified against MongoDB 6.0.1.
+				// Verified against MongoDB 7.0.40.
 				let match_value = jsongin.AsBoolean( MatchValue );
 
 				// $exists does not examine a value at all. It asks whether the path resolves
@@ -52,7 +52,7 @@ module.exports = function ( jsongin )
 				// and worse, a path crossing an array gathered every element's value into an
 				// array: { a: [ { y: 1 } ] } at 'a.x' gathered to [ undefined ], which is an
 				// array rather than undefined, so the field read as present.
-				// Verified against MongoDB 6.0.1, where that document does not match
+				// Verified against MongoDB 7.0.40, where that document does not match
 				// { 'a.x': { $exists: true } } and does match { $exists: false }.
 				let candidates = jsongin.ResolveCandidates( Document, Path, options.ExpandArrays );
 				let field_exists = ( candidates.length > 0 );

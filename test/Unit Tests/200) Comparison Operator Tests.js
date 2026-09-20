@@ -141,7 +141,7 @@ describe( '200) Comparison Operator Tests', () =>
 			assert.ok( jsongin.QueryOperators.$eq.Query( undefined, null ) === true );
 		} );
 
-		// Regexp handling here follows MongoDB, verified against MongoDB 6.0.1:
+		// Regexp handling here follows MongoDB, verified against MongoDB 7.0.40:
 		// { field: { $eq: /re/ } } is an equality test against a regexp valued field,
 		// not a pattern match. The implicit form { field: /re/ } is the one which
 		// pattern matches. See ImplicitEq and the $regex operator.
@@ -173,7 +173,7 @@ describe( '200) Comparison Operator Tests', () =>
 
 		// $eq resolves its path to a list of candidate values rather than to one gathered
 		// value, so a path which crosses an array asks whether any element satisfies it.
-		// Every case below was measured against MongoDB 6.0.1.
+		// Every case below was measured against MongoDB 7.0.40.
 
 		it( 'should match through a path which crosses an array', () =>
 		{
@@ -688,7 +688,7 @@ describe( '200) Comparison Operator Tests', () =>
 			// Objects and arrays are inside the type bracket, ordered against their own type.
 			// The range operators used to refuse both outright, because their ValueTypes did
 			// not admit either and the comparison used the raw > operator, which cannot order
-			// them. Verified against MongoDB 6.0.1.
+			// them. Verified against MongoDB 7.0.40.
 			assert.ok( jsongin.QueryOperators.$gte.Query( { a: 1, b: 2 }, { a: 1, b: 2 } ) === true );
 			assert.ok( jsongin.QueryOperators.$gte.Query( { a: 2 }, { a: 1 } ) === true );
 			assert.ok( jsongin.QueryOperators.$gte.Query( { a: 1 }, { a: 2 } ) === false );
@@ -718,7 +718,7 @@ describe( '200) Comparison Operator Tests', () =>
 		} );
 
 		// $gte resolves its path to a list of candidate values, so a path which crosses an
-		// array asks whether any element satisfies it. Measured against MongoDB 6.0.1.
+		// array asks whether any element satisfies it. Measured against MongoDB 7.0.40.
 
 		it( 'should match through a path which crosses an array', () =>
 		{
@@ -838,7 +838,7 @@ describe( '200) Comparison Operator Tests', () =>
 		} );
 
 		// $gt resolves its path to a list of candidate values, so a path which crosses an
-		// array asks whether any element satisfies it. Measured against MongoDB 6.0.1.
+		// array asks whether any element satisfies it. Measured against MongoDB 7.0.40.
 
 		it( 'should match through a path which crosses an array', () =>
 		{
@@ -965,7 +965,7 @@ describe( '200) Comparison Operator Tests', () =>
 		} );
 
 		// $lte resolves its path to a list of candidate values, so a path which crosses an
-		// array asks whether any element satisfies it. Measured against MongoDB 6.0.1.
+		// array asks whether any element satisfies it. Measured against MongoDB 7.0.40.
 
 		it( 'should match through a path which crosses an array', () =>
 		{
@@ -1082,7 +1082,7 @@ describe( '200) Comparison Operator Tests', () =>
 		} );
 
 		// $lt resolves its path to a list of candidate values, so a path which crosses an
-		// array asks whether any element satisfies it. Measured against MongoDB 6.0.1.
+		// array asks whether any element satisfies it. Measured against MongoDB 7.0.40.
 
 		it( 'should match through a path which crosses an array', () =>
 		{
@@ -1184,7 +1184,7 @@ describe( '200) Comparison Operator Tests', () =>
 			own comparison built on array.includes(), which is ===.
 			The object and array cases are MongoDB behaviors and are also in the parity suite;
 			they are kept here because these call the operator directly rather than through
-			Query(). Verified against MongoDB 6.0.1.
+			Query(). Verified against MongoDB 7.0.40.
 		*/
 
 		it( 'should compare objects', () =>
@@ -1227,7 +1227,7 @@ describe( '200) Comparison Operator Tests', () =>
 	{
 
 		// The implicit form { field: value } resolves the path to every value it can mean,
-		// the same way the explicit operators do. Measured against MongoDB 6.0.1.
+		// the same way the explicit operators do. Measured against MongoDB 7.0.40.
 
 		it( 'should match through two levels of array', () =>
 		{
@@ -1283,7 +1283,7 @@ describe( '200) Comparison Operator Tests', () =>
 	describe( '$regex Tests', () =>
 	{
 
-		// Measured against MongoDB 6.0.1.
+		// Measured against MongoDB 7.0.40.
 
 		it( 'should pattern match a string field', () =>
 		{
@@ -1380,7 +1380,7 @@ describe( '200) Comparison Operator Tests', () =>
 	describe( '$type Tests', () =>
 	{
 
-		// $type asks about each value the path can mean. Measured against MongoDB 6.0.1.
+		// $type asks about each value the path can mean. Measured against MongoDB 7.0.40.
 
 		it( 'should match a type by alias and by number', () =>
 		{
@@ -1468,7 +1468,7 @@ describe( '200) Comparison Operator Tests', () =>
 
 		// $all is an AND of the given values, each tested as ordinary equality against the
 		// field, which is why it works against a field which is not an array.
-		// Measured against MongoDB 6.0.1.
+		// Measured against MongoDB 7.0.40.
 
 		it( 'should require every value to be present', () =>
 		{
@@ -1538,7 +1538,7 @@ describe( '200) Comparison Operator Tests', () =>
 	{
 
 		// $size asks about an array, so only a candidate which is an array can satisfy it.
-		// Measured against MongoDB 6.0.1.
+		// Measured against MongoDB 7.0.40.
 
 		it( 'should measure an array field', () =>
 		{
@@ -1583,7 +1583,7 @@ describe( '200) Comparison Operator Tests', () =>
 
 		// $exists does not examine a value. It asks whether the path resolves to anything,
 		// which is what an empty candidate list reports.
-		// Measured against MongoDB 6.0.1.
+		// Measured against MongoDB 7.0.40.
 
 		it( 'should find a field which is there', () =>
 		{
@@ -1639,7 +1639,7 @@ describe( '200) Comparison Operator Tests', () =>
 			// same question as true. This used to require a boolean and answer false for every
 			// other value, which made { $exists: 0 } the opposite of the right answer.
 			// The coercion is AsBoolean's: only a zero number, null, and undefined are false.
-			// Verified against MongoDB 6.0.1.
+			// Verified against MongoDB 7.0.40.
 			assert.strictEqual( jsongin.QueryOperators.$exists.Query( { a: 1 }, 'yes', 'a' ), true );
 			assert.strictEqual( jsongin.QueryOperators.$exists.Query( { a: 1 }, 1, 'a' ), true );
 			assert.strictEqual( jsongin.QueryOperators.$exists.Query( { a: 1 }, 0, 'a' ), false );

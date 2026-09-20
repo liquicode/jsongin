@@ -30,7 +30,7 @@ const assert = require( 'assert' );
 	ln, or their relatives. Every literal below is asserted exactly, so that if the two
 	libraries ever disagree, this suite is where it shows up rather than in a user's data.
 
-	Verified against MongoDB 6.0.1.
+	Verified against MongoDB 7.0.40.
 */
 
 module.exports = function ( Driver )
