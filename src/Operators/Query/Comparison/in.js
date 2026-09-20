@@ -21,6 +21,8 @@ Note that this is the ***query*** `$in`, which takes the array as its value. The
 
 */
 
+const LIB_QUERY_OPTIONS = require( '../../../QueryOptions' );
+
 module.exports = function ( jsongin )
 {
 
@@ -33,8 +35,9 @@ module.exports = function ( jsongin )
 		ValueTypes: 'a',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
+			let options = LIB_QUERY_OPTIONS.Normalize( Options );
 			try
 			{
 				// Validate Expression
@@ -85,7 +88,7 @@ module.exports = function ( jsongin )
 				// which is what MongoDB does.
 				for ( let index = 0; index < MatchValue.length; index++ )
 				{
-					if ( jsongin.QueryOperators.$ImplicitEq.Query( Document, MatchValue[ index ], Path, ExpandArrays ) === true ) { return true; }
+					if ( jsongin.QueryOperators.$ImplicitEq.Query( Document, MatchValue[ index ], Path, options ) === true ) { return true; }
 				}
 				return false;
 			}

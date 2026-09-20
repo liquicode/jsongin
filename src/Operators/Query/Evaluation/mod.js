@@ -18,6 +18,8 @@ The array must hold exactly two numbers, and a divisor of zero is refused.
 
 */
 
+const LIB_QUERY_OPTIONS = require( '../../../QueryOptions' );
+
 module.exports = function ( jsongin )
 {
 
@@ -30,8 +32,9 @@ module.exports = function ( jsongin )
 		ValueTypes: 'a',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
+			let options = LIB_QUERY_OPTIONS.Normalize( Options );
 			try
 			{
 				if ( MatchValue.length !== 2 )
@@ -57,7 +60,7 @@ module.exports = function ( jsongin )
 					throw new Error( `$mod: cannot divide by zero at [${Path}].` );
 				}
 
-				let candidates = jsongin.ResolveCandidates( Document, Path, ExpandArrays );
+				let candidates = jsongin.ResolveCandidates( Document, Path, options.ExpandArrays );
 				for ( let index = 0; index < candidates.length; index++ )
 				{
 					let candidate = candidates[ index ];

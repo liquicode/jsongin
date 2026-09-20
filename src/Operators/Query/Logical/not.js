@@ -33,7 +33,7 @@ module.exports = function ( jsongin )
 		ValueTypes: 'or',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '' )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
 			try
 			{
@@ -62,11 +62,11 @@ module.exports = function ( jsongin )
 							throw new Error( `$not: Unknown operator [${key}] at [${Path}]. $not takes an object of operators.` );
 						}
 					}
-					result = jsongin.Query( Document, match_value, Path );
+					result = jsongin.Query( Document, match_value, Path, Options );
 				}
 				else if ( match_type === 'r' )
 				{
-					result = jsongin.QueryOperators.$regex.Query( Document, match_value, Path );
+					result = jsongin.QueryOperators.$regex.Query( Document, match_value, Path, Options );
 				}
 				else
 				{

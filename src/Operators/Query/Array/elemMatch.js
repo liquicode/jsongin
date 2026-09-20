@@ -26,6 +26,8 @@ Note that this is the ***query*** `$elemMatch`. There is also a ***projection***
 
 */
 
+const LIB_QUERY_OPTIONS = require( '../../../QueryOptions' );
+
 module.exports = function ( jsongin )
 {
 
@@ -55,7 +57,7 @@ module.exports = function ( jsongin )
 	//     { x: 1 } does.
 	//
 	// Verified against MongoDB 6.0.1.
-	function element_matches( Element, Criteria )
+	function element_matches( Element, Criteria, Options )
 	{
 		let element_type = jsongin.ShortType( Element );
 
@@ -68,13 +70,13 @@ module.exports = function ( jsongin )
 		{
 			if ( LOGICAL.includes( key ) )
 			{
-				if ( logical_matches( Element, key, Criteria[ key ] ) === false ) { return false; }
+				if ( logical_matches( Element, key, Criteria[ key ], Options ) === false ) { return false; }
 				continue;
 			}
 
 			if ( typeof jsongin.QueryOperators[ key ] !== 'undefined' )
 			{
-				if ( jsongin.QueryOperators[ key ].Query( { value: Element }, Criteria[ key ], 'value', false ) === false ) { return false; }
+				if ( jsongin.QueryOperators[ key ].Query( { value: Element }, Criteria[ key ], 'value', LIB_QUERY_OPTIONS.WithoutArrayExpansion( Options ) ) === false ) { return false; }
 				continue;
 			}
 
@@ -82,7 +84,7 @@ module.exports = function ( jsongin )
 
 			let sub_criteria = {};
 			sub_criteria[ key ] = Criteria[ key ];
-			if ( jsongin.Query( { value: Element }, sub_criteria, 'value' ) === false ) { return false; }
+			if ( jsongin.Query( { value: Element }, sub_criteria, 'value', Options ) === false ) { return false; }
 		}
 
 		return true;
@@ -229,22 +231,22 @@ module.exports = function ( jsongin )
 	//
 	// The shape of Value is already known to be good: validate_criteria checked the whole
 	// criteria before the first element was looked at.
-	function logical_matches( Element, Operator, Value )
+	function logical_matches( Element, Operator, Value, Options )
 	{
 		if ( Operator === '$not' )
 		{
 			if ( jsongin.ShortType( Value ) === 'r' )
 			{
-				return ( jsongin.QueryOperators.$regex.Query( { value: Element }, Value, 'value', false ) === false );
+				return ( jsongin.QueryOperators.$regex.Query( { value: Element }, Value, 'value', LIB_QUERY_OPTIONS.WithoutArrayExpansion( Options ) ) === false );
 			}
-			return ( element_matches( Element, Value ) === false );
+			return ( element_matches( Element, Value, Options ) === false );
 		}
 
 		if ( Operator === '$and' )
 		{
 			for ( let index = 0; index < Value.length; index++ )
 			{
-				if ( element_matches( Element, Value[ index ] ) === false ) { return false; }
+				if ( element_matches( Element, Value[ index ], Options ) === false ) { return false; }
 			}
 			return true;
 		}
@@ -253,7 +255,7 @@ module.exports = function ( jsongin )
 		let any_matched = false;
 		for ( let index = 0; index < Value.length; index++ )
 		{
-			if ( element_matches( Element, Value[ index ] ) === true ) { any_matched = true; break; }
+			if ( element_matches( Element, Value[ index ], Options ) === true ) { any_matched = true; break; }
 		}
 		if ( Operator === '$or' ) { return any_matched; }
 		return ( any_matched === false );
@@ -269,10 +271,12 @@ module.exports = function ( jsongin )
 		ValueTypes: 'o',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '' )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
 			try
 			{
+				let options = LIB_QUERY_OPTIONS.Normalize( Options );
+
 				// Validate Expression
 				let match_type = jsongin.ShortType( MatchValue );
 				if ( match_type !== 'o' )
@@ -307,7 +311,7 @@ module.exports = function ( jsongin )
 
 					for ( let element_index = 0; element_index < candidate.length; element_index++ )
 					{
-						if ( element_matches( candidate[ element_index ], MatchValue ) === true ) { return true; }
+						if ( element_matches( candidate[ element_index ], MatchValue, options ) === true ) { return true; }
 					}
 				}
 				return false;

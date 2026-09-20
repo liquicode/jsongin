@@ -16,6 +16,8 @@ The two ends are not random at all: a rate of 0 selects nothing and a rate of 1 
 
 */
 
+const LIB_QUERY_OPTIONS = require( '../../../QueryOptions' );
+
 module.exports = function ( jsongin )
 {
 
@@ -28,8 +30,9 @@ module.exports = function ( jsongin )
 		ValueTypes: 'n',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
+			let options = LIB_QUERY_OPTIONS.Normalize( Options );
 			try
 			{
 				if ( !Number.isFinite( MatchValue ) || ( MatchValue < 0 ) || ( MatchValue > 1 ) )

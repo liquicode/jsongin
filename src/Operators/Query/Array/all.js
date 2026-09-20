@@ -18,6 +18,8 @@ The list may instead hold `{ $elemMatch: criteria }` documents, one element havi
 
 */
 
+const LIB_QUERY_OPTIONS = require( '../../../QueryOptions' );
+
 module.exports = function ( jsongin )
 {
 
@@ -30,8 +32,9 @@ module.exports = function ( jsongin )
 		ValueTypes: 'a',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
+			let options = LIB_QUERY_OPTIONS.Normalize( Options );
 			try
 			{
 				// Validate Expression
@@ -97,7 +100,7 @@ module.exports = function ( jsongin )
 					}
 					else
 					{
-						result = jsongin.QueryOperators.$eq.Query( Document, MatchValue[ index ], Path, ExpandArrays );
+						result = jsongin.QueryOperators.$eq.Query( Document, MatchValue[ index ], Path, options );
 					}
 					if ( result === false ) { return false; }
 				}

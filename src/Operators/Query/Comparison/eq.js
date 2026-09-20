@@ -24,6 +24,8 @@ A regexp given here is a value to compare against rather than a pattern to test 
 
 */
 
+const LIB_QUERY_OPTIONS = require( '../../../QueryOptions' );
+
 module.exports = function ( jsongin )
 {
 
@@ -100,8 +102,9 @@ module.exports = function ( jsongin )
 		// ExpandArrays is passed through to ResolveCandidates. It is false only when
 		// $elemMatch is testing one element, where the element is a value rather than an
 		// array to look inside. See ResolveCandidates.
-		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
+			let options = LIB_QUERY_OPTIONS.Normalize( Options );
 			try
 			{
 				// A path which crosses an array means "does any element satisfy this", which is
@@ -113,7 +116,7 @@ module.exports = function ( jsongin )
 				// which genuinely held an array, so { 'a.x': { $eq: 1 } } compared [ 1, 2 ]
 				// against 1 and found nothing, while the implicit form matched.
 				let report = { Missing: false };
-				let candidates = jsongin.ResolveCandidates( Document, Path, ExpandArrays, report );
+				let candidates = jsongin.ResolveCandidates( Document, Path, options.ExpandArrays, report );
 
 				// A missing field is compared as undefined, so that { a: null } matches a
 				// document which has no 'a'. MongoDB matches null against a missing field.

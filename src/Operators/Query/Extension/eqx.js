@@ -26,6 +26,8 @@ This is a ***field*** operator, written as `{ field: { $eqx: value } }`. It is n
 
 */
 
+const LIB_QUERY_OPTIONS = require( '../../../QueryOptions' );
+
 module.exports = function ( jsongin )
 {
 
@@ -51,11 +53,12 @@ module.exports = function ( jsongin )
 		// ExpandArrays is passed through to ResolveCandidates. It is false only when
 		// $elemMatch is testing one element, where the element is a value rather than an
 		// array to look inside. See ResolveCandidates.
-		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
+			let options = LIB_QUERY_OPTIONS.Normalize( Options );
 			try
 			{
-				let candidates = jsongin.ResolveCandidates( Document, Path, ExpandArrays );
+				let candidates = jsongin.ResolveCandidates( Document, Path, options.ExpandArrays );
 
 				// A path which resolves to nothing is still compared, so that { a: null }
 				// matches a document which has no 'a'. MongoDB matches null against a missing

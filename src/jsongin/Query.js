@@ -1,6 +1,7 @@
 'use strict';
 
 const LIB_REGEXP_OPTIONS = require( '../RegExpOptions' );
+const LIB_QUERY_OPTIONS = require( '../QueryOptions' );
 
 module.exports = function ( jsongin )
 {
@@ -25,8 +26,29 @@ module.exports = function ( jsongin )
 	};
 
 
-	function Query( Document, Criteria, Path = '' )
+	//---------------------------------------------------------------------
+	// Matches a document against a criteria.
+	//
+	// ***Options is what the query carries besides the document and the criteria***, and every
+	// operator takes the same one: { ExpandArrays, Scope }. See src/QueryOptions.js for the
+	// shape, the default, and the one operator which narrows it.
+	//
+	// ***A query has no variables of its own, and a caller may lend it some.*** Options.Scope
+	// reaches the operators which evaluate an expression, $expr and $exprx, which make it the
+	// parent of the root frame they build - so '$$ROOT' and '$$NOW' still answer for the
+	// document in hand while a lent name resolves through the chain. It exists for Join(),
+	// which matches each of one set of documents against each of another and lends the first
+	// as '$$Left': a criteria which compares two documents has nowhere else to read the second
+	// one from. MongoDB gives a query no variables either, and gives $lookup's sub-pipeline
+	// exactly this through `let`.
+	//
+	// ***Options.ExpandArrays says whether an array field also offers its elements***, which
+	// is MongoDB's own rule and the default. A caller which turns it off gets a query where a
+	// path means only what it lands on, throughout the criteria.
+	function Query( Document, Criteria, Path = '', Options )
 	{
+		let options = LIB_QUERY_OPTIONS.Normalize( Options );
+
 		// Validate the parameters.
 		if ( jsongin.ShortType( Document ) !== 'o' )
 		{
@@ -72,7 +94,8 @@ module.exports = function ( jsongin )
 				let operator = jsongin.QueryOperators[ key ];
 				let sub_query = check_operator( key, Criteria, Path );
 
-				let result = operator.Query( Document, sub_query, Path );
+				// Every operator takes the same options, and they are passed on as they are.
+				let result = operator.Query( Document, sub_query, Path, options );
 				if ( result === false )
 				{
 					if ( jsongin.OpLog ) { jsongin.OpLog( `Query: Operator [${key}] returned false at [${Path}].` ); }
@@ -96,7 +119,7 @@ module.exports = function ( jsongin )
 				let result = false;
 				if ( jsongin.IsQuery( sub_query ) )
 				{
-					result = jsongin.Query( Document, sub_query, sub_query_path );
+					result = jsongin.Query( Document, sub_query, sub_query_path, options );
 				}
 				else
 				{
@@ -105,7 +128,7 @@ module.exports = function ( jsongin )
 						refuse( `The implicit $eq operator cannot be set to undefined. Use $exists to test if a field exists in the document.` );
 					}
 					// Implicit $eq
-					result = jsongin.QueryOperators.$ImplicitEq.Query( Document, sub_query, sub_query_path );
+					result = jsongin.QueryOperators.$ImplicitEq.Query( Document, sub_query, sub_query_path, options );
 				}
 				if ( result === false ) { return false; }
 			}

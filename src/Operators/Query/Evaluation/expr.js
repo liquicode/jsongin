@@ -15,6 +15,8 @@ Use the `$exprx` operator to evaluate an expression against a sub-document.
 
 */
 
+const LIB_QUERY_OPTIONS = require( '../../../QueryOptions' );
+
 module.exports = function ( jsongin )
 {
 
@@ -28,10 +30,11 @@ module.exports = function ( jsongin )
 		ValueTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '' )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
 			try
 			{
+				let options = LIB_QUERY_OPTIONS.Normalize( Options );
 				// Validate the path.
 				if ( Path !== '' )
 				{
@@ -41,11 +44,15 @@ module.exports = function ( jsongin )
 
 				// Evaluate the expression against the document.
 				//
-				// ***The scope is built here rather than passed in.*** A query carries no
-				// scope - Query( Document, Criteria ) takes two values, the same as MongoDB
-				// gives a query no variables of its own - so the root frame is made from the
-				// document in hand, which is what lets '$$ROOT' and '$$NOW' work inside $expr.
-				let value = jsongin.Evaluate( Document, MatchValue, jsongin.Scope.NewDocument( Document ) );
+				// ***The root frame is built here, and a caller may lend it a parent.*** A query
+				// still has no variables of its own - Query( Document, Criteria ) takes two
+				// values, the same as MongoDB gives a query no variables - so the frame is made
+				// from the document in hand, which is what lets '$$ROOT' and '$$NOW' work here.
+				// A lent scope becomes that frame's parent, so a name the caller bound resolves
+				// through the chain while the document keeps '$$ROOT'. It is how Join() lends
+				// '$$Left', and how MongoDB's $lookup lends `let` to a pipeline. With none,
+				// NewDocument builds its own pipeline frame exactly as before.
+				let value = jsongin.Evaluate( Document, MatchValue, jsongin.Scope.NewDocument( Document, options.Scope ) );
 
 				return jsongin.AsBoolean( value );
 			}

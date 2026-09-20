@@ -28,7 +28,7 @@ module.exports = function ( jsongin )
 		ValueTypes: 'a',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
 			try
 			{
@@ -51,7 +51,7 @@ module.exports = function ( jsongin )
 				// Compare
 				for ( let index = 0; index < MatchValue.length; index++ )
 				{
-					if ( jsongin.Query( Document, MatchValue[ index ], Path ) === false ) { return false; }
+					if ( jsongin.Query( Document, MatchValue[ index ], Path, Options ) === false ) { return false; }
 				}
 
 				return true;

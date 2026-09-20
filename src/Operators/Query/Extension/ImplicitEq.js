@@ -16,6 +16,8 @@ This is what `{ field: value }` means when no operator is given. It is mostly `$
 
 */
 
+const LIB_QUERY_OPTIONS = require( '../../../QueryOptions' );
+
 module.exports = function ( jsongin )
 {
 
@@ -39,8 +41,9 @@ module.exports = function ( jsongin )
 		// mean. Equality already means "the field is this value, or is an array holding it",
 		// at any depth, so there is nothing left here to decide except which operator the
 		// match value calls for.
-		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
+			let options = LIB_QUERY_OPTIONS.Normalize( Options );
 			try
 			{
 				let match_type = jsongin.ShortType( MatchValue );
@@ -61,11 +64,11 @@ module.exports = function ( jsongin )
 				// same regexp, which is both of the things MongoDB matches here.
 				if ( match_type === 'r' )
 				{
-					return jsongin.QueryOperators.$regex.Query( Document, MatchValue, Path, ExpandArrays );
+					return jsongin.QueryOperators.$regex.Query( Document, MatchValue, Path, options );
 				}
 
 				// Everything else is ordinary equality.
-				return jsongin.QueryOperators.$eq.Query( Document, MatchValue, Path, ExpandArrays );
+				return jsongin.QueryOperators.$eq.Query( Document, MatchValue, Path, options );
 			}
 			catch ( error )
 			{

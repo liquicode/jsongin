@@ -14,6 +14,8 @@ Through an array, the field matches when ***any*** element is less than the valu
 
 */
 
+const LIB_QUERY_OPTIONS = require( '../../../QueryOptions' );
+
 module.exports = function ( jsongin )
 {
 	const range = require( './_range' )( jsongin );
@@ -28,14 +30,15 @@ module.exports = function ( jsongin )
 		ValueTypes: 'bnsdoalu',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
+			let options = LIB_QUERY_OPTIONS.Normalize( Options );
 			try
 			{
 				// See _range.js for the candidate handling and the type bracketing.
 				return range.Query( Document, MatchValue, Path, '$lt',
 					function ( Comparison ) { return ( Comparison < 0 ); },
-					false, ExpandArrays );
+					false, options.ExpandArrays );
 			}
 			catch ( error )
 			{

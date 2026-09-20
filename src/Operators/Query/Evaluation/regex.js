@@ -19,6 +19,8 @@ The pattern may be a string or a `RegExp` object, and the field must be a string
 
 */
 
+const LIB_QUERY_OPTIONS = require( '../../../QueryOptions' );
+
 module.exports = function ( jsongin )
 {
 
@@ -31,8 +33,9 @@ module.exports = function ( jsongin )
 		ValueTypes: 'sr',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
+			let options = LIB_QUERY_OPTIONS.Normalize( Options );
 			try
 			{
 				// Validate Expression
@@ -60,7 +63,7 @@ module.exports = function ( jsongin )
 				// holding the regexp /MongoDB/i was therefore tested as the text '/MongoDB/i'
 				// and matched the pattern /MongoDB/, which MongoDB does not do. A path
 				// crossing an array was tested as the text of the gathered array.
-				let candidates = jsongin.ResolveCandidates( Document, Path, ExpandArrays );
+				let candidates = jsongin.ResolveCandidates( Document, Path, options.ExpandArrays );
 				for ( let index = 0; index < candidates.length; index++ )
 				{
 					let candidate = candidates[ index ];

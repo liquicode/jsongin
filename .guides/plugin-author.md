@@ -22,7 +22,7 @@ module.exports = function ( jsongin )
 		OperatorType: 'Comparison',
 		TopLevel: false,
 		ValueTypes: 's',
-		Query: function ( Document, MatchValue, Path = '' ) { /* ... */ },
+		Query: function ( Document, MatchValue, Path = '', Options ) { /* ... */ },
 	};
 };
 ```

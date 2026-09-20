@@ -25,7 +25,7 @@ module.exports = function ( jsongin )
 		TopLevel: false,
 		ValueTypes: 'n',
 
-		Query: function ( Document, MatchValue, Path = '' )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
 			// ...
 		},
@@ -44,15 +44,16 @@ Every operator has an `Engine` member holding the engine it belongs to.
 
 What else an operator needs depends on which table you add it to:
 
-| **Table**               | **Function**  | **Also needs**             | **Receives a Scope** |
-|-------------------------|---------------|----------------------------|:--------------------:|
-| `QueryOperators`        | `Query`       | `TopLevel`, `ValueTypes`   |          no          |
-| `ExpressionOperators`   | `Evaluate`    | `ArgTypes`                 |        ***yes***     |
-| `UpdateOperators`       | `Update`      | `TopLevel`, `ValueTypes`   |          no          |
-| `StageOperators`        | `Stage`       | `ArgTypes`                 |        ***yes***     |
-| `AccumulatorOperators`  | `Accumulate`  | `ArgTypes`                 |        ***yes***     |
+| **Table**               | **Function**  | **Also needs**             | **Receives a Scope**    |
+|-------------------------|---------------|----------------------------|:-----------------------:|
+| `QueryOperators`        | `Query`       | `TopLevel`, `ValueTypes`   | in `Options`            |
+| `ExpressionOperators`   | `Evaluate`    | `ArgTypes`                 |        ***yes***        |
+| `UpdateOperators`       | `Update`      | `TopLevel`, `ValueTypes`   |          no             |
+| `StageOperators`        | `Stage`       | `ArgTypes`                 |        ***yes***        |
+| `AccumulatorOperators`  | `Accumulate`  | `ArgTypes`                 |        ***yes***        |
 
-The three kinds which evaluate expressions receive a `Scope`, and must pass it on.
+The three kinds which evaluate expressions receive a `Scope` directly, and must pass it on.
+A query operator receives one inside its `Options`, which it passes on the same way.
 See [The Scope Rules](#the-scope-contract).
 
 `ValueTypes` and `ArgTypes` mean the same thing: the [short type codes](./jsongin/ShortType.md)
@@ -75,7 +76,7 @@ Do not declare fewer types than the operator really handles: that turns valid in
 ### Query Operators
 
 ```
-Query: function ( Document, MatchValue, Path = '' )
+Query: function ( Document, MatchValue, Path = '', Options )
 ```
 
 Returns `true` when the document matches, and `false` when it does not.
@@ -83,10 +84,22 @@ Returns `true` when the document matches, and `false` when it does not.
 - `Document` is the whole document.
 - `MatchValue` is the value written after the operator in the query.
 - `Path` is the dot notation path of the field the operator is under, or `''` at the top level.
+- `Options` is what the query carries: `{ ExpandArrays, Scope }`. See
+  [`Query()`](./jsongin/Query.md).
 
-To read the field, use `Engine.ResolveCandidates( Document, Path )`. It returns every value the
-  path can refer to, including array elements, the way MongoDB matches.
+To read the field, use `Engine.ResolveCandidates( Document, Path, Options.ExpandArrays )`. It
+  returns every value the path can refer to, including array elements, the way MongoDB matches.
 See [`ResolveCandidates()`](./jsongin/ResolveCandidates.md).
+
+***Pass `Options` on as it is***, to another operator or to any criteria you hand back to
+  `Engine.Query()`, so that a setting made at the top holds throughout the criteria.
+`$elemMatch` is the only operator which changes them, turning `ExpandArrays` off for the
+  criteria it applies to an element.
+
+***A boolean fourth argument still means `ExpandArrays`***, which is what it meant before the
+  options object, so an operator written against the older signature keeps working.
+If you handle `Options` yourself, normalize it rather than reading its fields directly - an
+  absent one means the defaults.
 
 | **Member**   | **Description**                                                                |
 |--------------|---------------------------------------------------------------------------------|
@@ -262,7 +275,7 @@ module.exports = function ( jsongin )
 		TopLevel: false,
 		ValueTypes: 's',
 
-		Query: function ( Document, MatchValue, Path = '' )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
 			try
 			{

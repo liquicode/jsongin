@@ -18,6 +18,8 @@ Unlike `$expr`, this operator can appear anywhere within a query:
 
 */
 
+const LIB_QUERY_OPTIONS = require( '../../../QueryOptions' );
+
 module.exports = function ( jsongin )
 {
 
@@ -32,15 +34,19 @@ module.exports = function ( jsongin )
 		ValueTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '' )
+		// ***Whatever the expression is evaluated against, a lent scope is the frame's
+		// parent***, so a name the caller lent resolves at every level while '$$ROOT' keeps
+		// naming the document or sub-document in hand. See $expr.
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
 			try
 			{
+				let options = LIB_QUERY_OPTIONS.Normalize( Options );
 				// At the top level, evaluate against the entire document.
 				if ( Path === '' )
 				{
 					// The scope is built from the document being tested. See $expr.
-					return jsongin.AsBoolean( jsongin.Evaluate( Document, MatchValue, jsongin.Scope.NewDocument( Document ) ) );
+					return jsongin.AsBoolean( jsongin.Evaluate( Document, MatchValue, jsongin.Scope.NewDocument( Document, options.Scope ) ) );
 				}
 
 				// Otherwise, evaluate against the sub-document found at Path.
@@ -54,7 +60,7 @@ module.exports = function ( jsongin )
 					{
 						if ( jsongin.ShortType( sub_document[ index ] ) !== 'o' ) { continue; }
 						let value = jsongin.Evaluate( sub_document[ index ], MatchValue,
-							jsongin.Scope.NewDocument( sub_document[ index ] ) );
+							jsongin.Scope.NewDocument( sub_document[ index ], options.Scope ) );
 						if ( jsongin.AsBoolean( value ) === true ) { return true; }
 					}
 					return false;
@@ -64,7 +70,7 @@ module.exports = function ( jsongin )
 				if ( sub_document_type === 'o' )
 				{
 					return jsongin.AsBoolean( jsongin.Evaluate( sub_document, MatchValue,
-						jsongin.Scope.NewDocument( sub_document ) ) );
+						jsongin.Scope.NewDocument( sub_document, options.Scope ) ) );
 				}
 
 				if ( jsongin.OpLog ) { jsongin.OpLog( `$exprx: requires an object or an array but found type [${sub_document_type}] instead at [${Path}].` ); }

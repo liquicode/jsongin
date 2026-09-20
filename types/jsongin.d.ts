@@ -28,6 +28,18 @@ declare module '@liquicode/jsongin'
 	/** A MongoDB style query criteria. */
 	export type QueryCriteria = { [ Key: string ]: any };
 
+	/**
+	 * What a query carries besides the document and the criteria, given to Query() and to every
+	 * query operator. It travels unchanged through the whole criteria; only $elemMatch narrows it.
+	 */
+	export interface QueryOptions
+	{
+		/** Whether an array field also offers each of its elements. Default true, which is MongoDB's rule. */
+		ExpandArrays?: boolean;
+		/** Variables the query may read, from jsongin.Scope. Default none. */
+		Scope?: JsonDocument | null;
+	}
+
 	/** A JSON Schema: an object of keywords, or a boolean which accepts or refuses everything. */
 	export type JsonSchema = boolean | { [ Keyword: string ]: any };
 
@@ -169,7 +181,8 @@ declare module '@liquicode/jsongin'
 		AccumulatorOperators: OperatorTable;
 
 		//--- Query, evaluation, and transformation.
-		Query( Document: JsonDocument, Criteria: QueryCriteria, Path?: string ): boolean;
+		/** Options is { ExpandArrays, Scope }, or a boolean meaning ExpandArrays. It travels through the whole criteria. */
+		Query( Document: JsonDocument, Criteria: QueryCriteria, Path?: string, Options?: QueryOptions | boolean ): boolean;
 		ValidateQuery( Criteria: QueryCriteria ): void;
 		Evaluate( Document: JsonDocument, Expression: any, Scope?: JsonDocument ): any;
 		Aggregate( Documents: JsonDocument[], Pipeline: JsonDocument[], Scope?: JsonDocument ): JsonDocument[];

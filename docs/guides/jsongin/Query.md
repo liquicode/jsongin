@@ -6,10 +6,12 @@
 
 ## Parameters
 
-| **Parameter** | **Allowed Types** | **Description**                          |
-|---------------|:-----------------:|------------------------------------------|
-| Document      |         o         | The document to test.                    |
-| Criteria      |         o         | The conditions the document must meet.   |
+| **Parameter** | **Allowed Types** | **Description**                                          |
+|---------------|:-----------------:|----------------------------------------------------------|
+| Document      |         o         | The document to test.                                    |
+| Criteria      |         o         | The conditions the document must meet.                   |
+| Path          |         s         | Optional. The field the criteria applies below.          |
+| Options       |        ob         | Optional. `{ ExpandArrays, Scope }`. See below.          |
 
 
 ## Description
@@ -71,6 +73,79 @@ If `Document` is not an object, `Query` returns `false` rather than throwing, be
 
 `Query` only finds a mistake when it gets to it, and it stops at the first condition which fails.
 To check a whole criteria without a document, use [`ValidateQuery()`](./ValidateQuery.md).
+
+
+## Options
+
+`Options` is what a query carries besides the document and the criteria.
+Every operator takes the same one, and it holds two things:
+
+| **Field**    | **Default** | **What it does**                                               |
+|--------------|:-----------:|-----------------------------------------------------------------|
+| ExpandArrays |   `true`    | Whether an array field also offers each of its elements.         |
+| Scope        |   `null`    | Variables the query may read. See [Scope](./Scope.md).           |
+
+***They travel unchanged through the whole criteria.***
+An operator hands them to another operator, and to any criteria it gives back to `Query()`,
+  so a setting made at the top holds all the way down rather than evaporating one call later.
+
+[`$elemMatch`](./Query-Operators.md#$elemMatch) is the one exception, and it only narrows:
+  it turns `ExpandArrays` off for the criteria it applies to an element, because there an
+  element which is itself an array is a value rather than a container.
+Ordinary semantics resume below that element.
+
+
+### Lending a Query Some Variables
+
+A query has no variables of its own, the way MongoDB gives a query none.
+A caller can lend it some, and the expression operators
+  [`$expr`](./Query-Operators.md#$expr) and [`$exprx`](./Query-Operators.md#$exprx) can then read them:
+
+```js
+let scope = jsongin.Scope.NewPipeline().Child( { Left: { Dome: 'A' } } );
+jsongin.Query( { DomeId: 'A' }, { $expr: { $eq: [ '$DomeId', '$$Left.Dome' ] } }, '', { Scope: scope } ); // returns true
+jsongin.Query( { DomeId: 'B' }, { $expr: { $eq: [ '$DomeId', '$$Left.Dome' ] } }, '', { Scope: scope } ); // returns false
+```
+
+`$field` still means a field of the document being tested, and `$$ROOT` still means that document.
+This is what lets a criteria compare two documents.
+
+***Lend a frame which descends from a pipeline frame***, as above.
+`$$NOW` and `$$REMOVE` are bound there, so a bare `Scope.New()` frame leaves them undefined:
+
+```js
+let bare = jsongin.Scope.New( { Left: { Dome: 'A' } } );
+jsongin.Query( { a: 1 }, { $expr: { $eq: [ '$$Left.Dome', 'A' ] } }, '', { Scope: bare } ); // returns true
+jsongin.Query( { a: 1 }, { $expr: { $lt: [ '$$NOW', 0 ] } }, '', { Scope: bare } );         // throws: $$NOW is not defined
+```
+
+A scope passed on its own, where the options go, is refused rather than quietly ignored.
+
+
+### Matching Without Array Expansion
+
+By default a path which reaches an array also offers each of its elements, which is what makes
+  `{ Domes: 'A' }` match `{ Domes: [ 'A', 'B' ] }`.
+That is MongoDB's rule.
+***`ExpandArrays: false` turns it off for the whole criteria***, so a path means only what it
+  lands on:
+
+```js
+let document = { Domes: [ 'A', 'B' ] };
+jsongin.Query( document, { Domes: 'A' } );                              // returns true
+jsongin.Query( document, { Domes: 'A' }, '', { ExpandArrays: false } ); // returns false
+
+// The array is still the value the path lands on.
+jsongin.Query( document, { Domes: [ 'A', 'B' ] }, '', { ExpandArrays: false } ); // returns true
+```
+
+***This is a `jsongin` extension.*** MongoDB has no such setting, so a query which uses it is
+  not a query a server would answer the same way.
+It is useful for strict matching, where a field holding a list should not be mistaken for one
+  of its members.
+
+The same field is accepted by [`ResolveCandidates()`](./ResolveCandidates.md), which is where
+  the expansion actually happens.
 
 
 ## Operator Summary

@@ -11,6 +11,8 @@ A field which is ***not there*** matches `$nin` for any list which does not cont
 
 */
 
+const LIB_QUERY_OPTIONS = require( '../../../QueryOptions' );
+
 module.exports = function ( jsongin )
 {
 
@@ -23,9 +25,10 @@ module.exports = function ( jsongin )
 		ValueTypes: 'a',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
-			return !jsongin.QueryOperators.$in.Query( Document, MatchValue, Path, ExpandArrays );
+			let options = LIB_QUERY_OPTIONS.Normalize( Options );
+			return !jsongin.QueryOperators.$in.Query( Document, MatchValue, Path, options );
 		},
 
 	};

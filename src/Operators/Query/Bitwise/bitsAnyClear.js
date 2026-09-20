@@ -17,6 +17,8 @@ A negative integer does: its bits are read as two's complement.
 
 */
 
+const LIB_QUERY_OPTIONS = require( '../../../QueryOptions' );
+
 module.exports = function ( jsongin )
 {
 
@@ -31,11 +33,12 @@ module.exports = function ( jsongin )
 		ValueTypes: 'na',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
+			let options = LIB_QUERY_OPTIONS.Normalize( Options );
 			try
 			{
-				return bitwise.MatchBits( Document, MatchValue, Path, ExpandArrays, '$bitsAnyClear',
+				return bitwise.MatchBits( Document, MatchValue, Path, options.ExpandArrays, '$bitsAnyClear',
 					function ( Bits, Mask )
 					{
 						return ( ( Bits & Mask ) !== Mask );

@@ -13,6 +13,8 @@ A field holding `null` exists.
 
 */
 
+const LIB_QUERY_OPTIONS = require( '../../../QueryOptions' );
+
 module.exports = function ( jsongin )
 {
 
@@ -25,8 +27,9 @@ module.exports = function ( jsongin )
 		ValueTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
+			let options = LIB_QUERY_OPTIONS.Normalize( Options );
 			try
 			{
 				// MongoDB coerces the match value to a boolean rather than requiring one, so
@@ -51,7 +54,7 @@ module.exports = function ( jsongin )
 				// array rather than undefined, so the field read as present.
 				// Verified against MongoDB 6.0.1, where that document does not match
 				// { 'a.x': { $exists: true } } and does match { $exists: false }.
-				let candidates = jsongin.ResolveCandidates( Document, Path, ExpandArrays );
+				let candidates = jsongin.ResolveCandidates( Document, Path, options.ExpandArrays );
 				let field_exists = ( candidates.length > 0 );
 
 				// Note that a field which is there holding undefined yields one candidate and

@@ -54,7 +54,15 @@ module.exports = function ( jsongin )
 				{
 					// ***Each branch is handed the same input.*** Aggregate() never modifies
 					// the array it is given, so one branch cannot disturb the next.
-					faceted[ names[ index ] ] = jsongin.Aggregate( Documents, Args[ names[ index ] ] );
+					//
+					// ***And the same frame.*** Measured 2026-09-20, against the branch which
+					// made its own: a variable the caller bound was ***not visible at all***
+					// inside a branch, which threw "Expression variable [$$Dome] is not
+					// defined"; and the branch read the clock again, so its '$$NOW' was 9 ms
+					// past the instant the run began with. Aggregate() accepts a frame for
+					// exactly this and names $facet as the reason, so a nested pipeline which
+					// passes none is the defect that accommodation exists to prevent.
+					faceted[ names[ index ] ] = jsongin.Aggregate( Documents, Args[ names[ index ] ], Scope );
 				}
 
 				return [ faceted ];

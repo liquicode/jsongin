@@ -13,6 +13,8 @@ A field which is ***not there*** matches `$ne`, because a missing field does not
 
 */
 
+const LIB_QUERY_OPTIONS = require( '../../../QueryOptions' );
+
 module.exports = function ( jsongin )
 {
 
@@ -26,9 +28,10 @@ module.exports = function ( jsongin )
 		ValueTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
-			return !jsongin.QueryOperators.$eq.Query( Document, MatchValue, Path, ExpandArrays );
+			let options = LIB_QUERY_OPTIONS.Normalize( Options );
+			return !jsongin.QueryOperators.$eq.Query( Document, MatchValue, Path, options );
 		},
 
 	};

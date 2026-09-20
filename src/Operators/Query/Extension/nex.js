@@ -19,6 +19,8 @@ This is a ***field*** operator, written as `{ field: { $nex: value } }`. It is n
 
 */
 
+const LIB_QUERY_OPTIONS = require( '../../../QueryOptions' );
+
 module.exports = function ( jsongin )
 {
 
@@ -32,9 +34,10 @@ module.exports = function ( jsongin )
 		ValueTypes: 'bnsdloaru',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
-			return !jsongin.QueryOperators.$eqx.Query( Document, MatchValue, Path, ExpandArrays );
+			let options = LIB_QUERY_OPTIONS.Normalize( Options );
+			return !jsongin.QueryOperators.$eqx.Query( Document, MatchValue, Path, options );
 		},
 
 	};

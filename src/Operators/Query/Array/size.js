@@ -20,6 +20,8 @@ Note that this is the ***query*** `$size`, which selects documents. The ***expre
 
 */
 
+const LIB_QUERY_OPTIONS = require( '../../../QueryOptions' );
+
 module.exports = function ( jsongin )
 {
 
@@ -32,8 +34,9 @@ module.exports = function ( jsongin )
 		ValueTypes: 'n',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
+			let options = LIB_QUERY_OPTIONS.Normalize( Options );
 			try
 			{
 				// A count is a whole number of elements. Anything else cannot mean anything

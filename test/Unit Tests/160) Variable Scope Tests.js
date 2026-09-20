@@ -266,6 +266,253 @@ describe( '160) Variable Scope Tests', () =>
 	} );
 
 	//---------------------------------------------------------------------
+	/*
+		***A query has no variables of its own, and a caller may lend it some.***
+
+		`Query( Document, Criteria, Path, Scope )` hands the scope to the operators which
+		declare `TakesScope` - the expression operators, which make it the parent of the frame
+		they build, and the logical operators, which carry criteria back into `Query()`. It is
+		what lets `Join()` bind `$$Left` so that a criteria can compare two documents.
+
+		***The fourth parameter is already something else to four operators*** - `$all`,
+		`$eqx`, `$nex` and `$ImplicitEq` read it as `ExpandArrays` - which is why the scope
+		goes only to an operator which asked for it, and why that is asserted here.
+	*/
+	describe( 'A Scope Lent to a Query', () =>
+	{
+
+		let left = { Dome: 'A', Minimum: 2 };
+
+		// ***A frame lent to a query descends from a pipeline frame***, which is where '$$NOW'
+		// and '$$REMOVE' are bound. A bare frame made with Scope.New() defines neither, and a
+		// query lent one refuses '$$NOW' rather than answering without it - asserted below.
+		function lent()
+		{
+			return jsongin.Scope.NewPipeline().Child( { Left: left } );
+		}
+
+		it( 'should resolve a lent name inside $expr', () =>
+		{
+			assert.strictEqual( jsongin.Query( { DomeId: 'A' }, { $expr: { $eq: [ '$DomeId', '$$Left.Dome' ] } }, '', { Scope: lent() } ), true );
+			assert.strictEqual( jsongin.Query( { DomeId: 'B' }, { $expr: { $eq: [ '$DomeId', '$$Left.Dome' ] } }, '', { Scope: lent() } ), false );
+		} );
+
+		it( 'should keep $$ROOT and $$NOW naming the document in hand', () =>
+		{
+			assert.strictEqual( jsongin.Query( { DomeId: 'A' }, { $expr: { $eq: [ '$$ROOT.DomeId', 'A' ] } }, '', { Scope: lent() } ), true );
+			assert.strictEqual( jsongin.Query( { DomeId: 'A' }, { $expr: { $gt: [ '$$NOW', new Date( 0 ) ] } }, '', { Scope: lent() } ), true );
+		} );
+
+		it( 'should carry the scope through the logical operators', () =>
+		{
+			let criteria = {
+				$and: [
+					{ $expr: { $eq: [ '$DomeId', '$$Left.Dome' ] } },
+					{ $expr: { $gt: [ '$Nights', '$$Left.Minimum' ] } },
+				],
+			};
+			assert.strictEqual( jsongin.Query( { DomeId: 'A', Nights: 3 }, criteria, '', { Scope: lent() } ), true );
+			assert.strictEqual( jsongin.Query( { DomeId: 'A', Nights: 1 }, criteria, '', { Scope: lent() } ), false );
+
+			let either = { $or: [ { $expr: { $eq: [ '$DomeId', '$$Left.Dome' ] } }, { Spare: true } ] };
+			assert.strictEqual( jsongin.Query( { DomeId: 'A' }, either, '', { Scope: lent() } ), true );
+			assert.strictEqual( jsongin.Query( { DomeId: 'B', Spare: true }, either, '', { Scope: lent() } ), true );
+
+			let neither = { $nor: [ { $expr: { $eq: [ '$DomeId', '$$Left.Dome' ] } } ] };
+			assert.strictEqual( jsongin.Query( { DomeId: 'B' }, neither, '', { Scope: lent() } ), true );
+			assert.strictEqual( jsongin.Query( { DomeId: 'A' }, neither, '', { Scope: lent() } ), false );
+
+			let negated = { Nights: { $not: { $exprx: { $eq: [ '$$Left.Dome', 'B' ] } } } };
+			assert.strictEqual( jsongin.Query( { Nights: { Dome: 'A' } }, negated, '', { Scope: lent() } ), true );
+		} );
+
+		it( 'should reach $exprx below a field, against the sub-document', () =>
+		{
+			let criteria = { Site: { $exprx: { $eq: [ '$DomeId', '$$Left.Dome' ] } } };
+			assert.strictEqual( jsongin.Query( { Site: { DomeId: 'A' } }, criteria, '', { Scope: lent() } ), true );
+			assert.strictEqual( jsongin.Query( { Site: { DomeId: 'B' } }, criteria, '', { Scope: lent() } ), false );
+			// And against each element of an array at that field.
+			assert.strictEqual( jsongin.Query( { Site: [ { DomeId: 'B' }, { DomeId: 'A' } ] }, criteria, '', { Scope: lent() } ), true );
+		} );
+
+		// ***What a lent frame does not bring with it.*** The system names belong to a pipeline
+		// frame; lending a bare one puts the document's frame on a chain which has none, and
+		// '$$NOW' is then undefined rather than silently absent. Measured 2026-09-20.
+		it( 'should refuse $$NOW when the lent frame has no pipeline frame under it', () =>
+		{
+			let bare = jsongin.Scope.New( { Left: left } );
+			assert.strictEqual( jsongin.Query( { DomeId: 'A' }, { $expr: { $eq: [ '$DomeId', '$$Left.Dome' ] } }, '', { Scope: bare } ), true );
+			assert.throws(
+				function () { jsongin.Query( { DomeId: 'A' }, { $expr: { $gt: [ '$$NOW', new Date( 0 ) ] } }, '', { Scope: bare } ); },
+				/\$\$NOW/ );
+		} );
+
+		it( 'should leave a query which was lent nothing exactly as it was', () =>
+		{
+			assert.strictEqual( jsongin.Query( { DomeId: 'A' }, { $expr: { $eq: [ '$DomeId', 'A' ] } } ), true );
+			assert.strictEqual( jsongin.Query( { a: 1 }, { a: 1 } ), true );
+			// A name nobody lent is still undefined, rather than quietly missing.
+			assert.throws(
+				function () { jsongin.Query( { DomeId: 'A' }, { $expr: { $eq: [ '$DomeId', '$$Left.Dome' ] } } ); },
+				/\$\$Left/ );
+		} );
+
+		// ***A scope handed over bare is refused rather than ignored.*** It was the fourth
+		// argument itself until the options object arrived, so passing one is the mistake this
+		// shape invites - and an options object holding no scope looks exactly like one which
+		// never meant to, so the query would run without the variables it was lent.
+		it( 'should refuse a scope passed where the options go', () =>
+		{
+			assert.throws(
+				function () { jsongin.Query( { DomeId: 'A' }, { $expr: { $eq: [ '$DomeId', '$$Left.Dome' ] } }, '', lent() ); },
+				/a scope was passed on its own/ );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	/*
+		***The options a query carries travel unchanged.*** `{ ExpandArrays, Scope }` is the
+		fourth argument of `Query()` and of every operator, and it is passed on as it is - to
+		another operator, and to any criteria handed back to `Query()`. A setting made at the
+		top holds for the whole criteria rather than evaporating one call down.
+
+		***`$elemMatch` is the only thing which narrows it***, to `ExpandArrays: false` for the
+		operators it applies to an element, because there an element which is itself an array
+		is a value and not a container. It narrows and never widens.
+
+		See src/QueryOptions.js.
+	*/
+	describe( 'The Options a Query Carries', () =>
+	{
+
+		it( 'should read a boolean fourth argument as ExpandArrays, as it always did', () =>
+		{
+			// Twenty-three operators were published taking the flag itself, and somebody's
+			// operator is written against that signature.
+			assert.strictEqual( jsongin.QueryOperators.$eq.Query( { Domes: [ 'A', 'B' ] }, 'A', 'Domes' ), true );
+			assert.strictEqual( jsongin.QueryOperators.$eq.Query( { Domes: [ 'A', 'B' ] }, 'A', 'Domes', false ), false );
+			assert.strictEqual( jsongin.QueryOperators.$eq.Query( { Domes: [ 'A', 'B' ] }, 'A', 'Domes', true ), true );
+			assert.strictEqual( jsongin.Query( { Domes: [ 'A', 'B' ] }, { Domes: 'A' }, '', false ), false );
+		} );
+
+		it( 'should carry ExpandArrays through a whole criteria', () =>
+		{
+			let document = { Domes: [ 'A', 'B' ], Site: { Tags: [ 'open' ] } };
+			// Ordinary semantics: an array offers its elements, at every level.
+			assert.strictEqual( jsongin.Query( document, { Domes: 'A' } ), true );
+			assert.strictEqual( jsongin.Query( document, { 'Site.Tags': 'open' } ), true );
+			assert.strictEqual( jsongin.Query( document, { $and: [ { Domes: 'A' }, { 'Site.Tags': 'open' } ] } ), true );
+
+			// Turned off by the caller, it stays off - through a logical operator, through a
+			// nested criteria, and through an operator which hands off to another.
+			let strict = { ExpandArrays: false };
+			assert.strictEqual( jsongin.Query( document, { Domes: 'A' }, '', strict ), false );
+			assert.strictEqual( jsongin.Query( document, { 'Site.Tags': 'open' }, '', strict ), false );
+			assert.strictEqual( jsongin.Query( document, { $and: [ { Domes: 'A' } ] }, '', strict ), false );
+			assert.strictEqual( jsongin.Query( document, { $or: [ { Domes: 'A' }, { Domes: [ 'A', 'B' ] } ] }, '', strict ), true );
+			assert.strictEqual( jsongin.Query( document, { Domes: { $in: [ 'A' ] } }, '', strict ), false );
+			assert.strictEqual( jsongin.Query( document, { Domes: { $ne: 'A' } }, '', strict ), true );
+
+			// The whole array is still the value it lands on, so a criteria which names it matches.
+			assert.strictEqual( jsongin.Query( document, { Domes: [ 'A', 'B' ] }, '', strict ), true );
+		} );
+
+		it( 'should carry a lent scope and the array rule together', () =>
+		{
+			let scope = jsongin.Scope.NewPipeline().Child( { Wanted: 'A' } );
+			let document = { Domes: [ 'A', 'B' ] };
+			let criteria = { $and: [ { Domes: 'A' }, { $expr: { $eq: [ '$$Wanted', 'A' ] } } ] };
+			assert.strictEqual( jsongin.Query( document, criteria, '', { Scope: scope } ), true );
+			assert.strictEqual( jsongin.Query( document, criteria, '', { Scope: scope, ExpandArrays: false } ), false );
+		} );
+
+		// ***The narrowing $elemMatch does is MongoDB's own rule***, verified there against
+		// 6.0.1: an element which is itself an array is a value, not a second array to look
+		// inside. It must hold whatever the caller asked for, and it must not leak past the
+		// element - ordinary semantics resume below it.
+		it( 'should let $elemMatch narrow the array rule for an element', () =>
+		{
+			assert.strictEqual( jsongin.Query( { a: [ [ { x: 1 } ] ] }, { a: { $elemMatch: { x: 1 } } } ), false );
+			assert.strictEqual( jsongin.Query( { a: [ { x: 1 } ] }, { a: { $elemMatch: { x: 1 } } } ), true );
+			// Below the element, an array offers its elements again.
+			assert.strictEqual( jsongin.Query( { a: [ { Tags: [ 'red' ] } ] }, { a: { $elemMatch: { Tags: 'red' } } } ), true );
+			// And with the caller turning expansion off, the narrowing still holds.
+			assert.strictEqual( jsongin.Query( { a: [ [ { x: 1 } ] ] }, { a: { $elemMatch: { x: 1 } } }, '', { ExpandArrays: false } ), false );
+		} );
+
+		it( 'should refuse options it cannot read', () =>
+		{
+			assert.throws( function () { jsongin.Query( { a: 1 }, { a: 1 }, '', 'nope' ); }, /Options must be an object/ );
+			assert.throws( function () { jsongin.Query( { a: 1 }, { a: 1 }, '', { ExpandArrays: 'yes' } ); }, /ExpandArrays must be a boolean/ );
+			assert.throws( function () { jsongin.Query( { a: 1 }, { a: 1 }, '', { Scope: 'mine' } ); }, /Scope must be a scope/ );
+		} );
+
+		// The contract a plugin author reads, and the one the dispatcher relies on: whatever a
+		// query operator takes after Path is called Options.
+		//
+		// ***Read from the signature text rather than from Function.length***, which stops
+		// counting at the first default parameter and so answers 2 for every operator here -
+		// it cannot tell a fourth parameter from a missing one, which is how the old name
+		// survived in four operators while this test passed.
+		it( 'should name the fourth parameter of every query operator Options', () =>
+		{
+			let names = Object.keys( jsongin.QueryOperators );
+			let wrong = [];
+			for ( let index = 0; index < names.length; index++ )
+			{
+				let operator = jsongin.QueryOperators[ names[ index ] ];
+				if ( typeof operator.Query !== 'function' ) { continue; }
+				let signature = /\(([^)]*)\)/.exec( operator.Query.toString() )[ 1 ];
+				let parameters = signature.split( ',' ).map( function ( Each ) { return Each.trim().split( '=' )[ 0 ].trim(); } );
+				if ( parameters.length < 4 ) { continue; }
+				if ( parameters.length > 4 ) { wrong.push( names[ index ] + ' takes ' + parameters.length ); continue; }
+				if ( parameters[ 3 ] !== 'Options' ) { wrong.push( names[ index ] + ' calls it ' + parameters[ 3 ] ); }
+			}
+			assert.deepStrictEqual( wrong, [] );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
+	/*
+		***A nested pipeline runs in the frame around it.*** `Aggregate()` accepts a caller's
+		frame and names `$facet` as the reason, and `$facet` did not pass one.
+
+		Measured 2026-09-20 against the branch which built its own: a lent variable threw
+		"Expression variable [$$Dome] is not defined" inside a branch, and the branch read the
+		clock again, answering an instant 9 ms past the one the run began with.
+	*/
+	describe( 'A Frame Through $facet', () =>
+	{
+
+		it( 'should give a branch the run instant, not one of its own', () =>
+		{
+			let answer = jsongin.Aggregate( [ { a: 1 } ], [
+				{ $addFields: { Outer: '$$NOW' } },
+				{ $facet: { one: [ { $addFields: { Inner: '$$NOW' } } ], two: [ { $addFields: { Inner: '$$NOW' } } ] } },
+			] );
+			let one = answer[ 0 ].one[ 0 ];
+			let two = answer[ 0 ].two[ 0 ];
+			assert.strictEqual( one.Inner.getTime(), one.Outer.getTime() );
+			assert.strictEqual( two.Inner.getTime(), one.Inner.getTime() );
+		} );
+
+		it( 'should give a branch the variables the caller bound', () =>
+		{
+			let scope = jsongin.Scope.NewPipeline().Child( { Dome: 'A' } );
+			let answer = jsongin.Aggregate( [ { a: 1 } ], [
+				{ $facet: { one: [ { $addFields: { D: '$$Dome' } } ] } },
+			], scope );
+			assert.deepStrictEqual( answer[ 0 ].one[ 0 ], { a: 1, D: 'A' } );
+		} );
+
+	} );
+
+
+	//---------------------------------------------------------------------
 	describe( 'Scope Storage', () =>
 	{
 

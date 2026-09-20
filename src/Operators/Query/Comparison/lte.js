@@ -14,6 +14,8 @@ Unlike `$lt`, a null or ***missing*** field satisfies `{ $lte: null }`.
 
 */
 
+const LIB_QUERY_OPTIONS = require( '../../../QueryOptions' );
+
 module.exports = function ( jsongin )
 {
 	const range = require( './_range' )( jsongin );
@@ -27,8 +29,9 @@ module.exports = function ( jsongin )
 		ValueTypes: 'bnsdluoa',
 
 		//---------------------------------------------------------------------
-		Query: function ( Document, MatchValue, Path = '', ExpandArrays = true )
+		Query: function ( Document, MatchValue, Path = '', Options )
 		{
+			let options = LIB_QUERY_OPTIONS.Normalize( Options );
 			try
 			{
 				// See _range.js for the candidate handling and the type bracketing.
@@ -36,7 +39,7 @@ module.exports = function ( jsongin )
 				// which $lt does not.
 				return range.Query( Document, MatchValue, Path, '$lte',
 					function ( Comparison ) { return ( Comparison <= 0 ); },
-					true, ExpandArrays );
+					true, options.ExpandArrays );
 			}
 			catch ( error )
 			{
