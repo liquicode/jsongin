@@ -104,6 +104,13 @@ matches a vehicle whose `Crew` is `[ "day-shift", "night-shift" ]`.
 
 `{ $gt: null }` matches nothing. Only `$gte` and `$lte` match a null or missing field.
 `{ f: { $in: [ null ] } }` means "missing or null".
+`{ f: null }` means "missing or null" too. For a field which is **there and holds null**, and not
+one which is missing, ask its type. Vehicles whose `Odometer` was recorded as null, not those which
+never had one:
+
+```
+{ "Odometer": { "$type": "null" } }
+```
 
 **The query `$in` takes the array as its value.** The *expression* `$in`, used inside `$expr`, is
 the other way round: `[ value, array ]`.
@@ -198,8 +205,18 @@ element is both.
 
 `$bitsAllSet`, `$bitsAllClear`, `$bitsAnySet` and `$bitsAnyClear`, each written as
 `{ f: { $bitsAllSet: bitmask } }`, or with an array of bit positions counted from the lowest bit.
-A field which is not a whole number has no bits and does not match. A question about business
-data rarely needs these.
+A field which is not a whole number has no bits and does not match.
+
+**A number which holds flags is read with these.** "The 4 flag" is the bit worth 4, so the flags a
+question names add up to the bitmask. Vehicles with the 4 flag or the 8 flag set:
+
+```
+{ "StatusFlags": { "$bitsAnySet": 12 } }
+```
+
+`{ "StatusFlags": { "$in": [ 4, 8 ] } }` is a different question: it matches only a field whose whole
+value is 4 or 8. "Any" of the flags is `$bitsAnySet`; "both" or "all" of them is `$bitsAllSet`; "clear"
+or "not set" is `$bitsAnyClear` or `$bitsAllClear` the same way.
 
 ### Miscellaneous and jsongin extensions
 
