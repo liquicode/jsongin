@@ -23,6 +23,9 @@ Unlike [`Clone()`](./Clone.md), nothing is lost:
 - Numbers, strings, booleans, `null` and `undefined` are copied as they are.
 - Regular expressions, errors, functions and symbols are kept, but ***not copied***: the copy
   holds the same object as the original.
+- ***MongoDB's own values*** - `ObjectId`, `Decimal128`, `Long` and the rest of the BSON types -
+  are kept the same way, ***not copied***. jsongin recognises them by the `_bsontype` marker
+  every one of them carries, so a document read from MongoDB can be cloned with its `_id` intact.
 
 `Document` can be any value. A value which is not an object, array or date is returned as it is.
 
@@ -96,6 +99,16 @@ clone.d.getTime() === 1700000000000
 
 // The date is a new object, so changing one does not change the other.
 ( clone.d !== doc.d ) === true
+```
+
+### It keeps a MongoDB ObjectId as it is
+```js
+const { ObjectId } = require( 'mongodb' );
+let doc = { _id: new ObjectId(), name: 'Alice' };
+
+let clone = jsongin.SafeClone( doc );
+( clone._id === doc._id ) === true     // the same ObjectId, not a copy
+clone._id.toString() === doc._id.toString()
 ```
 
 ### Exceptions are shared, not copied

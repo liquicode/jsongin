@@ -35,6 +35,13 @@ module.exports = function ( jsongin )
 					case 'd': return new Date( Node.getTime() );
 					case 'o':
 						{
+							// ***A BSON value is passed through untouched*** (user, 2026-09-21). MongoDB's
+							// ObjectId, Decimal128, Long and the rest mark themselves with `_bsontype`, and
+							// keep their contents where a member-wise copy cannot reach them: the copy came out
+							// with its bytes gone and threw on `toString()` (measured 2026-09-21). jsongin cannot
+							// load MongoDB's library to recognise them, so it recognises the marker, and the copy
+							// holds the same value as the original, as it does a regular expression.
+							if ( typeof Node._bsontype === 'string' ) { return Node; }
 							let value = {};
 							for ( let key in Node )
 							{

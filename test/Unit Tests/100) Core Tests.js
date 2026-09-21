@@ -1490,6 +1490,27 @@ describe( '100) Core Tests', () =>
 			assert.strictEqual( clone.getTime(), 4000 );
 		} );
 
+		it( 'It passes a BSON value through untouched', () =>
+		{
+			// MongoDB's own values, from the driver the parity tests already load: a member-wise copy of
+			// an ObjectId lost its bytes and threw on toString().
+			const { ObjectId, Decimal128, Long } = require( 'mongodb' );
+			let id = new ObjectId();
+			let doc = { _id: id, price: Decimal128.fromString( '9.99' ), big: Long.fromNumber( 42 ), list: [ id ], plain: { n: 1 } };
+
+			let clone = jsongin.SafeClone( doc );
+			assert.ok( clone._id === id );
+			assert.strictEqual( clone._id.toString(), id.toString() );
+			assert.ok( clone.price === doc.price );
+			assert.ok( clone.big === doc.big );
+			assert.ok( clone.list[ 0 ] === id );
+			assert.ok( clone.list !== doc.list );
+			// Everything which is not a BSON value is still copied.
+			assert.ok( clone.plain !== doc.plain );
+			assert.strictEqual( clone.plain.n, 1 );
+			assert.ok( jsongin.SafeClone( id ) === id );
+		} );
+
 		it( 'It can selectively clone with the Exceptions parameter', () =>
 		{
 			let doc = { id: 42, ref: { name: 'Alice' } };
