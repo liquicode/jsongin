@@ -318,6 +318,14 @@ document at all**.
 
 `$min` and `$max` compare by BSON order, so strings and dates work too.
 
+**A cap is `$min`, and a floor is `$max`.** Bring every vehicle's `TopSpeed` above 90 down to 90, leaving
+the slower ones as they are:
+
+```
+{ "$min": { "TopSpeed": 90 } }          correct - the criteria needs no condition on TopSpeed
+{ "$max": { "TopSpeed": 90 } }          WRONG - raises the slower ones to 90 instead
+```
+
 ### Arrays
 
 | Operator | Usage | Meaning |
