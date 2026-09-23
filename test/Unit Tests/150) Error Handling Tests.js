@@ -548,6 +548,47 @@ describe( '150) Error Handling Tests', () =>
 			assert.throws( function () { jsongin.Query( { a: 1 }, null ); }, /The Criteria parameter must be an object/ );
 		} );
 
+		/*
+			***An unknown operator is named before any rule which assumes the operators are known.***
+
+			`$options` is not in the operator table - it is a modifier folded into a sibling `$regex` -
+			so its companion rule is hand written above the table lookup. A misspelt `$regex` beside it
+			was reported as an orphaned `$options` rather than as the typo it is, and which of the two a
+			caller was told depended on the order the keys happened to be written in, since a refusal
+			throws at the first violation it meets.
+
+			That order is not incidental for a machine. A tool call's object argument is rendered with
+			its keys sorted, so `$options` always precedes `$regexx`; a model read that its `$options`
+			needed a `$regex`, saw nothing wrong with its `$options`, and sent the same call again until
+			it ran out of calls - eight of the eleven cases which hit the call limit in jsonx-llm's full
+			probe of 2026-09-23.
+		*/
+		it( 'should name a misspelt operator whichever order its keys are written in', () =>
+		{
+			assert.throws(
+				function () { jsongin.ValidateQuery( { Name: { $regexx: 'x', $options: 'i' } } ); },
+				/Unknown operator \[\$regexx\]/ );
+			assert.throws(
+				function () { jsongin.ValidateQuery( { Name: { $options: 'i', $regexx: 'x' } } ); },
+				/Unknown operator \[\$regexx\]/ );
+			assert.throws(
+				function () { jsongin.Query( { Name: 'a' }, { Name: { $options: 'i', $regexx: 'x' } } ); },
+				/Unknown operator \[\$regexx\]/ );
+		} );
+
+		it( 'should still refuse a $options which has no $regex beside it', () =>
+		{
+			// The companion rule is right; only its precedence was wrong.
+			assert.throws(
+				function () { jsongin.ValidateQuery( { Name: { $options: 'i' } } ); },
+				/\$options needs a \$regex beside it/ );
+			assert.throws(
+				function () { jsongin.Query( { Name: 'a' }, { Name: { $options: 'i' } } ); },
+				/\$options needs a \$regex beside it/ );
+			// and a $regex which does have one is still accepted
+			jsongin.ValidateQuery( { Name: { $regex: 'a', $options: 'i' } } );
+		} );
+
 		it( 'should refuse an implicit $eq against undefined', () =>
 		{
 			// undefined is not a value to compare against, and the mistake it usually is — a

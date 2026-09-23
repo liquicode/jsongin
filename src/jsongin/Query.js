@@ -70,6 +70,7 @@ module.exports = function ( jsongin )
 			return true;
 		}
 		check_operator_object( Criteria, Path );
+		check_unknown_operators( Criteria, Path );
 
 		// Evaluate the object elements.
 		for ( let key in Criteria )
@@ -160,6 +161,41 @@ module.exports = function ( jsongin )
 	};
 
 
+	/*
+		***An unknown operator is named before any rule which assumes the operators are known.***
+
+		`$options` is not an operator of its own - it is a modifier folded into a sibling `$regex` -
+		so it cannot be looked up in the operator table and its companion rule is hand written above
+		that lookup. A misspelt `$regex` beside it was therefore reported as an orphaned `$options`
+		rather than as the typo it is, and which of the two a caller was told depended on the order
+		the keys happened to be written in, since a refusal throws at the first violation it meets.
+
+		That order is not incidental for a machine: a tool call's object argument is rendered with
+		its keys sorted, so `$options` always precedes `$regexx`. A model then read that its
+		`$options` needed a `$regex`, saw nothing wrong with its `$options`, and sent the same call
+		again until it ran out of calls - eight of the eleven cases which hit the call limit in
+		jsonx-llm's full probe of 2026-09-23.
+
+		Every other operator family already names the unknown one: expression operators, aggregation
+		stages and accumulators each refuse through their own table, and an Update names it whichever
+		order it is written in. This is the one place a hand-written rule sat above the table.
+	*/
+	function check_unknown_operators( Criteria, Path )
+	{
+		for ( let key in Criteria )
+		{
+			// The one key which is deliberately not in the table; its own rule follows below.
+			if ( key === '$options' ) { continue; }
+			if ( key.startsWith( '$' ) === false ) { continue; }
+			if ( typeof jsongin.QueryOperators[ key ] === 'undefined' )
+			{
+				refuse( `Unknown operator [${key}] at [${Path}].` );
+			}
+		}
+		return;
+	}
+
+
 	//---------------------------------------------------------------------
 	// The checks every operator gets before it is evaluated, or validated: that it sits at a
 	// level it belongs to, that it has a value, and that the value is a type it takes. Returns
@@ -246,6 +282,7 @@ module.exports = function ( jsongin )
 		}
 		Path = jsongin.SplitPath( Path ).join( '.' );
 		check_operator_object( Criteria, Path );
+		check_unknown_operators( Criteria, Path );
 
 		for ( let key in Criteria )
 		{
